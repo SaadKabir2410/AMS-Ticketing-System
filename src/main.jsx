@@ -5,6 +5,7 @@ import App from "./App.jsx";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/Authcontext";
 import { BrowserRouter } from "react-router-dom";
+import { ToastProvider } from "./component/common/Toast";
 
 import { Component } from "react";
 class ErrorBoundary extends Component {
@@ -41,7 +42,9 @@ createRoot(document.getElementById("root")).render(
       <BrowserRouter>
         <AuthProvider>
           <ThemeProvider>
-            <App />
+            <ToastProvider>
+              <App />
+            </ToastProvider>
           </ThemeProvider>
         </AuthProvider>
       </BrowserRouter>

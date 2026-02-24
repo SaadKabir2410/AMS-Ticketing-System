@@ -5,6 +5,8 @@ import Sidebar from "./component/layout/Sidebar";
 import LoginPage from "./pages/Auth/Login";
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./component/auth/ProtectedRoute";
+import AMSTicketsPage from "./pages/AMSTicketsPage";
+import SitesPage from "./pages/SitesPage";
 
 function Layout({ collapsed, setCollapsed }) {
   return (
@@ -15,6 +17,8 @@ function Layout({ collapsed, setCollapsed }) {
         <main className="flex-1 overflow-auto p-6 bg-slate-50 dark:bg-[#020617] transition-colors duration-300">
           <Routes>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/ams-tickets" element={<AMSTicketsPage />} />
+            <Route path="/sites" element={<SitesPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
@@ -33,9 +37,7 @@ export default function App() {
         path="/*"
         element={
           <ProtectedRoute>
-            <Layout collapsed={collapsed} setCollapsed={setCollapsed}>
-              <Dashboard />
-            </Layout>
+            <Layout collapsed={collapsed} setCollapsed={setCollapsed} />
           </ProtectedRoute>
         }
       />

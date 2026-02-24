@@ -20,14 +20,13 @@ export const NAV_GROUPS = [
         title: "Main Menu",
         links: [
             { id: "main-dashboard", name: "Dashboard", href: "/", icon: LayoutDashboard },
-            { id: "main-tickets", name: "AMS Tickets", href: "/AMS-Tickets", icon: Ticket },
+            { id: "main-tickets", name: "AMS Tickets", href: "/ams-tickets", icon: Ticket },
             { id: "main-customers", name: "Clients", href: "/Clients", icon: Users }
         ]
     },
     {
         title: "Management",
         links: [
-            { id: "mgmt-home", name: "Home", href: "/home", icon: Home },
             {
                 id: "mgmt-report", name: "Reports", href: "/reports", icon: FileSliders,
                 subMenu: [

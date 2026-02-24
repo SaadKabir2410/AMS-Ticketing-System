@@ -1,4 +1,4 @@
-timport { useState } from "react";
+import { useState } from "react";
 import { useAuth } from "../context/Authcontext";
 import { Home } from "lucide-react";
 import {
@@ -139,8 +139,8 @@ function StatCard({
           </div>
           <span
             className={`flex items-center gap-0.5 text-xs font-semibold px-2 py-1 rounded-full ${positive
-                ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
-                : "bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-400"
+              ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
+              : "bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-400"
               }`}
           >
             {positive ? (
