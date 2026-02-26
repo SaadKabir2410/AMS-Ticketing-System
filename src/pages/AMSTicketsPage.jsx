@@ -2,7 +2,7 @@ import { Plus } from 'lucide-react'
 import ResourcePage from '../component/common/ResourcePage'
 import { DB } from '../data/DB'
 import TicketModal from '../component/common/TicketModal'
-import TicketDetailModal from '../component/common/TicketDetailsModel'
+import TicketDetailModal from '../component/common/TicketDetailModal'
 import DeleteConfirmModal from '../component/common/DeleteConfirmation'
 
 // Helper to format date

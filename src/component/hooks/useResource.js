@@ -6,6 +6,7 @@ export function useResource(apiObject, params) {
     const [total, setTotal] = useState(0)
     const [loading, setLoading] = useState(true)
     const [totalPages, setTotalPages] = useState(0)
+    const [error, setError] = useState(null)
 
     const fetch = useCallback(async () => {
         setLoading(true);
@@ -39,6 +40,7 @@ export function useResource(apiObject, params) {
             setData(nextData);
             setTotal(nextTotal);
             setTotalPages(nextTotalPages);
+            setError(null); // clear any previous error
             console.log('useResource fetch success:', {
                 dataLength: nextData.length,
                 total: nextTotal,
@@ -48,6 +50,7 @@ export function useResource(apiObject, params) {
             });
         } catch (e) {
             console.error('useResource fetch error:', e);
+            setError(e);
             setData([]);
             setTotal(0);
         } finally {
@@ -55,6 +58,6 @@ export function useResource(apiObject, params) {
         }
     }, [JSON.stringify(params), apiObject]);
     useEffect(() => { fetch() }, [fetch]);
-    return { data, total, totalPages, loading, refetch: fetch };
+    return { data, total, totalPages, loading, error, refetch: fetch };
 }
 
