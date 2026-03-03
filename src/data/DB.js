@@ -4,28 +4,74 @@
  */
 import axios from 'axios';
 
-// 1. Set up your API configuration
+// Use the Vite dev proxy (/api → https://sureze.ddns.net:3333)
+// so all requests go through localhost and CORS/SSL is handled by the proxy.
 const API_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
-    'https://sureze.ddns.net:3333/api/app';
+    '/api/app/';
 
 const api = axios.create({
     baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
-        // 'Authorization': `Bearer ${localStorage.getItem('token')}` // Uncomment if using tokens
     }
 });
 
+// Attach the auth token to every request automatically.
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+});
+// Handle 401 / 403 globally — only log out when a token IS present
+// (meaning it's genuinely expired/invalid), NOT when a write request
+// (POST/PUT/DELETE) fails simply because there's no token yet.
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401 || error.response?.status === 403) {
+            const token = localStorage.getItem('auth_token');
+            const status = error.response.status;
+            const method = error.config?.method?.toUpperCase();
+            const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+
+            console.warn(
+                `[Auth] ${status} on ${method} ${error.config?.url}. ` +
+                `Token present: ${!!token}. Is mutation: ${isMutation}.`
+            );
+
+            // Only clear session on 401 (Unauthorized) — 403 means "Forbidden/No Permission"
+            // but the session itself might still be valid.
+            if (status === 401 && token && !isMutation) {
+                console.warn('[Auth] Token expired (401) — clearing session and redirecting to login.');
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('spike_session');
+                window.dispatchEvent(new CustomEvent('auth:expired'));
+            } else if (status === 403) {
+                console.warn('[Auth] 403 Forbidden — You may not have permission for this action/resource.');
+            } else if (!token) {
+                console.warn('[Auth] No token found — request unauthorized. Please log in.');
+            }
+        }
+        return Promise.reject(error);
+    }
+);
 
 
 // The Database Connector
 const DB = {
     // ── Tickets ──────────────────────────────────────────────────────────────
     tickets: {
-        getAll: (params) => {
-            const { page = 1, perPage = 10, search, sortKey, sortDir, columnFilter, filterOperator } = params;
-
-            // Map operator to backend PascalCase
+        getAll: ({
+            page = 1,
+            perPage = 10,
+            search,
+            sortKey,
+            sortDir = 'desc',
+            columnFilter,
+            filterOperator
+        } = {}) => {
             const operatorMap = {
                 contains: 'Contains',
                 equals: 'Equals',
@@ -33,7 +79,6 @@ const DB = {
             };
             const backendOperator = operatorMap[filterOperator] || 'Contains';
 
-            // Column filter mapping for tickets
             const columnFilterParamMap = {
                 id: 'TicketSearch.Id',
                 subject: 'TicketSearch.Subject',
@@ -43,7 +88,6 @@ const DB = {
             };
 
             let ticketSearchParams = {};
-            // If we have a specific column filter, build the TicketSearch.* params
             if (columnFilter?.value && columnFilterParamMap[columnFilter.field]) {
                 const backendParam = columnFilterParamMap[columnFilter.field];
                 const { value, operator } = columnFilter;
@@ -61,25 +105,31 @@ const DB = {
                 MaxResultCount: perPage,
                 maxResultCount: perPage,
                 Filter: search || undefined,
-                FilterOperator: backendOperator, // Send operator for global search
+                FilterOperator: backendOperator,
                 ...ticketSearchParams,
                 Sorting: sortKey ? (sortKey === 'id' ? 'CreationTime desc' : `${sortKey} ${sortDir}`) : 'CreationTime desc'
             };
-            console.log('--- API CALL: ams/tickets ---');
-            console.log('Params:', apiParams);
+            console.log('--- API CALL: ams/tickets ---', apiParams);
             return api.get('ams/tickets', { params: apiParams }).then(r => r.data);
         },
-        getById: (id) => api.get(`/tickets/${id}`).then(r => r.data),
-        create: (data) => api.post('/tickets', data).then(r => r.data),
-        update: (id, data) => api.put(`/tickets/${id}`, data).then(r => r.data),
-        delete: (id) => api.delete(`/tickets/${id}`).then(r => r.data),
-        getStats: () => api.get('/tickets/stats').then(r => r.data),
+        getById: (id) => api.get(`tickets/${id}`).then(r => r.data),
+        create: (data) => api.post('tickets', data).then(r => r.data),
+        update: (id, data) => api.put(`tickets/${id}`, data).then(r => r.data),
+        delete: (id) => api.delete(`tickets/${id}`).then(r => r.data),
+        getStats: () => api.get('tickets/stats').then(r => r.data),
     },
-    sites: {
-        getAll: (params) => {
-            const { page = 1, perPage = 10, search, sortKey, sortDir, columnFilter, filterOperator } = params;
 
-            // Map operator to backend PascalCase
+    // ── Sites ─────────────────────────────────────────────────────────────────
+    sites: {
+        getAll: ({
+            page = 1,
+            perPage = 10,
+            search,
+            sortKey,
+            sortDir = 'desc',
+            columnFilter,
+            filterOperator
+        } = {}) => {
             const operatorMap = {
                 contains: 'Contains',
                 equals: 'Equals',
@@ -87,10 +137,8 @@ const DB = {
             };
             const backendOperator = operatorMap[filterOperator] || 'Contains';
 
-            // Sorting field map → backend PascalCase names as per user spec
-            // (Name or OCN or Address, for country must pass Country.Name)
             const sortFieldMap = {
-                id: 'Id', // Defaulting to Id if not specified, user mentioned specific ones below
+                id: 'Id',
                 name: 'Name',
                 ocn: 'OCN',
                 countryName: 'Country.Name',
@@ -98,7 +146,6 @@ const DB = {
             };
             const backendSortField = sortFieldMap[sortKey] || 'Id';
 
-            // Column filter → exact backend param names specified by user
             const columnFilterParamMap = {
                 name: 'SiteSearch.Name',
                 ocn: 'SiteSearch.OCN',
@@ -106,7 +153,6 @@ const DB = {
                 address: 'SiteSearch.Address',
             };
 
-            // Build column filter params using specified SiteSearch keys
             let siteSearchParams = {};
             if (columnFilter?.value && columnFilterParamMap[columnFilter.field]) {
                 const backendParam = columnFilterParamMap[columnFilter.field];
@@ -115,31 +161,155 @@ const DB = {
 
                 siteSearchParams = {
                     [backendParam]: value,
-                    [`${backendParam}Operator`]: op, // Keeping operator support as it complements the search keys
+                    [`${backendParam}Operator`]: op,
                 };
             }
 
             const apiParams = {
                 SkipCount: (page - 1) * perPage,
+                skipCount: (page - 1) * perPage,
                 MaxResultCount: perPage,
+                maxResultCount: perPage,
                 Filter: search || undefined,
                 FilterOperator: backendOperator,
                 ...siteSearchParams,
                 Sorting: `${backendSortField} ${sortDir}`
             };
-            console.log('--- API CALL: /site/paged-list ---');
-            console.log('Params:', apiParams);
-            return api.get('/site/paged-list', { params: apiParams }).then(r => r.data);
+            console.log('--- API CALL: site/paged-list ---', apiParams);
+            return api.get('site/paged-list', { params: apiParams }).then(r => r.data);
         },
-        getById: (id) => api.get(`/site/${id}/by-id`).then(r => r.data),
-        create: (data) => api.post('/site', data).then(r => r.data),
-        update: (id, data) => api.put(`/site/${id}`, data).then(r => r.data),
-        delete: (id) => api.delete(`/site/${id}`).then(r => r.data),
-    }
-};
+        checkOcnExists: (ocn, signal) => api.get('site/paged-list', {
+            params: {
+                SkipCount: 0,
+                MaxResultCount: 1,
+                'SiteSearch.OCN': ocn,
+                'SiteSearch.OCNOperator': 'Equals',
+                Sorting: 'Name asc',
+            },
+            signal,
+        }).then(r => r.data),
+        getById: (id) => api.get(`site/${id}/by-id`).then(r => r.data),
+        create: (data) => api.post('site', data).then(r => r.data),
+        update: (id, data) => api.put(`site/${id}`, data).then(r => r.data),
+        delete: (id) => api.delete(`site/${id}`).then(r => r.data),
+    },
+
+    // ── Countries ─────────────────────────────────────────────────────────────
+    countries: {
+        getAll: () => api.get('country').then(r => r.data),
+        create: (data) => api.post('country', data).then(r => r.data),
+        update: (id, data) => api.put(`country/${id}`, data).then(r => r.data),
+        delete: (id) => api.delete(`country/${id}`).then(r => r.data),
+    },
+
+    // ── Audit Logs ────────────────────────────────────────────────────────────
+    auditLogs: {
+        id: 'auditLogs',
+        getAll: ({
+            page = 1,
+            perPage = 10,
+            search,
+            sortKey,
+            sortDir = 'desc',
+            columnFilter,
+            filterOperator,
+            ...extraParams
+        } = {}) => {
+            const columnFilterParamMap = {
+                primaryKey: 'AuditedLogSearch.PrimaryKey',
+                entityName: 'AuditedLogSearch.EntityName',
+                userName: 'AuditedLogSearch.UserName',
+                schemaName: 'AuditedLogSearch.SchemaName',
+                tableName: 'AuditedLogSearch.TableName',
+                serviceName: 'AuditedLogSearch.ServiceName',
+                userId: 'AuditedLogSearch.UserId',
+                fromDate: 'AuditedLogSearch.FromDate',
+                toDate: 'AuditedLogSearch.ToDate',
+                operationType: 'AuditedLogSearch.OperationType',
+                countryName: 'AuditedLogSearch.CountryName',
+            };
+
+            let searchParams = {};
+
+            // Global search → maps to EntityName
+            if (search) {
+                searchParams['AuditedLogSearch.EntityName'] = search;
+            }
+
+            // Explicitly map keys from extraParams using the map if they exist
+            Object.keys(extraParams).forEach(key => {
+                if (extraParams[key] !== undefined && extraParams[key] !== null) {
+                    const mappedKey = columnFilterParamMap[key] || key;
+                    searchParams[mappedKey] = extraParams[key];
+                }
+            });
+
+            // Handle sorting key mapping
+            const sortFieldMap = {
+                operationType: 'OperationType',
+                primaryKey: 'PrimaryKey',
+                entityName: 'EntityName',
+                schemaName: 'SchemaName',
+                userName: 'UserName',
+                dateTime: 'DateTime'
+            };
+            const backendSortField = sortFieldMap[sortKey] || 'DateTime';
+            const dir = sortDir === 'asc' ? 'Asc' : 'Desc';
+            const sorting = `${backendSortField} ${dir}`;
+
+            const apiParams = {
+                SkipCount: (page - 1) * perPage,
+                skipCount: (page - 1) * perPage,
+                MaxResultCount: perPage,
+                maxResultCount: perPage,
+                Sorting: sorting,
+                ...searchParams,
+            };
+
+            console.log('--- API CALL: audited-log/paged-list ---', apiParams);
+
+            const sp = new URLSearchParams();
+            Object.keys(apiParams).forEach(k => {
+                if (apiParams[k] !== undefined && apiParams[k] !== null) {
+                    sp.append(k, apiParams[k]);
+                }
+            });
+
+            return api.get('audited-log/paged-list', {
+                params: sp,
+                paramsSerializer: (p) => p.toString()
+            }).then(r => {
+                const data = r.data || {};
+                if (data.items) {
+                    const requestedType = extraParams.operationType;
+                    data.items = data.items.filter(item => {
+                        // 1. Skip null/invalid records
+                        if (!item) return false;
+
+                        // 2. Hide Deletes (Type 3) to focus on Create/Update "default" data
+                        if (item.operationType === 3) return false;
+
+                        // 3. Determine Data State based on old values
+                        const hasOld = (item.oldValuesDic && Object.keys(item.oldValuesDic).length > 0) ||
+                            (item.oldValues && item.oldValues !== '{}' && item.oldValues !== 'null');
+
+                        // 4. Apply Filter according to enums: 1=Create, 2=Update
+                        if (requestedType == 1) return !hasOld; // CREATE
+                        if (requestedType == 2) return hasOld;  // UPDATE
+
+                        return true;
+                    });
+                }
+                return data;
+            }).catch(err => {
+                console.error('Audit Log Error:', err.response?.data || err.message);
+                throw err;
+            });
+        }
+    },
+}; // ← DB object ends here
 
 // ── UI Dropdown Constants ──────────────────────────────────────────────────
-// You can keep these here for now, or fetch them from a lookup API later.
 const SITES = [
     'NHSBT FILTON (MSC)', 'PENANG ADVENTIST HOSPITAL (PAH)',
     'WILLIAM HARVEY HPL(MSC)', 'CHARING CROSS HOSPITAL',

@@ -1,7 +1,7 @@
 import ResourcePage from "../component/common/ResourcePage";
 import { DB } from "../data/DB"
 import SiteModal from "../component/common/SiteModal"
-import SiteDetailModal from "../component/common/SiteDetailModal"
+import SiteDetailModal, { SiteDetailContent } from "../component/common/SiteDetailModal"
 import DeleteConfirmModal from '../component/common/DeleteConfirmation'
 
 export default function SitesPage() {
@@ -10,13 +10,13 @@ export default function SitesPage() {
         {
             key: 'ocn', label: 'OCN', render: (val, _row, searchTerm) => {
                 const str = String(val || '');
-                if (!searchTerm) return <span className="uppercase font-mono text-blue-500">{str}</span>;
+                if (!searchTerm) return <span className="uppercase font-mono text-blue-500 font-bold">{str}</span>;
                 const idx = str.toLowerCase().indexOf(searchTerm.toLowerCase());
-                if (idx === -1) return <span className="uppercase font-mono text-blue-500">{str}</span>;
+                if (idx === -1) return <span className="uppercase font-mono text-blue-500 font-bold">{str}</span>;
                 return (
-                    <span className="uppercase font-mono text-blue-500">
+                    <span className="uppercase font-mono text-blue-500 font-bold">
                         {str.slice(0, idx)}
-                        <mark style={{ background: '#fde047', color: '#713f12', borderRadius: '3px', padding: '0 2px', fontWeight: 700 }}>
+                        <mark className="bg-yellow-200 text-yellow-900 rounded-[2px] px-[2px]">
                             {str.slice(idx, idx + searchTerm.length)}
                         </mark>
                         {str.slice(idx + searchTerm.length)}
@@ -35,10 +35,13 @@ export default function SitesPage() {
             columns={columns}
             ModalComponent={SiteModal}
             DetailComponent={SiteDetailModal}
+            SecondaryDetailComponent={SiteDetailContent}
+            detailViewMode="modal"
             DeleteModal={DeleteConfirmModal}
             searchPlaceholder="Search by Site name, OCN, or Location..."
-            createButtonText="New Site"
+            createButtonText="Create Site"
             breadcrumb={['Home', 'Sites']}
+            entityName="Site"
         />
     )
 }

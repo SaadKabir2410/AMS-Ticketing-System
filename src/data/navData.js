@@ -12,7 +12,8 @@ import {
     ShieldCheck,
     UserCircle,
     FileSliders,
-    Table
+    Table,
+    History
 } from "lucide-react";
 
 export const NAV_GROUPS = [

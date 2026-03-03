@@ -18,6 +18,7 @@ import {
   ChevronRight,
   LogOut,
   Layers,
+  History,
 } from "lucide-react";
 
 import clsx from "clsx";
@@ -44,6 +45,7 @@ const ICON_MAP = {
   ChevronRight,
   LogOut,
   Layers,
+  History,
 };
 function NavIcon({ name, size = 18 }) {
   const Comp = ICON_MAP[name] || LayoutDashboard;

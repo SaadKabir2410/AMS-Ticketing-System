@@ -68,11 +68,45 @@ function InfoCard({ label, value, mono = false }) {
     )
 }
 
-export default function SiteDetailModal({ open, onClose, item, site }) {
-    const s = item || site
-    if (!s) return null
+export function SiteDetailContent({ item, site, onClose }) {
+    const s = item || site;
+    if (!s) return null;
 
-    const isActive = s.status === 'Active'
+    return (
+        <Box sx={{ p: 3 }}>
+            <Stack spacing={2.5}>
+                {/* Header info for side panel */}
+                <Box>
+                    <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.5, color: 'primary.main', display: 'block', mb: 1 }}>
+                        Site Identity
+                    </Typography>
+                    <Typography variant="h5" sx={{ fontWeight: 900, mb: 1.5 }}>{s.name || '—'}</Typography>
+                    <Chip label={s.ocn || s.oCN || '—'} size="small" color="primary" sx={{ fontWeight: 800, fontFamily: 'monospace' }} />
+                </Box>
+
+                <Divider />
+
+                <Stack spacing={2}>
+                    <InfoCard label="Full Address" value={s.address} />
+                    <InfoCard label="Country Context" value={s.countryName} />
+
+                    <Stack direction="row" spacing={2}>
+                        <Box flex={1}><InfoCard label="Created" value={formatDate(s.creationTime || s.createdAt)} /></Box>
+                        <Box flex={1}><InfoCard label="Modified" value={formatDate(s.lastModificationTime || s.updatedAt)} /></Box>
+                    </Stack>
+                </Stack>
+
+                <Box sx={{ pt: 4 }}>
+                    <button onClick={onClose} className="w-full py-3 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-white transition-all shadow-sm">Dismiss Panel</button>
+                </Box>
+            </Stack>
+        </Box>
+    );
+}
+
+export default function SiteDetailModal({ open, onClose, item, site }) {
+    const s = item || site;
+    if (!s) return null;
 
     return (
         <Dialog
@@ -81,109 +115,11 @@ export default function SiteDetailModal({ open, onClose, item, site }) {
             maxWidth="sm"
             fullWidth
             PaperProps={{
-                sx: { borderRadius: 3 },
+                sx: { borderRadius: 4, overflow: 'hidden' },
                 className: 'dark:bg-[#1e2436]'
             }}
         >
-            {/* ── Header ─────────────────────────────────────────── */}
-            <DialogTitle
-                sx={{
-                    p: 0,
-                    borderBottom: '1px solid',
-                    borderColor: 'divider',
-                }}
-            >
-                <Box sx={{ px: 3, py: 2.5 }}>
-                    <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={2}>
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                            {/* Icon + label row */}
-                            <Stack direction="row" alignItems="center" gap={1} sx={{ mb: 1 }}>
-                                <Typography variant="caption" sx={{ fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1.5, color: 'primary.main' }}>
-                                    Site Details
-                                </Typography>
-                            </Stack>
-
-                            {/* Site name */}
-                            <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.2, mb: 1 }} noWrap>
-                                {s.name || '—'}
-                            </Typography>
-
-                            {/* OCN + Status chips */}
-                            <Stack direction="row" gap={1} flexWrap="wrap">
-                                <Chip
-                                    label={s.ocn || s.oCN || '—'}
-                                    size="small"
-                                    color="primary"
-                                    variant="outlined"
-                                    sx={{
-                                        fontFamily: 'monospace',
-                                        fontWeight: 800,
-                                        fontSize: '0.65rem',
-                                        height: 20,
-                                        borderColor: 'primary.200',
-                                        bgcolor: 'primary.50',
-                                        color: 'primary.700',
-                                        '& .MuiChip-label': { px: 1 }
-                                    }}
-                                />
-                                {/* <Chip
-                                    icon={isActive
-                                        ? <CheckCircle2 size={10} style={{ color: 'inherit' }} />
-                                        : <XCircle size={10} style={{ color: 'inherit' }} />}
-                                    label={s.status || 'Unknown'}
-                                    size="small"
-                                    sx={{
-                                        fontWeight: 800,
-                                        fontSize: '0.65rem',
-                                        textTransform: 'uppercase',
-                                        height: 20,
-                                        bgcolor: isActive ? 'success.50' : 'slate.50',
-                                        color: isActive ? 'success.700' : 'slate.600',
-                                        border: '1px solid',
-                                        borderColor: isActive ? 'success.200' : 'slate.200',
-                                        '& .MuiChip-label': { px: 1 },
-                                        '& .MuiChip-icon': { ml: 0.5, mr: -0.5 }
-                                    }}
-                                /> */}
-                            </Stack>
-                        </Box>
-
-                        <IconButton onClick={onClose} size="small" sx={{ mt: 0.5 }}>
-                            <X size={18} />
-                        </IconButton>
-                    </Stack>
-                </Box>
-            </DialogTitle>
-
-            {/* ── Body ───────────────────────────────────────────── */}
-            <DialogContent sx={{ px: 3, py: 2.5 }}>
-                <Stack spacing={1.5}>
-                    <InfoCard label="OCN" value={s.ocn || s.oCN} mono />
-                    <InfoCard label="Country" value={s.countryName} />
-                    <InfoCard label="Address" value={s.address} />
-
-                    <Divider sx={{ my: 0.5 }} />
-
-                    <Stack direction="row" gap={1.5}>
-                        <Box sx={{ flex: 1 }}>
-                            <InfoCard label="Created At" value={formatDate(s.creationTime || s.createdAt)} />
-                        </Box>
-                        <Box sx={{ flex: 1 }}>
-                            <InfoCard label="Last Updated" value={formatDate(s.lastModificationTime || s.updatedAt)} />
-                        </Box>
-                    </Stack>
-                </Stack>
-            </DialogContent>
-
-            {/* ── Footer ─────────────────────────────────────────── */}
-            <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-                <button
-                    onClick={onClose}
-                    className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
-                >
-                    Close
-                </button>
-            </DialogActions>
+            <SiteDetailContent item={s} onClose={onClose} />
         </Dialog>
-    )
+    );
 }

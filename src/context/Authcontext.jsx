@@ -95,28 +95,90 @@ export function AuthProvider({ children }) {
     return true;
   };
 
-  // Login
+  // Login — tries real backend auth endpoints first, falls back to local DB
   const login = async ({ email, password }) => {
     setLoading(true);
-    setError("");
-    await new Promise((r) => setTimeout(r, 800)); // simulate API
+    setError('');
 
+    // ABP .NET commonly uses these endpoints depending on version:
+    const authEndpoints = [
+      { url: '/api/account/login', body: { userNameOrEmailAddress: email, password, rememberMe: true } },
+      { url: '/api/TokenAuth/Authenticate', body: { usernameOrEmailAddress: email, password, remoteServiceName: 'default' } },
+      { url: '/api/app/auth/login', body: { userNameOrEmailAddress: email, password } },
+    ];
+
+    for (const endpoint of authEndpoints) {
+      try {
+        console.log('[Auth] Trying endpoint:', endpoint.url);
+        const response = await fetch(endpoint.url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(endpoint.body),
+        });
+
+        console.log('[Auth] Response status:', response.status, 'from', endpoint.url);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[Auth] Response data keys:', Object.keys(data));
+
+          // ABP token shapes: result.accessToken, result.token, token, access_token
+          const token =
+            data?.result?.accessToken ||
+            data?.result?.token ||
+            data?.accessToken ||
+            data?.token ||
+            data?.access_token;
+
+          console.log('[Auth] Token found:', token ? '✅ YES (length: ' + token.length + ')' : '❌ NO token in response');
+
+          if (token) {
+            localStorage.setItem('auth_token', token);
+          }
+
+          const name = data?.result?.name || data?.name || email.split('@')[0];
+          const session = {
+            id: data?.result?.userId || data?.userId || Date.now(),
+            name,
+            email,
+            role: data?.result?.role || data?.role || 'admin',
+            avatar: name[0]?.toUpperCase() || 'U',
+          };
+          localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+          setUser(session);
+          setLoading(false);
+          return true;
+        }
+
+        if (response.status === 401 || response.status === 400) {
+          console.warn('[Auth] Wrong credentials at', endpoint.url);
+          setError('Invalid email or password.');
+          setLoading(false);
+          return false;
+        }
+
+        // 404 or other = endpoint doesn't exist, try next
+        console.warn('[Auth] Endpoint not found, trying next...');
+
+      } catch (err) {
+        console.warn('[Auth] Network error at', endpoint.url, '—', err.message);
+      }
+    }
+
+    // ── Local fallback (offline / dev mode) ──
+    console.warn('[Auth] All backend endpoints failed — using local fallback.');
+    await new Promise((r) => setTimeout(r, 400));
     const cleanEmail = email.trim().toLowerCase();
-    const cleanPassword = password.trim();
-
     const users = getUsers();
     const foundUser = users.find(
-      (u) =>
-        u.email.toLowerCase() === cleanEmail && u.password === cleanPassword,
+      (u) => u.email.toLowerCase() === cleanEmail && u.password === password.trim(),
     );
 
     if (!foundUser) {
-      setError("Invalid email or password.");
+      setError('Invalid email or password.');
       setLoading(false);
       return false;
     }
-
-    console.log("Login successful for:", foundUser.email);
 
     const session = {
       id: foundUser.id,
@@ -126,6 +188,7 @@ export function AuthProvider({ children }) {
       avatar: foundUser.avatar,
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    localStorage.setItem('auth_token', 'local-dev-token'); // Set dev token to prevent interceptor errors
     setUser(session);
     setLoading(false);
     return true;
@@ -134,6 +197,7 @@ export function AuthProvider({ children }) {
   // Logout
   const logout = () => {
     localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem('auth_token');
     setUser(null);
   };
 

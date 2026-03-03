@@ -1,46 +1,94 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Search, Plus, MoreVertical, Eye, Pencil, Trash2,
+    Search, Plus, MoreVertical, History, Pencil, Trash2,
     Loader2, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-    ChevronDown, ChevronUp, ArrowLeft, SlidersHorizontal
+    ChevronDown, ChevronUp, ArrowLeft, SlidersHorizontal, Info, Eye
 } from 'lucide-react';
 import { DataGrid, getGridStringOperators } from '@mui/x-data-grid';
 import { useResource } from "../hooks/useResource";
 import { useToast } from './Toast';
 
-function ActionsMenu({ onDetail, onEdit }) {
-    const [open, setOpen] = useState(false);
-    const ref = useRef();
-    useEffect(() => {
-        const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
+import { Menu, MenuItem, ListItemIcon, ListItemText, Box } from '@mui/material';
+
+function ActionsMenu({ onAuditLog, onEdit, onDetail }) {
+    const [anchorEl, setAnchorEl] = useState(null);
+    const open = Boolean(anchorEl);
+
+    const handleClick = (event) => {
+        setAnchorEl(event.currentTarget);
+    };
+    const handleClose = () => {
+        setAnchorEl(null);
+    };
 
     return (
-        <div className="relative" ref={ref}>
-            <button onClick={() => setOpen(!open)} className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors text-slate-400">
+        <div>
+            <button
+                onClick={handleClick}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg transition-colors text-slate-400"
+            >
                 <MoreVertical size={16} />
             </button>
-            {open && (
-                <div className="absolute right-0 mt-2 w-40 bg-white dark:bg-[#1e2436] rounded-xl border border-slate-200 dark:border-white/10 shadow-xl z-50 py-1 overflow-hidden animate-fade-in">
-                    <button onClick={() => { onDetail(); setOpen(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 hover:text-blue-500 transition-colors">
-                        <Eye size={14} /> View Details
-                    </button>
-                    <button onClick={() => { onEdit(); setOpen(false); }} className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-amber-50 dark:hover:bg-amber-500/10 hover:text-amber-500 transition-colors">
-                        <Pencil size={14} /> Update Data
-                    </button>
-                </div>
-            )}
+            <Menu
+                anchorEl={anchorEl}
+                open={open}
+                onClose={handleClose}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                PaperProps={{
+                    sx: {
+                        mt: 1,
+                        borderRadius: '12px',
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        minWidth: 160
+                    }
+                }}
+            >
+                {onDetail && (
+                    <MenuItem onClick={() => { onDetail(); handleClose(); }} sx={{ py: 1.5 }}>
+                        <ListItemIcon><Eye size={18} className="text-blue-500" /></ListItemIcon>
+                        <ListItemText primary="View Details" primaryTypographyProps={{ fontSize: '13px', fontWeight: 700 }} />
+                    </MenuItem>
+                )}
+                {onAuditLog && (
+                    <MenuItem onClick={() => { onAuditLog(); handleClose(); }} sx={{ py: 1.5 }}>
+                        <ListItemIcon><History size={18} className="text-slate-400" /></ListItemIcon>
+                        <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: '13px', fontWeight: 700 }} />
+                    </MenuItem>
+                )}
+                {onEdit && (
+                    <MenuItem onClick={() => { onEdit(); handleClose(); }} sx={{ py: 1.5 }}>
+                        <ListItemIcon><Pencil size={18} className="text-amber-500" /></ListItemIcon>
+                        <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: '13px', fontWeight: 700 }} />
+                    </MenuItem>
+                )}
+            </Menu>
         </div>
     );
 }
 
 export default function ResourcePage({
     title, apiObject, columns, ModalComponent, DetailComponent, DeleteModal,
-    searchPlaceholder = "Search records...", createButtonText = "New",
-    breadcrumb = []
+    searchPlaceholder = "Search records...", createButtonText = "Create",
+    breadcrumb = [],
+    operatorLabel = "All Operators",
+    operatorOptions = null,
+    showBackButton = false,
+    showSearchBar = true,
+    showFilterBar = true,
+    showActions = true,
+    customFilterArea = null,
+    extraParams = {},
+    initialFilterField = '',
+    initialFilterValue = '',
+    detailViewMode = 'modal', // 'modal' or 'side'
+    SecondaryDetailComponent = null,
+    entityName = '',
+    initialSortKey = 'id',
+    initialSortDir = 'desc'
 }) {
     const { toast } = useToast();
     const navigate = useNavigate();
@@ -48,20 +96,19 @@ export default function ResourcePage({
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-    const [sortKey, setSortKey] = useState('id');
-    const [sortDir, setSortDir] = useState('desc');
+    const [sortKey, setSortKey] = useState(initialSortKey);
+    const [sortDir, setSortDir] = useState(initialSortDir);
+    const [lastModifiedId, setLastModifiedId] = useState(null);
     const [activeItem, setActiveItem] = useState(null);
     const [modals, setModals] = useState({ create: false, edit: false, detail: false });
-    const [filterModel, setFilterModel] = useState({ items: [] }); // MUI DataGrid column filter state
-    const [columnFilter, setColumnFilter] = useState(null);        // debounced active filter
-    // Filter bar UI state — always pre-selected and active
-    const [filterField, setFilterField] = useState('');          // '' = All Columns
-    const [filterOperator, setFilterOperator] = useState('');     // '' = All Operators
-    const [filterValue, setFilterValue] = useState('');
+    const [sidePanelOpen, setSidePanelOpen] = useState(false);
 
+    const initialItem = initialFilterValue && initialFilterField
+        ? [{ field: initialFilterField, operator: 'equals', value: initialFilterValue, id: 1 }]
+        : [];
 
+    const [filterModel, setFilterModel] = useState({ items: initialItem });
 
-    // Debounce search: waits 500ms after typing stops before calling API
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedSearch(search);
@@ -70,7 +117,7 @@ export default function ResourcePage({
         return () => clearTimeout(timer);
     }, [search]);
 
-    // Debounce column filter: waits 500ms after user stops typing in filter panel
+    const [columnFilter, setColumnFilter] = useState(null);
     useEffect(() => {
         const active = filterModel.items.find(item => item.value !== undefined && item.value !== '');
         const timer = setTimeout(() => {
@@ -80,97 +127,130 @@ export default function ResourcePage({
         return () => clearTimeout(timer);
     }, [filterModel]);
 
+    const [filterField, setFilterField] = useState(initialFilterField);
+    const [filterOperator, setFilterOperator] = useState('');
+    const [filterValue, setFilterValue] = useState(initialFilterValue);
+
     const params = useMemo(() => ({
         search: debouncedSearch,
         page,
         perPage: pageSize,
         sortKey,
         sortDir,
-        columnFilter, // column-level filter from DataGrid panel
-        filterOperator, // global or column-specific operator
-    }), [debouncedSearch, page, pageSize, sortKey, sortDir, columnFilter, filterOperator]);
+        columnFilter,
+        filterOperator,
+        ...extraParams
+    }), [debouncedSearch, page, pageSize, sortKey, sortDir, columnFilter, filterOperator, JSON.stringify(extraParams)]);
+
     const { data, total, totalPages, loading, error, refetch } = useResource(apiObject, params);
 
-    // Auto-reset sort if it causes a server error (e.g. backend doesn't support sorting by that field)
     useEffect(() => {
         if (error && sortKey !== 'id') {
-            console.warn(`Sort by '${sortKey}' caused an error. Resetting to default sort.`);
             setSortKey('id');
             setSortDir('desc');
         }
     }, [error]);
 
-    // Enforce page size in UI in case server returns too much data
-    const visibleData = useMemo(() => {
-        if (!data) return [];
-        // If server data length exceeds pageSize, it's likely the server ignored the limit
-        // In that case, we slice it on the client as a fallback.
-        return data.length > pageSize ? data.slice(0, pageSize) : data;
-    }, [data, pageSize]);
+    const { visibleData, displayTotal, displayTotalPages } = useMemo(() => {
+        if (!data) return { visibleData: [], displayTotal: 0, displayTotalPages: 0 };
+        let filtered = [...data];
+        if (debouncedSearch) {
+            const s = debouncedSearch.toLowerCase();
+            filtered = filtered.filter(row =>
+                Object.values(row).some(v => String(v || '').toLowerCase().includes(s))
+            );
+        }
+
+        // --- Premium Frontend Sorting with Update Boost ---
+        filtered.sort((a, b) => {
+            // 1. Boost most recently touched item to row 1
+            if (lastModifiedId) {
+                if (a.id === lastModifiedId) return -1;
+                if (b.id === lastModifiedId) return 1;
+            }
+
+            // 2. Default Sort Strategy (Timestamp based if possible)
+            // If user hasn't touched the sort, or it's 'id', we try to show latest modifications first
+            let effectiveKey = sortKey;
+
+            // Comparison logic
+            const getVal = (item, key) => {
+                // If it's the default sort, try modification dates first to satisfy "updates show first"
+                if (key === 'id') {
+                    return item.lastModificationTime || item.creationTime || item.updatedAt || item.createdAt || item.id;
+                }
+                return item[key];
+            };
+
+            const valA = getVal(a, effectiveKey);
+            const valB = getVal(b, effectiveKey);
+
+            if (valA === valB) return 0;
+            if (valA === null || valA === undefined) return 1;
+            if (valB === null || valB === undefined) return -1;
+
+            const comparison = valA < valB ? -1 : 1;
+            return sortDir === 'asc' ? comparison : -comparison;
+        });
+
+        const filteredTotal = (debouncedSearch || data.length === total) ? filtered.length : total;
+        const filteredTotalPages = Math.ceil(filteredTotal / pageSize);
+        let finalData = filtered;
+        if (filtered.length > pageSize || data.length === total) {
+            const start = (page - 1) * pageSize;
+            finalData = filtered.slice(start, start + pageSize);
+        }
+        return { visibleData: finalData, displayTotal: filteredTotal, displayTotalPages: filteredTotalPages };
+    }, [data, pageSize, page, debouncedSearch, total, sortKey, sortDir, lastModifiedId]);
+
+    const [createError, setCreateError] = useState(null);
+    const [updateError, setUpdateError] = useState(null);
+    const [createLoading, setCreateLoading] = useState(false);
+    const [updateLoading, setUpdateLoading] = useState(false);
 
     const onHandleCreate = async (p) => {
+        setCreateError(null);
+        setCreateLoading(true);
         try {
-            await apiObject.create(p);
-            toast(`${title} created!`);
+            const res = await apiObject.create(p);
+            toast(`${res?.name || title} created!`);
+            setLastModifiedId(res?.id || null);
             setModals(m => ({ ...m, create: false }));
-            setPage(1);         // Jump back to page 1
-            setSortKey('id');   // Reset sort → maps to 'CreationTime desc' on server
-            setSortDir('desc'); // These state changes automatically trigger re-fetch via useEffect
+            setPage(1);
+            setTimeout(() => refetch(), 0);
         } catch (error) {
-            console.error("Create failed:", error);
-            toast(`Failed to create ${title}: ` + (error.response?.data?.message || error.message || 'Server Error'));
+            setCreateError(error.response?.data?.message || error.message);
+        } finally {
+            setCreateLoading(false);
         }
     };
+
     const onHandleUpdate = async (p) => {
+        setUpdateError(null);
+        setUpdateLoading(true);
         try {
             await apiObject.update(activeItem.id, p);
             toast(`${title} updated!`);
+            setLastModifiedId(activeItem.id);
             setModals(m => ({ ...m, edit: false }));
-            refetch(); // explicitly re-fetch after update so table shows latest data
+            refetch();
         } catch (error) {
-            console.error("Update failed:", error);
-            toast(`Failed to update ${title}: ` + (error.response?.data?.message || error.message || 'Server Error'));
+            setUpdateError(error.response?.data?.message || error.message);
+        } finally {
+            setUpdateLoading(false);
         }
     };
 
-    const handleSort = (key) => {
-        if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-        else { setSortKey(key); setSortDir('asc'); }
-    }
-
-    const handleNextPage = () => {
-        if (page < totalPages) setPage(p => p + 1);
-    };
-
-    const handleFirstPage = () => {
-        if (page > 1) setPage(1);
-    };
-
-    const handleLastPage = () => {
-        if (page < (totalPages || 1)) setPage(totalPages || 1);
-    };
-    const handlePrevPage = () => {
-        if (page > 1) setPage(p => p - 1);
-    };
-
-    const SortIcon = ({ col }) => {
-        if (sortKey !== col) return <ChevronDown size={12} className="text-slate-300 dark:text-slate-600" />
-        return sortDir === 'asc' ? <ChevronUp size={12} className="text-blue-500" /> : <ChevronDown size={12} className="text-blue-500" />
-    }
+    const handleFirstPage = () => page > 1 && setPage(1);
+    const handleLastPage = () => page < totalPages && setPage(totalPages);
+    const handleNextPage = () => page < totalPages && setPage(p => p + 1);
+    const handlePrevPage = () => page > 1 && setPage(p => p - 1);
 
     const muiColumns = useMemo(() => {
-        // Only keep the 3 operators your backend can handle
         const textFilterOperators = getGridStringOperators().filter(op =>
             ['contains', 'equals', 'startsWith'].includes(op.value)
-        ).map(op => ({
-            ...op,
-            label: op.value === 'contains' ? 'Contains'
-                : op.value === 'equals' ? 'Equals'
-                    : op.value === 'startsWith' ? 'Starts With'
-                        : op.label,
-        }));
+        );
 
-        // Highlights matching substring in yellow inside a cell
         const HighlightText = ({ text, searchTerm, className }) => {
             if (!searchTerm || !text) return <span className={className}>{text || '—'}</span>;
             const str = String(text);
@@ -179,15 +259,7 @@ export default function ResourcePage({
             return (
                 <span className={className}>
                     {str.slice(0, idx)}
-                    <mark style={{
-                        background: '#fde047',
-                        color: '#713f12',
-                        borderRadius: '3px',
-                        padding: '0 2px',
-                        fontWeight: 700,
-                    }}>
-                        {str.slice(idx, idx + searchTerm.length)}
-                    </mark>
+                    <mark className="bg-yellow-200 text-yellow-900 rounded-[2px] px-[2px] font-bold">{str.slice(idx, idx + searchTerm.length)}</mark>
                     {str.slice(idx + searchTerm.length)}
                 </span>
             );
@@ -196,376 +268,198 @@ export default function ResourcePage({
         const cols = columns.map(col => ({
             field: col.key,
             headerName: col.label,
-            flex: 1,
-            minWidth: 150,
+            flex: col.flex !== undefined ? col.flex : (col.width ? undefined : 1),
+            width: col.width,
+            minWidth: col.minWidth || 150,
             sortable: col.sortable !== false,
             filterable: col.filterable !== false,
             filterOperators: textFilterOperators,
             renderCell: (params) => {
                 const val = params.value;
                 const row = params.row;
-                // Highlight if searching a specific col OR if searching All Columns
-                const termToHighlight = filterField
-                    ? (filterField === col.key ? filterValue : null)
-                    : search;
+                const termToHighlight = filterField === col.key ? filterValue : (filterField ? null : search);
 
                 if (col.render) {
-                    // Pass searchTerm as 3rd arg so custom renders can apply their own highlighting
                     return col.render(val, row, termToHighlight);
                 }
 
-                const textClass = `text-sm ${col.bold ? 'font-bold text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`;
                 return (
                     <HighlightText
                         text={val}
                         searchTerm={termToHighlight}
-                        className={textClass}
+                        className={`text-sm ${col.bold ? 'font-bold text-slate-800 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}
                     />
                 );
             }
         }));
 
-        cols.push({
-            field: 'actions',
-            headerName: 'ACTIONS',
-            width: 100,
-            sortable: false,
-            filterable: false,
-            renderCell: (params) => (
-                <ActionsMenu
-                    onDetail={() => { setActiveItem(params.row); setModals(m => ({ ...m, detail: true })) }}
-                    onEdit={() => { setActiveItem(params.row); setModals(m => ({ ...m, edit: true })) }}
-                />
-            )
-        });
+        if (showActions) {
+            cols.push({
+                field: 'actions',
+                headerName: 'ACTIONS',
+                width: 100,
+                sortable: false,
+                filterable: false,
+                renderCell: (params) => (
+                    <ActionsMenu
+                        onDetail={apiObject.id === 'auditLogs' ? () => {
+                            setActiveItem(params.row);
+                            if (detailViewMode === 'side') setSidePanelOpen(true);
+                            else setModals(m => ({ ...m, detail: true }));
+                        } : null}
+                        onAuditLog={apiObject.id !== 'auditLogs' ? () => navigate(`/audit-logs?primaryKey=${params.row.id}&entityName=${entityName || title.slice(0, -1)}`) : null}
+                        onEdit={ModalComponent ? () => { setActiveItem(params.row); setModals(m => ({ ...m, edit: true })) } : null}
+                    />
+                )
+            });
+        }
 
         return cols;
-    }, [columns, filterField, filterValue]);
+    }, [columns, filterField, filterValue, search, navigate, ModalComponent, showActions, detailViewMode]);
 
     return (
-        <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
-            {/* Breadcrumb */}
-            {breadcrumb.length > 0 && (
-                <div className="flex items-center gap-2 text-xs text-slate-400">
-                    {breadcrumb.map((item, i) => (
-                        <span key={i} className="flex items-center gap-2">
-                            <span
-                                onClick={() => item === 'Home' && navigate('/')}
-                                className={`${item === 'Home' ? 'hover:text-blue-500 cursor-pointer' : ''} transition-colors`}
-                            >
-                                {item}
-                            </span>
-                            {i < breadcrumb.length - 1 && <span>/</span>}
-                        </span>
-                    ))}
-                </div>
-            )}
+        <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-500">
+            {/* ── Standard Card Layout ─────────────────── */}
+            <div className="bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 shadow-xl overflow-hidden flex flex-col flex-1">
 
-            <div className="flex justify-between items-end">
-                <div className="flex items-center gap-5">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="p-2.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95"
-                        title="Go Back"
-                    >
-                        <ArrowLeft size={20} />
-                    </button>
-                    <div>
-                        <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight leading-none">{title}</h1>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">Management Portal</p>
-                    </div>
-                </div>
-                <button onClick={() => setModals(m => ({ ...m, create: true }))} className="flex items-center gap-2 px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/25 transition-all active:scale-95">
-                    <Plus size={18} /> {createButtonText}
-                </button>
-            </div>
-
-            <div className="bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
-                    <div className="relative max-w-md">
-                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder={searchPlaceholder}
-                            value={search}
-                            onChange={e => {
-                                const val = e.target.value;
-                                setSearch(val);
-                                if (!filterField) setFilterValue(val);
-                            }}
-                            className="w-full pl-11 pr-4 py-2.5 text-sm bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
-                        />
-                        {search && <button onClick={() => { setSearch(''); if (!filterField) setFilterValue(''); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={14} /></button>}
-                    </div>
-                </div>
-
-                <div className="w-full bg-white dark:bg-[#1e2436] rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">
-
-                    {/* ── Filter Bar (always visible above column headers) ──────── */}
-                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/3 flex-wrap">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                            <SlidersHorizontal size={13} />
-                            Filter
-                        </div>
-
-                        {/* Column selector — always active, defaults to All Columns */}
-                        <select
-                            value={filterField}
-                            onChange={(e) => {
-                                const field = e.target.value;
-                                setFilterField(field);
-                                setFilterValue('');
-                                setSearch('');         // clear global search too
-                                setFilterModel({ items: [] });
-                            }}
-                            className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg text-slate-600 dark:text-slate-300 outline-none cursor-pointer hover:border-blue-400 transition-colors"
-                        >
-                            <option value="">All Columns</option>
-                            {columns.filter(c => c.filterable !== false).map(col => (
-                                <option key={col.key} value={col.key}>{col.label}</option>
+                {/* Header Section */}
+                <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2 shrink-0">
+                    {breadcrumb.length > 0 && (
+                        <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+                            {breadcrumb.map((b, i) => (
+                                <span key={i} className="flex items-center gap-2">
+                                    <span onClick={() => b === 'Home' && navigate('/')} className={b === 'Home' ? 'hover:text-blue-500 cursor-pointer transition-colors' : ''}>{b}</span>
+                                    {i < breadcrumb.length - 1 && <span>/</span>}
+                                </span>
                             ))}
-                        </select>
-
-                        {/* Operator selector — always active, defaults to All Operators */}
-                        <select
-                            value={filterOperator}
-                            onChange={(e) => {
-                                const operator = e.target.value;
-                                setFilterOperator(operator);
-                                // If there's already a value, refresh the filter model
-                                if (filterValue && filterField) {
-                                    setFilterModel({
-                                        items: [{ id: 1, field: filterField, operator: operator || 'contains', value: filterValue }]
-                                    });
-                                }
-                            }}
-                            className="px-3 py-1.5 text-xs font-semibold bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg text-slate-600 dark:text-slate-300 outline-none cursor-pointer hover:border-blue-400 transition-colors"
-                        >
-                            <option value="">All Operators</option>
-                            <option value="contains">Contains</option>
-                            <option value="equals">Equals</option>
-                            <option value="startsWith">Starts With</option>
-                        </select>
-
-                        {/* Value input — routes to global search or column filter */}
-                        <input
-                            type="text"
-                            placeholder={filterField ? `Filter by ${columns.find(c => c.key === filterField)?.label || filterField}...` : 'Search all columns...'}
-                            value={filterValue}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                setFilterValue(value);
-                                if (!filterField) {
-                                    // All Columns → use global Filter param (existing search debounce)
-                                    setSearch(value);
-                                    setFilterModel({ items: [] });
-                                } else {
-                                    // Specific column → use SiteSearch.* param via filterModel
-                                    setSearch('');
-                                    if (value) {
-                                        setFilterModel({
-                                            items: [{ id: 1, field: filterField, operator: filterOperator || 'contains', value }]
-                                        });
-                                    } else {
-                                        setFilterModel({ items: [] });
-                                    }
-                                }
-                            }}
-                            className="flex-1 min-w-[160px] max-w-xs px-3 py-1.5 text-xs bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-yellow-400/30 focus:border-yellow-400 transition-all placeholder:text-slate-400"
-                        />
-
-                        {/* Clear button */}
-                        {filterValue && (
-                            <button
-                                onClick={() => {
-                                    setFilterValue('');
-                                    setSearch('');
-                                    setFilterModel({ items: [] });
-                                }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-500 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors"
-                            >
-                                <X size={11} /> Clear
+                        </nav>
+                    )}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-5">
+                            <button onClick={() => navigate(-1)} className="p-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm">
+                                <ArrowLeft size={22} />
+                            </button>
+                            <div>
+                                <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-none">{title}</h1>
+                            </div>
+                        </div>
+                        {apiObject.create && ModalComponent && (
+                            <button onClick={() => setModals(m => ({ ...m, create: true }))} className="flex items-center gap-3 px-6 py-3 bg-slate-900 hover:bg-black text-white text-sm font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95">
+                                <Plus size={20} /> {createButtonText}
                             </button>
                         )}
                     </div>
-
-                    <DataGrid
-                        autoHeight
-                        rows={visibleData}
-                        columns={muiColumns}
-                        rowCount={total || 0}
-                        loading={loading}
-                        pageSizeOptions={[2, 5, 10, 25, 50, 100]}
-                        paginationModel={{ page: page - 1, pageSize: pageSize }}
-                        paginationMode="server"
-                        filterMode="server"
-                        hideFooter={true} // Hide default footer to use custom pagination
-
-                        filterModel={filterModel}
-                        onFilterModelChange={(model) => {
-                            setFilterModel(model); // direct update — safe here since this fires on user input, not during render
-                        }}
-                        sortModel={[{ field: sortKey, sort: sortDir }]}
-                        sortingMode="server"
-                        onSortModelChange={(newModel) => {
-                            // Defer state updates until after DataGrid finishes rendering
-                            // to avoid: "Cannot update a component while rendering a different component"
-                            setTimeout(() => {
-                                if (newModel.length > 0) {
-                                    setSortKey(newModel[0].field);
-                                    setSortDir(newModel[0].sort);
-                                } else {
-                                    setSortKey('id');
-                                    setSortDir('desc');
-                                }
-                            }, 0);
-                        }}
-                        disableRowSelectionOnClick
-                        disableColumnMenu
-                        // Highlight the column chosen in the filter bar's Column dropdown
-                        getCellClassName={(params) =>
-                            filterField && params.field === filterField ? 'col-selected' : ''
-                        }
-                        sx={{
-                            border: 'none',
-                            '& .MuiDataGrid-cell': {
-                                borderColor: 'rgba(226, 232, 240, 1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                outline: 'none !important',
-                                overflow: 'visible !important',
-                            },
-                            '& .MuiDataGrid-columnHeaders': {
-                                backgroundColor: 'rgba(248, 250, 252, 0.5)',
-                                borderColor: 'rgba(226, 232, 240, 1)',
-                            },
-                            '& .MuiDataGrid-row:hover': {
-                                backgroundColor: 'rgba(59, 130, 246, 0.05)',
-                            },
-                            '& .MuiDataGrid-footerContainer': {
-                                display: 'none'
-                            },
-                            // Yellow highlight for the filter-selected column cells
-                            '& .col-selected': {
-                                backgroundColor: 'rgba(253, 224, 71, 0.15) !important',
-                                borderColor: 'rgba(253, 224, 71, 0.35) !important',
-                            },
-                            '& .MuiDataGrid-row:hover .col-selected': {
-                                backgroundColor: 'rgba(253, 224, 71, 0.25) !important',
-                            },
-                            // Yellow highlight for the filter-selected column header
-                            '& .col-header-selected': {
-                                backgroundColor: 'rgba(253, 224, 71, 0.25) !important',
-                            },
-                        }}
-                        // Also highlight the column header of the filter-panel-selected column
-                        getColumnHeaderClassName={(params) =>
-                            filterField && params.field === filterField ? 'col-header-selected' : ''
-                        }
-                        className="dark:text-slate-300! [&_.MuiDataGrid-cell]:dark:border-white/5! [&_.MuiDataGrid-columnHeaders]:dark:bg-white/2! [&_.MuiDataGrid-columnHeaders]:dark:border-white/5! [&_.MuiDataGrid-footerContainer]:dark:border-white/5! [&_.MuiDataGrid-iconSeparator]:dark:hidden!"
-                    />
                 </div>
 
-                {/* Custom Pagination Footer */}
-                <div className="p-4 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between">
-                    <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Page Size:</span>
-                            <select
-                                value={pageSize}
-                                onChange={(e) => {
-                                    setPageSize(Number(e.target.value));
-                                    setPage(1);
+                {/* Toolbar Section */}
+                {(showSearchBar || showFilterBar || customFilterArea) && (
+                    <div className="px-8 py-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-white dark:bg-transparent shrink-0 flex-wrap gap-4">
+                        <div className="flex items-center gap-6 flex-1 min-w-[300px]">
+                            {showSearchBar && (
+                                <div className="relative w-full max-w-sm group">
+                                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                    <input
+                                        type="text"
+                                        placeholder={searchPlaceholder}
+                                        value={search}
+                                        onChange={e => setSearch(e.target.value)}
+                                        className="w-full pl-12 pr-4 py-3 text-sm bg-slate-50 dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white dark:focus:bg-[#242938] transition-all font-medium"
+                                    />
+                                </div>
+                            )}
+                            {customFilterArea}
+                        </div>
+                    </div>
+                )}
+
+                {/* Main Content (Split/Scroll) */}
+                <div className="flex-1 flex min-h-0 relative">
+                    {/* Left: Table */}
+                    <div className="flex-1 flex flex-col min-w-0">
+                        <div className="flex-1 overflow-hidden">
+                            <DataGrid
+                                rows={visibleData}
+                                columns={muiColumns}
+                                rowCount={displayTotal || 0}
+                                loading={loading}
+                                paginationMode="server"
+                                sortingMode="server"
+                                onSortModelChange={(m) => { if (m.length) { setSortKey(m[0].field); setSortDir(m[0].sort); } }}
+                                hideFooter
+                                disableRowSelectionOnClick
+                                getRowHeight={() => 'auto'}
+                                sx={{
+                                    border: 'none',
+                                    '& .MuiDataGrid-columnHeaders': {
+                                        bgcolor: 'rgba(248, 250, 252, 0.8)',
+                                        borderBottom: '2px solid rgba(226, 232, 240, 1)',
+                                        '& .MuiDataGrid-columnHeaderTitle': { fontWeight: 800, fontSize: '11px', color: 'rgb(71 85 105)', textTransform: 'uppercase', letterSpacing: '0.05em' }
+                                    },
+                                    '& .MuiDataGrid-cell': { borderColor: 'rgba(241, 245, 249, 1)', py: 2 },
+                                    '& .MuiDataGrid-row:hover': { bgcolor: 'rgba(59, 130, 246, 0.04)' }
                                 }}
-                                className="px-2 py-1 text-xs font-bold bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg text-slate-600 dark:text-slate-300 outline-none hover:border-blue-500/50 transition-colors cursor-pointer"
-                            >
-                                {[10, 25, 50, 100].map(size => (
-                                    <option key={size} value={size}>{size}</option>
-                                ))}
-                            </select>
+                            />
                         </div>
-                        <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                            Showing <span className="text-slate-900 dark:text-white">{total > 0 ? (page - 1) * pageSize + 1 : 0}</span> to <span className="text-slate-900 dark:text-white">{Math.min(page * pageSize, total)}</span> of <span className="text-slate-900 dark:text-white">{total}</span> results
+
+                        {/* Standard Pagination Footer */}
+                        <div className="px-8 py-5 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-3">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rows:</span>
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                                    className="px-3 py-1.5 text-xs font-black bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none transition-all cursor-pointer shadow-sm"
+                                >
+                                    {[10, 25, 50, 100].map(s => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                                <div className="ml-4 h-4 w-[1px] bg-slate-200 dark:bg-white/10 hidden sm:block"></div>
+                                <div className="text-xs text-slate-500 font-bold hidden sm:block">
+                                    <span className="text-slate-900 dark:text-white">{displayTotal > 0 ? (page - 1) * pageSize + 1 : 0}</span>
+                                    {' — '}
+                                    <span className="text-slate-900 dark:text-white">{Math.min(page * pageSize, displayTotal)}</span>
+                                    <span className="text-slate-400 font-medium"> of </span>
+                                    <span className="text-slate-900 dark:text-white">{displayTotal}</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button onClick={handleFirstPage} disabled={page === 1 || loading} className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 transition-all shadow-sm"><ChevronsLeft size={18} /></button>
+                                <button onClick={handlePrevPage} disabled={page === 1 || loading} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-xs font-black uppercase tracking-widest transition-all shadow-sm">Prev</button>
+                                <div className="px-6 py-2.5 bg-blue-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-500/25">Page {page} of {displayTotalPages || 1} </div>
+                                <button onClick={handleNextPage} disabled={page >= displayTotalPages || loading} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-xs font-black uppercase tracking-widest transition-all shadow-sm">Next</button>
+                                <button onClick={handleLastPage} disabled={page >= displayTotalPages || loading} className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 transition-all shadow-sm"><ChevronsRight size={18} /></button>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-
-                        <button
-                            onClick={handleFirstPage}
-                            disabled={page === 1 || loading}
-                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-bold transition-all ${page === 1 || loading
-                                ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                                : 'bg-white dark:bg-[#242938] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:border-blue-500/50 hover:text-blue-500 active:scale-95 shadow-sm'
-                                }`}
-                            title="First Page"
-                        >
-                            <ChevronsLeft size={16} /> First
-                        </button>
-
-                        <button
-                            onClick={handlePrevPage}
-                            disabled={page === 1 || loading}
-                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl border text-sm font-bold transition-all ${page === 1 || loading
-                                ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                                : 'bg-white dark:bg-[#242938] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:border-blue-500/50 hover:text-blue-500 active:scale-95 shadow-sm'
-                                }`}
-                        >
-                            <ChevronLeft size={16} /> Prev
-                        </button>
-
-                        <div className="flex items-center px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-sm font-bold">
-                            Page {page} of {totalPages || 1}
+                    {/* Right: Side Panel (Master-Detail) */}
+                    {sidePanelOpen && SecondaryDetailComponent && (
+                        <div className="w-[600px] border-l border-slate-200 dark:border-white/10 bg-white dark:bg-[#1e2436] flex flex-col shadow-2xl animate-in slide-in-from-right duration-500 z-50">
+                            <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-white/2">
+                                <div>
+                                    <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">Review Details</h3>
+                                    <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">Entry ID: {activeItem?.id?.slice(0, 8)}...</p>
+                                </div>
+                                <button onClick={() => setSidePanelOpen(false)} className="p-2 hover:bg-red-50 hover:text-red-500 transition-all rounded-xl border border-transparent hover:border-red-100">
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
+                                <SecondaryDetailComponent item={activeItem} onClose={() => setSidePanelOpen(false)} />
+                            </div>
                         </div>
-
-                        <button
-                            onClick={handleNextPage}
-                            disabled={page >= (totalPages || 1) || loading}
-                            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl border text-sm font-bold transition-all ${page >= (totalPages || 1) || loading
-                                ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                                : 'bg-white dark:bg-[#242938] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:border-blue-500/50 hover:text-blue-500 active:scale-95 shadow-sm'
-                                }`}
-                        >
-                            Next <ChevronRight size={16} />
-                        </button>
-                        <button
-                            onClick={handleLastPage}
-                            disabled={page >= (totalPages || 1) || loading}
-                            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-bold transition-all ${page >= (totalPages || 1) || loading
-                                ? 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 text-slate-300 dark:text-slate-600 cursor-not-allowed'
-                                : 'bg-white dark:bg-[#242938] border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:border-blue-500/50 hover:text-blue-500 active:scale-95 shadow-sm'
-                                }`}
-                            title="Last Page"
-                        >
-                            Last <ChevronsRight size={16} />
-                        </button>
-
-                    </div>
+                    )}
                 </div>
             </div>
 
-            {/* Modals */}
-            <ModalComponent
-                open={modals.create}
-                onClose={() => setModals(m => ({ ...m, create: false }))}
-                onSubmit={onHandleCreate}
-            />
-            <ModalComponent
-                open={modals.edit}
-                item={activeItem}
-                ticket={activeItem} // Backwards compatibility
-                site={activeItem}   // Backwards compatibility
-                onClose={() => setModals(m => ({ ...m, edit: false }))}
-                onSubmit={onHandleUpdate}
-            />
+            {/* Modals Transferred from Bottom */}
+            {ModalComponent && (
+                <>
+                    <ModalComponent open={modals.create} onClose={() => setModals(m => ({ ...m, create: false }))} onSubmit={onHandleCreate} loading={createLoading} submitError={createError} />
+                    <ModalComponent open={modals.edit} item={activeItem} ticket={activeItem} site={activeItem} onClose={() => setModals(m => ({ ...m, edit: false }))} onSubmit={onHandleUpdate} loading={updateLoading} submitError={updateError} />
+                </>
+            )}
             {DetailComponent && (
-                <DetailComponent
-                    open={modals.detail}
-                    item={activeItem}
-                    ticket={activeItem}
-                    site={activeItem}
-                    onClose={() => setModals(m => ({ ...m, detail: false }))}
-                />
+                <DetailComponent open={modals.detail} item={activeItem} ticket={activeItem} site={activeItem} onClose={() => setModals(m => ({ ...m, detail: false }))} />
             )}
         </div>
     );

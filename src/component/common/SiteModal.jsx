@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, IconButton, Autocomplete, TextField } from '@mui/material';
-import { X, Loader2, Check } from 'lucide-react';
+import { X, Loader2, Check, AlertCircle } from 'lucide-react';
+import { DB } from '../../data/DB';
 
 const EMPTY = {
     name: '',
@@ -11,49 +11,132 @@ const EMPTY = {
     status: 'Active',
 };
 
-export default function SiteModal({ open, onClose, onSubmit, site = null, loading = false }) {
+export default function SiteModal({ open, onClose, onSubmit, site = null, loading = false, submitError = null }) {
     const isEdit = !!site;
     const [form, setForm] = useState(EMPTY);
     const [errors, setErrors] = useState({});
+    const [ocnChecking, setOcnChecking] = useState(false); // true while querying API
 
     const [countries, setCountries] = useState([]);
     const [loadingCountries, setLoadingCountries] = useState(false);
 
+    // Track the OCN that was on the record when the modal opened (for edit mode)
+    const originalOcnRef = useRef('');
+
     useEffect(() => {
         if (open) {
             setErrors({});
+            setOcnChecking(false);
             if (site) {
+                const ocn = site.ocn || site.oCN || '';
+                originalOcnRef.current = ocn;
                 setForm({
                     name: site.name || '',
-                    oCN: site.ocn || site.oCN || '',
+                    oCN: ocn,
                     countryId: site.countryId || site.country?.id || '',
                     address: site.address || '',
                     status: site.status || 'Active',
                 });
             } else {
+                originalOcnRef.current = '';
                 setForm(EMPTY);
             }
         }
     }, [open, site]);
 
+    // Show server-side submit errors inline on the relevant field
+    useEffect(() => {
+        if (!submitError) return;
+        const msg = submitError.toLowerCase();
+        if (msg.includes('ocn') || msg.includes('duplicate') || msg.includes('already exist') || msg.includes('unique')) {
+            setErrors(e => ({ ...e, oCN: `Server: ${submitError}` }));
+        } else {
+            // Generic error — show on name field as fallback
+            setErrors(e => ({ ...e, name: `Server: ${submitError}` }));
+        }
+    }, [submitError]);
+
+    // AbortController ref so we can cancel a stale in-flight OCN check when the
+    // user blurs quickly, types again, and blurs a second time before the first
+    // request resolves (race condition fix).
+    const ocnAbortRef = useRef(null);
+
+    // Called once when user leaves the OCN field — uses DB.sites.checkOcnExists
+    // which goes through the shared `api` instance (with auth header + safe interceptor).
+    const checkOcnExists = async () => {
+        const ocn = form.oCN.trim();
+        if (!ocn || ocn === originalOcnRef.current) return;
+
+        // Cancel any previous in-flight check before starting a new one
+        if (ocnAbortRef.current) ocnAbortRef.current.abort();
+        const controller = new AbortController();
+        ocnAbortRef.current = controller;
+
+        setOcnChecking(true);
+        try {
+            const res = await DB.sites.checkOcnExists(ocn, controller.signal);
+
+            // If this request was aborted (superceded by a newer check), bail out
+            if (controller.signal.aborted) return;
+
+            const items = res?.result?.items || res?.items || (Array.isArray(res) ? res : []);
+            console.log('[OCN] raw items count:', items.length);
+
+            // Scan every string property of every returned item for an exact match.
+            // Resilient to any backend field naming (ocn / oCN / OCN / etc.)
+            const ocnLower = ocn.toLowerCase();
+            const isDuplicate = items.some(item =>
+                Object.values(item).some(
+                    val => typeof val === 'string' && val.toLowerCase() === ocnLower
+                )
+            );
+
+            console.log('[OCN] isDuplicate:', isDuplicate);
+
+            if (isDuplicate) {
+                setErrors(errs => ({ ...errs, oCN: `OCN "${ocn}" already exists` }));
+            } else {
+                setErrors(errs =>
+                    errs.oCN?.includes('already exists') ? { ...errs, oCN: '' } : errs
+                );
+            }
+        } catch (err) {
+            // CanceledError = request was aborted; ignore silently
+            if (err?.name === 'CanceledError' || err?.name === 'AbortError' || controller.signal.aborted) return;
+            // Any other error (network, auth) — don't block the user
+            console.warn('[OCN] check failed — skipping:', err?.message);
+            setErrors(errs =>
+                errs.oCN?.includes('already exists') ? { ...errs, oCN: '' } : errs
+            );
+        } finally {
+            // Only clear the spinner if this controller is still the current one
+            if (!controller.signal.aborted) {
+                setOcnChecking(false);
+            }
+        }
+    };
+
     useEffect(() => {
         if (!open || countries.length > 0) return;
 
+        const controller = new AbortController();
         const fetchCountries = async () => {
             setLoadingCountries(true);
             try {
-                // Keep the actual country objects so we can grab the ID
-                const response = await axios.get('/api/app/country');
-                const countryList = response.data.sort((a, b) => a.name.localeCompare(b.name));
-                setCountries(countryList);
+                // DB.countries.getAll uses the shared `api` instance—sends auth token automatically
+                const data = await DB.countries.getAll();
+                const list = Array.isArray(data) ? data : (data?.items || []);
+                setCountries([...list].sort((a, b) => a.name.localeCompare(b.name)));
             } catch (error) {
-                console.error("Failed to load countries", error);
+                if (error?.name === 'CanceledError' || error?.name === 'AbortError') return;
+                console.error('Failed to load countries', error);
             } finally {
                 setLoadingCountries(false);
             }
         };
 
         fetchCountries();
+        return () => controller.abort(); // cleanup if modal closes mid-fetch
     }, [open, countries.length]);
 
     const handleChange = (field) => (e) => {
@@ -80,23 +163,45 @@ export default function SiteModal({ open, onClose, onSubmit, site = null, loadin
 
     const handleSubmit = (e) => {
         if (e && e.preventDefault) e.preventDefault();
+        // Guard: if the onBlur check is still in-flight (user tabbed straight to submit)
+        if (ocnChecking) return;
         const errs = validate();
         if (Object.keys(errs).length) {
             setErrors(errs);
             return;
         }
+        // Block if a duplicate OCN was found
+        if (errors.oCN && errors.oCN.includes('already exists')) return;
 
-        const payload = { ...form };
-        payload.ocn = payload.oCN;
+        // Merge form values into existing site object to preserve metadata like concurrencyStamps
+        const payload = isEdit ? { ...site, ...form } : { ...form };
+        payload.ocn = form.oCN;
         delete payload.oCN;
 
-        if (isEdit) {
-            payload.id = site.id;
-            payload.concurrencyStamp = site.concurrencyStamp;
+        // Ensure country is passed as name string, not object, for better Audit Logging
+        const selectedCountry = countries.find(c => c.id === form.countryId);
+        if (selectedCountry) {
+            payload.countryName = selectedCountry.name;
         }
+
+        // Pass metadata (like LastModificationTime and ConcurrencyStamp) ONLY when needed (Edit mode)
+        if (!isEdit) {
+            delete payload.LastModificationTime; delete payload.lastModificationTime;
+            delete payload.ConcurrencyStamp; delete payload.concurrencyStamp;
+            delete payload.CreationTime; delete payload.creationTime;
+            delete payload.CreatorId; delete payload.creatorId;
+        }
+
+        // Delete the nested 'country' objects to prevent [object Object] in audit logs
+        delete payload.country;
+        delete payload.Country;
+        delete payload.extraProperties;
+        delete payload.ExtraProperties;
 
         onSubmit(payload);
     };
+
+
 
     const InputLabel = ({ label, required }) => (
         <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
@@ -125,7 +230,7 @@ export default function SiteModal({ open, onClose, onSubmit, site = null, loadin
         >
             <div className="flex items-center justify-between px-6 pt-5 pb-3">
                 <h2 className="text-lg font-bold text-slate-800 dark:text-white">
-                    {isEdit ? 'Edit Site' : 'New Site'}
+                    {isEdit ? 'Update Site' : 'Create Site'}
                 </h2>
                 <IconButton onClick={onClose} size="small" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                     <X size={20} />
@@ -158,13 +263,29 @@ export default function SiteModal({ open, onClose, onSubmit, site = null, loadin
                             maxLength={50}
                             value={form.oCN}
                             onChange={handleChange('oCN')}
-                            className={inputClasses(errors.oCN, form.oCN.length > 0 && !errors.oCN)}
+                            onBlur={checkOcnExists}
+                            className={inputClasses(errors.oCN, form.oCN.length > 0 && !errors.oCN && !ocnChecking)}
                         />
-                        {form.oCN.length > 0 && !errors.oCN && (
+                        {/* Spinner while checking */}
+                        {ocnChecking && (
+                            <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 animate-spin" />
+                        )}
+                        {/* Green tick when valid and not checking */}
+                        {form.oCN.length > 0 && !errors.oCN && !ocnChecking && (
                             <Check size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500" />
                         )}
+                        {/* Red icon when duplicate found */}
+                        {errors.oCN && errors.oCN.includes('already exists') && (
+                            <AlertCircle size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500" />
+                        )}
                     </div>
-                    {typeof errors.oCN === 'string' && <p className="text-red-500 text-xs font-semibold mt-1.5">{errors.oCN}</p>}
+                    {typeof errors.oCN === 'string' && errors.oCN && (
+                        <p className={`text-xs font-semibold mt-1.5 flex items-center gap-1 ${errors.oCN.includes('already exists') ? 'text-amber-600 dark:text-amber-400' : 'text-red-500'
+                            }`}>
+                            {errors.oCN.includes('already exists') && <AlertCircle size={11} />}
+                            {errors.oCN}
+                        </p>
+                    )}
                 </div>
 
                 <div>
@@ -235,16 +356,20 @@ export default function SiteModal({ open, onClose, onSubmit, site = null, loadin
                 <button
                     type="button"
                     onClick={onClose}
-                    className="px-5 py-2 rounded-xl border border-indigo-500 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors"
+                    className="px-6 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-500 hover:bg-slate-50 transition-all"
                 >
                     Cancel
                 </button>
                 <button
+                    type="button"
                     onClick={handleSubmit}
-                    disabled={loading}
-                    className="px-5 py-2 rounded-xl border border-indigo-500 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 transition-colors flex items-center justify-center min-w-[80px]"
+                    disabled={loading || ocnChecking}
+                    className="px-8 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-sm font-bold flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-slate-200 transition-all"
                 >
-                    {loading ? <Loader2 size={16} className="animate-spin" /> : (isEdit ? 'Save' : 'Create')}
+                    {loading || ocnChecking
+                        ? <Loader2 size={18} className="animate-spin" />
+                        : (isEdit ? 'Update' : 'Create')
+                    }
                 </button>
             </div>
         </Dialog>

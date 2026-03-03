@@ -23,7 +23,7 @@ export function useResource(apiObject, params) {
             if (Array.isArray(responseData)) {
                 nextData = responseData;
                 nextTotal = responseData.length;
-                nextTotalPages = 1;
+                nextTotalPages = Math.ceil(nextTotal / (params?.perPage || 10));
             } else if (responseData) {
                 nextData = responseData.data || responseData.items || [];
                 // More aggressive total count detection
