@@ -59,7 +59,7 @@ export default function AMSTicketsPage() {
             DeleteModal={DeleteConfirmModal}
             searchPlaceholder="Search by Ticket ID, Site, or Assignee..."
             createButtonText="New Ticket"
-            breadcrumb={['Home', 'AMS Tickets']}
+            breadcrumb={['Home', 'Main Menu', 'AMS Tickets']}
         />
     )
 }

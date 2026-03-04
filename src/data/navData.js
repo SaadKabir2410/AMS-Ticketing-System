@@ -13,7 +13,8 @@ import {
     UserCircle,
     FileSliders,
     Table,
-    History
+    History,
+    Search
 } from "lucide-react";
 
 export const NAV_GROUPS = [
@@ -36,11 +37,18 @@ export const NAV_GROUPS = [
                 ]
             },
             { id: "mgmt-jobsheets", name: "Jobsheets", href: "/jobsheets", icon: Table },
-            { id: "mgmt-hours", name: "User Working Hours", href: "/working-hours", icon: Hourglass },
-            { id: "mgmt-sites", name: "Sites", href: "/sites", icon: AudioWaveform },
-            { id: "mgmt-countries", name: "Countries", href: "/countries", icon: Globe },
-            { id: "mgmt-codes", name: "Work Codes", href: "/work-codes", icon: SquareDashedBottomCode },
-            { id: "mgmt-holidays", name: "Holidays", href: "/holidays", icon: Balloon },
+            {
+                id: "lookup-master",
+                name: "Lookups",
+                icon: Search,
+                subMenu: [
+                    { id: "lookup-hours", name: "User Working Hours", href: "/working-hours" },
+                    { id: "lookup-sites", name: "Sites", href: "/sites" },
+                    { id: "lookup-countries", name: "Countries", href: "/countries" },
+                    { id: "lookup-codes", name: "Work Done Codes", href: "/work-codes" },
+                    { id: "lookup-holidays", name: "Holidays", href: "/holidays" },
+                ]
+            }
         ]
     },
     {
@@ -50,6 +58,7 @@ export const NAV_GROUPS = [
             { id: "set-config", name: "Users", href: "/users", icon: Users },
             { id: "set-configuration", name: "Configuration", href: "/configuration", icon: Settings },
             { id: "set-security", name: "Security", href: "/security", icon: ShieldCheck },
+            { id: "set-audit", name: "Audit Logs", href: "/audit-logs", icon: History },
         ]
     }
 ];

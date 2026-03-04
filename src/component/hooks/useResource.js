@@ -12,7 +12,6 @@ export function useResource(apiObject, params) {
         setLoading(true);
         try {
             const res = await apiObject.getAll(params);
-
             let nextData = [];
             let nextTotal = 0;
             let nextTotalPages = 0;
@@ -41,13 +40,6 @@ export function useResource(apiObject, params) {
             setTotal(nextTotal);
             setTotalPages(nextTotalPages);
             setError(null); // clear any previous error
-            console.log('useResource fetch success:', {
-                dataLength: nextData.length,
-                total: nextTotal,
-                totalPages: nextTotalPages,
-                responseKeys: responseData ? Object.keys(responseData) : [],
-                params
-            });
         } catch (e) {
             console.error('useResource fetch error:', e);
             setError(e);

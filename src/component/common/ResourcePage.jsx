@@ -81,6 +81,7 @@ export default function ResourcePage({
     showFilterBar = true,
     showActions = true,
     customFilterArea = null,
+    customHeaderActions = null,
     extraParams = {},
     initialFilterField = '',
     initialFilterValue = '',
@@ -88,14 +89,17 @@ export default function ResourcePage({
     SecondaryDetailComponent = null,
     entityName = '',
     initialSortKey = 'id',
-    initialSortDir = 'desc'
+    initialSortDir = 'desc',
+    initialPageSize = 10,
+    showPagination = true,
+    smallHeaderButton = false
 }) {
     const { toast } = useToast();
     const navigate = useNavigate();
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize, setPageSize] = useState(initialPageSize);
     const [sortKey, setSortKey] = useState(initialSortKey);
     const [sortDir, setSortDir] = useState(initialSortDir);
     const [lastModifiedId, setLastModifiedId] = useState(null);
@@ -219,7 +223,9 @@ export default function ResourcePage({
             setPage(1);
             setTimeout(() => refetch(), 0);
         } catch (error) {
-            setCreateError(error.response?.data?.message || error.message);
+            const msg = error.response?.data?.error?.message || error.response?.data?.message || error.message;
+            setCreateError(msg);
+            throw error; // Let modal catch it if it wants
         } finally {
             setCreateLoading(false);
         }
@@ -235,7 +241,9 @@ export default function ResourcePage({
             setModals(m => ({ ...m, edit: false }));
             refetch();
         } catch (error) {
-            setUpdateError(error.response?.data?.message || error.message);
+            const msg = error.response?.data?.error?.message || error.response?.data?.message || error.message;
+            setUpdateError(msg);
+            throw error; // Let modal catch it if it wants
         } finally {
             setUpdateLoading(false);
         }
@@ -343,11 +351,21 @@ export default function ResourcePage({
                                 <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-none">{title}</h1>
                             </div>
                         </div>
-                        {apiObject.create && ModalComponent && (
-                            <button onClick={() => setModals(m => ({ ...m, create: true }))} className="flex items-center gap-3 px-6 py-3 bg-slate-900 hover:bg-black text-white text-sm font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95">
-                                <Plus size={20} /> {createButtonText}
-                            </button>
-                        )}
+                        <div className="flex items-center gap-3">
+                            {customHeaderActions}
+                            {apiObject.create && ModalComponent && (
+                                <button
+                                    onClick={() => setModals(m => ({ ...m, create: true }))}
+                                    className={smallHeaderButton
+                                        ? "px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md transition-all active:scale-95"
+                                        : "flex items-center gap-3 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-100 dark:shadow-none transition-all active:scale-95"
+                                    }
+                                >
+                                    {!smallHeaderButton && <Plus size={20} />}
+                                    {createButtonText}
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -376,6 +394,16 @@ export default function ResourcePage({
                 <div className="flex-1 flex min-h-0 relative">
                     {/* Left: Table */}
                     <div className="flex-1 flex flex-col min-w-0">
+                        {error && (
+                            <div className="m-8 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 animate-in fade-in slide-in-from-top-4">
+                                <X className="shrink-0" size={20} />
+                                <div className="flex-1">
+                                    <p className="text-sm font-black uppercase tracking-tight">Failed to load data</p>
+                                    <p className="text-xs opacity-80 font-medium">{error.message || 'Unknown network error'}</p>
+                                </div>
+                                <button onClick={refetch} className="px-4 py-2 bg-red-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-red-700 transition-colors">Retry</button>
+                            </div>
+                        )}
                         <div className="flex-1 overflow-hidden">
                             <DataGrid
                                 rows={visibleData}
@@ -398,37 +426,51 @@ export default function ResourcePage({
                                     '& .MuiDataGrid-cell': { borderColor: 'rgba(241, 245, 249, 1)', py: 2 },
                                     '& .MuiDataGrid-row:hover': { bgcolor: 'rgba(59, 130, 246, 0.04)' }
                                 }}
+                                slots={{
+                                    noRowsOverlay: () => (
+                                        <div className="h-full flex flex-col items-center justify-center p-10 space-y-4">
+                                            <div className="w-16 h-16 bg-slate-50 dark:bg-white/5 rounded-3xl flex items-center justify-center text-slate-300 dark:text-slate-600 border border-slate-100 dark:border-white/5">
+                                                <Search size={32} strokeWidth={1.5} />
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tighter">No records found</p>
+                                            </div>
+                                        </div>
+                                    )
+                                }}
                             />
                         </div>
 
                         {/* Standard Pagination Footer */}
-                        <div className="px-8 py-5 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
-                            <div className="flex items-center gap-3">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rows:</span>
-                                <select
-                                    value={pageSize}
-                                    onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                                    className="px-3 py-1.5 text-xs font-black bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none transition-all cursor-pointer shadow-sm"
-                                >
-                                    {[10, 25, 50, 100].map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
-                                <div className="ml-4 h-4 w-[1px] bg-slate-200 dark:bg-white/10 hidden sm:block"></div>
-                                <div className="text-xs text-slate-500 font-bold hidden sm:block">
-                                    <span className="text-slate-900 dark:text-white">{displayTotal > 0 ? (page - 1) * pageSize + 1 : 0}</span>
-                                    {' — '}
-                                    <span className="text-slate-900 dark:text-white">{Math.min(page * pageSize, displayTotal)}</span>
-                                    <span className="text-slate-400 font-medium"> of </span>
-                                    <span className="text-slate-900 dark:text-white">{displayTotal}</span>
+                        {showPagination && (
+                            <div className="px-8 py-5 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rows:</span>
+                                    <select
+                                        value={pageSize}
+                                        onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                                        className="px-3 py-1.5 text-xs font-black bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none transition-all cursor-pointer shadow-sm"
+                                    >
+                                        {[10, 25, 50, 100].map(s => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                    <div className="ml-4 h-4 w-[1px] bg-slate-200 dark:bg-white/10 hidden sm:block"></div>
+                                    <div className="text-xs text-slate-500 font-bold hidden sm:block">
+                                        <span className="text-slate-900 dark:text-white">{displayTotal > 0 ? (page - 1) * pageSize + 1 : 0}</span>
+                                        {' — '}
+                                        <span className="text-slate-900 dark:text-white">{Math.min(page * pageSize, displayTotal)}</span>
+                                        <span className="text-slate-400 font-medium"> of </span>
+                                        <span className="text-slate-900 dark:text-white">{displayTotal}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={handleFirstPage} disabled={page === 1 || loading} className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 transition-all shadow-sm"><ChevronsLeft size={18} /></button>
+                                    <button onClick={handlePrevPage} disabled={page === 1 || loading} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-xs font-black uppercase tracking-widest transition-all shadow-sm">Prev</button>
+                                    <div className="px-6 py-2.5 bg-blue-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-500/25">Page {page} of {displayTotalPages || 1} </div>
+                                    <button onClick={handleNextPage} disabled={page >= displayTotalPages || loading} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-xs font-black uppercase tracking-widest transition-all shadow-sm">Next</button>
+                                    <button onClick={handleLastPage} disabled={page >= displayTotalPages || loading} className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 transition-all shadow-sm"><ChevronsRight size={18} /></button>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <button onClick={handleFirstPage} disabled={page === 1 || loading} className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 transition-all shadow-sm"><ChevronsLeft size={18} /></button>
-                                <button onClick={handlePrevPage} disabled={page === 1 || loading} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-xs font-black uppercase tracking-widest transition-all shadow-sm">Prev</button>
-                                <div className="px-6 py-2.5 bg-blue-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-500/25">Page {page} of {displayTotalPages || 1} </div>
-                                <button onClick={handleNextPage} disabled={page >= displayTotalPages || loading} className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-xs font-black uppercase tracking-widest transition-all shadow-sm">Next</button>
-                                <button onClick={handleLastPage} disabled={page >= displayTotalPages || loading} className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 transition-all shadow-sm"><ChevronsRight size={18} /></button>
-                            </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Right: Side Panel (Master-Detail) */}

@@ -93,18 +93,7 @@ export default function AuditLogsPage() {
 
     const customFilterArea = (
         <div className="flex items-center gap-4 flex-wrap">
-            <div className="relative min-w-[160px]">
-                <Database size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                <select
-                    value={entityType}
-                    onChange={(e) => { setEntityType(e.target.value); setPage(1); }}
-                    className="w-full pl-9 pr-8 py-2 text-[10px] font-black uppercase tracking-widest bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer"
-                >
-                    <option value="all">ALL ENTITIES</option>
-                    <option value="Site">SITE</option>
-                    <option value="Country">COUNTRY</option>
-                </select>
-            </div>
+
 
             <div className="relative min-w-[150px]">
                 <SlidersHorizontal size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -113,7 +102,7 @@ export default function AuditLogsPage() {
                     onChange={(e) => { setOperationType(e.target.value); setPage(1); }}
                     className="w-full pl-9 pr-8 py-2 text-[10px] font-black uppercase tracking-widest bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer"
                 >
-                    <option value="all">ALL OPS</option>
+                    <option value="all">ALL TYPE</option>
                     <option value="1">CREATE</option>
                     <option value="2">UPDATE</option>
                 </select>

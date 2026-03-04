@@ -15,8 +15,8 @@ export default function CountriesPage() {
             columns={columns}
             ModalComponent={CountryModal}
             searchPlaceholder="Search countries..."
-            createButtonText="Create Country"
-            breadcrumb={['Home', 'Management', 'Countries']}
+            createButtonText="Add New"
+            breadcrumb={['Home', 'Management', 'Lookups', 'Countries']}
             showSearchBar={true}
             showFilterBar={false}
             entityName="Country"

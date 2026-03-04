@@ -229,7 +229,7 @@ export default function SiteModal({ open, onClose, onSubmit, site = null, loadin
             }}
         >
             <div className="flex items-center justify-between px-6 pt-5 pb-3">
-                <h2 className="text-lg font-bold text-slate-800 dark:text-white">
+                <h2 className="text-lg font-bold text-blue-600 dark:text-blue-400">
                     {isEdit ? 'Update Site' : 'Create Site'}
                 </h2>
                 <IconButton onClick={onClose} size="small" className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
@@ -364,7 +364,7 @@ export default function SiteModal({ open, onClose, onSubmit, site = null, loadin
                     type="button"
                     onClick={handleSubmit}
                     disabled={loading || ocnChecking}
-                    className="px-8 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-sm font-bold flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-slate-200 transition-all"
+                    className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-blue-100 dark:shadow-none transition-all"
                 >
                     {loading || ocnChecking
                         ? <Loader2 size={18} className="animate-spin" />

@@ -4,7 +4,7 @@ import { X, Loader2, Check } from 'lucide-react';
 
 const EMPTY = { name: '', code: '' };
 
-export default function CountryModal({ open, onClose, onSubmit, item = null, loading = false }) {
+export default function CountryModal({ open, onClose, onSubmit, item = null, loading = false, submitError = null }) {
     const isEdit = !!item;
     const [form, setForm] = useState(EMPTY);
     const [errors, setErrors] = useState({});
@@ -26,7 +26,7 @@ export default function CountryModal({ open, onClose, onSubmit, item = null, loa
         return errs;
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         if (e && e.preventDefault) e.preventDefault();
         const errs = validate();
         if (Object.keys(errs).length) { setErrors(errs); return; }
@@ -36,9 +36,13 @@ export default function CountryModal({ open, onClose, onSubmit, item = null, loa
             code: form.code.trim().toUpperCase()
         };
 
-        // Merge with existing item to preserve metadata
-        const finalPayload = isEdit ? { ...item, ...payload } : payload;
-        onSubmit(finalPayload);
+        try {
+            const finalPayload = isEdit ? { ...item, ...payload } : payload;
+            await onSubmit(finalPayload);
+        } catch (err) {
+            const msg = err.response?.data?.error?.message || err.response?.data?.message || err.message;
+            setErrors(prev => ({ ...prev, server: msg }));
+        }
     };
 
     const inputClasses = (error, isValid) =>
@@ -61,7 +65,7 @@ export default function CountryModal({ open, onClose, onSubmit, item = null, loa
             }}
         >
             <div className="flex items-center justify-between px-6 pt-5 pb-3">
-                <h2 className="text-lg font-bold text-slate-800 dark:text-white">
+                <h2 className="text-lg font-bold text-blue-600 dark:text-blue-400">
                     {isEdit ? 'Update Country' : 'Create Country'}
                 </h2>
                 <IconButton onClick={onClose} size="small">
@@ -70,6 +74,11 @@ export default function CountryModal({ open, onClose, onSubmit, item = null, loa
             </div>
 
             <div className="px-6 py-2 space-y-5">
+                {(submitError || errors.server) && (
+                    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold animate-in fade-in slide-in-from-top-2">
+                        {submitError || errors.server}
+                    </div>
+                )}
                 <div>
                     <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
                         Country Name <span className="text-red-500">*</span>
@@ -78,7 +87,7 @@ export default function CountryModal({ open, onClose, onSubmit, item = null, loa
                         <input
                             type="text"
                             maxLength={100}
-                            placeholder="e.g. United Kingdom"
+                            placeholder="Enter Country Name"
                             value={form.name}
                             onChange={e => {
                                 setForm(f => ({ ...f, name: e.target.value }));
@@ -101,7 +110,7 @@ export default function CountryModal({ open, onClose, onSubmit, item = null, loa
                         <input
                             type="text"
                             maxLength={3}
-                            placeholder="e.g. GBR"
+                            placeholder="Enter Country Code"
                             value={form.code}
                             onChange={e => {
                                 setForm(f => ({ ...f, code: e.target.value.toUpperCase() }));
@@ -128,7 +137,7 @@ export default function CountryModal({ open, onClose, onSubmit, item = null, loa
                 <button
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="px-8 py-2.5 bg-slate-900 hover:bg-black text-white rounded-xl text-sm font-bold flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-slate-200 transition-all"
+                    className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-blue-100 dark:shadow-none transition-all"
                 >
                     {loading ? <Loader2 size={18} className="animate-spin" /> : (isEdit ? 'Update' : 'Create')}
                 </button>

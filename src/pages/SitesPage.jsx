@@ -40,7 +40,7 @@ export default function SitesPage() {
             DeleteModal={DeleteConfirmModal}
             searchPlaceholder="Search by Site name, OCN, or Location..."
             createButtonText="Create Site"
-            breadcrumb={['Home', 'Sites']}
+            breadcrumb={['Home', 'Management', 'Lookups', 'Sites']}
             entityName="Site"
         />
     )

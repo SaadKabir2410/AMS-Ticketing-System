@@ -9,6 +9,10 @@ import AMSTicketsPage from "./pages/AMSTicketsPage";
 import SitesPage from "./pages/SitesPage";
 import CountriesPage from "./pages/CountriesPage";
 import AuditLogsPage from "./pages/AuditLogsPage";
+import WorkCodesPage from "./pages/WorkCodesPage";
+import HolidaysPage from "./pages/HolidaysPage";
+import UserWorkingHoursPage from "./pages/UserWorkingHoursPage";
+import JobsheetsPage from "./pages/JobsheetsPage";
 
 function Layout({ collapsed, setCollapsed }) {
   return (
@@ -22,6 +26,10 @@ function Layout({ collapsed, setCollapsed }) {
             <Route path="/ams-tickets" element={<AMSTicketsPage />} />
             <Route path="/sites" element={<SitesPage />} />
             <Route path="/countries" element={<CountriesPage />} />
+            <Route path="/work-codes" element={<WorkCodesPage />} />
+            <Route path="/holidays" element={<HolidaysPage />} />
+            <Route path="/working-hours" element={<UserWorkingHoursPage />} />
+            <Route path="/jobsheets" element={<JobsheetsPage />} />
             <Route path="/audit-logs" element={<AuditLogsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
