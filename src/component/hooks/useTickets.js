@@ -1,128 +1,164 @@
-import { useState, useEffect, useCallback } from 'react'
-import { DB } from '../../data/DB'
+import { useState, useEffect, useCallback } from "react";
+import { DB } from "../../data/DB";
+import { useAuth } from "react-oidc-context";
 
 // useTickets — list with search, filter, sort, pagination
 export function useTickets(params = {}) {
-    const [data, setData] = useState([])
-    const [total, setTotal] = useState(0)
-    const [totalPages, setTotalPages] = useState(0)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState(null)
+  const auth = useAuth();
+  const [data, setData] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    const fetch = useCallback(async () => {
-        setLoading(true)
-        setError(null)
-        try {
-            const res = await DB.tickets.getAll(params)
-            setData(res.data)
-            setTotal(res.total)
-            setTotalPages(res.totalPages)
-        } catch (e) {
-            setError(e.message)
-        } finally {
-            setLoading(false)
-        }
-    }, [JSON.stringify(params)])
+  const fetch = useCallback(async () => {
+    if (!auth.isAuthenticated) {
+      auth.signinRedirect();
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await DB.tickets.getAll(params);
+      setData(res.data);
+      setTotal(res.total);
+      setTotalPages(res.totalPages);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [JSON.stringify(params)]);
 
-    useEffect(() => { fetch() }, [fetch])
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
 
-    return { data, total, totalPages, loading, error, refetch: fetch }
+  return { data, total, totalPages, loading, error, refetch: fetch };
 }
 
 // useTicket — single ticket by id
 export function useTicket(id) {
-    const [data, setData] = useState(null)
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState(null)
+  const auth = useAuth();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    const fetch = useCallback(async () => {
-        if (!id) return
-        setLoading(true)
-        try {
-            const res = await DB.tickets.getById(id)
-            setData(res)
-        } catch (e) {
-            setError(e.message)
-        } finally {
-            setLoading(false)
-        }
-    }, [id])
+  const fetch = useCallback(async () => {
+    if (!id) return;
+    if (!auth.isAuthenticated) {
+      auth.signinRedirect();
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await DB.tickets.getById(id);
+      setData(res);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
 
-    useEffect(() => { fetch() }, [fetch])
-    return { data, loading, error, refetch: fetch }
+  useEffect(() => {
+    fetch();
+  }, [fetch]);
+  return { data, loading, error, refetch: fetch };
 }
 
 // useTicketStats
 export function useTicketStats() {
-    const [stats, setStats] = useState(null)
-    const [loading, setLoading] = useState(true)
+  const auth = useAuth();
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        DB.tickets.getStats().then(s => { setStats(s); setLoading(false) })
-    }, [])
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      DB.tickets.getStats().then((s) => {
+        setStats(s);
+        setLoading(false);
+      });
+    }
+  }, [auth.isAuthenticated]);
 
-    return { stats, loading }
+  return { stats, loading };
 }
 
 // useCreateTicket
 export function useCreateTicket() {
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState(null)
+  const auth = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-    const create = async (payload) => {
-        setLoading(true)
-        setError(null)
-        try {
-            const ticket = await DB.tickets.create(payload)
-            return ticket
-        } catch (e) {
-            setError(e.message)
-            return null
-        } finally {
-            setLoading(false)
-        }
+  const create = async (payload) => {
+    if (!auth.isAuthenticated) {
+      auth.signinRedirect();
+      return null;
     }
+    setLoading(true);
+    setError(null);
+    try {
+      const ticket = await DB.tickets.create(payload);
+      return ticket;
+    } catch (e) {
+      setError(e.message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return { create, loading, error }
+  return { create, loading, error };
 }
 
-//  useUpdateTicket 
+//  useUpdateTicket
 export function useUpdateTicket() {
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState(null)
+  const auth = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-    const update = async (id, payload) => {
-        setLoading(true)
-        setError(null)
-        try {
-            const ticket = await DB.tickets.update(id, payload)
-            return ticket
-        } catch (e) {
-            setError(e.message)
-            return null
-        } finally {
-            setLoading(false)
-        }
+  const update = async (id, payload) => {
+    if (!auth.isAuthenticated) {
+      auth.signinRedirect();
+      return null;
     }
+    setLoading(true);
+    setError(null);
+    try {
+      const ticket = await DB.tickets.update(id, payload);
+      return ticket;
+    } catch (e) {
+      setError(e.message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return { update, loading, error }
+  return { update, loading, error };
 }
 
-//  useDeleteTicket 
+//  useDeleteTicket
 export function useDeleteTicket() {
-    const [loading, setLoading] = useState(false)
+  const auth = useAuth();
+  const [loading, setLoading] = useState(false);
 
-    const remove = async (id) => {
-        setLoading(true)
-        try {
-            await DB.tickets.delete(id)
-            return true
-        } catch {
-            return false
-        } finally {
-            setLoading(false)
-        }
+  const remove = async (id) => {
+    if (!auth.isAuthenticated) {
+      auth.signinRedirect();
+      return false;
     }
+    setLoading(true);
+    try {
+      await DB.tickets.delete(id);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return { remove, loading }
+  return { remove, loading };
 }

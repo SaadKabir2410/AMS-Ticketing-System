@@ -14,6 +14,7 @@ import WorkCodesPage from "./pages/WorkCodesPage";
 import HolidaysPage from "./pages/HolidaysPage";
 import UserWorkingHoursPage from "./pages/UserWorkingHoursPage";
 import JobsheetsPage from "./pages/JobsheetsPage";
+import TicketCommissionReportPage from "./pages/TicketCommissionReportPage";
 
 function Layout({ collapsed, setCollapsed }) {
   return (
@@ -31,6 +32,10 @@ function Layout({ collapsed, setCollapsed }) {
             <Route path="/holidays" element={<HolidaysPage />} />
             <Route path="/working-hours" element={<UserWorkingHoursPage />} />
             <Route path="/jobsheets" element={<JobsheetsPage />} />
+            <Route
+              path="/reports/commission"
+              element={<TicketCommissionReportPage />}
+            />
             <Route path="/audit-logs" element={<AuditLogsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -48,17 +53,17 @@ export default function App() {
   // We clear everything here and send the user to login.
   useEffect(() => {
     const handleAuthExpired = () => {
-      console.warn('[App] auth:expired — redirecting to /login');
-      navigate('/login', { state: { loggedOut: true }, replace: true });
+      console.warn("[App] auth:expired — redirecting to /login");
+      navigate("/login", { state: { loggedOut: true }, replace: true });
     };
-    window.addEventListener('auth:expired', handleAuthExpired);
-    return () => window.removeEventListener('auth:expired', handleAuthExpired);
+    window.addEventListener("auth:expired", handleAuthExpired);
+    return () => window.removeEventListener("auth:expired", handleAuthExpired);
   }, [navigate]);
 
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/callback" element={<AuthCallback />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route
         path="/*"
         element={

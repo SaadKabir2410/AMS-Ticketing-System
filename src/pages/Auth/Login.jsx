@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../../context/Authcontext";
-import { useAuth as useOidc } from "react-oidc-context";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "react-oidc-context";
 import Logo from "../../assets/Sureze_Logo.png";
 import {
   Eye,
@@ -46,10 +45,11 @@ function InputField({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className={`w-full pl-11 pr-11 py-3 bg-white dark:bg-slate-900 border ${error
+          className={`w-full pl-11 pr-11 py-3 bg-white dark:bg-slate-900 border ${
+            error
               ? "border-red-500 ring-2 ring-red-500/10"
               : "border-slate-200 dark:border-slate-800 group-focus-within:border-blue-500 group-focus-within:ring-4 group-focus-within:ring-blue-500/10"
-            } rounded-xl text-slate-700 dark:text-slate-200 placeholder:text-slate-400 outline-none transition-all`}
+          } rounded-xl text-slate-700 dark:text-slate-200 placeholder:text-slate-400 outline-none transition-all`}
         />
         {isPassword && (
           <button
@@ -73,66 +73,31 @@ function InputField({
 }
 
 export default function LoginPage() {
-  const { login, loading, error, clearError, user } = useAuth();
-  const oidc = useOidc();
+  const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
-
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [fieldErrors, setFieldErrors] = useState({});
-  const [remember, setRemember] = useState(false);
   const [showLoggedOutMessage, setShowLoggedOutMessage] = useState(false);
 
+  // If already authenticated via OIDC, skip login page
   useEffect(() => {
-    if (user) {
+    if (auth.isAuthenticated) {
       navigate(from, { replace: true });
     }
-  }, [user, navigate, from]);
+  }, [auth.isAuthenticated, navigate, from]);
 
   useEffect(() => {
     if (location.state?.loggedOut) {
       setShowLoggedOutMessage(true);
-
-      const timer = setTimeout(() => {
-        setShowLoggedOutMessage(false);
-      }, 3000);
+      const timer = setTimeout(() => setShowLoggedOutMessage(false), 3000);
       return () => clearTimeout(timer);
     }
   }, [location]);
 
-  useEffect(() => {
-    if (clearError) clearError();
-  }, [form]);
-
-  const validate = () => {
-    const errs = {};
-    if (!form.email) {
-      errs.email = "Email is Required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      errs.email = "Email is Invalid";
-    }
-
-    if (!form.password) {
-      errs.password = "Password is Required";
-    } else if (form.password.length < 6) {
-      errs.password = "Password must be at least 6 characters long";
-    }
-    return errs;
-  };
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) {
-      setFieldErrors(errs);
-      return;
-    }
-    setFieldErrors({});
-    await login(form);
+    auth.signinRedirect();
   };
-
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   return (
     <div className="min-h-screen flex bg-slate-50 dark:bg-[#0f1117]">
@@ -290,87 +255,54 @@ export default function LoginPage() {
           )}
 
           {/* Global error */}
-          {error && (
+          {auth.error && (
             <div className="mb-5 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm animate-in fade-in slide-in-from-top-2">
               <AlertCircle size={16} className="flex-shrink-0" />
-              {error}
+              {auth.error.message}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <InputField
-              id="email"
-              label="Email Address"
-              type="email"
-              value={form.email}
-              onChange={set("email")}
-              placeholder="you@example.com"
-              icon={Mail}
-              error={fieldErrors.email}
-            />
-            <InputField
-              id="password"
-              label="Password"
-              type="password"
-              value={form.password}
-              onChange={set("password")}
-              placeholder="Enter your password"
-              icon={Lock}
-              error={fieldErrors.password}
-            />
-
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                  className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
-                />
-                <span className="text-sm text-slate-600 dark:text-slate-400">
-                  Remember me
-                </span>
-              </label>
-              <button
-                type="button"
-                className="text-sm text-blue-500 hover:text-blue-600 font-semibold transition-colors"
-              >
-                Forgot password?
-              </button>
+            <div className="space-y-4 opacity-40 pointer-events-none select-none">
+              <InputField
+                id="email"
+                label="Username or Email"
+                type="text"
+                value=""
+                onChange={() => {}}
+                placeholder="admin or you@example.com"
+                icon={Mail}
+              />
+              <InputField
+                id="password"
+                label="Password"
+                type="password"
+                value=""
+                onChange={() => {}}
+                placeholder="Enter your password"
+                icon={Lock}
+              />
             </div>
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 text-white font-semibold text-sm transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0 mt-2"
+              disabled={auth.isLoading}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 text-white font-semibold text-sm transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0 mt-4"
             >
-              {loading ? (
+              {auth.isLoading ? (
                 <>
-                  <Loader2 size={17} className="animate-spin" /> Signing in...
+                  <Loader2 size={17} className="animate-spin" /> Redirecting...
                 </>
               ) : (
                 <>
-                  Sign In <ArrowRight size={16} />
+                  Sign In with SSO <ArrowRight size={16} />
                 </>
               )}
             </button>
 
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-slate-50 dark:bg-[#0f1117] px-2 text-slate-500">Or continue with</span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => oidc.signinRedirect()}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-sm transition-all shadow-sm hover:shadow-md"
-            >
-              Sign in with SSO
-            </button>
+            <p className="text-center text-xs text-slate-400 dark:text-slate-600 mt-3">
+              You will be redirected to the secure ABP login page
+            </p>
           </form>
         </div>
       </div>
