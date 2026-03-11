@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "./context/AuthContextHook";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "./component/layout/Navbar";
 import Sidebar from "./component/layout/Sidebar";
 import LoginPage from "./pages/Auth/Login";
-import AuthCallback from "./pages/AuthCallback";
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./component/auth/ProtectedRoute";
 import AMSTicketsPage from "./pages/AMSTicketsPage";
@@ -17,6 +17,7 @@ import JobsheetsPage from "./pages/JobsheetsPage";
 import TicketCommissionReportPage from "./pages/TicketCommissionReportPage";
 import AMSTicketsReportPage from "./pages/AMSTicketsReportPage";
 import AfterWorkingHoursReportPage from "./pages/AfterWorkingHoursReportPage";
+import UsersPage from "./pages/UsersPage";
 
 function Layout({ collapsed, setCollapsed }) {
   return (
@@ -43,6 +44,7 @@ function Layout({ collapsed, setCollapsed }) {
               element={<AfterWorkingHoursReportPage />}
             />
             <Route path="/reports/tickets" element={<AMSTicketsReportPage />} />
+            <Route path="/users" element={<UsersPage />} />
 
             <Route path="/audit-logs" element={<AuditLogsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -57,12 +59,11 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
 
-  // When DB.js interceptor detects 403/401, it fires 'auth:expired'.
-  // We clear everything here and send the user to login.
+  // Handle session expiry (401 from API)
   useEffect(() => {
     const handleAuthExpired = () => {
-      console.warn("[App] auth:expired — redirecting to /login");
-      navigate("/login", { state: { loggedOut: true }, replace: true });
+      console.warn("[App] auth:expired — redirecting to login");
+      navigate("/login", { state: { from: window.location.pathname } });
     };
     window.addEventListener("auth:expired", handleAuthExpired);
     return () => window.removeEventListener("auth:expired", handleAuthExpired);
@@ -71,7 +72,6 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route
         path="/*"
         element={

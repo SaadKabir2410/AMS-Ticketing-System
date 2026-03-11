@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 import {
@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { DataGrid, getGridStringOperators } from "@mui/x-data-grid";
 import { useResource } from "../hooks/useResource";
-import { useToast } from "./Toast";
+import { useToast } from "./ToastContext";
 
 import { Menu, MenuItem, ListItemIcon, ListItemText, Box } from "@mui/material";
 
@@ -126,13 +126,9 @@ export default function ResourcePage({
   columns,
   ModalComponent,
   DetailComponent,
-  DeleteModal,
   searchPlaceholder = "Search records...",
   createButtonText = "Create",
   breadcrumb = [],
-  operatorLabel = "All Operators",
-  operatorOptions = null,
-  showBackButton = false,
   showSearchBar = true,
   showFilterBar = true,
   showActions = true,
@@ -179,7 +175,7 @@ export default function ResourcePage({
         ]
       : [];
 
-  const [filterModel, setFilterModel] = useState({ items: initialItem });
+  const [filterModel] = useState({ items: initialItem });
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -209,9 +205,9 @@ export default function ResourcePage({
     return () => clearTimeout(timer);
   }, [filterModel]);
 
-  const [filterField, setFilterField] = useState(initialFilterField);
-  const [filterOperator, setFilterOperator] = useState("");
-  const [filterValue, setFilterValue] = useState(initialFilterValue);
+  const [filterField] = useState(initialFilterField);
+  const [filterOperator] = useState("");
+  const [filterValue] = useState(initialFilterValue);
 
   const params = useMemo(
     () => ({
@@ -232,7 +228,7 @@ export default function ResourcePage({
       sortDir,
       columnFilter,
       filterOperator,
-      JSON.stringify(extraParams),
+      extraParams,
     ],
   );
 
@@ -439,7 +435,7 @@ export default function ResourcePage({
     }));
 
     if (showActions) {
-      cols.push({
+      cols.unshift({
         field: "actions",
         headerName: "ACTIONS",
         width: 100,
@@ -479,14 +475,11 @@ export default function ResourcePage({
 
     return cols;
   }, [
-    columns,
-    filterField,
-    filterValue,
-    search,
-    navigate,
-    ModalComponent,
     showActions,
     detailViewMode,
+    apiObject.id,
+    entityName,
+    title,
   ]);
 
   return (
@@ -756,6 +749,7 @@ export default function ResourcePage({
       {ModalComponent && (
         <>
           <ModalComponent
+            key="create-modal"
             open={modals.create}
             onClose={() => setModals((m) => ({ ...m, create: false }))}
             onSubmit={onHandleCreate}
@@ -763,6 +757,7 @@ export default function ResourcePage({
             submitError={createError}
           />
           <ModalComponent
+            key={activeItem?.id ? `edit-${activeItem.id}` : 'edit-none'}
             open={modals.edit}
             item={activeItem}
             ticket={activeItem}
@@ -776,6 +771,7 @@ export default function ResourcePage({
       )}
       {DetailComponent && (
         <DetailComponent
+          key={activeItem?.id ? `detail-${activeItem.id}` : 'detail-none'}
           open={modals.detail}
           item={activeItem}
           ticket={activeItem}

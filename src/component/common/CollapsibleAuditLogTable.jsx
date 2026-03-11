@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, IconButton, Collapse, Box, Typography, Badge, Chip,
-    Pagination, Skeleton, useTheme
+    Pagination, Skeleton
 } from '@mui/material';
 import {
     ChevronDown, ChevronUp, History, User, Calendar, ExternalLink,

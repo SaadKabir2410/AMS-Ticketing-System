@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, Calendar, SlidersHorizontal, ArrowLeft, History, Database } from "lucide-react";
+import { Search, Calendar, SlidersHorizontal, ArrowLeft, History } from "lucide-react";
 import { DB } from "../data/DB";
 import CollapsibleAuditLogTable from "../component/common/CollapsibleAuditLogTable";
 import { useResource } from "../component/hooks/useResource";
@@ -12,13 +12,13 @@ export default function AuditLogsPage() {
 
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
-    const [primaryKeySearch, setPrimaryKeySearch] = useState(initKey);
+    const [primaryKeySearch] = useState(initKey);
     const [debouncedPrimaryKey, setDebouncedPrimaryKey] = useState(initKey);
     const [userNameSearch, setUserNameSearch] = useState('');
     const [debouncedUserName, setDebouncedUserName] = useState('');
     const [datePreset, setDatePreset] = useState('all');
     const [operationType, setOperationType] = useState('all');
-    const [entityType, setEntityType] = useState(searchParams.get('entityName') || 'Site');
+    const [entityType] = useState(searchParams.get('entityName') || 'Site');
     const [customFromDate, setCustomFromDate] = useState('');
     const [customToDate, setCustomToDate] = useState('');
 
@@ -32,13 +32,13 @@ export default function AuditLogsPage() {
         return () => clearTimeout(timer);
     }, [userNameSearch]);
 
-    const toLocalISO = (d) => {
+    const toLocalISO = useCallback((d) => {
         if (!d || isNaN(d.getTime())) return null;
         const pad = (n) => n.toString().padStart(2, '0');
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-    };
+    }, []);
 
-    const getDateRange = (preset) => {
+    const getDateRange = useCallback((preset) => {
         const now = new Date();
         const start = new Date(now);
         start.setHours(0, 0, 0, 0);
@@ -75,9 +75,9 @@ export default function AuditLogsPage() {
             return { fromDate: toLocalISO(from), toDate: toLocalISO(to) };
         }
         return { fromDate: null, toDate: null };
-    };
+    }, [customFromDate, customToDate, toLocalISO]);
 
-    const dateRange = useMemo(() => getDateRange(datePreset), [datePreset, customFromDate, customToDate]);
+    const dateRange = useMemo(() => getDateRange(datePreset), [datePreset, getDateRange]);
 
     const apiParams = useMemo(() => ({
         page,

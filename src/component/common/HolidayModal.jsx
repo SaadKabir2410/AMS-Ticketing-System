@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog, IconButton } from '@mui/material';
 import { X, Loader2, Check } from 'lucide-react';
 
@@ -40,13 +40,24 @@ const EMPTY = {
 
 const HOLIDAY_TYPES = ['Public', 'Regional', 'Optional', 'Bank Holiday', 'Other'];
 
+const Label = ({ children, required }) => (
+    <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
+        {children} {required && <span className="text-red-500">*</span>}
+    </label>
+);
+
 export default function HolidayModal({ open, onClose, onSubmit, item = null, loading = false, submitError = null }) {
     const isEdit = !!item;
     const [form, setForm] = useState(EMPTY);
     const [errors, setErrors] = useState({});
     const countries = [...LOCAL_COUNTRIES].sort((a, b) => a.name.localeCompare(b.name));
 
-    useEffect(() => {
+    const [prevOpen, setPrevOpen] = useState(open);
+    const [prevItem, setPrevItem] = useState(item);
+
+    if (open !== prevOpen || item !== prevItem) {
+        setPrevOpen(open);
+        setPrevItem(item);
         if (open) {
             setErrors({});
             if (item) {
@@ -66,7 +77,7 @@ export default function HolidayModal({ open, onClose, onSubmit, item = null, loa
                 setForm(EMPTY);
             }
         }
-    }, [open, item]);
+    }
 
     const validate = () => {
         const errs = {};
@@ -135,11 +146,7 @@ export default function HolidayModal({ open, onClose, onSubmit, item = null, loa
                 ? `bg-green-50/50 border-green-500 focus:border-green-600 text-green-900 dark:bg-green-500/10 dark:border-green-500/50 dark:text-green-200`
                 : `bg-slate-50 border-slate-200 hover:border-slate-300 focus:bg-white focus:border-blue-500 text-slate-700 placeholder:text-slate-400 dark:bg-[#242938] dark:border-white/10 dark:text-slate-200 dark:focus:border-blue-500`);
 
-    const Label = ({ children, required }) => (
-        <label className="block text-sm font-semibold text-slate-600 dark:text-slate-300 mb-1.5">
-            {children} {required && <span className="text-red-500">*</span>}
-        </label>
-    );
+
 
     return (
         <Dialog

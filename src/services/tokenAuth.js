@@ -2,22 +2,17 @@
  * tokenAuth.js
  * Resource Owner Password Credentials (ROPC) login utility.
  *
- * Trades a username + password for an access_token directly with the ABP
- * OpenIddict token endpoint. No redirect or callback URL is involved, so
- * the ABP client whitelist doesn't matter for local development.
- *
- * The token is stored in localStorage under the same key that apiClient.js
- * already reads so that authenticated API calls work immediately after login.
+ * Trades a username + password for an access_token directly with the OpenIddict token endpoint.
  */
 
-const TOKEN_ENDPOINT = "/connect/token"; // proxied by Vite → sureze.ddns.net:3333
+const TOKEN_ENDPOINT = "/connect/token"; 
 const CLIENT_ID = "Billing_React";
-const SCOPE = "openid profile email roles Billing offline_access";
-const STORAGE_KEY = "tokenAuth:session"; // our own simple session key
+const SCOPE = "email profile roles Billing";
+const STORAGE_KEY = "tokenAuth:session";
 
 /**
  * Attempt login with username / password.
- * Returns the parsed token response or throws an Error with a user-friendly message.
+ * Returns the parsed token response or throws an Error.
  */
 export async function loginWithPassword(username, password) {
   const body = new URLSearchParams({
@@ -37,7 +32,6 @@ export async function loginWithPassword(username, password) {
   const data = await res.json();
 
   if (!res.ok) {
-    // ABP returns { error, error_description } on failure
     const msg =
       data?.error_description ||
       data?.error ||
@@ -49,7 +43,7 @@ export async function loginWithPassword(username, password) {
   const session = {
     access_token: data.access_token,
     refresh_token: data.refresh_token ?? null,
-    expires_at: Date.now() + data.expires_in * 1000,
+    expires_at: Date.now() + (data.expires_in || 3600) * 1000,
     token_type: data.token_type ?? "Bearer",
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
@@ -57,13 +51,12 @@ export async function loginWithPassword(username, password) {
   return session;
 }
 
-/** Read the current session from storage. Returns null if not logged in. */
+/** Read the current session from storage. */
 export function getSession() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const session = JSON.parse(raw);
-    // treat as expired if less than 30 seconds remain
     if (session.expires_at - Date.now() < 30_000) return null;
     return session;
   } catch {
@@ -71,12 +64,12 @@ export function getSession() {
   }
 }
 
-/** Remove the stored session (logout). */
+/** Remove the stored session. */
 export function clearSession() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
-/** Simple reactive helper — returns { isAuthenticated, accessToken } */
+/** Simple helper — returns { isAuthenticated, accessToken } */
 export function getAuthState() {
   const session = getSession();
   return {

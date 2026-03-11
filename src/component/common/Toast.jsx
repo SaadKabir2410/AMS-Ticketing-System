@@ -1,7 +1,7 @@
-import { useState, useEffect, createContext, useContext, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { CheckCircle2, XCircle, X, AlertCircle } from 'lucide-react'
 
-const ToastContext = createContext();
+import { ToastContext } from './ToastContext'
 let toastId = 0
 
 export function ToastProvider({ children }) {
@@ -16,16 +16,16 @@ export function ToastProvider({ children }) {
 
     const remove = (id) => setToasts(t => t.filter(x => x.id !== id))
     const icons = {
-        success: <CheckCircle2 size={16} className="text-emerald-500 flex-shrink-0" />,
-        error: <XCircle size={16} className="text-red-500 flex-shrink-0" />,
-        warning: <AlertCircle size={16} className="text-amber-500 flex-shrink-0" />,
+        success: <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />,
+        error: <XCircle size={16} className="text-red-500 shrink-0" />,
+        warning: <AlertCircle size={16} className="text-amber-500 shrink-0" />,
     }
 
     return (
         <ToastContext.Provider value={{ toast: add }}>
             {children}
             {/* Toast container */}
-            <div className="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none">
+            <div className="fixed bottom-5 right-5 z-100 flex flex-col gap-2 pointer-events-none">
                 {toasts.map(t => (
                     <div
                         key={t.id}
@@ -42,5 +42,4 @@ export function ToastProvider({ children }) {
         </ToastContext.Provider>
     )
 }
-
-export const useToast = () => useContext(ToastContext);
+

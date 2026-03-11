@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "react-oidc-context";
+
 import { Home } from "lucide-react";
 import {
   AreaChart,
@@ -119,7 +119,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 function StatCard({
-  icon: Icon,
+  icon: StatIcon,
   label,
   value,
   change,
@@ -135,7 +135,7 @@ function StatCard({
             className="w-11 h-11 rounded-xl flex items-center justify-center"
             style={{ background: color + "18" }}
           >
-            <Icon size={20} style={{ color }} />
+            <StatIcon size={20} style={{ color }} />
           </div>
           <span
             className={`flex items-center gap-0.5 text-xs font-semibold px-2 py-1 rounded-full ${
@@ -158,7 +158,7 @@ function StatCard({
         <p className="text-xs text-slate-400 mt-1 mb-3">{label}</p>
       </div>
       <div className="h-10 mt-auto">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
           <AreaChart
             data={sparkData}
             margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
@@ -191,7 +191,6 @@ function StatCard({
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
   const [chartRange, setChartRange] = useState("This Week");
 
   const stats = [
@@ -316,7 +315,7 @@ export default function Dashboard() {
               <option>This Month</option>
             </select>
           </div>
-          <ResponsiveContainer width="100%" height={210}>
+          <ResponsiveContainer width="100%" height={210} minWidth={1} minHeight={1}>
             <LineChart
               data={ticketTrend}
               margin={{ top: 5, right: 5, bottom: 0, left: -20 }}
@@ -373,7 +372,7 @@ export default function Dashboard() {
           </p>
           <p className="text-xs text-slate-400 mb-6">Current distribution</p>
           <div className="flex-1 flex flex-col justify-center">
-            <ResponsiveContainer width="100%" height={160}>
+            <ResponsiveContainer width="100%" height={160} minWidth={1} minHeight={1}>
               <PieChart>
                 <Pie
                   data={statusData}
@@ -422,7 +421,7 @@ export default function Dashboard() {
             Monthly Volume
           </p>
           <p className="text-xs text-slate-400 mb-6">Tickets per month</p>
-          <ResponsiveContainer width="100%" height={160}>
+          <ResponsiveContainer width="100%" height={160} minWidth={1} minHeight={1}>
             <BarChart
               data={monthlyData}
               barSize={12}
@@ -527,7 +526,7 @@ export default function Dashboard() {
                 <div key={a.name} className="flex flex-col gap-2">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-black shadow-sm flex-shrink-0 uppercase">
+                      <div className="w-8 h-8 rounded-xl bg-linear-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-black shadow-sm shrink-0 uppercase">
                         {a.name[0]}
                       </div>
                       <span className="font-bold text-xs text-slate-700 dark:text-slate-200 truncate max-w-[80px]">
@@ -540,7 +539,7 @@ export default function Dashboard() {
                   </div>
                   <div className="h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
                     <div
-                      className="h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-400 shadow-[0_0_8px_rgba(59,130,246,0.3)] transition-all duration-1000"
+                      className="h-1.5 rounded-full bg-linear-to-r from-blue-500 to-indigo-400 shadow-[0_0_8px_rgba(59,130,246,0.3)] transition-all duration-1000"
                       style={{ width: `${a.pct}%` }}
                     />
                   </div>

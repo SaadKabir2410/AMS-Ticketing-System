@@ -12,16 +12,24 @@ export default function WorkCodeModal({ open, onClose, onSubmit, item = null, lo
     const [checkingCode, setCheckingCode] = useState(false);
     const abortControllerRef = useRef(null);
 
-    useEffect(() => {
+    const [prevOpen, setPrevOpen] = useState(open);
+    const [prevItem, setPrevItem] = useState(item);
+
+    if (open !== prevOpen || item !== prevItem) {
+        setPrevOpen(open);
+        setPrevItem(item);
         if (open) {
             setErrors({});
             setCheckingCode(false);
             setForm(item ? { description: item.description || '', code: item.code || '' } : EMPTY);
         }
+    }
+
+    useEffect(() => {
         return () => {
             if (abortControllerRef.current) abortControllerRef.current.abort();
         };
-    }, [open, item]);
+    }, []);
 
     const checkCodeExists = async () => {
         const code = form.code.trim().toUpperCase();
@@ -35,7 +43,7 @@ export default function WorkCodeModal({ open, onClose, onSubmit, item = null, lo
         if (abortControllerRef.current) abortControllerRef.current.abort();
         abortControllerRef.current = new AbortController();
 
-        setIsChecking(true);
+        setCheckingCode(true);
         try {
             const data = await DB.workCodes.checkCodeExists(code, abortControllerRef.current.signal);
             const items = data.items || [];
@@ -54,7 +62,7 @@ export default function WorkCodeModal({ open, onClose, onSubmit, item = null, lo
                 console.error('Check code error:', err);
             }
         } finally {
-            setIsChecking(false);
+            setCheckingCode(false);
         }
     };
 
@@ -81,7 +89,7 @@ export default function WorkCodeModal({ open, onClose, onSubmit, item = null, lo
         if (e && e.preventDefault) e.preventDefault();
         const errs = validate();
         if (Object.keys(errs).length) { setErrors(errs); return; }
-        if (errors.code || isChecking) return;
+        if (errors.code || checkingCode) return;
 
         const payload = {
             Description: form.description.trim(),

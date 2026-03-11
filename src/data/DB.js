@@ -40,7 +40,7 @@ const DB = {
       }
 
       return apiClient
-        .get("ams/tickets", {
+        .get("/api/app/ams/tickets", {
           params: {
             SkipCount: (page - 1) * perPage,
             MaxResultCount: perPage,
@@ -56,12 +56,12 @@ const DB = {
         })
         .then((r) => r.data);
     },
-    getById: (id) => apiClient.get(`tickets/${id}`).then((r) => r.data),
-    create: (data) => apiClient.post("tickets", data).then((r) => r.data),
+    getById: (id) => apiClient.get(`/api/app/tickets/${id}`).then((r) => r.data),
+    create: (data) => apiClient.post("/api/app/tickets", data).then((r) => r.data),
     update: (id, data) =>
-      apiClient.put(`tickets/${id}`, data).then((r) => r.data),
-    delete: (id) => apiClient.delete(`tickets/${id}`).then((r) => r.data),
-    getStats: () => apiClient.get("tickets/stats").then((r) => r.data),
+      apiClient.put(`/api/app/tickets/${id}`, data).then((r) => r.data),
+    delete: (id) => apiClient.delete(`/api/app/tickets/${id}`).then((r) => r.data),
+    getStats: () => apiClient.get("/api/app/tickets/stats").then((r) => r.data),
   },
 
   sites: {
@@ -114,7 +114,7 @@ const DB = {
       };
 
       console.log("[DB.sites] getAll:", params);
-      return apiClient.get("site/paged-list", { params }).then((r) => {
+      return apiClient.get("/api/app/site/paged-list", { params }).then((r) => {
         console.log("[DB.sites] getAll success:", r.data);
         return r.data;
       });
@@ -129,50 +129,50 @@ const DB = {
       };
       console.log("[DB.sites] checking OCN:", ocn);
       return apiClient
-        .get("site/paged-list", { params, signal })
+        .get("/api/app/site/paged-list", { params, signal })
         .then((r) => r.data);
     },
-    getById: (id) => apiClient.get(`site/${id}/by-id`).then((r) => r.data),
+    getById: (id) => apiClient.get(`/api/app/site/${id}/by-id`).then((r) => r.data),
     create: (data) => {
       console.log("[DB.sites] creating:", data);
-      return apiClient.post("site", data).then((r) => r.data);
+      return apiClient.post("/api/app/site", data).then((r) => r.data);
     },
     update: (id, data) => {
       console.log("[DB.sites] updating:", id, data);
-      return apiClient.put(`site/${id}`, data).then((r) => r.data);
+      return apiClient.put(`/api/app/site/${id}`, data).then((r) => r.data);
     },
     delete: (id) => {
       console.log("[DB.sites] deleting:", id);
-      return apiClient.delete(`site/${id}`).then((r) => r.data);
+      return apiClient.delete(`/api/app/site/${id}`).then((r) => r.data);
     },
   },
 
   countries: {
     getAll: () => {
       console.log("[DB.countries] getAll");
-      return apiClient.get("country").then((r) => {
+      return apiClient.get("/api/app/country").then((r) => {
         console.log("[DB.countries] getAll success:", r.data);
         return r.data;
       });
     },
     create: (data) => {
       console.log("[DB.countries] creating:", data);
-      return apiClient.post("country", data).then((r) => r.data);
+      return apiClient.post("/api/app/country", data).then((r) => r.data);
     },
     update: (id, data) => {
       console.log("[DB.countries] updating:", id, data);
-      return apiClient.put(`country/${id}`, data).then((r) => r.data);
+      return apiClient.put(`/api/app/country/${id}`, data).then((r) => r.data);
     },
     delete: (id) => {
       console.log("[DB.countries] deleting:", id);
-      return apiClient.delete(`country/${id}`).then((r) => r.data);
+      return apiClient.delete(`/api/app/country/${id}`).then((r) => r.data);
     },
   },
 
   workCodes: {
     getAll: () => {
       console.log("[DB.workCodes] getAll");
-      return apiClient.get("work-done-code").then((r) => {
+      return apiClient.get("/api/app/work-done-code").then((r) => {
         console.log("[DB.workCodes] getAll success:", r.data);
         return r.data;
       });
@@ -187,20 +187,20 @@ const DB = {
       };
       console.log("[DB.workCodes] checking code:", code);
       return apiClient
-        .get("work-done-code/paged-list", { params, signal })
+        .get("/api/app/work-done-code/paged-list", { params, signal })
         .then((r) => r.data);
     },
     create: (data) => {
       console.log("[DB.workCodes] creating:", data);
-      return apiClient.post("work-done-code", data).then((r) => r.data);
+      return apiClient.post("/api/app/work-done-code", data).then((r) => r.data);
     },
     update: (id, data) => {
       console.log("[DB.workCodes] updating:", id, data);
-      return apiClient.put(`work-done-code/${id}`, data).then((r) => r.data);
+      return apiClient.put(`/api/app/work-done-code/${id}`, data).then((r) => r.data);
     },
     delete: (id) => {
       console.log("[DB.workCodes] deleting:", id);
-      return apiClient.delete(`work-done-code/${id}`).then((r) => r.data);
+      return apiClient.delete(`/api/app/work-done-code/${id}`).then((r) => r.data);
     },
   },
 
@@ -220,9 +220,9 @@ const DB = {
         console.log("[DB.holidays] Sharing inflight request");
         return _inflight;
       }
-      console.log("[DB.holidays] Fetching from backend: GET /holiday");
+      console.log("[DB.holidays] Fetching from backend: GET /api/app/holiday");
       return (_inflight = apiClient
-        .get("holiday")
+        .get("/api/app/holiday")
         .then((r) => {
           _cache = Array.isArray(r.data) ? r.data : (r.data?.items ?? []);
           _cacheTs = Date.now();
@@ -297,11 +297,11 @@ const DB = {
       };
       console.log(
         "[DB.workingHours] Fetching:",
-        "user-working-hour/paged-list",
+        "/api/app/user-working-hour/paged-list",
         params,
       );
       return apiClient
-        .get("user-working-hour/paged-list", { params })
+        .get("/api/app/user-working-hour/paged-list", { params })
         .then((r) => {
           console.log("[DB.workingHours] Response:", r.data);
           return r.data;
@@ -339,16 +339,76 @@ const DB = {
           extraParams.ToDate || extraParams.DateTo || undefined,
         Sorting: sortKey ? `${sortKey} ${sortDir}` : "Date desc",
       };
-      console.log("[DB.jobsheets] Fetching:", "jobsheets/paged", params);
+      console.log("[DB.jobsheets] Fetching:", "/api/app/jobsheets/paged", params);
       return apiClient
-        .get("jobsheets/paged", { params })
+        .get("/api/app/jobsheets/paged", { params })
         .then((r) => r.data)
         .catch((err) => {
           console.error("[DB.jobsheets] Error:", err);
           throw err;
         });
     },
-    create: (data) => apiClient.post("job-sheet", data).then((r) => r.data),
+    create: (data) => apiClient.post("/api/app/job-sheet", data).then((r) => r.data),
+  },
+
+  users: {
+    getAll: ({
+      page = 1,
+      perPage = 10,
+      search,
+      sortKey,
+      sortDir = "desc",
+      columnFilter,
+      filterOperator,
+      ...extraParams
+    } = {}) => {
+      const operatorMap = {
+        contains: "Contains",
+        equals: "Equals",
+        startsWith: "StartsWith",
+      };
+      const backendOperator = operatorMap[filterOperator] || "Contains";
+      
+      const columnFilterParamMap = {
+        name: "UserSearch.Name",
+        email: "UserSearch.Email",
+        phoneNumber: "UserSearch.PhoneNumber",
+        organizationType: "UserSearch.OrganizationType",
+        siteName: "UserSearch.SiteName",
+      };
+
+      let userSearchParams = {};
+      
+      // Handle the "show customer toggle" via extraParams if provided
+      if (extraParams.isCustomer !== undefined) {
+          // Assuming isCustomer maps to organization type or a specific filter
+          userSearchParams["UserSearch.IsCustomer"] = extraParams.isCustomer;
+      }
+
+      if (columnFilter?.value && columnFilterParamMap[columnFilter.field]) {
+        const backendParam = columnFilterParamMap[columnFilter.field];
+        userSearchParams = {
+          ...userSearchParams,
+          [backendParam]: columnFilter.value,
+          [`${backendParam}Operator`]:
+            operatorMap[columnFilter.operator] || backendOperator,
+        };
+      }
+
+      const params = {
+          SkipCount: (page - 1) * perPage,
+          MaxResultCount: perPage,
+          Filter: search || undefined,
+          FilterOperator: backendOperator,
+          ...userSearchParams,
+          Sorting: sortKey ? `${sortKey} ${sortDir}` : "Name asc",
+      };
+
+      return apiClient.get("/api/app/user/paged-list", { params }).then(r => r.data);
+    },
+    create: (data) => apiClient.post("/api/app/user", data).then(r => r.data),
+    update: (id, data) => apiClient.put(`/api/app/user/${id}`, data).then(r => r.data),
+    delete: (id) => apiClient.delete(`/api/app/user/${id}`).then(r => r.data),
   },
 
   auditLogs: {
@@ -399,7 +459,7 @@ const DB = {
         if (apiClientParams[k] != null) sp.append(k, apiClientParams[k]);
       });
       return apiClient
-        .get("audited-log/paged-list", {
+        .get("/api/app/audited-log/paged-list", {
           params: sp,
           paramsSerializer: (p) => p.toString(),
         })

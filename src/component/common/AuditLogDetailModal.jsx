@@ -10,6 +10,40 @@ const OPERATION_LABELS = {
     2: { label: 'Update', color: 'warning' },
 };
 
+function DetailsListView({ rows, opLabel }) {
+    return (
+        <div className="space-y-1">
+            <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-slate-100/50 rounded-lg mb-2">
+                <div className="col-span-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">Property</div>
+                {opLabel !== 'Create' && <div className="col-span-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">Old Value</div>}
+                <div className={`${opLabel !== 'Create' ? 'col-span-4' : 'col-span-8'} text-[9px] font-black uppercase text-slate-400 tracking-widest`}>New Value</div>
+            </div>
+            {rows.map((row, idx) => (
+                <div key={idx} className="grid grid-cols-12 gap-4 px-4 py-2.5 hover:bg-slate-50 transition-colors border-b border-slate-100 items-center">
+                    <div className="col-span-4">
+                        <span className="font-bold text-[11px] text-slate-500 uppercase tracking-tight">{row.property}</span>
+                    </div>
+                    {opLabel !== 'Create' && (
+                        <div className="col-span-4">
+                            <span className="text-[12px] text-slate-400 line-through decoration-slate-300 break-all">{row.old}</span>
+                        </div>
+                    )}
+                    <div className={`${opLabel !== 'Create' ? 'col-span-4' : 'col-span-8'}`}>
+                        <span className="font-black text-[12px] text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-100/50 break-all">
+                            {row.new}
+                        </span>
+                    </div>
+                </div>
+            ))}
+            {rows.length === 0 && (
+                <div className="p-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest italic">
+                    No detailed changes detected
+                </div>
+            )}
+        </div>
+    );
+}
+
 function formatDate(val) {
     if (!val) return '—';
     try {
@@ -32,14 +66,18 @@ export function AuditLogDetailsContent({ item, onClose, hideHeader = false, isCo
             const po = typeof item.oldValues === 'string' ? JSON.parse(item.oldValues) : item.oldValues;
             if (po && typeof po === 'object') parsedOld = po;
         }
-    } catch { }
+    } catch (e) {
+        console.error('AuditLogDetailsContent: oldValues parse error', e);
+    }
 
     try {
         if (item.newValues && item.newValues !== '{}' && item.newValues !== 'null') {
             const pn = typeof item.newValues === 'string' ? JSON.parse(item.newValues) : item.newValues;
             if (pn && typeof pn === 'object') parsedNew = pn;
         }
-    } catch { }
+    } catch (e) {
+        console.error('AuditLogDetailsContent: newValues parse error', e);
+    }
 
     // Supplement with dictionary objects if available
     if (item.oldValuesDic && typeof item.oldValuesDic === 'object') {
@@ -174,37 +212,7 @@ export function AuditLogDetailsContent({ item, onClose, hideHeader = false, isCo
         )
     });
 
-    const DetailsListView = () => (
-        <div className="space-y-1">
-            <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-slate-100/50 rounded-lg mb-2">
-                <div className="col-span-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">Property</div>
-                {opLabel !== 'Create' && <div className="col-span-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">Old Value</div>}
-                <div className={`${opLabel !== 'Create' ? 'col-span-4' : 'col-span-8'} text-[9px] font-black uppercase text-slate-400 tracking-widest`}>New Value</div>
-            </div>
-            {rows.map((row, idx) => (
-                <div key={idx} className="grid grid-cols-12 gap-4 px-4 py-2.5 hover:bg-slate-50 transition-colors border-b border-slate-100 items-center">
-                    <div className="col-span-4">
-                        <span className="font-bold text-[11px] text-slate-500 uppercase tracking-tight">{row.property}</span>
-                    </div>
-                    {opLabel !== 'Create' && (
-                        <div className="col-span-4">
-                            <span className="text-[12px] text-slate-400 line-through decoration-slate-300 break-all">{row.old}</span>
-                        </div>
-                    )}
-                    <div className={`${opLabel !== 'Create' ? 'col-span-4' : 'col-span-8'}`}>
-                        <span className="font-black text-[12px] text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-100/50 break-all">
-                            {row.new}
-                        </span>
-                    </div>
-                </div>
-            ))}
-            {rows.length === 0 && (
-                <div className="p-8 text-center text-slate-400 text-xs font-bold uppercase tracking-widest italic">
-                    No detailed changes detected
-                </div>
-            )}
-        </div>
-    );
+
 
     return (
         <Box sx={{ height: isCollapsible ? 'auto' : '100%', display: 'flex', flexDirection: 'column', bgcolor: 'transparent' }}>
@@ -235,7 +243,7 @@ export function AuditLogDetailsContent({ item, onClose, hideHeader = false, isCo
             {/* ── Data Display ──────────────────── */}
             <Box sx={{ flex: 1, p: isCollapsible ? 0 : 0 }}>
                 {isCollapsible ? (
-                    <DetailsListView />
+                    <DetailsListView rows={rows} opLabel={opLabel} />
                 ) : (
                     <div style={{ height: 450 }}>
                         <DataGrid

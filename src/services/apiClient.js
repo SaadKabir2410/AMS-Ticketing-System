@@ -1,47 +1,56 @@
-import axios from "axios";
+import axios from 'axios';
 
 const apiClient = axios.create({
-  baseURL: "/api/app", // Prefix all calls with /app to hit ABP services
+  baseURL: '', // Use relative path to take advantage of Vite proxy
+  headers: {
+    'Accept': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest'
+  }
 });
 
-apiClient.interceptors.request.use(
-  (config) => {
-    let accessToken = null;
+apiClient.interceptors.request.use((config) => {
+  const manualKey = "tokenAuth:session";
 
-    // 1. Try the ROPC session first (our custom login)
-    try {
-      const raw = localStorage.getItem("tokenAuth:session");
-      if (raw) {
-        const session = JSON.parse(raw);
-        if (session?.access_token && session.expires_at - Date.now() > 30_000) {
-          accessToken = session.access_token;
-        }
-      }
-    } catch {
-      /* ignore */
+  try {
+    // 1. Try manual login token
+    const manualSession = JSON.parse(localStorage.getItem(manualKey));
+    if (manualSession?.access_token) {
+      config.headers.Authorization = `Bearer ${manualSession.access_token}`;
     }
+  } catch (e) {
+    console.error('Failed to parse auth user:', e);
+  }
 
-    // 2. Fall back to the OIDC session (react-oidc-context)
-    if (!accessToken) {
-      try {
-        const origin = window.location.origin;
-        const oidcKey = `oidc.user:${origin}:Billing_React`;
-        const userJson = localStorage.getItem(oidcKey);
-        if (userJson) {
-          const user = JSON.parse(userJson);
-          if (user?.access_token) accessToken = user.access_token;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
+  // DEBUGGER: Log outgoing request
+  console.log(`%c[DEBUGGER] Outgoing Request: ${config.method?.toUpperCase()} ${config.url}`, 'color: #3b82f6; font-weight: bold', {
+    baseURL: config.baseURL,
+    params: config.params,
+    headers: config.headers
+  });
 
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
-    return config;
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (response) => {
+    // DEBUGGER: Log successful response
+    console.log(`%c[DEBUGGER] API Response Success: ${response.config.url}`, 'color: #10b981; font-weight: bold', response.data);
+    return response;
   },
-  (error) => Promise.reject(error),
+  (error) => {
+    // DEBUGGER: Log error response
+    console.error(`%c[DEBUGGER] API Response Error: ${error.config?.url}`, 'color: #ef4444; font-weight: bold', {
+      status: error.response?.status,
+      data: error.response?.data,
+      message: error.message
+    });
+
+    if (error.response?.status === 401) {
+      // Trigger event for App.jsx to handle redirect
+      window.dispatchEvent(new CustomEvent('auth:expired'));
+    }
+    return Promise.reject(error);
+  }
 );
 
 export default apiClient;

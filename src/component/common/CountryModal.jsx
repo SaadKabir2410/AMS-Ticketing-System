@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog, IconButton } from '@mui/material';
 import { X, Loader2, Check } from 'lucide-react';
 
@@ -9,12 +9,17 @@ export default function CountryModal({ open, onClose, onSubmit, item = null, loa
     const [form, setForm] = useState(EMPTY);
     const [errors, setErrors] = useState({});
 
-    useEffect(() => {
+    const [prevOpen, setPrevOpen] = useState(open);
+    const [prevItem, setPrevItem] = useState(item);
+
+    if (open !== prevOpen || item !== prevItem) {
+        setPrevOpen(open);
+        setPrevItem(item);
         if (open) {
             setErrors({});
             setForm(item ? { name: item.name || '', code: item.code || '' } : EMPTY);
         }
-    }, [open, item]);
+    }
 
     const validate = () => {
         const errs = {};

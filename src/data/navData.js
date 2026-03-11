@@ -1,19 +1,9 @@
 import {
   LayoutDashboard,
-  Hourglass,
-  Home,
-  Globe,
-  AudioWaveform,
-  SquareDashedBottomCode,
-  Balloon,
   Ticket,
-  Users,
-  Settings,
-  ShieldCheck,
   UserCircle,
   FileSliders,
   Table,
-  History,
   Search,
 } from "lucide-react";
 
@@ -93,12 +83,6 @@ export const NAV_GROUPS = [
         name: "Identity Management",
         icon: UserCircle,
         subMenu: [{ id: "set-users", name: "Users", href: "/users" }],
-      },
-      {
-        id: "set-audit",
-        name: "Audit Logs",
-        href: "/audit-logs",
-        icon: History,
       },
     ],
   },

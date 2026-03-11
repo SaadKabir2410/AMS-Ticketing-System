@@ -2,7 +2,7 @@ import {
     Dialog, DialogTitle, DialogContent, DialogActions,
     IconButton, Chip, Divider, Box, Typography, Stack, Paper
 } from '@mui/material'
-import { X, Clock, User, Calendar, Hash, Building2, CheckCircle2, Circle, Layers } from 'lucide-react'
+import { X, Clock, User, Calendar, Hash, Building2, CheckCircle2, Layers } from 'lucide-react'
 
 function formatDate(val) {
     if (!val) return '—'
@@ -14,7 +14,7 @@ function formatDate(val) {
     } catch { return val }
 }
 
-function InfoCard({ icon: Icon, label, value, mono = false }) {
+function InfoCard({ icon: IconElement, label, value, mono = false }) {
     return (
         <Paper
             elevation={0}
@@ -51,7 +51,7 @@ function InfoCard({ icon: Icon, label, value, mono = false }) {
                     borderColor: 'primary.100',
                 }}
             >
-                <Icon size={14} />
+                <IconElement size={14} />
             </Box>
             <Box sx={{ minWidth: 0 }}>
                 <Typography

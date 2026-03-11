@@ -23,8 +23,7 @@ import {
 
 import clsx from "clsx";
 import { NAV_GROUPS } from "../../data/navData";
-import { useAuth } from "react-oidc-context";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContextHook";
 
 const ICON_MAP = {
   LayoutDashboard,
@@ -53,8 +52,7 @@ function NavIcon({ name, size = 18 }) {
 }
 
 export default function Sidebar({ collapsed }) {
-  const auth = useAuth();
-  const navigate = useNavigate();
+  const { logout } = useAuth();
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
 
   const handleLogout = () => {
@@ -62,10 +60,14 @@ export default function Sidebar({ collapsed }) {
   };
 
   const confirmLogout = async () => {
-    // removeUser() clears react-oidc-context's internal state
-    // so ProtectedRoute immediately sees the user as logged out
-    await auth.removeUser();
-    navigate("/login", { state: { loggedOut: true }, replace: true });
+    try {
+      await logout();
+      setShowConfirmLogout(false);
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Fallback redirect
+      window.location.href = "/login";
+    }
   };
 
   return (

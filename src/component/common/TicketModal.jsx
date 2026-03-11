@@ -29,7 +29,12 @@ export default function TicketModal({ open, onClose, onSubmit, ticket = null, lo
     const [form, setForm] = useState(EMPTY)
     const [errors, setErrors] = useState({})
 
-    useEffect(() => {
+    const [prevOpen, setPrevOpen] = useState(open)
+    const [prevTicket, setPrevTicket] = useState(ticket)
+
+    if (open !== prevOpen || ticket !== prevTicket) {
+        setPrevOpen(open)
+        setPrevTicket(ticket)
         if (open) {
             setErrors({})
             if (ticket) {
@@ -49,7 +54,7 @@ export default function TicketModal({ open, onClose, onSubmit, ticket = null, lo
                 setForm({ ...EMPTY, receivedAt: new Date().toISOString().slice(0, 16) })
             }
         }
-    }, [open, ticket])
+    }
 
     const set = (key) => (e) => {
         const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value

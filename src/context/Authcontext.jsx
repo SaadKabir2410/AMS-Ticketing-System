@@ -1,7 +1,7 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import { useAuth as useOidc } from "react-oidc-context";
+import { createContext, useState, useEffect } from "react";
+import { loginWithPassword, clearSession, getAuthState } from "../services/tokenAuth";
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 // Simulated User DB
 const USER_KEY = "spike_users";
@@ -40,7 +40,6 @@ function saveUsers(users) {
 }
 
 export function AuthProvider({ children }) {
-  const oidc = useOidc();
   const [user, setUser] = useState(() => {
     try {
       const stored = localStorage.getItem(SESSION_KEY);
@@ -54,22 +53,16 @@ export function AuthProvider({ children }) {
   });
 
   useEffect(() => {
-    if (oidc.isAuthenticated && oidc.user) {
-      const profile = oidc.user.profile;
-      const session = {
-        id: profile.sub,
-        name: profile.name || profile.preferred_username || profile.email,
-        email: profile.email,
-        role: profile.role || "admin",
-        avatar: (profile.name || profile.email || "U")[0].toUpperCase(),
-      };
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-      setUser(session);
+    // Sync with manual login session if available
+    const { isAuthenticated: isManualAuth } = getAuthState();
+    if (!isManualAuth && user) {
+      // No authentication at all, clear internal state
+      setUser(null);
+      localStorage.removeItem(SESSION_KEY);
     }
-  }, [oidc.isAuthenticated, oidc.user]);
+  }, [user]);
 
   const [loading, setLoading] = useState(false);
-  const isAuthLoading = oidc.isLoading || loading;
   const [error, setError] = useState("");
   const clearError = () => setError("");
 
@@ -114,117 +107,66 @@ export function AuthProvider({ children }) {
     return true;
   };
 
-  // Login — tries real backend auth endpoints first, falls back to local DB
+  // Login — trades username/password for a real JWT from port 3333
   const login = async ({ email, password }) => {
     setLoading(true);
     setError('');
 
-    // ABP .NET commonly uses these endpoints depending on version:
-    const authEndpoints = [
-      { url: '/api/account/login', body: { userNameOrEmailAddress: email, password, rememberMe: true } },
-      { url: '/api/TokenAuth/Authenticate', body: { usernameOrEmailAddress: email, password, remoteServiceName: 'default' } },
-      { url: '/api/app/auth/login', body: { userNameOrEmailAddress: email, password } },
-    ];
+    try {
+      await loginWithPassword(email, password);
 
-    for (const endpoint of authEndpoints) {
-      try {
-        console.log('[Auth] Trying endpoint:', endpoint.url);
-        const response = await fetch(endpoint.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(endpoint.body),
-        });
+      // Derive profile info from the username (until we have a userinfo endpoint)
+      const userProfile = {
+        id: email, // use username/email as ID for now
+        name: email.split('@')[0],
+        email: email,
+        role: "admin",
+        avatar: email[0].toUpperCase(),
+      };
 
-        console.log('[Auth] Response status:', response.status, 'from', endpoint.url);
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('[Auth] Response data keys:', Object.keys(data));
-
-          // ABP token shapes: result.accessToken, result.token, token, access_token
-          const token =
-            data?.result?.accessToken ||
-            data?.result?.token ||
-            data?.accessToken ||
-            data?.token ||
-            data?.access_token;
-
-          console.log('[Auth] Token found:', token ? '✅ YES (length: ' + token.length + ')' : '❌ NO token in response');
-
-          if (token) {
-            localStorage.setItem('auth_token', token);
-          }
-
-          const name = data?.result?.name || data?.name || email.split('@')[0];
-          const session = {
-            id: data?.result?.userId || data?.userId || Date.now(),
-            name,
-            email,
-            role: data?.result?.role || data?.role || 'admin',
-            avatar: name[0]?.toUpperCase() || 'U',
-          };
-          localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-          setUser(session);
-          setLoading(false);
-          return true;
-        }
-
-        if (response.status === 401 || response.status === 400) {
-          console.warn('[Auth] Wrong credentials at', endpoint.url);
-          setError('Invalid email or password.');
-          setLoading(false);
-          return false;
-        }
-
-        // 404 or other = endpoint doesn't exist, try next
-        console.warn('[Auth] Endpoint not found, trying next...');
-
-      } catch (err) {
-        console.warn('[Auth] Network error at', endpoint.url, '—', err.message);
-      }
-    }
-
-    // ── Local fallback (offline / dev mode) ──
-    console.warn('[Auth] All backend endpoints failed — using local fallback.');
-    await new Promise((r) => setTimeout(r, 400));
-    const cleanEmail = email.trim().toLowerCase();
-    const users = getUsers();
-    const foundUser = users.find(
-      (u) => u.email.toLowerCase() === cleanEmail && u.password === password.trim(),
-    );
-
-    if (!foundUser) {
-      setError('Invalid email or password.');
+      localStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
+      setUser(userProfile);
+      setLoading(false);
+      return true;
+    } catch (err) {
+      console.error('[Auth] Login failed:', err.message);
+      setError(err.message || 'Invalid username or password.');
       setLoading(false);
       return false;
     }
-
-    const session = {
-      id: foundUser.id,
-      name: foundUser.name,
-      email: foundUser.email,
-      role: foundUser.role,
-      avatar: foundUser.avatar,
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    localStorage.setItem('auth_token', 'local-dev-token'); // Set dev token to prevent interceptor errors
-    setUser(session);
-    setLoading(false);
-    return true;
   };
 
   // Logout
-  const logout = () => {
-    localStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem('auth_token');
-    setUser(null);
+  const logout = async () => {
+    try {
+      console.log("[Auth] Starting logout process...");
+      
+      // 1. Clear ALL storage keys related to auth
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('spike_session');
+      localStorage.removeItem('spike_users'); // Just in case
+      
+      // 2. Clear manual password-token session (from tokenAuth.js)
+      clearSession();
+
+      // 3. Clear reactive state
+      setUser(null);
+
+      // 4. Redirect to login
+      window.location.href = '/login';
+    } catch (err) {
+      console.error("[Auth] Logout error fallback:", err);
+      // Absolute fallback to login page
+      window.location.href = '/login';
+    }
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
-        loading: isAuthLoading,
+        loading,
         error,
         clearError,
         register,
@@ -236,5 +178,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
-export const useAuth = () => useContext(AuthContext);

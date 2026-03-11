@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "react-oidc-context";
+import { useAuth } from "../../context/AuthContextHook";
 
 export function useResource(apiObject, params) {
-  const auth = useAuth();
+  const { user, isAuthLoading } = useAuth();
   const [data, setData] = useState([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -10,11 +10,13 @@ export function useResource(apiObject, params) {
   const [error, setError] = useState(null);
 
   const fetch = useCallback(async () => {
-    if (!auth.isAuthenticated) {
+    // Wait for auth to finish loading
+    if (isAuthLoading) return;
+
+    if (!user) {
       console.warn(
-        "[useResource] Not authenticated, skipping fetch and redirecting...",
+        "[useResource] No user session found, skipping fetch.",
       );
-      auth.signinRedirect();
       return;
     }
 
@@ -58,6 +60,7 @@ export function useResource(apiObject, params) {
       setData(nextData);
       setTotal(nextTotal);
       setTotalPages(nextTotalPages);
+      console.log("[useResource] Data fetch result:", { count: nextData.length, total: nextTotal });
       setError(null); // clear any previous error
     } catch (e) {
       console.error("useResource fetch error:", e);
@@ -67,7 +70,8 @@ export function useResource(apiObject, params) {
     } finally {
       setLoading(false);
     }
-  }, [JSON.stringify(params), apiObject]);
+  }, [JSON.stringify(params), apiObject, user, isAuthLoading]);
+  
   useEffect(() => {
     fetch();
   }, [fetch]);
