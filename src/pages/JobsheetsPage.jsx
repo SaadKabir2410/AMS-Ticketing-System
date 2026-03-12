@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import ResourcePage from '../component/common/ResourcePage';
-import { DB } from '../data/DB';
+import { jobsheetsApi } from '../services/api/jobsheets';
 import { Download, RotateCcw } from 'lucide-react';
 
 const PROJECTS = ['AMS central Monitoring', 'LIS', 'Others', 'AMS Internal'];
@@ -193,7 +193,7 @@ export default function JobsheetsPage() {
     return (
         <ResourcePage
             title="Jobsheets"
-            apiObject={DB.jobsheets}
+            apiObject={jobsheetsApi}
             columns={columns}
             ModalComponent={DummyModal}
             createButtonText="New"

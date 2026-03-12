@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, IconButton, Autocomplete, TextField } from '@mui/material';
 import { X, Loader2, Check, AlertCircle } from 'lucide-react';
-import { DB } from '../../data/DB';
+import { sitesApi } from '../../services/api/sites';
+import { countriesApi } from '../../services/api/countries';
 
 const EMPTY = {
     name: '',
@@ -74,7 +75,7 @@ export default function SiteModal({ open, onClose, onSubmit, site = null, loadin
 
         setOcnChecking(true);
         try {
-            const res = await DB.sites.checkOcnExists(ocn, controller.signal);
+            const res = await sitesApi.checkOcnExists(ocn, controller.signal);
 
             // If this request was aborted (superceded by a newer check), bail out
             if (controller.signal.aborted) return;
@@ -124,7 +125,7 @@ export default function SiteModal({ open, onClose, onSubmit, site = null, loadin
             setLoadingCountries(true);
             try {
                 // DB.countries.getAll uses the shared `api` instance—sends auth token automatically
-                const data = await DB.countries.getAll();
+                const data = await countriesApi.getAll();
                 const list = Array.isArray(data) ? data : (data?.items || []);
                 setCountries([...list].sort((a, b) => a.name.localeCompare(b.name)));
             } catch (error) {

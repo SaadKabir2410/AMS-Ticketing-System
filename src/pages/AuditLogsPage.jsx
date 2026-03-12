@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Search, Calendar, SlidersHorizontal, ArrowLeft, History } from "lucide-react";
-import { DB } from "../data/DB";
+import { auditLogsApi } from "../services/api/auditLogs";
 import CollapsibleAuditLogTable from "../component/common/CollapsibleAuditLogTable";
 import { useResource } from "../component/hooks/useResource";
 
@@ -89,7 +89,7 @@ export default function AuditLogsPage() {
         ...dateRange
     }), [page, pageSize, debouncedPrimaryKey, debouncedUserName, entityType, operationType, dateRange]);
 
-    const { data, total, loading } = useResource(DB.auditLogs, apiParams);
+    const { data, total, loading } = useResource(auditLogsApi, apiParams);
 
     const customFilterArea = (
         <div className="flex items-center gap-4 flex-wrap">

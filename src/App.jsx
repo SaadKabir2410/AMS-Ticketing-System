@@ -18,6 +18,7 @@ import TicketCommissionReportPage from "./pages/TicketCommissionReportPage";
 import AMSTicketsReportPage from "./pages/AMSTicketsReportPage";
 import AfterWorkingHoursReportPage from "./pages/AfterWorkingHoursReportPage";
 import UsersPage from "./pages/UsersPage";
+import RolesPage from "./pages/RolesPage";
 
 function Layout({ collapsed, setCollapsed }) {
   return (
@@ -45,6 +46,7 @@ function Layout({ collapsed, setCollapsed }) {
             />
             <Route path="/reports/tickets" element={<AMSTicketsReportPage />} />
             <Route path="/users" element={<UsersPage />} />
+            <Route path="/roles" element={<RolesPage />} />
 
             <Route path="/audit-logs" element={<AuditLogsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />

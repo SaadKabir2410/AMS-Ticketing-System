@@ -1,5 +1,5 @@
 import ResourcePage from "../component/common/ResourcePage";
-import { DB } from "../data/DB"
+import { sitesApi } from "../services/api/sites"
 import SiteModal from "../component/common/SiteModal"
 import SiteDetailModal, { SiteDetailContent } from "../component/common/SiteDetailModal"
 import DeleteConfirmModal from '../component/common/DeleteConfirmation'
@@ -31,7 +31,7 @@ export default function SitesPage() {
     return (
         <ResourcePage
             title="Sites"
-            apiObject={DB.sites}
+            apiObject={sitesApi}
             columns={columns}
             ModalComponent={SiteModal}
             DetailComponent={SiteDetailModal}

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import ResourcePage from '../component/common/ResourcePage';
-import { DB } from '../data/DB';
+import { workingHoursApi } from '../services/api/workingHours';
 
 export default function UserWorkingHoursPage() {
     const columns = useMemo(() => [
@@ -46,7 +46,7 @@ export default function UserWorkingHoursPage() {
     return (
         <ResourcePage
             title="User Working Hours"
-            apiObject={DB.workingHours}
+            apiObject={workingHoursApi}
             columns={columns}
             searchPlaceholder="Search users..."
             breadcrumb={['Home', 'Management', 'Users', 'Working Hours']}

@@ -82,7 +82,10 @@ export const NAV_GROUPS = [
         id: "set-identity",
         name: "Identity Management",
         icon: UserCircle,
-        subMenu: [{ id: "set-users", name: "Users", href: "/users" }],
+        subMenu: [
+          { id: "set-users", name: "Users", href: "/users" },
+          { id: "set-roles", name: "Roles", href: "/roles" },
+        ],
       },
     ],
   },

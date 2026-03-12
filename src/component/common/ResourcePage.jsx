@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "react-oidc-context";
+import { useAuth } from "../../context/AuthContextHook";
 import {
   Search,
   Plus,
@@ -27,7 +27,7 @@ import { useToast } from "./ToastContext";
 
 import { Menu, MenuItem, ListItemIcon, ListItemText, Box } from "@mui/material";
 
-function ActionsMenu({ onAuditLog, onEdit, onDetail }) {
+function ActionsMenu({ onAuditLog, onEdit, onDetail, onPermissions, onDelete }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
@@ -50,8 +50,8 @@ function ActionsMenu({ onAuditLog, onEdit, onDetail }) {
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
-        transformOrigin={{ horizontal: "right", vertical: "top" }}
-        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+        transformOrigin={{ horizontal: "left", vertical: "top" }}
+        anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
         PaperProps={{
           sx: {
             mt: 1,
@@ -98,6 +98,23 @@ function ActionsMenu({ onAuditLog, onEdit, onDetail }) {
             />
           </MenuItem>
         )}
+        {onPermissions && (
+          <MenuItem
+            onClick={() => {
+              onPermissions();
+              handleClose();
+            }}
+            sx={{ py: 1.5 }}
+          >
+            <ListItemIcon>
+              <SlidersHorizontal size={18} className="text-blue-500" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Permissions"
+              primaryTypographyProps={{ fontSize: "13px", fontWeight: 700 }}
+            />
+          </MenuItem>
+        )}
         {onEdit && (
           <MenuItem
             onClick={() => {
@@ -111,6 +128,23 @@ function ActionsMenu({ onAuditLog, onEdit, onDetail }) {
             </ListItemIcon>
             <ListItemText
               primary="Update Data"
+              primaryTypographyProps={{ fontSize: "13px", fontWeight: 700 }}
+            />
+          </MenuItem>
+        )}
+        {onDelete && (
+          <MenuItem
+            onClick={() => {
+              onDelete();
+              handleClose();
+            }}
+            sx={{ py: 1.5 }}
+          >
+            <ListItemIcon>
+              <Trash2 size={18} className="text-rose-500" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Delete Record"
               primaryTypographyProps={{ fontSize: "13px", fontWeight: 700 }}
             />
           </MenuItem>
@@ -145,6 +179,10 @@ export default function ResourcePage({
   initialPageSize = 10,
   showPagination = true,
   smallHeaderButton = false,
+  onPermissions = null,
+  showAuditLog = true,
+  onDelete = null,
+  onDeleteVisibilityCheck = null,
 }) {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -453,7 +491,7 @@ export default function ResourcePage({
                 : null
             }
             onAuditLog={
-              apiObject.id !== "auditLogs"
+              showAuditLog && apiObject.id !== "auditLogs"
                 ? () =>
                     navigate(
                       `/audit-logs?primaryKey=${params.row.id}&entityName=${entityName || title.slice(0, -1)}`,
@@ -466,6 +504,16 @@ export default function ResourcePage({
                     setActiveItem(params.row);
                     setModals((m) => ({ ...m, edit: true }));
                   }
+                : null
+            }
+            onPermissions={
+              onPermissions
+                ? () => onPermissions(params.row)
+                : null
+            }
+            onDelete={
+              onDelete && (!onDeleteVisibilityCheck || onDeleteVisibilityCheck(params.row))
+                ? () => onDelete(params.row)
                 : null
             }
           />

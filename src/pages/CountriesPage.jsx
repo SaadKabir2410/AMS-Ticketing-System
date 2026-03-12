@@ -1,5 +1,5 @@
 import ResourcePage from '../component/common/ResourcePage';
-import { DB } from '../data/DB';
+import { countriesApi } from '../services/api/countries';
 import CountryModal from '../component/common/CountryModal';
 
 export default function CountriesPage() {
@@ -11,7 +11,7 @@ export default function CountriesPage() {
     return (
         <ResourcePage
             title="Countries"
-            apiObject={DB.countries}
+            apiObject={countriesApi}
             columns={columns}
             ModalComponent={CountryModal}
             searchPlaceholder="Search countries..."

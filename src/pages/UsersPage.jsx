@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import ResourcePage from '../component/common/ResourcePage';
-import { DB } from '../data/DB';
+import { usersApi } from '../services/api/users';
 
 export default function UsersPage() {
     const [isCustomer, setIsCustomer] = useState(false);
@@ -95,7 +95,7 @@ export default function UsersPage() {
     return (
         <ResourcePage
             title="Users"
-            apiObject={DB.users}
+            apiObject={usersApi}
             columns={columns}
             ModalComponent={UserModal}
             searchPlaceholder="Search users by name, email or phone..."

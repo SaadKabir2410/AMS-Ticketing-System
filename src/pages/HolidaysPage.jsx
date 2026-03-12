@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import ResourcePage from '../component/common/ResourcePage';
-import { DB } from '../data/DB';
+import { holidaysApi } from '../services/api/holidays';
 import { RotateCcw, Check, X } from 'lucide-react';
 
 // Highlight matching text within a string
@@ -233,7 +233,7 @@ export default function HolidaysPage() {
     return (
         <ResourcePage
             title="Holidays"
-            apiObject={DB.holidays}
+            apiObject={holidaysApi}
             columns={columns}
             searchPlaceholder="Global search..."
             breadcrumb={['Home', 'Management', 'Lookups', 'Holidays']}

@@ -1,5 +1,5 @@
 import ResourcePage from '../component/common/ResourcePage';
-import { DB } from '../data/DB';
+import { workCodesApi } from '../services/api/workCodes';
 import WorkCodeModal from '../component/common/WorkCodeModal';
 
 export default function WorkCodesPage() {
@@ -11,7 +11,7 @@ export default function WorkCodesPage() {
     return (
         <ResourcePage
             title="Work Done Codes"
-            apiObject={DB.workCodes}
+            apiObject={workCodesApi}
             columns={columns}
             ModalComponent={WorkCodeModal}
             searchPlaceholder="Search work codes..."

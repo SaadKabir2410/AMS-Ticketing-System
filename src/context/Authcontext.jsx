@@ -166,12 +166,14 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider
       value={{
         user,
+        isAuthenticated: !!user,
         loading,
         error,
         clearError,
         register,
         login,
         logout,
+        signinRedirect: () => (window.location.href = "/login"),
       }}
     >
       {children}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Dialog, IconButton } from '@mui/material';
 import { X, Loader2, Check, AlertCircle } from 'lucide-react';
-import { DB } from '../../data/DB';
+import { workCodesApi } from '../../services/api/workCodes';
 
 const EMPTY = { description: '', code: '' };
 
@@ -45,7 +45,7 @@ export default function WorkCodeModal({ open, onClose, onSubmit, item = null, lo
 
         setCheckingCode(true);
         try {
-            const data = await DB.workCodes.checkCodeExists(code, abortControllerRef.current.signal);
+            const data = await workCodesApi.checkCodeExists(code, abortControllerRef.current.signal);
             const items = data.items || [];
             const codeLower = code.toLowerCase();
 

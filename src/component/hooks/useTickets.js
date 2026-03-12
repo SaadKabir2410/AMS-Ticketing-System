@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { DB } from "../../data/DB";
-import { useAuth } from "react-oidc-context";
+import { ticketsApi } from "../../services/api/tickets";
+import { useAuth } from "../../context/AuthContextHook";
 
 // useTickets — list with search, filter, sort, pagination
 export function useTickets(params = {}) {
@@ -19,7 +19,7 @@ export function useTickets(params = {}) {
     setLoading(true);
     setError(null);
     try {
-      const res = await DB.tickets.getAll(params);
+      const res = await ticketsApi.getAll(params);
       setData(res.data);
       setTotal(res.total);
       setTotalPages(res.totalPages);
@@ -52,7 +52,7 @@ export function useTicket(id) {
     }
     setLoading(true);
     try {
-      const res = await DB.tickets.getById(id);
+      const res = await ticketsApi.getById(id);
       setData(res);
     } catch (e) {
       setError(e.message);
@@ -75,7 +75,7 @@ export function useTicketStats() {
 
   useEffect(() => {
     if (auth.isAuthenticated) {
-      DB.tickets.getStats().then((s) => {
+      ticketsApi.getStats().then((s) => {
         setStats(s);
         setLoading(false);
       });
@@ -99,7 +99,7 @@ export function useCreateTicket() {
     setLoading(true);
     setError(null);
     try {
-      const ticket = await DB.tickets.create(payload);
+      const ticket = await ticketsApi.create(payload);
       return ticket;
     } catch (e) {
       setError(e.message);
@@ -126,7 +126,7 @@ export function useUpdateTicket() {
     setLoading(true);
     setError(null);
     try {
-      const ticket = await DB.tickets.update(id, payload);
+      const ticket = await ticketsApi.update(id, payload);
       return ticket;
     } catch (e) {
       setError(e.message);
@@ -151,7 +151,7 @@ export function useDeleteTicket() {
     }
     setLoading(true);
     try {
-      await DB.tickets.delete(id);
+      await ticketsApi.delete(id);
       return true;
     } catch {
       return false;

@@ -1,6 +1,6 @@
 import { Plus } from 'lucide-react'
 import ResourcePage from '../component/common/ResourcePage'
-import { DB } from '../data/DB'
+import { ticketsApi } from '../services/api/tickets'
 import TicketModal from '../component/common/TicketModal'
 import TicketDetailModal from '../component/common/TicketDetailModal'
 import DeleteConfirmModal from '../component/common/DeleteConfirmation'
@@ -52,7 +52,7 @@ export default function AMSTicketsPage() {
     return (
         <ResourcePage
             title="AMS Tickets"
-            apiObject={DB.tickets}
+            apiObject={ticketsApi}
             columns={columns}
             ModalComponent={TicketModal}
             DetailComponent={TicketDetailModal}
