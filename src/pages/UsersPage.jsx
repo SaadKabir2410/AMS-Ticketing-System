@@ -8,9 +8,14 @@ export default function UsersPage() {
     const columns = useMemo(() => [
         {
             key: 'name',
-            label: 'USER NAME',
+            label: 'DISPLAY NAME',
             bold: true,
             flex: 1.5
+        },
+        {
+            key: 'userName',
+            label: 'USERNAME',
+            flex: 1
         },
         {
             key: 'email',
@@ -31,15 +36,7 @@ export default function UsersPage() {
                     2: 'Employee',
                     3: 'Client',
                 };
-                const label = types[val] || val || 'Regular';
-                const style = val === 1 ? 'bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-400' : 
-                             val === 3 ? 'bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-400' :
-                             'bg-blue-100 text-blue-600 dark:bg-blue-500/15 dark:text-blue-400';
-                return (
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${style}`}>
-                        {label}
-                    </span>
-                );
+                return <span className="text-sm text-slate-500 dark:text-slate-400">{types[val] || val || 'Regular'}</span>;
             }
         },
         {
@@ -107,6 +104,7 @@ export default function UsersPage() {
             entityName="User"
             customFilterArea={customFilterArea}
             extraParams={{ isCustomer }}
+            showAuditLog={false}
         />
     );
 }

@@ -57,6 +57,14 @@ export const ticketsApi = {
     apiClient.put(`/api/app/tickets/${id}`, data).then((r) => r.data),
   delete: (id) => apiClient.delete(`/api/app/tickets/${id}`).then((r) => r.data),
   getStats: () => apiClient.get("/api/app/tickets/stats").then((r) => r.data),
+
+  // AMS Ticket specific APIs
+  isAnyTicketsOpen: (data) => 
+    apiClient.post("/api/app/a-mSTicket/is-any-tickets-open", data).then((r) => r.data),
+  closeAMSTicket: (id, data) => 
+    apiClient.post(`/api/app/a-mSTicket/${id}/close-aMSTicket`, data).then((r) => r.data),
+  voidAMSTicket: (id, data) => 
+    apiClient.post(`/api/app/a-mSTicket/${id}/void-aMSTicket`, data).then((r) => r.data),
 };
 
 export default ticketsApi;

@@ -1,6 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, RotateCcw, FileText, ArrowLeftRight } from "lucide-react";
+import { Autocomplete, TextField } from "@mui/material";
+import apiClient from "../services/apiClient";
+import countriesApi from "../services/api/countries";
+import usersApi from "../services/api/users";
+import workCodesApi from "../services/api/workCodes";
+import ticketsApi from "../services/api/tickets";
+import { Loader2, CheckCircle, Ban, DoorOpen } from "lucide-react";
 
 const STATUS_OPTIONS = ["Closed", "All", "Open", "Void"];
 const TICKET_TYPES = [
@@ -25,6 +32,38 @@ export default function AMSTicketsReportPage() {
     ticketNumber: "",
   });
 
+  const [countriesList, setCountriesList] = useState([]);
+  const [customersList, setCustomersList] = useState([]);
+  const [workCodesList, setWorkCodesList] = useState([]);
+  const [performedList, setPerformedList] = useState([]);
+  
+  const [reportData, setReportData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchDropdownData = async () => {
+      try {
+        const [countriesData, customersData, workCodesData, performedData] =
+          await Promise.all([
+            countriesApi.getAll().catch(() => ({ items: [] })),
+            usersApi
+              .getAll({ isCustomer: true, perPage: 1000 })
+              .catch(() => ({ items: [] })),
+            workCodesApi.getAll().catch(() => ({ items: [] })),
+            usersApi.getAll({ perPage: 1000 }).catch(() => ({ items: [] })),
+          ]);
+
+        setCountriesList(countriesData?.items || countriesData || []);
+        setCustomersList(customersData?.items || customersData || []);
+        setWorkCodesList(workCodesData?.items || workCodesData || []);
+        setPerformedList(performedData?.items || performedData || []);
+      } catch (error) {
+        console.error("Failed to load dropdown data:", error);
+      }
+    };
+    fetchDropdownData();
+  }, []);
+
   const handleClear = () => {
     setFilters({
       cmsNextTicketNo: "",
@@ -40,12 +79,85 @@ export default function AMSTicketsReportPage() {
     });
   };
 
-  const handleGetReport = () => {
-    alert("Generating AMS Tickets Report...");
+  const handleGetReport = async () => {
+    try {
+      setLoading(true);
+      const rawParams = {
+        UserId: "",
+        SiteName: "",
+        SiteOCN: "",
+        TicketIncomingChannel: "",
+        TicketForwardedBy: "",
+        CMSNextTicketNo: filters.cmsNextTicketNo || "",
+        CMSNextTicketNumbers: "",
+        IssueDiscription: "",
+        TicketReceivedDate: "",
+        CMSTicketClosedOn: "",
+        TicketResolutionVerifiedOn: "",
+        Status: filters.status !== "All" ? filters.status : "",
+        TicketType: filters.ticketType || "",
+        ServicePlannedType: "",
+        CountryId: filters.country || "",
+        CustomerUserId: filters.customer || "",
+        WorkDoneCodeIds: filters.workDoneCode || "",
+        PerformedByUsers: filters.performed || "",
+        TicketNumbers: filters.ticketNumber || "",
+        CompressedTicketNumbers: "",
+        DateFrom: filters.dateFrom || "",
+        DateTo: filters.dateTo || "",
+      };
+
+      const params = Object.fromEntries(
+        Object.entries(rawParams).filter(
+          ([_, v]) => v !== "" && v !== null && v !== undefined,
+        ),
+      );
+
+      const response = await apiClient.get(
+        "/api/app/a-mSTicket/a-mSTicket-reports",
+        { params },
+      );
+      
+      const items = response.data?.items || response.data || [];
+      // Ensure we always have an array even if the API returns an object format
+      setReportData(Array.isArray(items) ? items : []);
+      
+      setLoading(false);
+    } catch (error) {
+      setLoading(false);
+      console.error("Failed to get report:", error);
+      alert("Failed to retrieve report. See console for details.");
+    }
   };
 
   const handleCompareTicket = () => {
     alert("Comparing Tickets...");
+  };
+
+  const handleAction = async (actionType) => {
+    const ticketId = filters.ticketNumber;
+    if (!ticketId) {
+      alert("Please enter a Ticket Number in the filter first.");
+      return;
+    }
+
+    try {
+      if (actionType === "open") {
+        await ticketsApi.isAnyTicketsOpen({ id: ticketId });
+        alert(`Checked/Opened Ticket: ${ticketId}`);
+      } else if (actionType === "close") {
+        await ticketsApi.closeAMSTicket(ticketId, {});
+        alert(`Closed Ticket: ${ticketId}`);
+      } else if (actionType === "void") {
+        await ticketsApi.voidAMSTicket(ticketId, {});
+        alert(`Voided Ticket: ${ticketId}`);
+      }
+      // Refresh the report list after action
+      handleGetReport();
+    } catch (error) {
+      console.error(`Failed to ${actionType} ticket:`, error);
+      alert(`Error trying to ${actionType} ticket!`);
+    }
   };
 
   const filterInputClass =
@@ -97,10 +209,32 @@ export default function AMSTicketsReportPage() {
               </button>
               <button
                 onClick={handleGetReport}
-                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-md shadow-blue-500/20"
+                disabled={loading}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-md shadow-blue-500/20"
               >
-                <FileText size={14} />
-                Get Report
+                {loading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                {loading ? "Loading..." : "Get Report"}
+              </button>
+              <button
+                onClick={() => handleAction("open")}
+                className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-md shadow-amber-500/20"
+              >
+                <DoorOpen size={14} />
+                Open
+              </button>
+              <button
+                onClick={() => handleAction("close")}
+                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-md shadow-emerald-500/20"
+              >
+                <CheckCircle size={14} />
+                Close
+              </button>
+              <button
+                onClick={() => handleAction("void")}
+                className="flex items-center gap-2 px-4 py-2.5 bg-slate-600 hover:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-md shadow-slate-500/20"
+              >
+                <Ban size={14} />
+                Void
               </button>
               <button
                 onClick={handleCompareTicket}
@@ -186,14 +320,38 @@ export default function AMSTicketsReportPage() {
               <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
                 Country
               </label>
-              <input
-                type="text"
-                placeholder="Country..."
-                value={filters.country}
-                onChange={(e) =>
-                  setFilters({ ...filters, country: e.target.value })
+              <Autocomplete
+                options={countriesList}
+                getOptionLabel={(option) => option.name || option || ""}
+                value={
+                  countriesList.find(
+                    (c) => (c.name || c) === filters.country,
+                  ) || null
                 }
-                className={filterInputClass}
+                onChange={(e, newValue) => {
+                  setFilters({
+                    ...filters,
+                    country: newValue ? newValue.name || newValue : "",
+                  });
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "0.75rem",
+                    padding: "2.5px 12px",
+                    fontSize: "11px",
+                    fontWeight: "bold",
+                    backgroundColor: "transparent",
+                    "& fieldset": { border: "none" },
+                  },
+                }}
+                className="bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all shadow-sm w-full text-slate-800 dark:text-slate-200"
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search country..."
+                    variant="outlined"
+                  />
+                )}
               />
             </div>
 
@@ -221,14 +379,39 @@ export default function AMSTicketsReportPage() {
               <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
                 Customer
               </label>
-              <input
-                type="text"
-                placeholder="Customer..."
-                value={filters.customer}
-                onChange={(e) =>
-                  setFilters({ ...filters, customer: e.target.value })
+              <Autocomplete
+                options={customersList}
+                getOptionLabel={(option) =>
+                  option.name || option.userName || option.email || option || ""
                 }
-                className={filterInputClass}
+                value={
+                  customersList.find((c) => (c.id || c) === filters.customer) ||
+                  null
+                }
+                onChange={(e, newValue) => {
+                  setFilters({
+                    ...filters,
+                    customer: newValue ? newValue.id || newValue : "",
+                  });
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "0.75rem",
+                    padding: "2.5px 12px",
+                    fontSize: "11px",
+                    fontWeight: "bold",
+                    backgroundColor: "transparent",
+                    "& fieldset": { border: "none" },
+                  },
+                }}
+                className="bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all shadow-sm w-full text-slate-800 dark:text-slate-200"
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search customer..."
+                    variant="outlined"
+                  />
+                )}
               />
             </div>
 
@@ -236,14 +419,46 @@ export default function AMSTicketsReportPage() {
               <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
                 Work Done Code
               </label>
-              <input
-                type="text"
-                placeholder="Work code..."
-                value={filters.workDoneCode}
-                onChange={(e) =>
-                  setFilters({ ...filters, workDoneCode: e.target.value })
+              <Autocomplete
+                options={workCodesList}
+                getOptionLabel={(option) =>
+                  option.code ||
+                  option.description ||
+                  option.name ||
+                  option ||
+                  ""
                 }
-                className={filterInputClass}
+                value={
+                  workCodesList.find(
+                    (w) => (w.id || w.code || w) === filters.workDoneCode,
+                  ) || null
+                }
+                onChange={(e, newValue) => {
+                  setFilters({
+                    ...filters,
+                    workDoneCode: newValue
+                      ? newValue.id || newValue.code || newValue
+                      : "",
+                  });
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "0.75rem",
+                    padding: "2.5px 12px",
+                    fontSize: "11px",
+                    fontWeight: "bold",
+                    backgroundColor: "transparent",
+                    "& fieldset": { border: "none" },
+                  },
+                }}
+                className="bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all shadow-sm w-full text-slate-800 dark:text-slate-200"
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search work code..."
+                    variant="outlined"
+                  />
+                )}
               />
             </div>
 
@@ -251,14 +466,40 @@ export default function AMSTicketsReportPage() {
               <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
                 Performed
               </label>
-              <input
-                type="text"
-                placeholder="Performed by..."
-                value={filters.performed}
-                onChange={(e) =>
-                  setFilters({ ...filters, performed: e.target.value })
+              <Autocomplete
+                options={performedList}
+                getOptionLabel={(option) =>
+                  option.name || option.userName || option.email || option || ""
                 }
-                className={filterInputClass}
+                value={
+                  performedList.find(
+                    (c) => (c.id || c) === filters.performed,
+                  ) || null
+                }
+                onChange={(e, newValue) => {
+                  setFilters({
+                    ...filters,
+                    performed: newValue ? newValue.id || newValue : "",
+                  });
+                }}
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: "0.75rem",
+                    padding: "2.5px 12px",
+                    fontSize: "11px",
+                    fontWeight: "bold",
+                    backgroundColor: "transparent",
+                    "& fieldset": { border: "none" },
+                  },
+                }}
+                className="bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all shadow-sm w-full text-slate-800 dark:text-slate-200"
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Search user..."
+                    variant="outlined"
+                  />
+                )}
               />
             </div>
 
@@ -279,6 +520,7 @@ export default function AMSTicketsReportPage() {
           </div>
         </div>
       </div>
+
     </div>
   );
 }

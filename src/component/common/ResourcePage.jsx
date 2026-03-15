@@ -427,19 +427,20 @@ export default function ResourcePage({
     );
 
     const HighlightText = ({ text, searchTerm, className }) => {
+      const baseClass = `flex items-center truncate w-full ${className || ""}`;
       if (!searchTerm || !text)
-        return <span className={className}>{text || "—"}</span>;
+        return <div className={baseClass} title={text || "—"}>{text || "—"}</div>;
       const str = String(text);
       const idx = str.toLowerCase().indexOf(searchTerm.toLowerCase());
-      if (idx === -1) return <span className={className}>{str}</span>;
+      if (idx === -1) return <div className={baseClass} title={str}>{str}</div>;
       return (
-        <span className={className}>
+        <div className={baseClass} title={str}>
           {str.slice(0, idx)}
           <mark className="bg-yellow-200 text-yellow-900 rounded-[2px] px-[2px] font-bold">
             {str.slice(idx, idx + searchTerm.length)}
           </mark>
           {str.slice(idx + searchTerm.length)}
-        </span>
+        </div>
       );
     };
 
@@ -651,7 +652,7 @@ export default function ResourcePage({
                 }}
                 hideFooter
                 disableRowSelectionOnClick
-                getRowHeight={() => "auto"}
+                rowHeight={60}
                 sx={{
                   border: "none",
                   "& .MuiDataGrid-columnHeaders": {
@@ -667,7 +668,9 @@ export default function ResourcePage({
                   },
                   "& .MuiDataGrid-cell": {
                     borderColor: "rgba(241, 245, 249, 1)",
-                    py: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    color: "inherit",
                   },
                   "& .MuiDataGrid-row:hover": {
                     bgcolor: "rgba(59, 130, 246, 0.04)",
