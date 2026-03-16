@@ -7,7 +7,7 @@ import countriesApi from "../services/api/countries";
 import usersApi from "../services/api/users";
 import workCodesApi from "../services/api/workCodes";
 import ticketsApi from "../services/api/tickets";
-import { Loader2, CheckCircle, Ban, DoorOpen } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const STATUS_OPTIONS = ["Closed", "All", "Open", "Void"];
 const TICKET_TYPES = [
@@ -36,7 +36,7 @@ export default function AMSTicketsReportPage() {
   const [customersList, setCustomersList] = useState([]);
   const [workCodesList, setWorkCodesList] = useState([]);
   const [performedList, setPerformedList] = useState([]);
-  
+
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -117,11 +117,11 @@ export default function AMSTicketsReportPage() {
         "/api/app/a-mSTicket/a-mSTicket-reports",
         { params },
       );
-      
+
       const items = response.data?.items || response.data || [];
       // Ensure we always have an array even if the API returns an object format
       setReportData(Array.isArray(items) ? items : []);
-      
+
       setLoading(false);
     } catch (error) {
       setLoading(false);
@@ -134,34 +134,9 @@ export default function AMSTicketsReportPage() {
     alert("Comparing Tickets...");
   };
 
-  const handleAction = async (actionType) => {
-    const ticketId = filters.ticketNumber;
-    if (!ticketId) {
-      alert("Please enter a Ticket Number in the filter first.");
-      return;
-    }
-
-    try {
-      if (actionType === "open") {
-        await ticketsApi.isAnyTicketsOpen({ id: ticketId });
-        alert(`Checked/Opened Ticket: ${ticketId}`);
-      } else if (actionType === "close") {
-        await ticketsApi.closeAMSTicket(ticketId, {});
-        alert(`Closed Ticket: ${ticketId}`);
-      } else if (actionType === "void") {
-        await ticketsApi.voidAMSTicket(ticketId, {});
-        alert(`Voided Ticket: ${ticketId}`);
-      }
-      // Refresh the report list after action
-      handleGetReport();
-    } catch (error) {
-      console.error(`Failed to ${actionType} ticket:`, error);
-      alert(`Error trying to ${actionType} ticket!`);
-    }
-  };
 
   const filterInputClass =
-    "pl-3 pr-3 py-2.5 text-[11px] font-bold bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm w-full";
+    "px-4 py-3 text-sm font-bold bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm w-full";
 
   return (
     <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-500">
@@ -215,27 +190,7 @@ export default function AMSTicketsReportPage() {
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
                 {loading ? "Loading..." : "Get Report"}
               </button>
-              <button
-                onClick={() => handleAction("open")}
-                className="flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-md shadow-amber-500/20"
-              >
-                <DoorOpen size={14} />
-                Open
-              </button>
-              <button
-                onClick={() => handleAction("close")}
-                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-md shadow-emerald-500/20"
-              >
-                <CheckCircle size={14} />
-                Close
-              </button>
-              <button
-                onClick={() => handleAction("void")}
-                className="flex items-center gap-2 px-4 py-2.5 bg-slate-600 hover:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-md shadow-slate-500/20"
-              >
-                <Ban size={14} />
-                Void
-              </button>
+
               <button
                 onClick={handleCompareTicket}
                 className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-md shadow-emerald-500/20"
@@ -252,7 +207,7 @@ export default function AMSTicketsReportPage() {
           {/* Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
                 CMS Next Ticket No
               </label>
               <input
@@ -267,7 +222,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
                 Ticket Closed Data From
               </label>
               <input
@@ -281,7 +236,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
                 Ticket Closed Data To
               </label>
               <input
@@ -295,7 +250,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
                 Status
               </label>
               <select
@@ -317,7 +272,7 @@ export default function AMSTicketsReportPage() {
           {/* Row 2 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
                 Country
               </label>
               <Autocomplete
@@ -337,8 +292,8 @@ export default function AMSTicketsReportPage() {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "0.75rem",
-                    padding: "2.5px 12px",
-                    fontSize: "11px",
+                    padding: "6px 14px",
+                    fontSize: "14px",
                     fontWeight: "bold",
                     backgroundColor: "transparent",
                     "& fieldset": { border: "none" },
@@ -356,7 +311,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
                 Ticket Type
               </label>
               <select
@@ -376,7 +331,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
                 Customer
               </label>
               <Autocomplete
@@ -397,8 +352,8 @@ export default function AMSTicketsReportPage() {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "0.75rem",
-                    padding: "2.5px 12px",
-                    fontSize: "11px",
+                    padding: "6px 14px",
+                    fontSize: "14px",
                     fontWeight: "bold",
                     backgroundColor: "transparent",
                     "& fieldset": { border: "none" },
@@ -416,7 +371,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
                 Work Done Code
               </label>
               <Autocomplete
@@ -444,8 +399,8 @@ export default function AMSTicketsReportPage() {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "0.75rem",
-                    padding: "2.5px 12px",
-                    fontSize: "11px",
+                    padding: "6px 14px",
+                    fontSize: "14px",
                     fontWeight: "bold",
                     backgroundColor: "transparent",
                     "& fieldset": { border: "none" },
@@ -463,8 +418,8 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
-                Performed
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
+                Performed By
               </label>
               <Autocomplete
                 options={performedList}
@@ -485,8 +440,8 @@ export default function AMSTicketsReportPage() {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "0.75rem",
-                    padding: "2.5px 12px",
-                    fontSize: "11px",
+                    padding: "6px 14px",
+                    fontSize: "14px",
                     fontWeight: "bold",
                     backgroundColor: "transparent",
                     "& fieldset": { border: "none" },
@@ -504,7 +459,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black tracking-widest text-slate-400 ml-1 uppercase">
+              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
                 Ticket number
               </label>
               <input

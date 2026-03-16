@@ -52,64 +52,8 @@ function NavIcon({ name, size = 18 }) {
 }
 
 export default function Sidebar({ collapsed }) {
-  const { logout } = useAuth();
-  const [showConfirmLogout, setShowConfirmLogout] = useState(false);
-
-  const handleLogout = () => {
-    setShowConfirmLogout(true);
-  };
-
-  const confirmLogout = async () => {
-    try {
-      await logout();
-      setShowConfirmLogout(false);
-    } catch (error) {
-      console.error("Logout failed:", error);
-      // Fallback redirect
-      window.location.href = "/login";
-    }
-  };
-
   return (
     <>
-      {/* Logout Confirmation Warning Modal */}
-      {showConfirmLogout && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300"
-            onClick={() => setShowConfirmLogout(false)}
-          />
-          <div className="relative w-full max-w-sm bg-slate-900 border border-white/10 rounded-3xl p-8 shadow-2xl animate-in zoom-in-95 duration-300">
-            <div className="w-16 h-16 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-6 text-red-500">
-              <LogOut size={32} />
-            </div>
-
-            <h3 className="text-xl font-bold text-white text-center mb-2">
-              Confirm Logout
-            </h3>
-            <p className="text-slate-400 text-center mb-8 text-sm">
-              Are you sure you want to end your session? You will need to sign
-              in again to access the portal.
-            </p>
-
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                onClick={() => setShowConfirmLogout(false)}
-                className="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-white font-semibold transition-colors border border-white/5"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmLogout}
-                className="py-3 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold shadow-lg shadow-red-500/20 transition-all"
-              >
-                Yes, Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <aside
         className={clsx(
           "flex flex-col h-screen sticky top-0 border-r border-slate-200 dark:border-slate-800/10",
@@ -159,25 +103,6 @@ export default function Sidebar({ collapsed }) {
           ))}
         </nav>
 
-        <div className="p-4 bg-slate-900/50 border-t border-white/5">
-          <button
-            onClick={handleLogout}
-            className={clsx(
-              "flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all duration-200 group",
-              collapsed && "justify-center",
-            )}
-          >
-            <LogOut
-              size={20}
-              className="group-hover:-translateX-1 transition-transform"
-            />
-            {!collapsed && (
-              <span className="font-bold text-xs uppercase tracking-wider">
-                Logout
-              </span>
-            )}
-          </button>
-        </div>
       </aside>
     </>
   );

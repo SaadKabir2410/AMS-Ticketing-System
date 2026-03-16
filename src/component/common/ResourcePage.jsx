@@ -529,6 +529,10 @@ export default function ResourcePage({
     apiObject.id,
     entityName,
     title,
+    columns,
+    search,
+    filterField,
+    filterValue,
   ]);
 
   return (
@@ -536,7 +540,7 @@ export default function ResourcePage({
       {/* ── Standard Card Layout ─────────────────── */}
       <div className="bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 shadow-xl overflow-hidden flex flex-col flex-1">
         {/* Header Section */}
-        <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2 shrink-0">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2 shrink-0">
           {breadcrumb.length > 0 && (
             <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
               {breadcrumb.map((b, i) => (
@@ -557,15 +561,15 @@ export default function ResourcePage({
             </nav>
           )}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate(-1)}
-                className="p-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
+                className="p-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
               >
-                <ArrowLeft size={22} />
+                <ArrowLeft size={18} />
               </button>
               <div>
-                <h1 className="text-3xl font-black text-slate-800 dark:text-white tracking-tight leading-none">
+                <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight leading-none">
                   {title}
                 </h1>
               </div>
@@ -577,11 +581,11 @@ export default function ResourcePage({
                   onClick={() => setModals((m) => ({ ...m, create: true }))}
                   className={
                     smallHeaderButton
-                      ? "px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider rounded-xl shadow-md transition-all active:scale-95"
-                      : "flex items-center gap-3 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-blue-100 dark:shadow-none transition-all active:scale-95"
+                      ? "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black uppercase tracking-wider rounded-lg shadow-md transition-all active:scale-95"
+                      : "flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-blue-100 dark:shadow-none transition-all active:scale-95"
                   }
                 >
-                  {!smallHeaderButton && <Plus size={20} />}
+                  {!smallHeaderButton && <Plus size={16} />}
                   {createButtonText}
                 </button>
               )}
@@ -591,20 +595,20 @@ export default function ResourcePage({
 
         {/* Toolbar Section */}
         {(showSearchBar || showFilterBar || customFilterArea) && (
-          <div className="px-8 py-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-white dark:bg-transparent shrink-0 flex-wrap gap-4">
+          <div className="px-6 py-3 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-white dark:bg-transparent shrink-0 flex-wrap gap-4">
             <div className="flex items-center gap-6 flex-1 min-w-[300px]">
               {showSearchBar && (
-                <div className="relative w-full max-w-sm group">
+                <div className="relative w-full max-w-[280px] group">
                   <Search
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
                   />
                   <input
                     type="text"
                     placeholder={searchPlaceholder}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 text-sm bg-slate-50 dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-2xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white dark:focus:bg-[#242938] transition-all font-medium"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white dark:focus:bg-[#242938] transition-all font-medium"
                   />
                 </div>
               )}
@@ -652,15 +656,18 @@ export default function ResourcePage({
                 }}
                 hideFooter
                 disableRowSelectionOnClick
-                rowHeight={60}
+                rowHeight={48}
+                columnHeaderHeight={48}
                 sx={{
                   border: "none",
                   "& .MuiDataGrid-columnHeaders": {
                     bgcolor: "rgba(248, 250, 252, 0.8)",
                     borderBottom: "2px solid rgba(226, 232, 240, 1)",
+                    minHeight: "48px !important",
+                    maxHeight: "48px !important",
                     "& .MuiDataGrid-columnHeaderTitle": {
                       fontWeight: 800,
-                      fontSize: "11px",
+                      fontSize: "10px",
                       color: "rgb(71 85 105)",
                       textTransform: "uppercase",
                       letterSpacing: "0.05em",
@@ -695,7 +702,7 @@ export default function ResourcePage({
 
             {/* Standard Pagination Footer */}
             {showPagination && (
-              <div className="px-8 py-5 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
+              <div className="px-6 py-3 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                     Rows:
@@ -706,7 +713,7 @@ export default function ResourcePage({
                       setPageSize(Number(e.target.value));
                       setPage(1);
                     }}
-                    className="px-3 py-1.5 text-xs font-black bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none transition-all cursor-pointer shadow-sm"
+                    className="px-2 py-1 text-[11px] font-black bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg outline-none transition-all cursor-pointer shadow-sm"
                   >
                     {[10, 25, 50, 100].map((s) => (
                       <option key={s} value={s}>
@@ -729,37 +736,37 @@ export default function ResourcePage({
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={handleFirstPage}
                     disabled={page === 1 || loading}
-                    className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 transition-all shadow-sm"
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center bg-white"
                   >
-                    <ChevronsLeft size={18} />
+                    <ChevronsLeft size={16} />
                   </button>
                   <button
                     onClick={handlePrevPage}
                     disabled={page === 1 || loading}
-                    className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
+                    className="px-3.5 py-1.5 bg-white rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-[11px] font-black uppercase tracking-widest transition-all shadow-sm"
                   >
                     Prev
                   </button>
-                  <div className="px-6 py-2.5 bg-blue-500 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-blue-500/25">
+                  <div className="px-4 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] font-black uppercase tracking-widest shadow-md shadow-blue-500/25">
                     Page {page} of {displayTotalPages || 1}{" "}
                   </div>
                   <button
                     onClick={handleNextPage}
                     disabled={page >= displayTotalPages || loading}
-                    className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-xs font-black uppercase tracking-widest transition-all shadow-sm"
+                    className="px-3.5 py-1.5 bg-white rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-[11px] font-black uppercase tracking-widest transition-all shadow-sm"
                   >
                     Next
                   </button>
                   <button
                     onClick={handleLastPage}
                     disabled={page >= displayTotalPages || loading}
-                    className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 transition-all shadow-sm"
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center bg-white"
                   >
-                    <ChevronsRight size={18} />
+                    <ChevronsRight size={16} />
                   </button>
                 </div>
               </div>
