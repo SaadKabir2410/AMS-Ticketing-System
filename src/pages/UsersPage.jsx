@@ -57,6 +57,7 @@ export default function UsersPage() {
       {
         key: "organizationType",
         label: "USER TYPE",
+        sortable: false,
         render: (val, row) => {
           const actualVal = val ?? row?.extraProperties?.organizationType;
           return (
@@ -69,6 +70,7 @@ export default function UsersPage() {
       {
         key: "siteName",
         label: "SITE NAME",
+        sortable: false,
         flex: 1.5,
       },
       {
