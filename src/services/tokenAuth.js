@@ -5,7 +5,7 @@
  * Trades a username + password for an access_token directly with the OpenIddict token endpoint.
  */
 
-const TOKEN_ENDPOINT = "/connect/token"; 
+const TOKEN_ENDPOINT = "/connect/token";
 const CLIENT_ID = "Billing_React";
 const SCOPE = "email profile roles Billing";
 const STORAGE_KEY = "tokenAuth:session";

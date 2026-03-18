@@ -14,9 +14,7 @@ export function useResource(apiObject, params) {
     if (isAuthLoading) return;
 
     if (!user) {
-      console.warn(
-        "[useResource] No user session found, skipping fetch.",
-      );
+      console.warn("[useResource] No user session found, skipping fetch.");
       return;
     }
 
@@ -60,7 +58,10 @@ export function useResource(apiObject, params) {
       setData(nextData);
       setTotal(nextTotal);
       setTotalPages(nextTotalPages);
-      console.log("[useResource] Data fetch result:", { count: nextData.length, total: nextTotal });
+      console.log("[useResource] Data fetch result:", {
+        count: nextData.length,
+        total: nextTotal,
+      });
       setError(null); // clear any previous error
     } catch (e) {
       console.error("useResource fetch error:", e);
@@ -71,7 +72,7 @@ export function useResource(apiObject, params) {
       setLoading(false);
     }
   }, [JSON.stringify(params), apiObject, user, isAuthLoading]);
-  
+
   useEffect(() => {
     fetch();
   }, [fetch]);

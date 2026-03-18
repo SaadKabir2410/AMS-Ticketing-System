@@ -73,10 +73,10 @@ export default function Sidebar({ collapsed }) {
           </div>
           {!collapsed && (
             <div className="flex flex-col animate-fade-in">
-              <span className="font-extrabold text-[15px] leading-none tracking-tight text-white uppercase">
+              <span className=" text-[15px] leading-none text-white ">
                 Sureze
               </span>
-              <span className="text-[10px] text-blue-400 font-bold tracking-[2px] mt-1 uppercase">
+              <span className="text-[10px] text-blue-400 tracking-[2px] mt-1 ">
                 Dashboard
               </span>
             </div>
@@ -89,7 +89,7 @@ export default function Sidebar({ collapsed }) {
           {NAV_GROUPS.map((group, idx) => (
             <div key={idx} className="space-y-1">
               {!collapsed && (
-                <p className="px-4 text-[12px] font-black uppercase tracking-[1.5px] text-slate-500/80 mb-3">
+                <p className="px-4 text-[12px] tracking-[1.5px] text-slate-500/80 mb-3">
                   {group.title}
                 </p>
               )}
@@ -102,7 +102,6 @@ export default function Sidebar({ collapsed }) {
             </div>
           ))}
         </nav>
-
       </aside>
     </>
   );
@@ -151,7 +150,7 @@ function NavItem({ item, collapsed }) {
         {!collapsed && (
           <span
             className={clsx(
-              "font-semibold text-sm truncate flex-1",
+              " text-sm truncate flex-1",
               active ? "text-white" : "",
             )}
           >
@@ -181,7 +180,7 @@ function NavItem({ item, collapsed }) {
 
       {/* Simplified Tooltip for Collapsed State */}
       {collapsed && (
-        <div className="absolute left-full ml-4 px-3 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 transform translate-x-[-10px] group-hover:translate-x-0 whitespace-nowrap z-50 shadow-xl border border-white/10">
+        <div className="absolute left-full ml-4 px-3 py-2 bg-slate-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 transform translate-x-[-10px] group-hover:translate-x-0 whitespace-nowrap z-50 shadow-xl border border-white/10">
           {item.name}
           {/* Tooltip Arrow */}
           <div className="absolute top-1/2 -left-1 transform -translate-y-1/2 border-y-4 border-y-transparent border-r-4 border-r-slate-900" />
@@ -200,7 +199,7 @@ function NavItem({ item, collapsed }) {
                   className={clsx(
                     "block px-3 py-2 text-xs rounded-lg transition-all",
                     subActive
-                      ? "text-blue-400 font-bold bg-blue-500/5"
+                      ? "text-blue-400 bg-blue-500/5"
                       : "text-slate-500 hover:text-white hover:bg-white/5",
                   )}
                 >

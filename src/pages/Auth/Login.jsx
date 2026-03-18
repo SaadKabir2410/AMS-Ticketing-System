@@ -31,7 +31,7 @@ function InputField({
     <div className="space-y-1.5">
       <label
         htmlFor={id}
-        className="text-sm font-medium text-slate-700 dark:text-slate-300 ml-1"
+        className="text-sm text-slate-700 dark:text-slate-300 ml-1"
       >
         {label}
       </label>
@@ -78,7 +78,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
-  
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -136,21 +136,21 @@ export default function LoginPage() {
           <div className="flex flex-col items-center gap-10 mb-16 group relative">
             <style>
               {`
-                @keyframes float {
-                  0%, 100% { transform: translateY(0px); }
-                  50% { transform: translateY(-20px); }
-                }
-                @keyframes rotate-slow {
-                  from { transform: rotate(0deg); }
-                  to { transform: rotate(360deg); }
-                }
-                .logo-container {
-                  animation: float 6s ease-in-out infinite;
-                }
-                .ray {
-                  animation: rotate-slow 15s linear infinite;
-                }
-              `}
+ @keyframes float {
+ 0%, 100% { transform: translateY(0px); }
+ 50% { transform: translateY(-20px); }
+ }
+ @keyframes rotate-slow {
+ from { transform: rotate(0deg); }
+ to { transform: rotate(360deg); }
+ }
+ .logo-container {
+ animation: float 6s ease-in-out infinite;
+ }
+ .ray {
+ animation: rotate-slow 15s linear infinite;
+ }
+ `}
             </style>
 
             <div className="relative logo-container">
@@ -169,12 +169,12 @@ export default function LoginPage() {
             </div>
 
             <div className="relative">
-              <h2 className="text-5xl font-black text-white tracking-tighter mt-1">
+              <h2 className="text-5xl text-white tracking-tighter mt-1">
                 SUREZE
               </h2>
               <div className="flex items-center gap-2 justify-center mt-2">
                 <div className="h-[2px] w-8 bg-gradient-to-r from-transparent to-blue-500" />
-                <span className="text-[10px] font-bold text-blue-400/80 tracking-[0.4em] uppercase">
+                <span className="text-[10px] text-blue-400/80 tracking-[0.4em] ">
                   YOUR ICT PARTNER
                 </span>
                 <div className="h-[2px] w-8 bg-gradient-to-l from-transparent to-blue-500" />
@@ -182,7 +182,7 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <h2 className="text-3xl font-bold text-slate-300 mb-3 leading-tight">
+          <h2 className="text-3xl text-slate-300 mb-3 leading-tight">
             Manage everything
             <br />
             from one place
@@ -202,7 +202,7 @@ export default function LoginPage() {
                 key={s.label}
                 className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-sm"
               >
-                <p className="text-xl font-bold text-white">{s.value}</p>
+                <p className="text-xl text-white">{s.value}</p>
                 <p className="text-xs text-slate-400 mt-0.5">{s.label}</p>
               </div>
             ))}
@@ -223,13 +223,13 @@ export default function LoginPage() {
                 className="relative z-10 w-12 h-auto"
               />
             </div>
-            <span className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">
+            <span className="text-2xl text-slate-800 dark:text-white ">
               SUREZE
             </span>
           </div>
 
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-800 dark:text-white">
+            <h1 className="text-3xl text-slate-800 dark:text-white">
               Welcome back
             </h1>
             <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">
@@ -239,12 +239,12 @@ export default function LoginPage() {
 
           {/* Logout Warning Message */}
           {showLoggedOutMessage && (
-            <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-sm font-medium animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-sm animate-in fade-in slide-in-from-top-4 duration-500">
               <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
                 <AlertCircle size={18} />
               </div>
               <div>
-                <p className="font-bold text-amber-500">Session Ended</p>
+                <p className=" text-amber-500">Session Ended</p>
                 <p className="text-amber-500/80 text-xs">
                   You have been logged out successfully.
                 </p>
@@ -283,7 +283,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 text-white font-semibold text-sm transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0 mt-6"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 text-white text-sm transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0 mt-6"
             >
               {isLoggingIn ? (
                 <>

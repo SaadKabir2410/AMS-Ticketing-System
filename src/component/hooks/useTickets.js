@@ -112,7 +112,7 @@ export function useCreateTicket() {
   return { create, loading, error };
 }
 
-//  useUpdateTicket
+// useUpdateTicket
 export function useUpdateTicket() {
   const auth = useAuth();
   const [loading, setLoading] = useState(false);
@@ -139,7 +139,7 @@ export function useUpdateTicket() {
   return { update, loading, error };
 }
 
-//  useDeleteTicket
+// useDeleteTicket
 export function useDeleteTicket() {
   const auth = useAuth();
   const [loading, setLoading] = useState(false);

@@ -1,7 +1,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, RotateCcw, FileText, ArrowLeftRight, Download, MoreVertical } from "lucide-react";
-import { Autocomplete, TextField, Menu, MenuItem, IconButton } from "@mui/material";
+import {
+  ArrowLeft,
+  RotateCcw,
+  FileText,
+  ArrowLeftRight,
+  Download,
+  MoreVertical,
+} from "lucide-react";
+import {
+  Autocomplete,
+  TextField,
+  Menu,
+  MenuItem,
+  IconButton,
+} from "@mui/material";
 import apiClient from "../services/apiClient";
 import countriesApi from "../services/api/countries";
 import usersApi from "../services/api/users";
@@ -75,20 +88,23 @@ export default function AMSTicketsReportPage() {
           fullTicket = await ticketsApi.getAMSTicketById(ticketId);
         }
       } catch (e) {
-        console.warn("Could not fetch full ticket by id, using row data as fallback.", e);
+        console.warn(
+          "Could not fetch full ticket by id, using row data as fallback.",
+          e,
+        );
       }
 
       switch (action) {
-        case 'Close':
+        case "Close":
           await ticketsApi.closeAMSTicket(ticketId, fullTicket);
           break;
-        case 'Open':
+        case "Open":
           await ticketsApi.isAnyTicketsOpen(fullTicket);
           break;
-        case 'Void':
+        case "Void":
           await ticketsApi.voidAMSTicket(ticketId, fullTicket);
           break;
-        case 'Re-Open':
+        case "Re-Open":
           await ticketsApi.reOpenAMSTicket(ticketId, fullTicket);
           break;
         default:
@@ -112,12 +128,16 @@ export default function AMSTicketsReportPage() {
             countriesApi.getAll().catch(() => ({ items: [] })),
             usersApi.getCustomerList().catch(() => ({ items: [] })),
             workCodesApi.getAll().catch(() => ({ items: [] })),
-            usersApi.getUsersList().catch(() => ({ items: [] })),
+            usersApi.getUsersList([1, 2, 3, -1]).catch(() => ({ items: [] })),
           ]);
 
         setCountriesList(countriesData?.items || countriesData || []);
         setCustomersList(customersData?.items || customersData || []);
-        setWorkCodesList(Array.isArray(workCodesData) ? workCodesData : workCodesData?.items || []);
+        setWorkCodesList(
+          Array.isArray(workCodesData)
+            ? workCodesData
+            : workCodesData?.items || [],
+        );
         setPerformedList(performedData?.items || performedData || []);
       } catch (error) {
         console.error("Failed to load dropdown data:", error);
@@ -147,7 +167,9 @@ export default function AMSTicketsReportPage() {
       setLoading(true);
       setFormError("");
 
-      const isAnyFilterEmpty = Object.values(filters).some(val => val === "" || val === null || val === undefined);
+      const isAnyFilterEmpty = Object.values(filters).some(
+        (val) => val === "" || val === null || val === undefined,
+      );
       if (isAnyFilterEmpty) {
         setFormError("Please fill in all search fields before proceeding.");
         setLoading(false);
@@ -156,12 +178,12 @@ export default function AMSTicketsReportPage() {
 
       const formatDateStart = (d) => {
         if (!d) return undefined;
-        return d.includes('T') ? d : `${d}T00:00:00.000Z`;
+        return d.includes("T") ? d : `${d}T00:00:00.000Z`;
       };
 
       const formatDateEnd = (d) => {
         if (!d) return undefined;
-        return d.includes('T') ? d : `${d}T23:59:59.999Z`;
+        return d.includes("T") ? d : `${d}T23:59:59.999Z`;
       };
 
       const rawParams = {
@@ -170,19 +192,28 @@ export default function AMSTicketsReportPage() {
         "AMSTicketSearch.SiteOCN": "",
         "AMSTicketSearch.TicketIncomingChannel": "",
         "AMSTicketSearch.TicketForwardedBy": "",
-        "AMSTicketSearch.CMSNextTicketNo": filters.cmsNextTicketNo ? Number(filters.cmsNextTicketNo) : undefined,
+        "AMSTicketSearch.CMSNextTicketNo": filters.cmsNextTicketNo
+          ? Number(filters.cmsNextTicketNo)
+          : undefined,
         "AMSTicketSearch.CMSNextTicketNumbers": "",
         "AMSTicketSearch.IssueDiscription": "",
         "AMSTicketSearch.TicketReceivedDate": "",
         "AMSTicketSearch.TicketResolutionVerifiedOn": "",
-        "AMSTicketSearch.Status": filters.status !== "" ? filters.status : undefined,
+        "AMSTicketSearch.Status":
+          filters.status !== "" ? filters.status : undefined,
         "AMSTicketSearch.TicketType": filters.ticketType || undefined,
         "AMSTicketSearch.ServicePlannedType": "",
         "AMSTicketSearch.CountryId": filters.country || undefined,
         "AMSTicketSearch.CustomerUserId": filters.customer || undefined,
-        "AMSTicketSearch.WorkDoneCodeIds": filters.workDoneCode ? [filters.workDoneCode] : undefined,
-        "AMSTicketSearch.PerformedByUsers": filters.performed ? [filters.performed] : undefined,
-        "AMSTicketSearch.TicketNumbers": filters.ticketNumber ? [Number(filters.ticketNumber)] : undefined,
+        "AMSTicketSearch.WorkDoneCodeIds": filters.workDoneCode
+          ? [filters.workDoneCode]
+          : undefined,
+        "AMSTicketSearch.PerformedByUsers": filters.performed
+          ? [filters.performed]
+          : undefined,
+        "AMSTicketSearch.TicketNumbers": filters.ticketNumber
+          ? [Number(filters.ticketNumber)]
+          : undefined,
         "AMSTicketSearch.CompressedTicketNumbers": "",
         "AMSTicketSearch.DateFrom": formatDateStart(filters.dateFrom) || "",
         "AMSTicketSearch.DateTo": formatDateEnd(filters.dateTo) || "",
@@ -196,10 +227,14 @@ export default function AMSTicketsReportPage() {
 
       const response = await apiClient.get(
         "/api/app/a-mSTicket/a-mSTicket-reports",
-        { params }
+        { params },
       );
 
-      const items = response.data?.amsTicketReportDetailList || response.data?.items || response.data || [];
+      const items =
+        response.data?.amsTicketReportDetailList ||
+        response.data?.items ||
+        response.data ||
+        [];
       const dataArray = Array.isArray(items) ? items : [];
 
       if (asFile) {
@@ -210,16 +245,20 @@ export default function AMSTicketsReportPage() {
         }
 
         const headers = Object.keys(dataArray[0]);
-        const csvRows = dataArray.map(row => {
-          return headers.map(header => {
-            const val = row[header];
-            if (val === null || val === undefined) return '""';
-            return `"${String(val).replace(/"/g, '""')}"`;
-          }).join(",");
+        const csvRows = dataArray.map((row) => {
+          return headers
+            .map((header) => {
+              const val = row[header];
+              if (val === null || val === undefined) return '""';
+              return `"${String(val).replace(/"/g, '""')}"`;
+            })
+            .join(",");
         });
 
         const csvData = `${headers.join(",")}\n${csvRows.join("\n")}`;
-        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvData], { type: "text/csv;charset=utf-8;" });
+        const blob = new Blob([new Uint8Array([0xef, 0xbb, 0xbf]), csvData], {
+          type: "text/csv;charset=utf-8;",
+        });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
@@ -238,7 +277,9 @@ export default function AMSTicketsReportPage() {
       console.error("Failed to get report:", error);
       let errorMessage = "Failed to retrieve report.";
       if (error.response?.data?.error?.validationErrors) {
-        errorMessage = error.response.data.error.validationErrors.map(e => e.message).join('\n');
+        errorMessage = error.response.data.error.validationErrors
+          .map((e) => e.message)
+          .join("\n");
       } else if (error.response?.data?.error?.message) {
         errorMessage = error.response.data.error.message;
       } else if (error.message) {
@@ -253,7 +294,9 @@ export default function AMSTicketsReportPage() {
       setLoading(true);
       setFormError("");
 
-      const isAnyFilterEmpty = Object.values(filters).some(val => val === "" || val === null || val === undefined);
+      const isAnyFilterEmpty = Object.values(filters).some(
+        (val) => val === "" || val === null || val === undefined,
+      );
       if (isAnyFilterEmpty) {
         setFormError("Please fill in all search fields before proceeding.");
         setLoading(false);
@@ -262,40 +305,50 @@ export default function AMSTicketsReportPage() {
 
       const formatDateStart = (d) => {
         if (!d) return undefined;
-        return d.includes('T') ? d : `${d}T00:00:00.000Z`;
+        return d.includes("T") ? d : `${d}T00:00:00.000Z`;
       };
       const formatDateEnd = (d) => {
         if (!d) return undefined;
-        return d.includes('T') ? d : `${d}T23:59:59.999Z`;
+        return d.includes("T") ? d : `${d}T23:59:59.999Z`;
       };
 
       const rawParams = {
-        "AMSTicketSearch": {
-          "UserId": "",
-          "SiteName": "",
-          "SiteOCN": "",
-          "TicketIncomingChannel": "",
-          "TicketForwardedBy": "",
-          "CMSNextTicketNo": filters.cmsNextTicketNo ? Number(filters.cmsNextTicketNo) : undefined,
-          "Status": filters.status !== "" ? filters.status : undefined,
-          "TicketType": filters.ticketType || undefined,
-          "CountryId": filters.country || undefined,
-          "CustomerUserId": filters.customer || undefined,
-          "WorkDoneCodeIds": filters.workDoneCode ? [filters.workDoneCode] : undefined,
-          "PerformedByUsers": filters.performed ? [filters.performed] : undefined,
-          "TicketNumbers": filters.ticketNumber ? [Number(filters.ticketNumber)] : undefined,
-          "DateFrom": formatDateStart(filters.dateFrom) || undefined,
-          "DateTo": formatDateEnd(filters.dateTo) || undefined,
-        }
+        AMSTicketSearch: {
+          UserId: "",
+          SiteName: "",
+          SiteOCN: "",
+          TicketIncomingChannel: "",
+          TicketForwardedBy: "",
+          CMSNextTicketNo: filters.cmsNextTicketNo
+            ? Number(filters.cmsNextTicketNo)
+            : undefined,
+          Status: filters.status !== "" ? filters.status : undefined,
+          TicketType: filters.ticketType || undefined,
+          CountryId: filters.country || undefined,
+          CustomerUserId: filters.customer || undefined,
+          WorkDoneCodeIds: filters.workDoneCode
+            ? [filters.workDoneCode]
+            : undefined,
+          PerformedByUsers: filters.performed ? [filters.performed] : undefined,
+          TicketNumbers: filters.ticketNumber
+            ? [Number(filters.ticketNumber)]
+            : undefined,
+          DateFrom: formatDateStart(filters.dateFrom) || undefined,
+          DateTo: formatDateEnd(filters.dateTo) || undefined,
+        },
       };
 
       const payload = {
-        ...rawParams.AMSTicketSearch
+        ...rawParams.AMSTicketSearch,
       };
 
       // Clean up undefined/empty string properties from the API payload
-      Object.keys(payload).forEach(key => {
-        if (payload[key] === "" || payload[key] === null || payload[key] === undefined) {
+      Object.keys(payload).forEach((key) => {
+        if (
+          payload[key] === "" ||
+          payload[key] === null ||
+          payload[key] === undefined
+        ) {
           delete payload[key];
         }
       });
@@ -317,7 +370,9 @@ export default function AMSTicketsReportPage() {
       console.error("Failed to compare tickets:", error);
       let errorMessage = "Failed to compare tickets.";
       if (error.response?.data?.error?.validationErrors) {
-        errorMessage = error.response.data.error.validationErrors.map(e => e.message).join('\n');
+        errorMessage = error.response.data.error.validationErrors
+          .map((e) => e.message)
+          .join("\n");
       } else if (error.response?.data?.error?.message) {
         errorMessage = error.response.data.error.message;
       } else if (error.message) {
@@ -327,44 +382,48 @@ export default function AMSTicketsReportPage() {
     }
   };
 
-  const dynamicColumns = reportData.length > 0
-    ? Object.keys(reportData[0]).map(key => ({
-      field: key,
-      headerName: key.replace(/([A-Z])/g, ' $1').trim(), // Add space before capital letters
-      flex: 1,
-      minWidth: 150,
-      renderCell: (params) => {
-        const val = params.value;
-        if (typeof val === 'boolean') return val ? 'Yes' : 'No';
-        if (val === null || val === undefined) return '-';
-        return String(val);
-      }
-    }))
-    : [];
+  const dynamicColumns =
+    reportData.length > 0
+      ? Object.keys(reportData[0]).map((key) => ({
+          field: key,
+          headerName: key.replace(/([A-Z])/g, " $1").trim(), // Add space before capital letters
+          flex: 1,
+          minWidth: 150,
+          renderCell: (params) => {
+            const val = params.value;
+            if (typeof val === "boolean") return val ? "Yes" : "No";
+            if (val === null || val === undefined) return "-";
+            return String(val);
+          },
+        }))
+      : [];
 
   const columnsWithActions = [
     {
-      field: 'actions',
-      headerName: 'ACTIONS',
+      field: "actions",
+      headerName: "ACTIONS",
       width: 100,
       renderCell: (params) => (
-        <IconButton size="small" onClick={(e) => handleActionClick(e, params.row)}>
+        <IconButton
+          size="small"
+          onClick={(e) => handleActionClick(e, params.row)}
+        >
           <MoreVertical size={18} />
         </IconButton>
-      )
+      ),
     },
-    ...dynamicColumns
+    ...dynamicColumns,
   ];
 
   const filterInputClass =
-    "px-3 py-2 text-xs font-bold bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full";
+    "px-3 py-2 text-xs bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full";
 
   return (
     <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-500">
       <div className="bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col">
         {/* Header Section */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2 shrink-0">
-          <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+          <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3">
             <span
               onClick={() => navigate("/")}
               className="hover:text-blue-500 cursor-pointer transition-colors"
@@ -376,7 +435,7 @@ export default function AMSTicketsReportPage() {
             <span>/</span>
             <span>Reports</span>
             <span>/</span>
-            <span className="text-blue-500 font-black">AMS Tickets Report</span>
+            <span className="text-blue-500 ">AMS Tickets Report</span>
           </nav>
 
           <div className="flex items-center justify-between">
@@ -388,7 +447,7 @@ export default function AMSTicketsReportPage() {
                 <ArrowLeft size={18} />
               </button>
               <div>
-                <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight leading-none">
+                <h1 className="text-2xl text-slate-800 dark:text-white leading-none">
                   AMS Tickets Report
                 </h1>
               </div>
@@ -398,7 +457,7 @@ export default function AMSTicketsReportPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleClear}
-                className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg text-[11px] font-black uppercase tracking-wider text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all active:scale-95 focus:outline-none"
+                className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg text-[11px] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all active:scale-95 focus:outline-none"
               >
                 <RotateCcw size={14} />
                 Clear
@@ -406,24 +465,32 @@ export default function AMSTicketsReportPage() {
               <button
                 onClick={() => handleGetReport(false)}
                 disabled={loading}
-                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-[11px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm focus:outline-none"
+                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-[11px] transition-all active:scale-95 shadow-sm focus:outline-none"
               >
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+                {loading ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <FileText size={14} />
+                )}
                 {loading ? "Loading..." : "Get Report"}
               </button>
 
               <button
                 onClick={() => handleGetReport(true)}
                 disabled={loading}
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-[11px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm focus:outline-none"
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-[11px] transition-all active:scale-95 shadow-sm focus:outline-none"
               >
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                {loading ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Download size={14} />
+                )}
                 {loading ? "Exporting..." : "Excel Report"}
               </button>
 
               <button
                 onClick={handleCompareTicket}
-                className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm focus:outline-none"
+                className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] transition-all active:scale-95 shadow-sm focus:outline-none"
               >
                 <ArrowLeftRight size={14} />
                 Compare Ticket
@@ -435,7 +502,7 @@ export default function AMSTicketsReportPage() {
         {/* Filter Section */}
         <div className="px-6 py-4 bg-white dark:bg-transparent space-y-4">
           {formError && (
-            <div className="p-3 bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 rounded-lg text-xs font-bold flex items-center gap-2">
+            <div className="p-3 bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 rounded-lg text-xs flex items-center gap-2">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
@@ -446,7 +513,7 @@ export default function AMSTicketsReportPage() {
           {/* Row 1 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
+              <label className="text-[10px] text-slate-400 ml-1 mb-1">
                 CMS Next Ticket No
               </label>
               <input
@@ -461,7 +528,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
+              <label className="text-[10px] text-slate-400 ml-1 mb-1">
                 Ticket Closed Data From
               </label>
               <input
@@ -475,7 +542,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
+              <label className="text-[10px] text-slate-400 ml-1 mb-1">
                 Ticket Closed Data To
               </label>
               <input
@@ -489,13 +556,14 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
+              <label className="text-[10px] text-slate-400 ml-1 mb-1">
                 Status
               </label>
               <select
                 value={filters.status}
                 onChange={(e) => {
-                  const value = e.target.value === "" ? "" : Number(e.target.value);
+                  const value =
+                    e.target.value === "" ? "" : Number(e.target.value);
                   setFilters({ ...filters, status: value });
                 }}
                 className={filterInputClass}
@@ -512,16 +580,15 @@ export default function AMSTicketsReportPage() {
           {/* Row 2 */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
+              <label className="text-[10px] text-slate-400 ml-1 mb-1">
                 Country
               </label>
               <Autocomplete
                 options={countriesList}
                 getOptionLabel={(option) => option.name || option || ""}
                 value={
-                  countriesList.find(
-                    (c) => (c.id || c) === filters.country,
-                  ) || null
+                  countriesList.find((c) => (c.id || c) === filters.country) ||
+                  null
                 }
                 onChange={(e, newValue) => {
                   setFilters({
@@ -551,7 +618,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
+              <label className="text-[10px] text-slate-400 ml-1 mb-1">
                 Ticket Type
               </label>
               <select
@@ -571,7 +638,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
+              <label className="text-[10px] text-slate-400 ml-1 mb-1">
                 Customer
               </label>
               <Autocomplete
@@ -611,7 +678,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
+              <label className="text-[10px] text-slate-400 ml-1 mb-1">
                 Work Done Code
               </label>
               <Autocomplete
@@ -656,7 +723,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
+              <label className="text-[10px] text-slate-400 ml-1 mb-1">
                 Performed By
               </label>
               <Autocomplete
@@ -697,7 +764,7 @@ export default function AMSTicketsReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] font-black tracking-widest text-slate-400 ml-1 uppercase mb-1">
+              <label className="text-[10px] text-slate-400 ml-1 mb-1">
                 Ticket number
               </label>
               <input
@@ -717,7 +784,10 @@ export default function AMSTicketsReportPage() {
         <div className="flex-1 min-h-0 bg-white dark:bg-[#1e2436] border-t border-slate-100 dark:border-white/5 relative">
           <div className="absolute inset-0">
             <DataGrid
-              rows={reportData.map((row, index) => ({ id: row.id || row.ticketNo || index, ...row }))}
+              rows={reportData.map((row, index) => ({
+                id: row.id || row.ticketNo || index,
+                ...row,
+              }))}
               columns={columnsWithActions}
               loading={loading}
               disableRowSelectionOnClick
@@ -727,9 +797,7 @@ export default function AMSTicketsReportPage() {
                 toolbar: GridToolbar,
                 noRowsOverlay: () => (
                   <div className="h-full flex flex-col items-center justify-center p-10 space-y-4 text-slate-400">
-                    <p className="text-sm font-black uppercase tracking-tighter">
-                      No Records
-                    </p>
+                    <p className="text-sm tracking-tighter">No Records</p>
                   </div>
                 ),
               }}
@@ -742,7 +810,7 @@ export default function AMSTicketsReportPage() {
                     fontWeight: 800,
                     fontSize: "10px",
                     color: "rgb(71 85 105)",
-                    textTransform: "uppercase",
+                    textTransform: "",
                     letterSpacing: "0.05em",
                   },
                 },
@@ -759,26 +827,37 @@ export default function AMSTicketsReportPage() {
         PaperProps={{
           sx: {
             mt: 1,
-            borderRadius: '12px',
-            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+            borderRadius: "12px",
+            boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
             minWidth: 140,
-          }
+          },
         }}
       >
-        <MenuItem onClick={() => handleStatusUpdate('Open', 0)} sx={{ fontSize: "14px", fontWeight: 600, py: 1.5 }}>
+        <MenuItem
+          onClick={() => handleStatusUpdate("Open", 0)}
+          sx={{ fontSize: "14px", fontWeight: 600, py: 1.5 }}
+        >
           Open
         </MenuItem>
-        <MenuItem onClick={() => handleStatusUpdate('Close', 1)} sx={{ fontSize: "14px", fontWeight: 600, py: 1.5 }}>
+        <MenuItem
+          onClick={() => handleStatusUpdate("Close", 1)}
+          sx={{ fontSize: "14px", fontWeight: 600, py: 1.5 }}
+        >
           Close
         </MenuItem>
-        <MenuItem onClick={() => handleStatusUpdate('Void', 2)} sx={{ fontSize: "14px", fontWeight: 600, py: 1.5 }}>
+        <MenuItem
+          onClick={() => handleStatusUpdate("Void", 2)}
+          sx={{ fontSize: "14px", fontWeight: 600, py: 1.5 }}
+        >
           Void
         </MenuItem>
-        <MenuItem onClick={() => handleStatusUpdate('Re-Open', 0)} sx={{ fontSize: "14px", fontWeight: 600, py: 1.5 }}>
+        <MenuItem
+          onClick={() => handleStatusUpdate("Re-Open", 0)}
+          sx={{ fontSize: "14px", fontWeight: 600, py: 1.5 }}
+        >
           Re-Open
         </MenuItem>
       </Menu>
-
     </div>
   );
 }

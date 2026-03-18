@@ -7,6 +7,49 @@ import { AuthProvider as CustomAuthProvider } from "./context/Authcontext";
 import { BrowserRouter } from "react-router-dom";
 import { ToastProvider } from "./component/common/Toast";
 import { Component } from "react";
+import {
+  ThemeProvider as MuiThemeProvider,
+  createTheme,
+} from "@mui/material/styles";
+
+const muiTheme = createTheme({
+  typography: {
+    fontFamily: '"Inter", sans-serif',
+    allVariants: {
+      fontWeight: 400,
+      textTransform: "none",
+    },
+    button: {
+      fontWeight: 400,
+      textTransform: "none",
+    },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          fontWeight: 400,
+          textTransform: "none",
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          fontWeight: 400,
+          textTransform: "none",
+        },
+      },
+    },
+    MuiDataGrid: {
+      styleOverrides: {
+        columnHeaderTitle: {
+          fontWeight: 400,
+        },
+      },
+    },
+  },
+});
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -43,7 +86,9 @@ createRoot(document.getElementById("root")).render(
         <CustomAuthProvider>
           <ThemeProvider>
             <ToastProvider>
-              <App />
+              <MuiThemeProvider theme={muiTheme}>
+                <App />
+              </MuiThemeProvider>
             </ToastProvider>
           </ThemeProvider>
         </CustomAuthProvider>

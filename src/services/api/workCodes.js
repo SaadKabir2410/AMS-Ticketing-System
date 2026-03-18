@@ -7,7 +7,8 @@ export const workCodesApi = {
       MaxResultCount: 1000,
       Sorting: "Code asc",
     };
-    return apiClient.get("/api/app/work-done-code/paged-list", { params })
+    return apiClient
+      .get("/api/app/work-done-code/paged-list", { params })
       .then((r) => r.data?.items || r.data || []);
   },
   checkCodeExists: (code, signal) => {
@@ -29,11 +30,15 @@ export const workCodesApi = {
   },
   update: (id, data) => {
     console.log("[DB.workCodes] updating:", id, data);
-    return apiClient.put(`/api/app/work-done-code/${id}`, data).then((r) => r.data);
+    return apiClient
+      .put(`/api/app/work-done-code/${id}`, data)
+      .then((r) => r.data);
   },
   delete: (id) => {
     console.log("[DB.workCodes] deleting:", id);
-    return apiClient.delete(`/api/app/work-done-code/${id}`).then((r) => r.data);
+    return apiClient
+      .delete(`/api/app/work-done-code/${id}`)
+      .then((r) => r.data);
   },
 };
 

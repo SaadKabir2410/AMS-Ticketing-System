@@ -27,7 +27,13 @@ import { useToast } from "./ToastContext";
 
 import { Menu, MenuItem, ListItemIcon, ListItemText, Box } from "@mui/material";
 
-function ActionsMenu({ onAuditLog, onEdit, onDetail, onPermissions, onDelete }) {
+function ActionsMenu({
+  onAuditLog,
+  onEdit,
+  onDetail,
+  onPermissions,
+  onDelete,
+}) {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
@@ -204,13 +210,13 @@ export default function ResourcePage({
   const initialItem =
     initialFilterValue && initialFilterField
       ? [
-          {
-            field: initialFilterField,
-            operator: "equals",
-            value: initialFilterValue,
-            id: 1,
-          },
-        ]
+        {
+          field: initialFilterField,
+          operator: "equals",
+          value: initialFilterValue,
+          id: 1,
+        },
+      ]
       : [];
 
   const [filterModel] = useState({ items: initialItem });
@@ -232,10 +238,10 @@ export default function ResourcePage({
       setColumnFilter(
         active
           ? {
-              field: active.field,
-              operator: active.operator,
-              value: active.value,
-            }
+            field: active.field,
+            operator: active.operator,
+            value: active.value,
+          }
           : null,
       );
       setPage(1);
@@ -429,14 +435,23 @@ export default function ResourcePage({
     const HighlightText = ({ text, searchTerm, className }) => {
       const baseClass = `flex items-center truncate w-full ${className || ""}`;
       if (!searchTerm || !text)
-        return <div className={baseClass} title={text || "—"}>{text || "—"}</div>;
+        return (
+          <div className={baseClass} title={text || "—"}>
+            {text || "—"}
+          </div>
+        );
       const str = String(text);
       const idx = str.toLowerCase().indexOf(searchTerm.toLowerCase());
-      if (idx === -1) return <div className={baseClass} title={str}>{str}</div>;
+      if (idx === -1)
+        return (
+          <div className={baseClass} title={str}>
+            {str}
+          </div>
+        );
       return (
         <div className={baseClass} title={str}>
           {str.slice(0, idx)}
-          <mark className="bg-yellow-200 text-yellow-900 rounded-[2px] px-[2px] font-bold">
+          <mark className="bg-yellow-200 text-yellow-900 rounded-[2px] px-[2px] ">
             {str.slice(idx, idx + searchTerm.length)}
           </mark>
           {str.slice(idx + searchTerm.length)}
@@ -467,7 +482,7 @@ export default function ResourcePage({
           <HighlightText
             text={val}
             searchTerm={termToHighlight}
-            className={`text-sm ${col.bold ? "font-bold text-slate-800 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}
+            className={`text-sm ${col.bold ? " text-slate-800 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}
           />
         );
       },
@@ -485,35 +500,34 @@ export default function ResourcePage({
             onDetail={
               apiObject.id === "auditLogs"
                 ? () => {
-                    setActiveItem(params.row);
-                    if (detailViewMode === "side") setSidePanelOpen(true);
-                    else setModals((m) => ({ ...m, detail: true }));
-                  }
+                  setActiveItem(params.row);
+                  if (detailViewMode === "side") setSidePanelOpen(true);
+                  else setModals((m) => ({ ...m, detail: true }));
+                }
                 : null
             }
             onAuditLog={
               showAuditLog && apiObject.id !== "auditLogs"
                 ? () =>
-                    navigate(
-                      `/audit-logs?primaryKey=${params.row.id}&entityName=${entityName || title.slice(0, -1)}`,
-                    )
+                  navigate(
+                    `/audit-logs?primaryKey=${params.row.id}&entityName=${entityName || title.slice(0, -1)}`,
+                  )
                 : null
             }
             onEdit={
               ModalComponent
                 ? () => {
-                    setActiveItem(params.row);
-                    setModals((m) => ({ ...m, edit: true }));
-                  }
+                  setActiveItem(params.row);
+                  setModals((m) => ({ ...m, edit: true }));
+                }
                 : null
             }
             onPermissions={
-              onPermissions
-                ? () => onPermissions(params.row)
-                : null
+              onPermissions ? () => onPermissions(params.row) : null
             }
             onDelete={
-              onDelete && (!onDeleteVisibilityCheck || onDeleteVisibilityCheck(params.row))
+              onDelete &&
+                (!onDeleteVisibilityCheck || onDeleteVisibilityCheck(params.row))
                 ? () => onDelete(params.row)
                 : null
             }
@@ -542,7 +556,7 @@ export default function ResourcePage({
         {/* Header Section */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2 shrink-0">
           {breadcrumb.length > 0 && (
-            <nav className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">
+            <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3">
               {breadcrumb.map((b, i) => (
                 <span key={i} className="flex items-center gap-2">
                   <span
@@ -569,7 +583,7 @@ export default function ResourcePage({
                 <ArrowLeft size={18} />
               </button>
               <div>
-                <h1 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight leading-none">
+                <h1 className="text-2xl text-slate-800 dark:text-white leading-none">
                   {title}
                 </h1>
               </div>
@@ -581,8 +595,8 @@ export default function ResourcePage({
                   onClick={() => setModals((m) => ({ ...m, create: true }))}
                   className={
                     smallHeaderButton
-                      ? "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-black uppercase tracking-wider rounded-lg shadow-md transition-all active:scale-95"
-                      : "flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-blue-100 dark:shadow-none transition-all active:scale-95"
+                      ? "px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-[11px] rounded-lg shadow-md transition-all active:scale-95"
+                      : "flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-xl shadow-lg shadow-blue-100 dark:shadow-none transition-all active:scale-95"
                   }
                 >
                   {!smallHeaderButton && <Plus size={16} />}
@@ -608,7 +622,7 @@ export default function ResourcePage({
                     placeholder={searchPlaceholder}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white dark:focus:bg-[#242938] transition-all font-medium"
+                    className="w-full pl-9 pr-3 py-2.5 text-xs bg-slate-50 dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white dark:focus:bg-[#242938] transition-all "
                   />
                 </div>
               )}
@@ -625,16 +639,14 @@ export default function ResourcePage({
               <div className="m-8 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 animate-in fade-in slide-in-from-top-4">
                 <X className="shrink-0" size={20} />
                 <div className="flex-1">
-                  <p className="text-sm font-black uppercase tracking-tight">
-                    Failed to load data
-                  </p>
-                  <p className="text-xs opacity-80 font-medium">
+                  <p className="text-sm ">Failed to load data</p>
+                  <p className="text-xs opacity-80 ">
                     {error.message || "Unknown network error"}
                   </p>
                 </div>
                 <button
                   onClick={refetch}
-                  className="px-4 py-2 bg-red-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-red-700 transition-colors"
+                  className="px-4 py-2 bg-red-600 text-white text-[10px] rounded-lg hover:bg-red-700 transition-colors"
                 >
                   Retry
                 </button>
@@ -669,7 +681,7 @@ export default function ResourcePage({
                       fontWeight: 800,
                       fontSize: "10px",
                       color: "rgb(71 85 105)",
-                      textTransform: "uppercase",
+                      textTransform: "",
                       letterSpacing: "0.05em",
                     },
                   },
@@ -690,7 +702,7 @@ export default function ResourcePage({
                         <Search size={32} strokeWidth={1.5} />
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tighter">
+                        <p className="text-sm text-slate-800 dark:text-white tracking-tighter">
                           No records found
                         </p>
                       </div>
@@ -704,16 +716,14 @@ export default function ResourcePage({
             {showPagination && (
               <div className="px-6 py-3 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    Rows:
-                  </span>
+                  <span className="text-[10px] text-slate-400">Rows:</span>
                   <select
                     value={pageSize}
                     onChange={(e) => {
                       setPageSize(Number(e.target.value));
                       setPage(1);
                     }}
-                    className="px-2 py-1 text-[11px] font-black bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg outline-none transition-all cursor-pointer shadow-sm"
+                    className="px-2 py-1 text-[11px] bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg outline-none transition-all cursor-pointer shadow-sm"
                   >
                     {[10, 25, 50, 100].map((s) => (
                       <option key={s} value={s}>
@@ -722,7 +732,7 @@ export default function ResourcePage({
                     ))}
                   </select>
                   <div className="ml-4 h-4 w-[1px] bg-slate-200 dark:bg-white/10 hidden sm:block"></div>
-                  <div className="text-xs text-slate-500 font-bold hidden sm:block">
+                  <div className="text-xs text-slate-500 hidden sm:block">
                     <span className="text-slate-900 dark:text-white">
                       {displayTotal > 0 ? (page - 1) * pageSize + 1 : 0}
                     </span>
@@ -730,7 +740,7 @@ export default function ResourcePage({
                     <span className="text-slate-900 dark:text-white">
                       {Math.min(page * pageSize, displayTotal)}
                     </span>
-                    <span className="text-slate-400 font-medium"> of </span>
+                    <span className="text-slate-400 "> of </span>
                     <span className="text-slate-900 dark:text-white">
                       {displayTotal}
                     </span>
@@ -747,17 +757,17 @@ export default function ResourcePage({
                   <button
                     onClick={handlePrevPage}
                     disabled={page === 1 || loading}
-                    className="px-3.5 py-1.5 bg-white rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-[11px] font-black uppercase tracking-widest transition-all shadow-sm"
+                    className="px-3.5 py-1.5 bg-white rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-[11px] transition-all shadow-sm"
                   >
                     Prev
                   </button>
-                  <div className="px-4 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] font-black uppercase tracking-widest shadow-md shadow-blue-500/25">
+                  <div className="px-4 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] shadow-md shadow-blue-500/25">
                     Page {page} of {displayTotalPages || 1}{" "}
                   </div>
                   <button
                     onClick={handleNextPage}
                     disabled={page >= displayTotalPages || loading}
-                    className="px-3.5 py-1.5 bg-white rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-[11px] font-black uppercase tracking-widest transition-all shadow-sm"
+                    className="px-3.5 py-1.5 bg-white rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-[11px] transition-all shadow-sm"
                   >
                     Next
                   </button>
@@ -778,10 +788,10 @@ export default function ResourcePage({
             <div className="w-[600px] border-l border-slate-200 dark:border-white/10 bg-white dark:bg-[#1e2436] flex flex-col shadow-2xl animate-in slide-in-from-right duration-500 z-50">
               <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-white/2">
                 <div>
-                  <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">
+                  <h3 className="text-lg text-slate-800 dark:text-white tracking-tighter">
                     Review Details
                   </h3>
-                  <p className="text-[10px] text-blue-500 font-black uppercase tracking-widest">
+                  <p className="text-[10px] text-blue-500 ">
                     Entry ID: {activeItem?.id?.slice(0, 8)}...
                   </p>
                 </div>
@@ -815,7 +825,7 @@ export default function ResourcePage({
             submitError={createError}
           />
           <ModalComponent
-            key={activeItem?.id ? `edit-${activeItem.id}` : 'edit-none'}
+            key={activeItem?.id ? `edit-${activeItem.id}` : "edit-none"}
             open={modals.edit}
             item={activeItem}
             ticket={activeItem}
@@ -829,7 +839,7 @@ export default function ResourcePage({
       )}
       {DetailComponent && (
         <DetailComponent
-          key={activeItem?.id ? `detail-${activeItem.id}` : 'detail-none'}
+          key={activeItem?.id ? `detail-${activeItem.id}` : "detail-none"}
           open={modals.detail}
           item={activeItem}
           ticket={activeItem}

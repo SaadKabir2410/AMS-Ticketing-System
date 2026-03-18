@@ -68,7 +68,8 @@ export const sitesApi = {
       .get("/api/app/site/paged-list", { params, signal })
       .then((r) => r.data);
   },
-  getById: (id) => apiClient.get(`/api/app/site/${id}/by-id`).then((r) => r.data),
+  getById: (id) =>
+    apiClient.get(`/api/app/site/${id}/by-id`).then((r) => r.data),
   create: (data) => {
     console.log("[DB.sites] creating:", data);
     return apiClient.post("/api/app/site", data).then((r) => r.data);

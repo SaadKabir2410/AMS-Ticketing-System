@@ -1,5 +1,10 @@
 import { createContext, useState, useEffect } from "react";
-import { loginWithPassword, clearSession, getAuthState } from "../services/tokenAuth";
+import {
+  loginWithPassword,
+  clearSession,
+  getAuthState,
+} from "../services/tokenAuth";
+import { usersApi } from "../services/api/users";
 
 export const AuthContext = createContext();
 
@@ -110,18 +115,59 @@ export function AuthProvider({ children }) {
   // Login — trades username/password for a real JWT from port 3333
   const login = async ({ email, password }) => {
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      await loginWithPassword(email, password);
+      const session = await loginWithPassword(email, password);
 
-      // Derive profile info from the username (until we have a userinfo endpoint)
+      let userId = email; 
+      let actualRoles = ["admin"];
+      let actualName = email.split("@")[0];
+      let actualEmail = email;
+
+      // Extract User ID (sub) from JWT
+      if (session && session.access_token) {
+        try {
+          let base64Url = session.access_token.split(".")[1];
+          let base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+          let jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          }).join(''));
+
+          const payload = JSON.parse(jsonPayload);
+          if (payload.sub) {
+            userId = payload.sub;
+          }
+        } catch (e) {
+          console.warn("Could not decode JWT", e);
+        }
+      }
+
+      // Fetch actual user details and roles from API
+      try {
+        const userDetails = await usersApi.getById(userId);
+        if (userDetails) {
+           actualName = userDetails.name + (userDetails.surname ? " " + userDetails.surname : "");
+           actualEmail = userDetails.email || email;
+        }
+
+        const rolesRes = await usersApi.getUserRoles(userId);
+        if (rolesRes) {
+           const items = rolesRes.items || rolesRes || [];
+           if (items.length > 0) {
+             actualRoles = items.map((r) => r.name || r);
+           }
+        }
+      } catch (err) {
+        console.warn("Could not fetch user profile or roles from API, using fallbacks:", err);
+      }
+
       const userProfile = {
-        id: email, // use username/email as ID for now
-        name: email.split('@')[0],
-        email: email,
-        role: "admin",
-        avatar: email[0].toUpperCase(),
+        id: userId,
+        name: actualName,
+        email: actualEmail,
+        role: actualRoles.join(", "),
+        avatar: actualName.charAt(0).toUpperCase(),
       };
 
       localStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
@@ -129,8 +175,8 @@ export function AuthProvider({ children }) {
       setLoading(false);
       return true;
     } catch (err) {
-      console.error('[Auth] Login failed:', err.message);
-      setError(err.message || 'Invalid username or password.');
+      console.error("[Auth] Login failed:", err.message);
+      setError(err.message || "Invalid username or password.");
       setLoading(false);
       return false;
     }
@@ -140,13 +186,13 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     try {
       console.log("[Auth] Starting logout process...");
-      
+
       // 1. Clear ALL storage keys related to auth
       localStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('spike_session');
-      localStorage.removeItem('spike_users'); // Just in case
-      
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("spike_session");
+      localStorage.removeItem("spike_users"); // Just in case
+
       // 2. Clear manual password-token session (from tokenAuth.js)
       clearSession();
 
@@ -154,11 +200,11 @@ export function AuthProvider({ children }) {
       setUser(null);
 
       // 4. Redirect to login
-      window.location.href = '/login';
+      window.location.href = "/login";
     } catch (err) {
       console.error("[Auth] Logout error fallback:", err);
       // Absolute fallback to login page
-      window.location.href = '/login';
+      window.location.href = "/login";
     }
   };
 

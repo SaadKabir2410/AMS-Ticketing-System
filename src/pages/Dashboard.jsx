@@ -100,7 +100,7 @@ const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-white dark:bg-[#1e2436] border border-slate-200 dark:border-white/10 p-3 rounded-xl shadow-xl backdrop-blur-md">
-      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ">
         {label}
       </p>
       {payload.map((p) => (
@@ -109,8 +109,8 @@ const CustomTooltip = ({ active, payload, label }) => {
             className="w-2 h-2 rounded-full"
             style={{ backgroundColor: p.color }}
           />
-          <p className="text-sm font-semibold capitalize text-slate-800 dark:text-white">
-            {p.name}: <span className="font-bold">{p.value}</span>
+          <p className="text-sm capitalize text-slate-800 dark:text-white">
+            {p.name}: <span className="">{p.value}</span>
           </p>
         </div>
       ))}
@@ -138,7 +138,7 @@ function StatCard({
             <StatIcon size={20} style={{ color }} />
           </div>
           <span
-            className={`flex items-center gap-0.5 text-xs font-semibold px-2 py-1 rounded-full ${
+            className={`flex items-center gap-0.5 text-xs px-2 py-1 rounded-full ${
               positive
                 ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400"
                 : "bg-red-50 text-red-500 dark:bg-red-500/15 dark:text-red-400"
@@ -152,13 +152,16 @@ function StatCard({
             {change}
           </span>
         </div>
-        <p className="text-2xl font-bold text-slate-800 dark:text-white">
-          {value}
-        </p>
+        <p className="text-2xl text-slate-800 dark:text-white">{value}</p>
         <p className="text-xs text-slate-400 mt-1 mb-3">{label}</p>
       </div>
       <div className="h-10 mt-auto">
-        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          minWidth={1}
+          minHeight={1}
+        >
           <AreaChart
             data={sparkData}
             margin={{ top: 0, right: 0, bottom: 0, left: 0 }}
@@ -271,15 +274,11 @@ export default function Dashboard() {
         <Home size={12} />
         <span>Home</span>
         <span>/</span>
-        <span className="text-slate-600 dark:text-slate-300 font-medium">
-          Dashboard
-        </span>
+        <span className="text-slate-600 dark:text-slate-300 ">Dashboard</span>
       </div>
 
       <div>
-        <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
-          Dashboard
-        </h1>
+        <h1 className="text-2xl text-slate-800 dark:text-white">Dashboard</h1>
         <p className="text-sm text-slate-400 mt-1">
           AMS Ticket overview and analytics
         </p>
@@ -298,9 +297,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2 bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <p className="font-bold text-slate-800 dark:text-white">
-                Ticket Trends
-              </p>
+              <p className=" text-slate-800 dark:text-white">Ticket Trends</p>
               <p className="text-xs text-slate-400 mt-0.5">
                 Open vs Closed tickets
               </p>
@@ -315,7 +312,12 @@ export default function Dashboard() {
               <option>This Month</option>
             </select>
           </div>
-          <ResponsiveContainer width="100%" height={210} minWidth={1} minHeight={1}>
+          <ResponsiveContainer
+            width="100%"
+            height={210}
+            minWidth={1}
+            minHeight={1}
+          >
             <LineChart
               data={ticketTrend}
               margin={{ top: 5, right: 5, bottom: 0, left: -20 }}
@@ -367,12 +369,15 @@ export default function Dashboard() {
 
         {/* Status Donut */}
         <div className="bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm flex flex-col">
-          <p className="font-bold text-slate-800 dark:text-white mb-1">
-            Ticket Status
-          </p>
+          <p className=" text-slate-800 dark:text-white mb-1">Ticket Status</p>
           <p className="text-xs text-slate-400 mb-6">Current distribution</p>
           <div className="flex-1 flex flex-col justify-center">
-            <ResponsiveContainer width="100%" height={160} minWidth={1} minHeight={1}>
+            <ResponsiveContainer
+              width="100%"
+              height={160}
+              minWidth={1}
+              minHeight={1}
+            >
               <PieChart>
                 <Pie
                   data={statusData}
@@ -399,11 +404,11 @@ export default function Dashboard() {
                       className="w-3 h-3 rounded-full"
                       style={{ background: s.color }}
                     />
-                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
                       {s.name}
                     </span>
                   </div>
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                  <span className="text-xs text-slate-700 dark:text-slate-200">
                     {s.value}%
                   </span>
                 </div>
@@ -417,11 +422,14 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Monthly Volume */}
         <div className="bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
-          <p className="font-bold text-slate-800 dark:text-white mb-1">
-            Monthly Volume
-          </p>
+          <p className=" text-slate-800 dark:text-white mb-1">Monthly Volume</p>
           <p className="text-xs text-slate-400 mb-6">Tickets per month</p>
-          <ResponsiveContainer width="100%" height={160} minWidth={1} minHeight={1}>
+          <ResponsiveContainer
+            width="100%"
+            height={160}
+            minWidth={1}
+            minHeight={1}
+          >
             <BarChart
               data={monthlyData}
               barSize={12}
@@ -457,14 +465,14 @@ export default function Dashboard() {
           <div className="flex-1">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <p className="font-bold text-slate-800 dark:text-white">
+                <p className=" text-slate-800 dark:text-white">
                   Recent Tickets
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Latest open AMS tickets
                 </p>
               </div>
-              <button className="text-xs text-blue-500 hover:text-blue-600 font-bold transition-colors">
+              <button className="text-xs text-blue-500 hover:text-blue-600 transition-colors">
                 View all →
               </button>
             </div>
@@ -477,7 +485,7 @@ export default function Dashboard() {
                       (h) => (
                         <th
                           key={h}
-                          className="text-left font-bold text-slate-400 pb-3 pr-4 whitespace-nowrap"
+                          className="text-left text-slate-400 pb-3 pr-4 whitespace-nowrap"
                         >
                           {h}
                         </th>
@@ -491,7 +499,7 @@ export default function Dashboard() {
                       key={t.id}
                       className="group hover:bg-slate-50 dark:hover:bg-white/3 transition-colors"
                     >
-                      <td className="py-3 pr-4 font-mono font-bold text-blue-500 group-hover:scale-105 transition-transform origin-left inline-block">
+                      <td className="py-3 pr-4 font-mono text-blue-500 group-hover:scale-105 transition-transform origin-left inline-block">
                         {t.id}
                       </td>
                       <td className="py-3 pr-4 text-slate-700 dark:text-slate-200 max-w-[120px] truncate">
@@ -504,7 +512,7 @@ export default function Dashboard() {
                         {t.date}
                       </td>
                       <td className="py-3">
-                        <span className="px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 font-bold text-[10px] border border-red-100 dark:border-red-500/20">
+                        <span className="px-2.5 py-1 rounded-full bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 text-[10px] border border-red-100 dark:border-red-500/20">
                           Open
                         </span>
                       </td>
@@ -517,7 +525,7 @@ export default function Dashboard() {
 
           {/* Top Assignees */}
           <div className="w-full md:w-64 flex flex-col">
-            <p className="font-bold text-slate-800 dark:text-white mb-1">
+            <p className=" text-slate-800 dark:text-white mb-1">
               Top Performers
             </p>
             <p className="text-xs text-slate-400 mb-6">Efficiency stats</p>
@@ -526,14 +534,14 @@ export default function Dashboard() {
                 <div key={a.name} className="flex flex-col gap-2">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-xl bg-linear-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs font-black shadow-sm shrink-0 uppercase">
+                      <div className="w-8 h-8 rounded-xl bg-linear-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white text-xs shadow-sm shrink-0 ">
                         {a.name[0]}
                       </div>
-                      <span className="font-bold text-xs text-slate-700 dark:text-slate-200 truncate max-w-[80px]">
+                      <span className=" text-xs text-slate-700 dark:text-slate-200 truncate max-w-[80px]">
                         {a.name}
                       </span>
                     </div>
-                    <span className="text-[11px] font-bold text-slate-400">
+                    <span className="text-[11px] text-slate-400">
                       {a.tickets} tks
                     </span>
                   </div>
