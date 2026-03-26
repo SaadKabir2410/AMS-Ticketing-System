@@ -201,7 +201,7 @@ export default function JobsheetsPage() {
   );
 
   const filterInputClass =
-    "pl-3 pr-3 py-2 text-[11px] bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm w-full";
+    "pl-3 pr-3 py-2 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm w-full";
 
   const customFilterArea = (
     <div className="flex flex-wrap items-center gap-4 flex-1 bg-slate-50/50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/5">
@@ -286,7 +286,7 @@ export default function JobsheetsPage() {
             )}
           </div>
           {showCollaboratorDropdown && (
-            <div className="absolute top-[105%] left-0 w-full bg-white dark:bg-[#1e2436] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+            <div className="absolute top-[105%] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
               {collaboratorResults.length > 0 ? (
                 collaboratorResults.map((user) => (
                   <div
@@ -323,7 +323,7 @@ export default function JobsheetsPage() {
       {/* Clear Button */}
       <button
         onClick={handleClear}
-        className="px-4 mt-auto bg-white dark:bg-[#1e2436] border border-slate-200 dark:border-white/10 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 text-xs font-medium shadow-sm flex items-center justify-center h-[38px] min-w-[50px]"
+        className="px-4 mt-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 text-xs font-medium shadow-sm flex items-center justify-center h-[38px] min-w-[50px]"
         title="Clear Filters"
       >
         Clear
@@ -410,7 +410,7 @@ export default function JobsheetsPage() {
               </button>
             </div>
 
-            <div className="p-0 overflow-auto flex-1 bg-slate-50/50 dark:bg-[#1e2436]">
+            <div className="p-0 overflow-auto flex-1 bg-slate-50/50 dark:bg-slate-900">
               {tableData.length > 0 ? (
                 <table className="w-full text-left border-collapse">
                   <thead>

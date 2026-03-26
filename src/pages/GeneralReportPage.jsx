@@ -96,11 +96,11 @@ export default function GeneralReportPage() {
   };
 
   const filterInputClass =
-    "px-3 py-2 text-xs bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full";
+    "px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full";
 
   return (
     <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-500">
-      <div className="bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col">
         {/* Header Section */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2 shrink-0">
           <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3">
@@ -137,7 +137,7 @@ export default function GeneralReportPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleClear}
-                className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg text-[11px] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all active:scale-95 focus:outline-none"
+                className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-[11px] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all active:scale-95 focus:outline-none"
               >
                 <RotateCcw size={14} />
                 Clear

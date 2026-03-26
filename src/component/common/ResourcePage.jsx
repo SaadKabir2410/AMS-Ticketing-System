@@ -131,8 +131,14 @@ export default function ResourcePage({
   onEditVisibilityCheck = null,
   hideActionsCheck = null,
   onRefetchReady = null,
+  onEdit = null,
+  onDetail = null,
   hideGrid = false,
   wideSearch = false,
+  rowHeight = 44,
+  headerHeight = 44,
+  containerClassName = "bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-xl overflow-hidden flex flex-col flex-1",
+  hideHeader = false,
 }) {
   const { dark } = useTheme();
   const isDark = dark === "dark";
@@ -284,7 +290,18 @@ export default function ResourcePage({
       if (valA === null || valA === undefined) return 1;
       if (valB === null || valB === undefined) return -1;
 
-      const comparison = valA < valB ? -1 : 1;
+      let comparison = 0;
+      // Natural Sort for numbers or numeric strings
+      const isNum = (v) => !isNaN(parseFloat(v)) && isFinite(v);
+      if (isNum(valA) && isNum(valB)) {
+        comparison = parseFloat(valA) - parseFloat(valB);
+      } else {
+        // Case-insensitive locale-aware string comparison
+        comparison = String(valA).localeCompare(String(valB), undefined, {
+          numeric: true,
+          sensitivity: 'base'
+        });
+      }
       return sortDir === "asc" ? comparison : -comparison;
     });
 
@@ -292,7 +309,7 @@ export default function ResourcePage({
       debouncedSearch || data.length === total ? filtered.length : total;
     const filteredTotalPages = Math.ceil(filteredTotal / pageSize);
     let finalData = filtered;
-    if (filtered.length > pageSize || data.length === total) {
+    if (showPagination && (filtered.length > pageSize || data.length === total)) {
       const start = (page - 1) * pageSize;
       finalData = filtered.slice(start, start + pageSize);
     }
@@ -447,11 +464,14 @@ export default function ResourcePage({
           return (
             <ActionsMenu
               onDetail={
-                apiObject.id === "auditLogs"
+                (onDetail || apiObject.id === "auditLogs")
                   ? () => {
-                    setActiveItem(params.row);
-                    if (detailViewMode === "side") setSidePanelOpen(true);
-                    else setModals((m) => ({ ...m, detail: true }));
+                    if (onDetail) onDetail(params.row);
+                    else {
+                      setActiveItem(params.row);
+                      if (detailViewMode === "side") setSidePanelOpen(true);
+                      else setModals((m) => ({ ...m, detail: true }));
+                    }
                   }
                   : null
               }
@@ -464,10 +484,13 @@ export default function ResourcePage({
                   : null
               }
               onEdit={
-                ModalComponent && (!onEditVisibilityCheck || onEditVisibilityCheck(params.row))
+                (onEdit || ModalComponent) && (!onEditVisibilityCheck || onEditVisibilityCheck(params.row))
                   ? () => {
-                    setActiveItem(params.row);
-                    setModals((m) => ({ ...m, edit: true }));
+                    if (onEdit) onEdit(params.row);
+                    else {
+                      setActiveItem(params.row);
+                      setModals((m) => ({ ...m, edit: true }));
+                    }
                   }
                   : null
               }
@@ -512,9 +535,10 @@ export default function ResourcePage({
 
   return (
     <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-500">
-      <div className="bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 shadow-xl overflow-hidden flex flex-col flex-1">
+      <div className={containerClassName}>
         {/* Header Section */}
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2 shrink-0">
+        {!hideHeader && (
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2 shrink-0">
           {breadcrumb.length > 0 && (
             <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3">
               {breadcrumb.map((b, i) => (
@@ -566,6 +590,7 @@ export default function ResourcePage({
             </div>
           </div>
         </div>
+        )}
 
         {/* Toolbar Section */}
         {(showSearchBar || showFilterBar || customFilterArea) && (
@@ -578,7 +603,7 @@ export default function ResourcePage({
                     placeholder={searchPlaceholder}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white dark:focus:bg-[#242938] transition-all"
+                    className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white dark:focus:bg-slate-800 transition-all"
                   />
                 </div>
               )}
@@ -607,7 +632,7 @@ export default function ResourcePage({
               </div>
             )}
             {hideGrid ? (
-              <div className="flex-1 overflow-hidden min-h-[400px] bg-white dark:bg-[#1e2436]"></div>
+              <div className="flex-1 overflow-hidden min-h-[400px] bg-white dark:bg-slate-900"></div>
             ) : (
               <div className="flex-1 overflow-hidden">
                 <DataGrid
@@ -625,15 +650,17 @@ export default function ResourcePage({
                   }}
                   hideFooter
                   disableRowSelectionOnClick
-                  rowHeight={44}
-                  columnHeaderHeight={44}
+                  rowHeight={rowHeight}
+                  columnHeaderHeight={headerHeight}
                   sx={{
                     border: "none",
+                    bgcolor: isDark ? "transparent" : "inherit",
+                    color: isDark ? "rgba(255, 255, 255, 0.85)" : "inherit",
                     "& .MuiDataGrid-columnHeaders": {
                       bgcolor: isDark ? "rgba(30, 41, 59, 0.8)" : "rgba(248, 250, 252, 0.8)",
                       borderBottom: isDark ? "2px solid rgba(51, 65, 85, 1)" : "2px solid rgba(226, 232, 240, 1)",
-                      minHeight: "44px !important",
-                      maxHeight: "44px !important",
+                      minHeight: `${headerHeight}px !important`,
+                      maxHeight: `${headerHeight}px !important`,
                       "& .MuiDataGrid-columnHeaderTitle": {
                         fontWeight: 800,
                         fontSize: "10px",
@@ -679,7 +706,7 @@ export default function ResourcePage({
                       setPageSize(Number(e.target.value));
                       setPage(1);
                     }}
-                    className="px-2 py-1 text-[11px] bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-lg outline-none transition-all cursor-pointer shadow-sm"
+                    className="px-2 py-1 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg outline-none transition-all cursor-pointer shadow-sm"
                   >
                     {[14, 25, 50, 100].map((s) => (
                       <option key={s} value={s}>
@@ -739,7 +766,7 @@ export default function ResourcePage({
 
           {/* Side Panel */}
           {sidePanelOpen && SecondaryDetailComponent && (
-            <div className="w-[600px] border-l border-slate-200 dark:border-white/10 bg-white dark:bg-[#1e2436] flex flex-col shadow-2xl animate-in slide-in-from-right duration-500 z-50">
+            <div className="w-[600px] border-l border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 flex flex-col shadow-2xl animate-in slide-in-from-right duration-500 z-50">
               <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-white/2">
                 <div>
                   <h3 className="text-lg text-slate-800 dark:text-white tracking-tighter">

@@ -345,7 +345,7 @@ export default function UsersPage() {
           },
         }}
       >
-        <div className="bg-white dark:bg-[#1e2436] px-6 py-5 border-b border-slate-100 dark:border-white/10 shrink-0 flex justify-between items-center">
+        <div className="bg-white dark:bg-slate-900 px-6 py-5 border-b border-slate-100 dark:border-white/10 shrink-0 flex justify-between items-center">
           <h2 className="text-base dark:text-white text-slate-800 flex items-center gap-2">
             {item ? "Edit User" : "Create User"}
           </h2>
@@ -556,7 +556,7 @@ export default function UsersPage() {
                                 border: "1px solid #e2e8f0",
                                 ".dark &": {
                                   border: "1px solid rgba(255,255,255,0.1)",
-                                  backgroundColor: "#1e2436",
+                                  backgroundColor: "slate-900",
                                 },
                               },
                             },

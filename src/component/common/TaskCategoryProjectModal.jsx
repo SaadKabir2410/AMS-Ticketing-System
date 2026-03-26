@@ -45,7 +45,7 @@ export default function TaskCategoryProjectModal({ open, onClose }) {
       fullWidth
       PaperProps={{
         sx: { borderRadius: "12px", bgcolor: "background.paper", padding: "4px" },
-        className: "bg-white dark:bg-[#1e2436] dark:text-white shadow-2xl",
+        className: "bg-white dark:bg-slate-900 dark:text-white shadow-2xl",
       }}
     >
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
@@ -69,7 +69,7 @@ export default function TaskCategoryProjectModal({ open, onClose }) {
             <select
               value={project}
               onChange={(e) => setProject(e.target.value)}
-              className="w-full appearance-none bg-slate-50 border border-slate-200 dark:bg-[#242938] dark:border-slate-600/50 text-slate-700 dark:text-slate-300 text-xs rounded-lg pl-3 pr-8 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer shadow-sm"
+              className="w-full appearance-none bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-600/50 text-slate-700 dark:text-slate-300 text-xs rounded-lg pl-3 pr-8 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer shadow-sm"
             >
               <option value="" disabled className="text-slate-400">Choose An Option</option>
               <option value="AMS">AMS</option>

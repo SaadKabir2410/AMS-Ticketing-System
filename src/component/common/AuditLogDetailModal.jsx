@@ -340,20 +340,22 @@ export function AuditLogDetailsContent({
               hideFooter
               sx={{
                 border: "none",
+                bgcolor: "inherit",
+                color: "inherit",
                 "& .MuiDataGrid-columnHeader": {
-                  bgcolor: "#f8fafc",
-                  color: "slate.500",
+                  bgcolor: "rgba(240, 244, 250, 0.05)",
+                  color: "inherit",
                   fontWeight: 800,
                   fontSize: "10px",
                   letterSpacing: "0.05em",
                 },
                 "& .MuiDataGrid-cell": {
-                  borderBottom: "1px solid #f1f5f9",
+                  borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
                   display: "flex",
                   alignItems: "center",
                 },
                 "& .MuiDataGrid-row:hover": {
-                  bgcolor: "#f1f5f9",
+                  bgcolor: "rgba(240, 244, 250, 0.05)",
                 },
               }}
             />
@@ -395,7 +397,7 @@ export default function AuditLogDetailModal({ open, onClose, item }) {
       fullWidth
       PaperProps={{
         sx: { borderRadius: "16px", p: 0, overflow: "hidden" },
-        className: "dark:bg-[#1e2436]",
+        className: "dark:bg-slate-900",
       }}
     >
       <Box sx={{ height: 600 }}>

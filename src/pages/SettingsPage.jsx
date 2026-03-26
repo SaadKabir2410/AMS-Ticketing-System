@@ -40,7 +40,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Main Settings Card */}
-      <div className="flex flex-col md:flex-row bg-white dark:bg-[#1e2436] rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-100 dark:border-slate-800/50 min-h-[500px] p-6 lg:p-8">
+      <div className="flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-100 dark:border-slate-800/50 min-h-[500px] p-6 lg:p-8">
         
         {/* Left Sidebar Menu */}
         <div className="w-full md:w-64 flex flex-col gap-1 pr-6 shrink-0 border-r border-slate-100 dark:border-slate-800/50 mb-8 md:mb-0">

@@ -11,7 +11,7 @@ function PasswordField({ label }) {
       <div className="flex">
         <input
           type="password"
-          className="flex-1 px-4 py-2.5 text-[14px] bg-[#f8f9fa] dark:bg-[#242938] border border-slate-100 dark:border-white/5 rounded-l text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
+          className="flex-1 px-4 py-2.5 text-[14px] bg-[#f8f9fa] dark:bg-slate-800 border border-slate-100 dark:border-white/5 rounded-l text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium"
         />
         <button
           type="button"
@@ -33,7 +33,7 @@ function InputField({ label, defaultValue = "", required = false }) {
       <input
         type="text"
         defaultValue={defaultValue}
-        className="w-full px-4 py-2.5 text-[14px] font-medium bg-[#f8f9fa] dark:bg-[#242938] border border-slate-100 dark:border-white/5 rounded outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-slate-200"
+        className="w-full px-4 py-2.5 text-[14px] font-medium bg-[#f8f9fa] dark:bg-slate-800 border border-slate-100 dark:border-white/5 rounded outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-800 dark:text-slate-200"
       />
     </div>
   );
@@ -48,7 +48,7 @@ export default function MyAccountPage() {
   return (
     <div className="w-full h-full flex flex-col p-2 animate-in fade-in duration-500 max-w-[1200px] mx-auto">
       
-      <div className="flex flex-col md:flex-row gap-6 lg:gap-14 bg-white dark:bg-[#1e2436] p-8 lg:p-10 rounded-2xl shadow-sm border border-slate-200 dark:border-white/10 flex-1">
+      <div className="flex flex-col md:flex-row gap-6 lg:gap-14 bg-white dark:bg-slate-900 p-8 lg:p-10 rounded-2xl shadow-sm border border-slate-200 dark:border-white/10 flex-1">
         
         {/* Left Sidebar */}
         <div className="w-full md:w-64 shrink-0 flex flex-col gap-1">

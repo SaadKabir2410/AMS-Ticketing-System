@@ -162,7 +162,7 @@ export default function SiteDetailModal({ open, onClose, item, site }) {
       fullWidth
       PaperProps={{
         sx: { borderRadius: 4, overflow: "hidden" },
-        className: "dark:bg-[#1e2436]",
+        className: "dark:bg-slate-900",
       }}
     >
       <SiteDetailContent item={s} onClose={onClose} />

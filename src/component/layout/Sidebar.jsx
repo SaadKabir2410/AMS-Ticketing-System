@@ -47,15 +47,15 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     <>
       <aside
         className={clsx(
-          "flex flex-col h-screen sticky top-0 border-r border-slate-200 dark:border-slate-800/10",
-          "bg-slate-800 dark:bg-slate-900 overflow-hidden shrink-0 transition-all duration-300",
+          "flex flex-col h-screen sticky top-0 border-r border-slate-200 dark:border-slate-800/20 shadow-sm",
+          "bg-white dark:bg-slate-900 overflow-hidden shrink-0 transition-all duration-300",
           collapsed ? "w-[68px]" : "w-[260px]",
         )}
       >
         {/* Logo section */}
         <div
           className={clsx(
-            "flex border-b border-white/5 transition-all duration-300 relative",
+            "flex border-b border-slate-100 dark:border-white/5 transition-all duration-300 relative",
             collapsed ? "flex-col items-center justify-center py-5 gap-5" : "items-center px-6 py-6 gap-3",
           )}
         >
@@ -65,10 +65,10 @@ export default function Sidebar({ collapsed, setCollapsed }) {
 
           {!collapsed && (
             <div className="flex flex-col animate-fade-in flex-1 overflow-hidden">
-              <span className=" text-[15px] leading-none text-white truncate">
+              <span className=" text-[15px] leading-none text-slate-800 dark:text-white font-bold truncate">
                 Sureze
               </span>
-              <span className="text-[10px] text-blue-400 tracking-[2px] mt-1 truncate">
+              <span className="text-[10px] text-blue-500 dark:text-blue-400 tracking-[2px] mt-1 truncate font-semibold">
                 Dashboard
               </span>
             </div>
@@ -78,7 +78,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
             onClick={() => setCollapsed(!collapsed)}
             title="Toggle Sidebar"
             className={clsx(
-              "flex items-center justify-center p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0",
+              "flex items-center justify-center p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-white dark:hover:bg-white/10 transition-colors shrink-0",
               !collapsed && "ml-auto"
             )}
           >
@@ -91,7 +91,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {filteredGroups.map((group, idx) => (
             <div key={idx} className="space-y-1">
               {!collapsed && (
-                <p className="px-4 text-[12px] tracking-[1.5px] text-slate-500/80 mb-3">
+                <p className="px-4 text-[10px] font-bold tracking-[2px] text-slate-400/80 dark:text-slate-500/80 mb-3 uppercase">
                   {group.title}
                 </p>
               )}
@@ -133,15 +133,15 @@ function NavItem({ item, collapsed }) {
         className={clsx(
           "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative cursor-pointer",
           active && !hasSubMenu
-            ? "bg-blue-600/10 text-blue-400 border border-blue-500/20"
-            : "text-slate-400 hover:bg-white/5 hover:text-white",
+            ? "bg-blue-600/10 text-blue-500 border border-blue-500/20"
+            : "text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
           collapsed && "justify-center",
         )}
         title={collapsed ? item.name : ""}
       >
         {Icon && (
           <div className={clsx("flex items-center justify-center shrink-0", collapsed ? "w-6 h-6" : "w-5 h-5")}>
-            <Icon size={collapsed ? 20 : 18} strokeWidth={2} className={clsx("transition-colors", active ? "text-blue-500" : "text-slate-400 group-hover:text-white")} />
+            <Icon size={collapsed ? 20 : 18} strokeWidth={2} className={clsx("transition-colors", active ? "text-blue-500" : "text-slate-500 group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-white")} />
           </div>
         )}
         
@@ -149,7 +149,7 @@ function NavItem({ item, collapsed }) {
           <span
             className={clsx(
               " text-sm truncate flex-1 font-medium",
-              active ? "text-white" : "",
+              active ? "text-slate-900 dark:text-white" : "",
             )}
           >
             {item.name}
@@ -170,7 +170,7 @@ function NavItem({ item, collapsed }) {
               isOpen ? "rotate-180" : "",
             )}
           >
-            <ChevronDown size={16} className="text-slate-400 group-hover:text-slate-200 transition-colors" />
+            <ChevronDown size={16} className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-colors" />
           </div>
         )}
 
@@ -191,7 +191,7 @@ function NavItem({ item, collapsed }) {
 
       {/* Submenu with slide-in animation */}
       {!collapsed && hasSubMenu && isOpen && (
-        <ul className="mt-2 ml-4 border-l border-white/5 pl-4 space-y-1 animate-slide-in">
+        <ul className="mt-2 ml-4 border-l border-slate-100 dark:border-white/5 pl-4 space-y-1 animate-slide-in">
           {item.subMenu.map((sub) => {
             const subActive = window.location.pathname === sub.href;
             return (
@@ -201,8 +201,8 @@ function NavItem({ item, collapsed }) {
                   className={clsx(
                     "block px-3 py-2 text-xs rounded-lg transition-all",
                     subActive
-                      ? "text-blue-400 bg-blue-500/5"
-                      : "text-slate-500 hover:text-white hover:bg-white/5",
+                      ? "text-blue-500 bg-blue-500/5 font-semibold"
+                      : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/5",
                   )}
                 >
                   {sub.name}

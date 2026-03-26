@@ -32,7 +32,7 @@ function Layout({ collapsed, setCollapsed }) {
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <div className="flex flex-col flex-1 h-screen overflow-hidden">
         <Navbar Collapsed={collapsed} setCollapsed={setCollapsed} />
-        <main className="flex-1 overflow-auto p-6 bg-slate-50 dark:bg-[#020617] transition-colors duration-300">
+        <main className="flex-1 overflow-auto p-6 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
           <Routes>
             <Route path="/" element={<AMSTicketsPage />} />
             <Route path="/ams-tickets" element={<AMSTicketsPage />} />

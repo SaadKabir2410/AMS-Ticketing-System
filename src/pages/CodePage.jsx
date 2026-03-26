@@ -85,6 +85,8 @@ export default function CodePage() {
         showFilterBar={false}
         showPagination={false}
         entityName="Lookup"
+        initialSortKey="sequence"
+        initialSortDir="asc"
         onRefetchReady={(fn) => { refetchRef.current = fn; }}
         onDisable={(row) => {
           setActionItem(row);

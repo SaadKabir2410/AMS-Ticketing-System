@@ -93,7 +93,7 @@ const topAssignees = [
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white dark:bg-[#1e2436] border border-slate-200 dark:border-white/10 p-3 rounded-xl shadow-xl backdrop-blur-md">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 p-3 rounded-xl shadow-xl backdrop-blur-md">
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 ">
         {label}
       </p>
@@ -121,7 +121,7 @@ function StatCard({
   sparkData,
 }) {
   return (
-    <div className="bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 p-5 hover:shadow-lg hover:shadow-slate-100/80 dark:hover:shadow-black/20 transition-all duration-200 flex flex-col justify-between">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 hover:shadow-lg hover:shadow-slate-100/80 dark:hover:shadow-black/20 transition-all duration-200 flex flex-col justify-between">
       <div>
         <div className="flex items-start justify-between mb-4">
 
@@ -281,7 +281,7 @@ export default function Dashboard() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Ticket Trend */}
-        <div className="lg:col-span-2 bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div>
               <p className=" text-slate-800 dark:text-white">Ticket Trends</p>
@@ -292,7 +292,7 @@ export default function Dashboard() {
             <select
               value={chartRange}
               onChange={(e) => setChartRange(e.target.value)}
-              className="text-xs px-3 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#242938] text-slate-600 dark:text-slate-300 outline-none cursor-pointer hover:bg-slate-100 dark:hover:bg-[#2d3345] transition-colors"
+              className="text-xs px-3 py-1.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 outline-none cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
             >
               <option>This Week</option>
               <option>Last Week</option>
@@ -355,7 +355,7 @@ export default function Dashboard() {
         </div>
 
         {/* Status Donut */}
-        <div className="bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm flex flex-col">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm flex flex-col">
           <p className=" text-slate-800 dark:text-white mb-1">Ticket Status</p>
           <p className="text-xs text-slate-400 mb-6">Current distribution</p>
           <div className="flex-1 flex flex-col justify-center">
@@ -408,7 +408,7 @@ export default function Dashboard() {
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Monthly Volume */}
-        <div className="bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm">
           <p className=" text-slate-800 dark:text-white mb-1">Monthly Volume</p>
           <p className="text-xs text-slate-400 mb-6">Tickets per month</p>
           <ResponsiveContainer
@@ -448,7 +448,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Tickets + Top Assignees */}
-        <div className="lg:col-span-2 bg-white dark:bg-[#1e2436] rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm flex flex-col md:flex-row gap-8">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 p-5 shadow-sm flex flex-col md:flex-row gap-8">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-5">
               <div>

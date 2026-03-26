@@ -21,6 +21,8 @@ export default function WorkCodesPage() {
       showFilterBar={false}
       showActions={true}
       entityName="WorkDoneCode"
+      initialSortKey="code"
+      initialSortDir="asc"
     />
   );
 }

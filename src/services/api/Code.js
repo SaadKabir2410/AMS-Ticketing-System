@@ -1,9 +1,11 @@
 import apiClient from "../apiClient";
 
 export const codesApi = {
-  // Fetch all lookup records
+  // Fetch all lookup records (loadIsDeleted: true fetches the disabled ones too)
   getAll: async () => {
-    const response = await apiClient.get("/api/app/lookup");
+    const response = await apiClient.get("/api/app/lookup", {
+      params: { loadIsDeleted: true }
+    });
     return response.data?.items || response.data || [];
   },
 
@@ -13,7 +15,7 @@ export const codesApi = {
     return response.data;
   },
 
-  // Create a new lookup record (stripped payload)
+  // Create a new lookup record
   create: async (data) => {
     const payload = {
       lookupCode: data.lookupCode,
@@ -26,7 +28,7 @@ export const codesApi = {
     return response.data;
   },
 
-  // Save edited record (stripped payload)
+  // Update existing record
   update: async (id, data) => {
     const payload = {
       lookupCode: data.lookupCode,
@@ -40,27 +42,15 @@ export const codesApi = {
     return response.data;
   },
 
-  // Disable — PUT with isActive: false + concurrencyStamp
+  // Disable — Use standard HTTP DELETE (Soft Delete disables the record)
   disable: async (id) => {
-    const fresh = await apiClient.get(`/api/app/lookup/${id}/by-id`);
-    const record = fresh.data;
-    const payload = {
-      lookupCode: record.lookupCode || "",
-      description: record.description || "",
-      sequence: Number(record.sequence || 0),
-      isSystemIndicator: !!record.isSystemIndicator,
-      isActive: false,
-      concurrencyStamp: record.concurrencyStamp,
-    };
-    const response = await apiClient.put(`/api/app/lookup/${id}`, payload);
+    const response = await apiClient.delete(`/api/app/lookup/${id}`);
     return response.data;
   },
 
-  // Enable — POST with isActive: true
+  // Enable — strictly POST to /enable with no body
   enable: async (id) => {
-    const response = await apiClient.post(`/api/app/lookup/${id}/enable`, {
-      isActive: true,
-    });
+    const response = await apiClient.post(`/api/app/lookup/${id}/enable`);
     return response.data;
   },
 };

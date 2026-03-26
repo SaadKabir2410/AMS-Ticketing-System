@@ -125,7 +125,7 @@ export default function TicketDetailModal({ open, onClose, item, ticket }) {
       fullWidth
       PaperProps={{
         sx: { borderRadius: 3 },
-        className: "dark:bg-[#1e2436]",
+        className: "dark:bg-slate-900",
       }}
     >
       {/* ── Header ─────────────────────────────────────────── */}

@@ -32,7 +32,7 @@ export default function TaskCategoryProjectsPage() {
           <select
             value={projectFilter}
             onChange={(e) => setProjectFilter(e.target.value)}
-            className="w-full appearance-none bg-slate-50 border border-slate-200 dark:bg-[#242938] dark:border-slate-600/50 text-slate-700 dark:text-slate-300 text-xs rounded-lg pl-3 pr-8 py-2 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer box-border shadow-sm"
+            className="w-full appearance-none bg-slate-50 border border-slate-200 dark:bg-slate-800 dark:border-slate-600/50 text-slate-700 dark:text-slate-300 text-xs rounded-lg pl-3 pr-8 py-2 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer box-border shadow-sm"
           >
             <option value="" className="text-slate-400">Choose An Option</option>
             <option value="AMS">AMS</option>

@@ -115,7 +115,7 @@ export default function CodeModal({
   };
 
   const getInputClass = (isTextarea = false) => {
-    return `w-full px-4 py-2.5 rounded-xl border outline-none text-sm transition-all bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:bg-[#242938] dark:border-white/10 dark:text-slate-200 ${isTextarea ? "min-h-[100px] resize-y" : ""}`;
+    return `w-full px-4 py-2.5 rounded-xl border outline-none text-sm transition-all bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-800 dark:border-white/10 dark:text-slate-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-slate-200 dark:disabled:hover:border-white/10 ${isTextarea ? "min-h-[100px] resize-y" : ""}`;
   };
 
   return (
@@ -126,7 +126,7 @@ export default function CodeModal({
       fullWidth
       PaperProps={{
         sx: { borderRadius: "16px", bgcolor: "background.paper" },
-        className: "bg-white dark:bg-[#1e2436] dark:text-white",
+        className: "bg-white dark:bg-slate-900 dark:text-white",
       }}
     >
       <div className="flex items-center justify-between px-6 pt-5 pb-3">
@@ -161,9 +161,11 @@ export default function CodeModal({
               maxLength={3}
               required
               className={getInputClass()}
-              disabled={submitting}
+              disabled={submitting || isEdit}
             />
-            <small style={{ color: "gray" }} className="ml-1 text-[10px]">Must be exactly 3 characters</small>
+            <small style={{ color: "gray" }} className="ml-1 text-[10px]">
+              {isEdit ? "Lookup Code cannot be changed." : "Must be exactly 3 characters."}
+            </small>
           </div>
 
           {/* Description */}

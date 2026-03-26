@@ -154,7 +154,7 @@ export default function WorkCodeModal({
       ? `bg-red-50/50 border-red-400 text-red-900 placeholder:text-red-300 dark:bg-red-500/10 dark:border-red-500/50 dark:text-red-200`
       : isValid
         ? `bg-green-50/50 border-green-500 focus:border-green-600 text-green-900 dark:bg-green-500/10 dark:border-green-500/50 dark:text-green-200`
-        : `bg-slate-50 border-slate-200 hover:border-slate-300 focus:bg-white focus:border-blue-500 text-slate-700 placeholder:text-slate-400 dark:bg-[#242938] dark:border-white/10 dark:text-slate-200 dark:focus:border-blue-500`);
+        : `bg-slate-50 border-slate-200 hover:border-slate-300 focus:bg-white focus:border-blue-500 text-slate-700 placeholder:text-slate-400 dark:bg-slate-800 dark:border-white/10 dark:text-slate-200 dark:focus:border-blue-500`);
 
   return (
     <Dialog
@@ -164,7 +164,7 @@ export default function WorkCodeModal({
       fullWidth
       PaperProps={{
         sx: { borderRadius: "16px", bgcolor: "background.paper", p: 1 },
-        className: "bg-white dark:bg-[#1e2436] dark:text-white",
+        className: "bg-white dark:bg-slate-900 dark:text-white",
       }}
     >
       <div className="flex items-center justify-between px-6 pt-5 pb-3">

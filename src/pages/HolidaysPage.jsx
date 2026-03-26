@@ -168,7 +168,7 @@ export default function HolidaysPage() {
   );
 
   const filterInputClass =
-    "pl-3 pr-3 py-3 text-[10px] bg-white dark:bg-[#242938] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full shadow-sm";
+    "pl-3 pr-3 py-3 text-[10px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full shadow-sm";
 
   const customFilterArea = (
     <div className="flex items-center gap-4 flex-wrap flex-1 bg-slate-50/50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/5">
@@ -253,7 +253,7 @@ export default function HolidaysPage() {
       {/* Clear Button */}
       <button
         onClick={handleClear}
-        className="px-4 py-3 bg-white dark:bg-[#1e2436] border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-400 font-medium hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm min-w-[46px]"
+        className="px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-400 font-medium hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm min-w-[46px]"
         title="Clear Filters"
       >
         Clear
@@ -286,6 +286,8 @@ export default function HolidaysPage() {
       showActions={false}
       initialPageSize={100}
       entityName="Holiday"
+      initialSortKey="date"
+      initialSortDir="desc"
     />
   );
 }

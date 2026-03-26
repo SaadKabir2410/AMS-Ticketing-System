@@ -125,7 +125,7 @@ export default function RolesPage() {
           className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
           onClick={onClose}
         />
-        <div className="relative bg-white dark:bg-[#1e2436] rounded-[24px] p-6 w-full max-w-[360px] shadow-2xl shadow-blue-500/10 border border-slate-100 dark:border-white/10 transition-all duration-300">
+        <div className="relative bg-white dark:bg-slate-900 rounded-[24px] p-6 w-full max-w-[360px] shadow-2xl shadow-blue-500/10 border border-slate-100 dark:border-white/10 transition-all duration-300">
           <h2 className="text-base dark:text-white mb-4 text-slate-800">
             {item ? "Edit Role" : "Create Role"}
           </h2>
