@@ -8,7 +8,7 @@ import { useToast } from "./ToastContext";
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import { Menu, MenuItem, ListItemIcon, ListItemText, Box } from "@mui/material";
 
-function ActionsMenu({
+export function ActionsMenu({
   onAuditLog,
   onEdit,
   onDetail,
@@ -539,57 +539,57 @@ export default function ResourcePage({
         {/* Header Section */}
         {!hideHeader && (
           <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2 shrink-0">
-          {breadcrumb.length > 0 && (
-            <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3">
-              {breadcrumb.map((b, i) => (
-                <span key={i} className="flex items-center gap-2">
-                  <span
-                    onClick={() => b === "Home" && navigate("/")}
+            {breadcrumb.length > 0 && (
+              <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3">
+                {breadcrumb.map((b, i) => (
+                  <span key={i} className="flex items-center gap-2">
+                    <span
+                      onClick={() => b === "Home" && navigate("/")}
+                      className={
+                        b === "Home"
+                          ? "hover:text-blue-500 cursor-pointer transition-colors"
+                          : ""
+                      }
+                    >
+                      {b}
+                    </span>
+                    {i < breadcrumb.length - 1 && <span>/</span>}
+                  </span>
+                ))}
+              </nav>
+            )}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => navigate(-1)}
+                  className="p-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
+                  title="Go Back"
+                >
+                  <ArrowLeft size={16} strokeWidth={2.5} />
+                </button>
+                <div>
+                  <h1 className="text-2xl text-slate-800 dark:text-white leading-none">
+                    {title}
+                  </h1>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {customHeaderActions}
+                {apiObject.create && ModalComponent && createButtonText && (
+                  <button
+                    onClick={() => setModals((m) => ({ ...m, create: true }))}
                     className={
-                      b === "Home"
-                        ? "hover:text-blue-500 cursor-pointer transition-colors"
-                        : ""
+                      smallHeaderButton
+                        ? "px-3 py-1.5 bg-white border border-blue-500 text-blue-500 hover:bg-blue-50 dark:bg-transparent dark:hover:bg-blue-500/10 rounded-lg text-xs font-medium transition-colors shadow-sm shrink-0 active:scale-95"
+                        : "px-4 py-2 bg-white border border-blue-500 text-blue-500 hover:bg-blue-50 dark:bg-transparent dark:hover:bg-blue-500/10 rounded-lg text-[13px] font-medium transition-colors shadow-sm shrink-0 active:scale-95"
                     }
                   >
-                    {b}
-                  </span>
-                  {i < breadcrumb.length - 1 && <span>/</span>}
-                </span>
-              ))}
-            </nav>
-          )}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate(-1)}
-                className="p-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
-                title="Go Back"
-              >
-                <ArrowLeft size={16} strokeWidth={2.5} />
-              </button>
-              <div>
-                <h1 className="text-2xl text-slate-800 dark:text-white leading-none">
-                  {title}
-                </h1>
+                    {createButtonText}
+                  </button>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              {customHeaderActions}
-              {apiObject.create && ModalComponent && createButtonText && (
-                <button
-                  onClick={() => setModals((m) => ({ ...m, create: true }))}
-                  className={
-                    smallHeaderButton
-                      ? "px-3 py-1.5 bg-white border border-blue-500 text-blue-500 hover:bg-blue-50 dark:bg-transparent dark:hover:bg-blue-500/10 rounded-lg text-xs font-medium transition-colors shadow-sm shrink-0 active:scale-95"
-                      : "px-4 py-2 bg-white border border-blue-500 text-blue-500 hover:bg-blue-50 dark:bg-transparent dark:hover:bg-blue-500/10 rounded-lg text-[13px] font-medium transition-colors shadow-sm shrink-0 active:scale-95"
-                  }
-                >
-                  {createButtonText}
-                </button>
-              )}
-            </div>
           </div>
-        </div>
         )}
 
         {/* Toolbar Section */}

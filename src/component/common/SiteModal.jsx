@@ -3,6 +3,9 @@ import { Dialog, IconButton, Autocomplete, TextField } from "@mui/material";
 
 import { sitesApi } from "../../services/api/sites";
 import { countriesApi } from "../../services/api/countries";
+import PremiumErrorAlert from "./PremiumErrorAlert";
+
+
 
 const EMPTY = {
   name: "",
@@ -265,6 +268,14 @@ export default function SiteModal({
       </div>
 
       <div className="px-6 py-2 space-y-5">
+        {submitError && (
+          <PremiumErrorAlert 
+            open={!!submitError} 
+            message={submitError} 
+            onClose={() => {}} // Usually submitError is handled by parent, but we can't easily clear it here without a prop
+          />
+        )}
+
         <div>
           <InputLabel label="Name" required />
           <div className="relative">

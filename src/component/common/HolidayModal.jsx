@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Dialog, IconButton } from "@mui/material";
 
+import PremiumErrorAlert from "./PremiumErrorAlert";
+
+
+
 
 const LOCAL_COUNTRIES = [
   { id: "gb", name: "United Kingdom", code: "GB" },
@@ -205,9 +209,11 @@ export default function HolidayModal({
       <form onSubmit={handleSubmit} className="px-8 py-6">
         <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 no-scrollbar">
           {(submitError || errors.server) && (
-            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs animate-in fade-in slide-in-from-top-2">
-              {submitError || errors.server}
-            </div>
+            <PremiumErrorAlert 
+              open={!!(submitError || errors.server)} 
+              message={submitError || errors.server} 
+              onClose={() => setErrors(prev => ({ ...prev, server: null }))}
+            />
           )}
 
           {/* Name */}

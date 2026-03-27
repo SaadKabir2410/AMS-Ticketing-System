@@ -2,6 +2,9 @@ import { useMemo, useState } from "react";
 import ResourcePage from "../component/common/ResourcePage";
 import { rolesApi } from "../services/api/roles";
 import { useToast } from "../component/common/ToastContext";
+import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
+
+
 
 // MUI Imports for Permission Dialog
 import Dialog from "@mui/material/Dialog";
@@ -143,6 +146,16 @@ export default function RolesPage() {
               />
             </div>
 
+            {submitError && (
+              <PremiumErrorAlert 
+                open={!!submitError} 
+                message={submitError} 
+                onClose={() => {}} 
+              />
+            )}
+
+
+
             {/* Boolean Checks */}
             <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1 px-3 py-2 border-2 border-slate-100 dark:border-white/10 rounded-xl hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 dark:hover:bg-white/5 cursor-pointer transition-all duration-200 group">
@@ -179,11 +192,7 @@ export default function RolesPage() {
               </label>
             </div>
 
-            {submitError && (
-              <p className="text-[10px] text-rose-500 text-center pt-2">
-                {submitError}
-              </p>
-            )}
+
           </div>
           <div className="flex gap-2.5 mt-5">
             <button

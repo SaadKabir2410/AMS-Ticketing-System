@@ -11,7 +11,7 @@ const OPERATION_LABELS = {
 function DetailsListView({ rows, opLabel }) {
   return (
     <div className="space-y-1">
-      <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-slate-100/50 rounded-lg mb-2">
+      <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-slate-100/50 dark:bg-slate-900/50 rounded-lg mb-2">
         <div className="col-span-4 text-[9px] text-slate-400 ">Property</div>
         {opLabel !== "Create" && (
           <div className="col-span-4 text-[9px] text-slate-400 ">Old Value</div>
@@ -25,10 +25,10 @@ function DetailsListView({ rows, opLabel }) {
       {rows.map((row, idx) => (
         <div
           key={idx}
-          className="grid grid-cols-12 gap-4 px-4 py-2.5 hover:bg-slate-50 transition-colors border-b border-slate-100 items-center"
+          className="grid grid-cols-12 gap-4 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors border-b border-slate-100 dark:border-white/5 items-center"
         >
           <div className="col-span-4">
-            <span className=" text-[11px] text-slate-500 ">{row.property}</span>
+            <span className=" text-[11px] text-slate-500 dark:text-slate-400 ">{row.property}</span>
           </div>
           {opLabel !== "Create" && (
             <div className="col-span-4">
@@ -371,12 +371,13 @@ export function AuditLogDetailsContent({
             borderTop: "1px solid",
             borderColor: "divider",
             bgcolor: "white",
+            ".dark &": { bgcolor: "#000000" },
             borderRadius: "0 0 12px 12px",
           }}
         >
           <button
             onClick={onClose}
-            className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-[10px] tracking-[0.2em] hover:bg-black transition-all shadow-xl shadow-slate-200"
+            className="w-full py-2.5 bg-slate-900 dark:bg-blue-600 text-white rounded-xl text-[10px] tracking-[0.2em] hover:bg-black dark:hover:bg-blue-700 transition-all shadow-xl shadow-slate-200 dark:shadow-none"
           >
             Close Inspection
           </button>

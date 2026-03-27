@@ -19,6 +19,9 @@ import Box from "@mui/material/Box";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import apiClient from "../services/apiClient";
+import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
+
+
 
 export default function UsersPage() {
   const { toast } = useToast();
@@ -388,6 +391,15 @@ export default function UsersPage() {
             </Box>
 
             <div className="p-4">
+              {submitError && (
+                <PremiumErrorAlert 
+                  open={!!submitError} 
+                  message={submitError} 
+                  onClose={() => {}} 
+                />
+              )}
+
+
               {/* TAB 1: USER INFORMATION */}
               <div style={{ display: tabIndex === 0 ? "block" : "none" }}>
                 <div className="flex flex-col gap-2 mb-4">

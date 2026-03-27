@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { Dialog, IconButton } from "@mui/material";
 import codesApi from "../../services/api/Code";
+import PremiumErrorAlert from "./PremiumErrorAlert";
+
+
 
 const EMPTY_FORM = {
   lookupCode: "",
@@ -142,9 +145,11 @@ export default function CodeModal({
 
       <div className="px-6 py-2">
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-100 text-red-600 dark:bg-red-500/10 dark:border-red-500/20 dark:text-red-400 text-xs">
-            {error}
-          </div>
+          <PremiumErrorAlert 
+            open={!!error} 
+            message={error} 
+            onClose={() => setError(null)} 
+          />
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">

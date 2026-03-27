@@ -124,16 +124,16 @@ export default function AuditLogsPage() {
             setOperationType(e.target.value);
             setPage(1);
           }}
-          className="w-full pl-9 pr-8 py-2 text-[10px] bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer"
+          className="w-full pl-9 pr-8 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer placeholder:text-slate-400"
         >
           <option value="all">ALL TYPE</option>
-          <option value="1">CREATE</option>
-          <option value="2">UPDATE</option>
+          <option value="1" className="dark:bg-slate-900">CREATE</option>
+          <option value="2" className="dark:bg-slate-900">UPDATE</option>
         </select>
       </div>
 
       <div className="relative min-w-[180px]">
-        
+        {/* User Icon or similar if needed */}
         <input
           type="text"
           placeholder="USERNAME..."
@@ -142,27 +142,27 @@ export default function AuditLogsPage() {
             setUserNameSearch(e.target.value);
             setPage(1);
           }}
-          className="w-full pl-9 pr-4 py-2 text-[10px] bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400"
+          className="w-full pl-9 pr-4 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400"
         />
       </div>
 
       <div className="flex items-center gap-2">
         <div className="relative min-w-[160px]">
-          
+          {/* Time Icon or similar if needed */}
           <select
             value={datePreset}
             onChange={(e) => {
               setDatePreset(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-9 pr-8 py-2 text-[10px] bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer"
+            className="w-full pl-9 pr-8 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer placeholder:text-slate-400"
           >
             <option value="all">ALL TIME</option>
-            <option value="today">TODAY</option>
-            <option value="week">THIS WEEK</option>
-            <option value="month">THIS MONTH</option>
-            <option value="year">THIS YEAR</option>
-            <option value="custom">CUSTOM</option>
+            <option value="today" className="dark:bg-slate-900">TODAY</option>
+            <option value="week" className="dark:bg-slate-900">THIS WEEK</option>
+            <option value="month" className="dark:bg-slate-900">THIS MONTH</option>
+            <option value="year" className="dark:bg-slate-900">THIS YEAR</option>
+            <option value="custom" className="dark:bg-slate-900">CUSTOM</option>
           </select>
         </div>
 
@@ -175,7 +175,7 @@ export default function AuditLogsPage() {
                 setCustomFromDate(e.target.value);
                 setPage(1);
               }}
-              className="px-3 py-2 text-[10px] bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+              className="px-3 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all scheme-light dark:scheme-dark"
             />
             <span className="text-slate-400 text-[10px] ">TO</span>
             <input
@@ -185,7 +185,7 @@ export default function AuditLogsPage() {
                 setCustomToDate(e.target.value);
                 setPage(1);
               }}
-              className="px-3 py-2 text-[10px] bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+              className="px-3 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all scheme-light dark:scheme-dark"
             />
           </div>
         )}

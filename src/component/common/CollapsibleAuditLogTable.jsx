@@ -139,10 +139,14 @@ function CollapsibleRow({ row }) {
                 p: 4,
                 bgcolor: "rgba(248, 250, 252, 0.5)",
                 borderY: "1px solid rgba(226, 232, 240, 1)",
+                ".dark &": {
+                  bgcolor: "rgba(15, 23, 42, 0.4)",
+                  borderColor: "rgba(255, 255, 255, 0.05)",
+                }
               }}
             >
               <div className="flex items-center gap-2 mb-6">
-                <Typography variant="subtitle2" className=" text-slate-800 ">
+                <Typography variant="subtitle2" className=" text-slate-800 dark:text-slate-200 ">
                   Detailed Audit Information
                 </Typography>
               </div>
@@ -192,7 +196,17 @@ export default function CollapsibleAuditLogTable({
       <TableContainer className="flex-1 overflow-auto">
         <Table stickyHeader sx={{ minWidth: 800 }}>
           <TableHead>
-            <TableRow sx={{ "& th": { bgcolor: "rgba(248, 250, 252, 0.9)", borderBottom: "2px solid #e2e8f0" } }}>
+            <TableRow sx={{ 
+              "& th": { 
+                bgcolor: "rgba(248, 250, 252, 0.9)", 
+                borderBottom: "2px solid #e2e8f0",
+                ".dark &": {
+                  bgcolor: "#0f172a",
+                  borderColor: "rgba(255, 255, 255, 0.05)",
+                  color: "#94a3b8"
+                }
+              } 
+            }}>
               <TableCell width={50} />
               <TableCell className="text-xs text-slate-500 tracking-wider">OPERATION</TableCell>
               <TableCell className="text-xs text-slate-500 tracking-wider">RECORD KEY</TableCell>
@@ -219,31 +233,31 @@ export default function CollapsibleAuditLogTable({
       </TableContainer>
 
       {/* Standard Pagination Footer (Site Style) */}
-      <div className="px-8 py-5 border-t border-slate-100 bg-slate-50/30 flex items-center justify-between shrink-0">
+      <div className="px-8 py-5 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-slate-900/50 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-[10px] text-slate-400">Rows:</span>
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl outline-none transition-all cursor-pointer shadow-sm"
+            className="px-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 dark:text-slate-200 rounded-xl outline-none transition-all cursor-pointer shadow-sm"
           >
             {[10, 25, 50, 100].map((s) => (
-              <option key={s} value={s}>
+              <option key={s} value={s} className="dark:bg-slate-900">
                 {s}
               </option>
             ))}
           </select>
-          <div className="ml-4 h-4 w-px bg-slate-200 hidden sm:block"></div>
+          <div className="ml-4 h-4 w-px bg-slate-200 dark:bg-white/10 hidden sm:block"></div>
           <div className="text-xs text-slate-500 hidden sm:block">
-            <span className="text-slate-900">
+            <span className="text-slate-900 dark:text-white">
               {total > 0 ? (page - 1) * pageSize + 1 : 0}
             </span>
             {" — "}
-            <span className="text-slate-900">
+            <span className="text-slate-900 dark:text-white">
               {Math.min(page * pageSize, total)}
             </span>
             <span className="text-slate-400 "> of </span>
-            <span className="text-slate-900">{total}</span>
+            <span className="text-slate-900 dark:text-white">{total}</span>
           </div>
         </div>
 
@@ -251,35 +265,39 @@ export default function CollapsibleAuditLogTable({
           <button
             onClick={handleFirstPage}
             disabled={page === 1 || loading}
-            className="p-2.5 rounded-xl border border-slate-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm"
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center"
           >
-            
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
           </button>
           <button
             onClick={handlePrevPage}
             disabled={page === 1 || loading}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 disabled:opacity-30 hover:bg-white text-xs transition-all shadow-sm"
+            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 bg-white dark:bg-slate-950 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm"
           >
             Prev
           </button>
 
-          <div className="px-6 py-2.5 bg-blue-500 text-white rounded-xl text-xs shadow-lg shadow-blue-500/25">
+          <div className="px-6 py-2.5 bg-blue-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-500/25">
             Page {page} of {totalPages}
           </div>
 
           <button
             onClick={handleNextPage}
             disabled={page >= totalPages || loading}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 disabled:opacity-30 hover:bg-white text-xs transition-all shadow-sm"
+            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 bg-white dark:bg-slate-950 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm"
           >
             Next
           </button>
           <button
             onClick={handleLastPage}
             disabled={page >= totalPages || loading}
-            className="p-2.5 rounded-xl border border-slate-200 disabled:opacity-30 hover:bg-white transition-all shadow-sm"
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center"
           >
-            
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
       </div>

@@ -1,4 +1,8 @@
 import { useState, useEffect } from "react";
+import { AlertCircle, X } from "lucide-react";
+import PremiumErrorAlert from "./PremiumErrorAlert";
+
+
 
 import { SITES, OCNS, ASSIGNEES, STATUSES } from "../../data/DB";
 
@@ -150,6 +154,15 @@ export default function TicketModal({
         {/* Form */}
         <form onSubmit={handleSubmit}>
           <div className="px-6 py-5 max-h-[70vh] overflow-y-auto space-y-4">
+            {errors.server && (
+              <PremiumErrorAlert 
+                open={!!errors.server} 
+                message={errors.server} 
+                onClose={() => setErrors(prev => ({ ...prev, server: null }))} 
+              />
+            )}
+
+
             {/* Row 1: Site Name + OCN */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Site Name *" error={errors.siteName}>

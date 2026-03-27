@@ -8,37 +8,29 @@ import apiClient from "../apiClient";
  */
 
 export const codeDetailsApi = {
-  // GET all records — matched to EXACT expert working pattern
+  // GET all records — matched to EXACT working backend pattern (by-lookup-codes)
   getAll: async (params) => {
-    // If no lookupId is provided, safely return empty array
-    if (!params?.lookupId) return [];
-
-    // The 'code' property must be Passed as a query param (it should match the parent's lookupCode)
-    const requestParams = {
-      code: params?.code || params?.lookupCode || "",
-      loadIsDeleted: true
-    };
-
-    // If search is needed, use 'filter' for ABP
-    if (params?.search) {
-      requestParams.filter = params.search;
-    }
-
+    if (!params?.code && !params?.lookupCode) return [];
+    const code = params.code || params.lookupCode;
     try {
-      const response = await apiClient.get(`/api/app/lookup-detail/by-code/${params.lookupId}`, {
-        params: requestParams
+      const response = await apiClient.get(`/api/app/lookup-detail/by-lookup-codes`, {
+        params: {
+          codes: code,          // ← only this
+          loadIsDeleted: true,  // ← always hardcoded
+          // DO NOT spread params here — causes duplicate &code=TSK
+        }
       });
-
-      // ABP standard return normalization
-      const data = response.data?.items || response.data || [];
-      console.log(`[CodeDetails] Fetched ${data.length} records for ${params.lookupId}`);
+      const data = Array.isArray(response.data) ? response.data : response.data?.items || [];
+      console.log(`[CodeDetails] Fetched ${data.length} records for code: ${code}`);
       return data;
     } catch (err) {
       console.error("[CodeDetails] Fetch failed:", err);
-      // Fallback empty array to keep UI from crashing
       return [];
     }
   },
+
+
+
 
   // GET single record by ID
   getById: async (id) => {
@@ -52,6 +44,7 @@ export const codeDetailsApi = {
       lookupId: data.lookupId || "",
       newCode: data.newCode || "",
       description: data.description || "",
+      isActive: data.isActive ?? true, // added status
       comments: data.comments || "",
       sequence: Number(data.sequence) || 0,
       isDefaultIndicator: !!data.isDefaultIndicator,
@@ -69,12 +62,14 @@ export const codeDetailsApi = {
     return response.data;
   },
 
+
   // PUT - Update existing record
   update: async (id, data) => {
     const payload = {
       lookupId: data.lookupId || "",
       newCode: data.newCode || "",
       description: data.description || "",
+      isActive: data.isActive ?? true, // added status
       comments: data.comments || "",
       sequence: Number(data.sequence) || 0,
       isDefaultIndicator: !!data.isDefaultIndicator,
@@ -93,17 +88,23 @@ export const codeDetailsApi = {
     return response.data;
   },
 
-  // DELETE - Remove record
-  delete: async (id) => {
+
+  // Disable — Soft Delete (same pattern as Code.js)
+  disable: async (id) => {
     const response = await apiClient.delete(`/api/app/lookup-detail/${id}`);
     return response.data;
   },
 
-  // POST - Enable/Disable record — pass only ID
+  // Enable — Recover (same pattern as Code.js)
   enable: async (id) => {
-    await apiClient.post(`/api/app/lookup-detail/${id}/enable`);
-    return true;
+    const response = await apiClient.post(`/api/app/lookup-detail/${id}/enable`);
+    return response.data;
   },
+
+
+
+
+
 
   // GET by lookup codes
   getByLookupCodes: async (params) => {
@@ -111,12 +112,18 @@ export const codeDetailsApi = {
     return response.data;
   },
 
-  // POST - Toggle sub category
-  toggleSubCategory: async (id, hasSubCategory) => {
+  // DELETE record (Direct delete if needed)
+  delete: async (id) => {
+    const response = await apiClient.delete(`/api/app/lookup-detail/${id}`);
+    return response.data;
+  },
+
+  // POST - Toggle default indicator
+  toggleDefaultIndicator: async (id, isDefault) => {
     const response = await apiClient.post(
-      `/api/app/lookup-detail/${id}/has-sub-task-category`,
+      `/api/app/lookup-detail/${id}/is-default-indicator`,
       null,
-      { params: { hasSubTaskCategory: !!hasSubCategory } }
+      { params: { isDefault } }
     );
     return response.data;
   },
@@ -126,7 +133,27 @@ export const codeDetailsApi = {
     const response = await apiClient.post(
       `/api/app/lookup-detail/${id}/is-required-field`,
       null,
-      { params: { isRequiredField: !!isRequired } }
+      { params: { isRequired } }
+    );
+    return response.data;
+  },
+
+  // POST - Toggle has extra description
+  toggleHasExtraDescription: async (id, hasExtra) => {
+    const response = await apiClient.post(
+      `/api/app/lookup-detail/${id}/has-extra-description`,
+      null,
+      { params: { hasExtra } }
+    );
+    return response.data;
+  },
+
+  // POST - Toggle sub category
+  toggleHasSubCategory: async (id, hasSub) => {
+    const response = await apiClient.post(
+      `/api/app/lookup-detail/${id}/has-sub-category`,
+      null,
+      { params: { hasSub } }
     );
     return response.data;
   },
@@ -136,6 +163,10 @@ export const codeDetailsApi = {
     const response = await apiClient.get(`/api/app/lookup-detail/${id}/by-group-code`);
     return response.data;
   },
+
+  // Metadata for generic connections (Audit Log, etc.)
+  id: "lookupDetail",
+  entityName: "LookupDetail",
 };
 
 export default codeDetailsApi;
