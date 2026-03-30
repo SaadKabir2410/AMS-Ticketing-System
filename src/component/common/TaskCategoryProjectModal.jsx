@@ -15,6 +15,10 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // --- Category Pagination ---
+  const [catPage, setCatPage] = useState(1);
+  const [catPageSize, setCatPageSize] = useState(9);
+
   const [existingRecord, setExistingRecord] = useState(null);
   const [isHandoffEdit, setIsHandoffEdit] = useState(false);
 
@@ -44,7 +48,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
           setExistingRecord(record);
           // 2. Fetch specific IDs for this project
           const ids = await taskCategoryProjectsApi.getCategoryIdsByProjectId(projectId);
-          
+
           // ONLY pre-fill if we explicitly came from the table Edit action
           // If we are in 'New' mode, keep it unmarked per user request
           if (isHandoffEdit) {
@@ -64,6 +68,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
     };
 
     fetchExisting();
+    setCatPage(1); // Reset page when project changes
   }, [projectId, open, isHandoffEdit]);
 
   // Initial Data Load (Projects & Categories)
@@ -117,6 +122,9 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
     );
   };
 
+  const paginatedCategories = categories.slice((catPage - 1) * catPageSize, catPage * catPageSize);
+  const totalCatCount = categories.length;
+
   const handleSave = async () => {
     if (!projectId) {
       toast("Please select a project", "error");
@@ -146,7 +154,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
         });
         toast("Task Category Project(s) created successfully!");
       }
-      
+
       if (onSave) onSave();
       onClose();
     } catch (err) {
@@ -178,7 +186,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         <h2 className="text-[18px] font-black text-slate-800 dark:text-slate-100 tracking-tighter uppercase leading-none">
-          New Task Category Project
+          {isHandoffEdit ? "Edit Task Category Project" : "New Task Category Project"}
         </h2>
         <IconButton onClick={onClose} size="small" disabled={submitting}>
           <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,8 +205,10 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              disabled={loading || submitting}
-              className="w-full appearance-none bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:border-white/10 text-slate-700 dark:text-slate-300 text-xs rounded-lg pl-3 pr-8 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 transition-all cursor-pointer shadow-sm"
+              disabled={loading || submitting || isHandoffEdit}
+              className={`w-full appearance-none bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:border-white/10 text-slate-700 dark:text-slate-300 text-xs rounded-lg pl-3 pr-8 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 transition-all shadow-sm
+                ${isHandoffEdit ? "cursor-not-allowed opacity-70 bg-slate-100 dark:bg-white/5" : "cursor-pointer font-bold"}
+              `}
             >
               <option value="" disabled className="text-slate-400">Choose An Option</option>
               {projects.map((p) => (
@@ -227,14 +237,10 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
               No categories found in lookup
             </div>
           ) : (
-            categories.map((cat) => (
+            paginatedCategories.map((cat) => (
               <label
                 key={cat.id}
-                className={`flex items-center gap-2.5 p-2 rounded-lg border cursor-pointer transition-all
-                  ${selectedCategories.includes(cat.id)
-                    ? "bg-blue-50 border-blue-200 dark:bg-blue-600/10 dark:border-blue-500/30"
-                    : "bg-white border-slate-100 dark:bg-black dark:border-white/5 hover:border-slate-200"
-                  }`}
+                className="flex items-center gap-3 py-1.5 px-3 cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-white/5 rounded-md group"
               >
                 <div className="relative flex items-center justify-center">
                   <input
@@ -242,7 +248,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
                     checked={selectedCategories.includes(cat.id)}
                     onChange={() => handleToggle(cat.id)}
                     disabled={submitting}
-                    className="peer appearance-none w-4 h-4 rounded border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer"
+                    className="peer appearance-none w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer"
                   />
                   <svg
                     className="absolute w-2.5 h-2.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
@@ -251,18 +257,45 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <span className={`text-[11px] font-black uppercase tracking-tight
-                  ${selectedCategories.includes(cat.id)
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-slate-500 dark:text-slate-400"
-                  }`}
-                >
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                   {cat.name}
                 </span>
               </label>
             ))
           )}
         </div>
+
+        {/* Category Pagination Controls */}
+        {!loading && categories.length > catPageSize && (
+          <div className="mt-3 pt-2 border-t border-slate-50 dark:border-white/5 flex items-center justify-between">
+            <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+              {Math.min((catPage - 1) * catPageSize + 1, totalCatCount)} - {Math.min(catPage * catPageSize, totalCatCount)} of {totalCatCount}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                disabled={catPage === 1}
+                onClick={() => setCatPage(prev => prev - 1)}
+                className="w-6 h-6 flex items-center justify-center rounded-md border border-slate-100 dark:border-white/10 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all disabled:opacity-30"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 min-w-[30px] text-center">
+                {catPage} / {Math.ceil(totalCatCount / catPageSize)}
+              </span>
+              <button
+                disabled={catPage >= Math.ceil(totalCatCount / catPageSize)}
+                onClick={() => setCatPage(prev => prev + 1)}
+                className="w-6 h-6 flex items-center justify-center rounded-md border border-slate-100 dark:border-white/10 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all disabled:opacity-30"
+              >
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Footer */}
@@ -279,7 +312,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
           disabled={submitting || loading}
           className="h-[30px] px-8 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg text-[10.5px] font-black uppercase shadow-lg shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50"
         >
-          {submitting ? "Processing..." : "Save Mapping"}
+          {submitting ? "Processing..." : "Save"}
         </button>
       </div>
 

@@ -292,8 +292,8 @@ export default function TaskCategoryProjectsPage() {
           open={true}
           item={actionItem}
           loading={actionLoading}
-          title="Confirm Removal"
-          confirmText="Remove Now"
+          title="Confirm Deleting"
+          confirmText="Delete"
           onClose={() => { setActionItem(null); setActionType(""); }}
           onConfirm={handleDelete}
         />

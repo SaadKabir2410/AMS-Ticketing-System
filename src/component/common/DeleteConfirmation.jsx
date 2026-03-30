@@ -15,7 +15,15 @@ export default function DeleteConfirmModal({
   if (!open || !activeItem) return null;
 
   const identifier =
-    activeItem.ticketNo || activeItem.siteName || activeItem.lookupCode || activeItem.code || activeItem.userName || activeItem.name || activeItem.id;
+    activeItem.ticketNo || 
+    activeItem.siteName || 
+    activeItem.projectDescription || 
+    activeItem.description || 
+    activeItem.lookupCode || 
+    activeItem.code || 
+    activeItem.userName || 
+    activeItem.name || 
+    activeItem.id;
 
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
@@ -23,20 +31,16 @@ export default function DeleteConfirmModal({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl animate-fade-in p-6 text-center">
-        <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-500/15 flex items-center justify-center mx-auto mb-4">
-          
-        </div>
+      <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-2xl animate-fade-in p-8 pt-12 text-center">
+
         <h3 className="text-lg text-slate-800 dark:text-white mb-2">
           {title}
         </h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">
           Are you sure you want to proceed with this action?
         </p>
-        <p className="text-sm font-mono text-blue-500 mb-5">{identifier}</p>
-        <p className="text-xs text-slate-400 mb-6">
-          This action cannot be undone.
-        </p>
+        <p className="text-sm font-mono text-blue-500 mb-8">{identifier}</p>
+
 
         <div className="flex gap-3">
           <button

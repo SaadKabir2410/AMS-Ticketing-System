@@ -231,23 +231,6 @@ export default function CodeDetailsPage() {
               onEdit={row.isActive && !row.isDeleted ? () => {
                 setActionItem(row);
                 setActionType("edit");
-<<<<<<< Updated upstream
-=======
-              }}
-              onAuditLog={() =>
-                navigate(
-                  `/audit-logs?primaryKey=${row.id}&entityName=${codeDetailsApi.entityName}`
-                )
-              }
-              onDisable={row.isActive && !row.isDeleted ? async () => {
-                try {
-                  await codeDetailsApi.disable(row.id, row);
-                  toast("Record disabled successfully!");
-                  fetchCodeDetails();
-                } catch (err) {
-                  toast(`Disable failed: ${err.message}`, "error");
-                }
->>>>>>> Stashed changes
               } : null}
               onAuditLog={() =>
                 navigate(`/audit-logs?primaryKey=${row.id}&entityName=${codeDetailsApi.entityName}`)

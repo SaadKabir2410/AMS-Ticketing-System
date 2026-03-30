@@ -60,9 +60,7 @@ export default function Navbar({ setCollapsed }) {
             onClick={() => setShowMenu(!showMenu)}
             className="flex items-center gap-3 p-1 pr-3 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors"
           >
-            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-[11px] text-white shadow-sm ">
-              {user?.name?.slice(0, 2) || "SK"}
-            </div>
+
             <div className="text-left hidden lg:block">
               <p className="text-xs dark:text-slate-200">
                 {user?.name || "Saad Kabir"}
