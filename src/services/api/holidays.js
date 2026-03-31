@@ -77,6 +77,24 @@ export const holidaysApi = {
       });
       return { items: result, totalCount: result.length };
     }),
+
+  create: (data) =>
+    apiClient.post("/api/app/holiday", data).then((r) => {
+      _cache = null; // Clear cache
+      return r.data;
+    }),
+
+  update: (id, data) =>
+    apiClient.put(`/api/app/holiday/${id}`, data).then((r) => {
+      _cache = null; // Clear cache
+      return r.data;
+    }),
+
+  delete: (id) =>
+    apiClient.delete(`/api/app/holiday/${id}`).then((r) => {
+      _cache = null; // Clear cache
+      return r.data;
+    }),
 };
 
 export default holidaysApi;

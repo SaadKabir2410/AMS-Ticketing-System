@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Dialog, IconButton } from "@mui/material";
+import { X, Check } from "lucide-react";
 
 import PremiumErrorAlert from "./PremiumErrorAlert";
 
@@ -202,7 +203,7 @@ export default function HolidayModal({
           onClick={onClose}
           className="bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10"
         >
-          
+          <X size={18} />
         </IconButton>
       </div>
 
