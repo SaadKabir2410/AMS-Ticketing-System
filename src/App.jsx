@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "./context/AuthContextHook";
+import { usePermissionContext } from "./context/PermissionContext";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "./component/layout/Navbar";
 import Sidebar from "./component/layout/Sidebar";
@@ -73,6 +74,7 @@ function Layout({ collapsed, setCollapsed }) {
 export default function App() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
+  const { isLoading } = usePermissionContext();
 
   // Handle session expiry (401 from API)
   useEffect(() => {
@@ -83,6 +85,34 @@ export default function App() {
     window.addEventListener("auth:expired", handleAuthExpired);
     return () => window.removeEventListener("auth:expired", handleAuthExpired);
   }, [navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="h-screen w-screen bg-slate-50 dark:bg-[#020617] flex items-center justify-center flex-col gap-6">
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 border-4 border-blue-500/10 rounded-full"></div>
+          <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-800 dark:text-white animate-pulse">
+            Loading...
+          </p>
+          <div className="w-32 h-1 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
+            <div className="h-full bg-blue-600 animate-[loading_1.5s_ease-in-out_infinite]"></div>
+          </div>
+        </div>
+        <style>{`
+          @keyframes loading {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <Routes>

@@ -4,6 +4,7 @@ import "./index.css";
 import App from "./App.jsx";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { AuthProvider as CustomAuthProvider } from "./context/Authcontext";
+import { PermissionProvider } from "./context/PermissionContext";
 import { BrowserRouter } from "react-router-dom";
 import { ToastProvider } from "./component/common/Toast";
 import {
@@ -95,13 +96,15 @@ createRoot(document.getElementById("root")).render(
     <ErrorBoundary>
       <BrowserRouter>
         <CustomAuthProvider>
-          <ThemeProvider>
-            <ToastProvider>
-              <MuiThemeWrapper>
-                <App />
-              </MuiThemeWrapper>
-            </ToastProvider>
-          </ThemeProvider>
+          <PermissionProvider>
+            <ThemeProvider>
+              <ToastProvider>
+                <MuiThemeWrapper>
+                  <App />
+                </MuiThemeWrapper>
+              </ToastProvider>
+            </ThemeProvider>
+          </PermissionProvider>
         </CustomAuthProvider>
       </BrowserRouter>
     </ErrorBoundary>

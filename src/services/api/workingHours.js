@@ -28,6 +28,38 @@ export const workingHoursApi = {
         throw err;
       });
   },
+
+  getById: (id) =>
+    apiClient.get(`/api/app/user-working-hour/${id}/by-id`).then((r) => r.data),
+
+  create: (data) => {
+    const payload = {
+      ...data,
+      startTime: data.startTime?.length === 5 ? `${data.startTime}:00` : data.startTime,
+      endTime: data.endTime?.length === 5 ? `${data.endTime}:00` : data.endTime,
+    };
+    return apiClient.post("/api/app/user-working-hour", payload).then((r) => r.data);
+  },
+
+  update: async (id, data) => {
+    // Step 1: Fetch fresh concurrencyStamp before PUT
+    const fresh = await apiClient
+      .get(`/api/app/user-working-hour/${id}/by-id`)
+      .then((r) => r.data);
+
+    // Step 2: Build payload with concurrencyStamp
+    const payload = {
+      ...data,
+      concurrencyStamp: fresh.concurrencyStamp,
+      startTime: data.startTime?.length === 5 ? `${data.startTime}:00` : data.startTime,
+      endTime: data.endTime?.length === 5 ? `${data.endTime}:00` : data.endTime,
+    };
+
+    return apiClient
+      .put(`/api/app/user-working-hour/${id}`, payload)
+      .then((r) => r.data);
+  },
+  delete: (id) => apiClient.delete(`/api/app/user-working-hour/${id}`),
 };
 
 export default workingHoursApi;

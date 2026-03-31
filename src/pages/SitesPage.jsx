@@ -22,7 +22,7 @@ export default function SitesPage() {
         return (
           <span className=" font-mono text-blue-500 ">
             {str.slice(0, idx)}
-            <mark className="bg-yellow-200 text-yellow-900 rounded-[2px] px-[2px]">
+            <mark className="bg-yellow-200 dark:bg-yellow-500/30 text-yellow-900 dark:text-yellow-100 rounded-[2px] px-[2px]">
               {str.slice(idx, idx + searchTerm.length)}
             </mark>
             {str.slice(idx + searchTerm.length)}

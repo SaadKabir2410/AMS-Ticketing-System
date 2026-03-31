@@ -1,47 +1,53 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import clsx from "clsx";
 import { NAV_GROUPS } from "../../data/navData";
 import { useAuth } from "../../context/AuthContextHook";
+import { usePermissionContext } from "../../context/PermissionContext";
 import { ChevronDown, Menu as MenuIcon } from "lucide-react";
 
 export default function Sidebar({ collapsed, setCollapsed }) {
   const { user } = useAuth();
+  const { hasPermission, isLoading } = usePermissionContext();
   
-  // ... filtered groups ...
-  const filteredGroups = NAV_GROUPS.map((group) => {
-    const validLinks = group.links
-      .filter((link) => {
-        const isAdmin = user?.role?.toLowerCase().includes("admin") || user?.roles?.includes("admin");
-        if (link.adminOnly && !isAdmin) {
-          return false;
-        }
-        if (link.permission && (!user?.permissions || !user.permissions[link.permission])) {
-          return false;
-        }
-        return true;
-      })
-      .map((link) => {
-        if (link.subMenu) {
-          return {
-            ...link,
-            subMenu: link.subMenu.filter((sub) => {
-              const isAdmin = user?.role?.toLowerCase().includes("admin") || user?.roles?.includes("admin");
-              if (sub.adminOnly && !isAdmin) {
-                return false;
-              }
-              if (sub.permission && (!user?.permissions || !user.permissions[sub.permission])) {
-                return false;
-              }
-              return true;
-            }),
-          };
-        }
-        return link;
-      })
-      .filter((link) => !link.subMenu || link.subMenu.length > 0);
+  const filteredGroups = useMemo(() => {
+    if (isLoading) return [];
 
-    return { ...group, links: validLinks };
-  }).filter((group) => group.links.length > 0);
+    return NAV_GROUPS.map((group) => {
+      const validLinks = group.links
+        .filter((link) => {
+          const isAdmin = user?.role?.toLowerCase().includes("admin") || user?.roles?.includes("admin");
+          if (link.adminOnly && !isAdmin) {
+            return false;
+          }
+          if (link.permission && !hasPermission(link.permission)) {
+            return false;
+          }
+          return true;
+        })
+        .map((link) => {
+          if (link.subMenu) {
+            return {
+              ...link,
+              subMenu: link.subMenu.filter((sub) => {
+                const isAdmin = user?.role?.toLowerCase().includes("admin") || user?.roles?.includes("admin");
+                if (sub.adminOnly && !isAdmin) {
+                  return false;
+                }
+                if (sub.permission && !hasPermission(sub.permission)) {
+                  return false;
+                }
+                return true;
+              }),
+            };
+          }
+          return link;
+        })
+        .filter((link) => !link.subMenu || link.subMenu.length > 0);
+
+      return { ...group, links: validLinks };
+    }).filter((group) => group.links.length > 0);
+  }, [user, hasPermission, isLoading]);
+
 
   return (
     <>

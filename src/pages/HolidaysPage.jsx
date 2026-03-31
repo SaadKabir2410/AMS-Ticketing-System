@@ -79,13 +79,12 @@ export default function HolidaysPage() {
         label: "TYPE",
         render: (val) => (
           <span
-            className={`px-2 py-0.5 rounded-lg text-[9px] border ${
-              val === "Public"
-                ? "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-500/10 dark:border-blue-500/20"
-                : val === "Regional"
-                  ? "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-500/10 dark:border-purple-500/20"
-                  : "bg-slate-50 text-slate-600 border-slate-200 dark:bg-white/5 dark:border-white/10"
-            }`}
+            className={`px-2 py-0.5 rounded-lg text-[9px] border ${val === "Public"
+              ? "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-500/10 dark:border-blue-500/20"
+              : val === "Regional"
+                ? "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-500/10 dark:border-purple-500/20"
+                : "bg-slate-50 text-slate-600 border-slate-200 dark:bg-white/5 dark:border-white/10"
+              }`}
           >
             <Highlight text={val || "General"} query={filters.type} />
           </span>
@@ -168,93 +167,129 @@ export default function HolidaysPage() {
   );
 
   const filterInputClass =
-    "pl-3 pr-3 py-3 text-[10px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full shadow-sm";
+    "pl-3 pr-3 py-3 text-[10px] bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full shadow-sm text-slate-700 dark:text-slate-200";
 
   const customFilterArea = (
-    <div className="flex items-center gap-4 flex-wrap flex-1 bg-slate-50/50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/5">
-      {/* Name Search (Small) */}
-      <div className="max-w-[140px] w-full">
-        <input
-          type="text"
-          placeholder="NAME..."
-          value={filters.name}
-          onChange={(e) => setFilters({ ...filters, name: e.target.value })}
-          className={filterInputClass}
-        />
+    <div className="flex items-center gap-3 bg-white dark:bg-[#020617] p-4 border-b border-slate-100 dark:border-white/5 w-full flex-nowrap shrink-0 overflow-hidden">
+      {/* Title & Breadcrumb Block */}
+      <div className="flex flex-col shrink-0 min-w-[140px] pr-4 border-r border-slate-100 dark:border-white/5">
+        <nav className="flex items-center gap-1 text-[8px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-tighter mb-1">
+          <span>Home</span>
+          <span>/</span>
+          <span>Lookups</span>
+        </nav>
+        <h1 className="text-[20px] font-black text-slate-800 dark:text-white uppercase tracking-tighter leading-none">
+          Holidays
+        </h1>
       </div>
 
-      {/* Description Search (Flexible) */}
-      <div className="flex-1 min-w-[180px]">
-        <input
-          type="text"
-          placeholder="DESCRIPTION..."
-          value={filters.description}
-          onChange={(e) =>
-            setFilters({ ...filters, description: e.target.value })
-          }
-          className={filterInputClass}
-        />
-      </div>
+      {/* Inputs Scrollable Area */}
+      <div className="flex items-center gap-2 flex-grow min-w-0 overflow-hidden">
+        {/* Name */}
+        <div className="flex-1 min-w-[120px]">
+          <div className="flex flex-col gap-1">
+            <label className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter ml-1">Name</label>
+            <input
+              type="text"
+              placeholder="NAME..."
+              value={filters.name}
+              onChange={(e) => setFilters({ ...filters, name: e.target.value })}
+              className={filterInputClass}
+            />
+          </div>
+        </div>
 
-      {/* Type Search */}
-      <div className="min-w-[130px]">
-        <input
-          type="text"
-          placeholder="TYPE..."
-          value={filters.type}
-          onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-          className={filterInputClass}
-        />
-      </div>
+        {/* Description */}
+        <div className="flex-[1.8] min-w-[180px]">
+          <div className="flex flex-col gap-1">
+            <label className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter ml-1">Description</label>
+            <input
+              type="text"
+              placeholder="DESCRIPTION..."
+              value={filters.description}
+              onChange={(e) =>
+                setFilters({ ...filters, description: e.target.value })
+              }
+              className={filterInputClass}
+            />
+          </div>
+        </div>
 
-      {/* Date Filter */}
-      <div className="min-w-[140px]">
-        <input
-          type="date"
-          value={filters.date}
-          onChange={(e) => setFilters({ ...filters, date: e.target.value })}
-          className={filterInputClass + " "}
-        />
-      </div>
+        {/* Type */}
+        <div className="w-[100px] shrink-0">
+          <div className="flex flex-col gap-1">
+            <label className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter ml-1">Type</label>
+            <input
+              type="text"
+              placeholder="TYPE..."
+              value={filters.type}
+              onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+              className={filterInputClass}
+            />
+          </div>
+        </div>
 
-      {/* Year Filter */}
-      <div className="max-w-[100px]">
-        <input
-          type="text"
-          placeholder="YEAR..."
-          value={filters.year}
-          onChange={(e) => setFilters({ ...filters, year: e.target.value })}
-          className={filterInputClass}
-        />
-      </div>
+        {/* Date */}
+        <div className="w-[120px] shrink-0">
+          <div className="flex flex-col gap-1">
+            <label className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter ml-1">Date</label>
+            <input
+              type="date"
+              value={filters.date}
+              onChange={(e) => setFilters({ ...filters, date: e.target.value })}
+              className={filterInputClass}
+            />
+          </div>
+        </div>
 
-      {/* Country Filter */}
-      <div className="min-w-[130px]">
-        <input
-          type="text"
-          placeholder="COUNTRY..."
-          value={filters.country}
-          onChange={(e) => setFilters({ ...filters, country: e.target.value })}
-          className={filterInputClass}
-        />
-      </div>
+        {/* Year */}
+        <div className="w-[60px] shrink-0">
+          <div className="flex flex-col gap-1">
+            <label className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter ml-1">Year</label>
+            <input
+              type="text"
+              placeholder="YEAR..."
+              value={filters.year}
+              onChange={(e) => setFilters({ ...filters, year: e.target.value })}
+              className={filterInputClass}
+            />
+          </div>
+        </div>
 
-      {/* Location Filter */}
-      <div className="min-w-[130px]">
-        <input
-          type="text"
-          placeholder="LOCATION..."
-          value={filters.location}
-          onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-          className={filterInputClass}
-        />
+        {/* Country */}
+        <div className="flex-1 min-w-[100px]">
+          <div className="flex flex-col gap-1">
+            <label className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter ml-1">Country</label>
+            <input
+              type="text"
+              placeholder="COUNTRY..."
+              value={filters.country}
+              onChange={(e) => setFilters({ ...filters, country: e.target.value })}
+              className={filterInputClass}
+            />
+          </div>
+        </div>
+
+        {/* Location */}
+        <div className="flex-1 min-w-[100px]">
+          <div className="flex flex-col gap-1">
+            <label className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter ml-1">Location</label>
+            <input
+              type="text"
+              placeholder="LOCATION..."
+              value={filters.location}
+              onChange={(e) => setFilters({ ...filters, location: e.target.value })}
+              className={filterInputClass}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Clear Button */}
       <button
         onClick={handleClear}
-        className="px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-400 font-medium hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm min-w-[46px]"
-        title="Clear Filters"
+        className="px-4 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-500 dark:text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 text-[8px] font-black uppercase tracking-tighter h-[34px] self-end shrink-0 ml-2"
+        title="Reset All"
       >
         Clear
       </button>
@@ -274,20 +309,24 @@ export default function HolidaysPage() {
   }, [filters]);
 
   return (
-    <ResourcePage
-      title="Holidays"
-      apiObject={holidaysApi}
-      columns={columns}
-      searchPlaceholder="Global search..."
-      breadcrumb={["Home", "Management", "Lookups", "Holidays"]}
-      showSearchBar={false}
-      customFilterArea={customFilterArea}
-      extraParams={extraParams}
-      showActions={false}
-      initialPageSize={100}
-      entityName="Holiday"
-      initialSortKey="date"
-      initialSortDir="desc"
-    />
+    <div className="h-full flex flex-col bg-[#f1f5f9] dark:bg-black transition-colors duration-500 -mx-6 -mt-6">
+      <ResourcePage
+        title="Holidays"
+        apiObject={holidaysApi}
+        columns={columns}
+        searchPlaceholder="Global search..."
+        showSearchBar={false}
+        hideHeader={true}
+        wideSearch={true}
+        customFilterArea={customFilterArea}
+        extraParams={extraParams}
+        showActions={false}
+        initialPageSize={100}
+        entityName="Holiday"
+        initialSortKey="date"
+        initialSortDir="desc"
+        containerClassName="bg-white dark:bg-[#020617] rounded-none border-x-0 border-t-0 border-slate-200 dark:border-white/10 shadow-none overflow-hidden flex flex-col flex-1 w-full"
+      />
+    </div>
   );
 }

@@ -106,7 +106,7 @@ export default function TaskCategoryProjectsPage() {
   const breadcrumb = ["Home", "Management", "Lookups", "Task Category Projects"];
 
   return (
-    <div className="h-full bg-[#f1f5f9] dark:bg-black overflow-hidden flex flex-col no-scrollbar px-2 pt-2 pb-1 transition-colors duration-300">
+    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar px-2 pt-2 pb-1 transition-colors duration-300">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 mb-3 ml-1">
         {breadcrumb.map((b, i) => (
@@ -123,10 +123,10 @@ export default function TaskCategoryProjectsPage() {
       </nav>
 
       <div className="flex-1 w-full flex flex-col overflow-hidden px-6 pb-6 mb-2">
-        <div className="flex-1 bg-white dark:bg-[#0f172a] border border-slate-100 dark:border-white/10 rounded-2xl shadow-xl overflow-hidden flex flex-col transition-all duration-300">
+        <div className="flex-1 bg-white dark:bg-slate-900/40 border border-slate-100 dark:border-white/5 rounded-2xl shadow-xl backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300">
 
           {/* Header */}
-          <div className="px-12 py-8 flex flex-col gap-6 bg-slate-50/50 dark:bg-transparent shrink-0 border-b border-slate-50 dark:border-white/5">
+          <div className="px-12 py-8 flex flex-col gap-6 bg-slate-50/50 dark:bg-transparent shrink-0">
             <div className="flex items-center justify-between">
               <h1 className="text-[26px] font-black text-slate-800 dark:text-white tracking-tighter leading-none uppercase">
                 Task Category Projects
@@ -191,7 +191,7 @@ export default function TaskCategoryProjectsPage() {
                       {paginatedData.map((row, i) => (
                         <tr
                           key={row.projectId || i}
-                          className="group transition-colors hover:bg-blue-50/30 dark:hover:bg-blue-500/10 border-b border-slate-50 dark:border-white/5"
+                          className="group transition-colors hover:bg-blue-50/30 dark:hover:bg-blue-500/10"
                         >
                           {/* Project name — NOW FIRST COLUMN */}
                           <td className="px-16 py-3 font-semibold text-slate-700 dark:text-slate-300 text-[12px]">
@@ -221,7 +221,7 @@ export default function TaskCategoryProjectsPage() {
           </div>
 
           {/* Pagination Footer */}
-          <div className="px-12 py-6 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
+          <div className="px-12 py-6 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Show:</span>
@@ -255,7 +255,7 @@ export default function TaskCategoryProjectsPage() {
               <button
                 onClick={() => setPage((p) => p - 1)}
                 disabled={page === 1 || loadingMappings}
-                className="px-4 py-1.5 bg-white dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-white/10 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95"
+                className="px-4 py-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95"
               >
                 Prev
               </button>
@@ -265,7 +265,7 @@ export default function TaskCategoryProjectsPage() {
               <button
                 onClick={() => setPage((p) => p + 1)}
                 disabled={page >= Math.ceil(totalCount / pageSize) || loadingMappings}
-                className="px-4 py-1.5 bg-white dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-white/10 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95"
+                className="px-4 py-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95"
               >
                 Next
               </button>

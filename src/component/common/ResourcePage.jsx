@@ -28,6 +28,10 @@ export function ActionsMenu({
     setAnchorEl(null);
   };
 
+  const hasActions = onAuditLog || onEdit || onDetail || onPermissions || onDelete || onDisable || onEnable;
+
+  if (!hasActions) return null;
+
   return (
     <div>
       <button
@@ -40,8 +44,8 @@ export function ActionsMenu({
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
-        transformOrigin={{ horizontal: "left", vertical: "top" }}
-        anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
+        transformOrigin={{ horizontal: "right", vertical: "top" }}
+        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
         PaperProps={{
           sx: {
             mt: 1,
@@ -92,6 +96,7 @@ export function ActionsMenu({
   );
 }
 
+
 export default function ResourcePage({
   title,
   apiObject,
@@ -135,7 +140,7 @@ export default function ResourcePage({
   wideSearch = false,
   rowHeight = 44,
   headerHeight = 44,
-  containerClassName = "bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-xl overflow-hidden flex flex-col flex-1",
+  containerClassName = "bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-white/5 shadow-xl backdrop-blur-sm overflow-hidden flex flex-col flex-1",
   hideHeader = false,
 }) {
   const { dark } = useTheme();
@@ -413,7 +418,7 @@ export default function ResourcePage({
       return (
         <div className={baseClass} title={str}>
           {str.slice(0, idx)}
-          <mark className="bg-yellow-200 text-yellow-900 rounded-[2px] px-[2px] ">
+          <mark className="bg-yellow-200 dark:bg-yellow-500/30 text-yellow-900 dark:text-yellow-100 rounded-[2px] px-[2px] ">
             {str.slice(idx, idx + searchTerm.length)}
           </mark>
           {str.slice(idx + searchTerm.length)}
@@ -536,7 +541,7 @@ export default function ResourcePage({
       <div className={containerClassName}>
         {/* Header Section */}
         {!hideHeader && (
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2 shrink-0">
+          <div className="px-6 py-4 bg-slate-50/50 dark:bg-white/2 shrink-0">
             {breadcrumb.length > 0 && (
               <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3">
                 {breadcrumb.map((b, i) => (
@@ -592,8 +597,8 @@ export default function ResourcePage({
 
         {/* Toolbar Section */}
         {(showSearchBar || showFilterBar || customFilterArea) && (
-          <div className="px-6 py-3 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-white dark:bg-transparent shrink-0 flex-wrap gap-4">
-            <div className={`flex items-center gap-6 flex-1 min-w-[300px] ${wideSearch ? "max-w-2xl" : "max-w-[400px]"}`}>
+          <div className="px-6 py-3 flex items-center justify-between bg-white dark:bg-transparent shrink-0 flex-wrap gap-4">
+            <div className={`flex items-center gap-6 flex-1 min-w-[300px] ${wideSearch === "full" ? "max-w-none" : (wideSearch ? "max-w-2xl" : "max-w-[400px]")}`}>
               {showSearchBar && (
                 <div className="relative w-full group">
                   <input
@@ -601,7 +606,7 @@ export default function ResourcePage({
                     placeholder={searchPlaceholder}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white dark:focus:bg-slate-800 transition-all"
+                    className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white dark:focus:bg-slate-800 transition-all text-slate-800 dark:text-slate-200"
                   />
                 </div>
               )}
@@ -667,10 +672,9 @@ export default function ResourcePage({
                       },
                       "&:focus, &:focus-within": { outline: "none !important" },
                     },
-                    "& .MuiDataGrid-columnHeader": { borderRight: "none !important" },
+                    "& .MuiDataGrid-columnHeader": { borderRight: "none !important", borderBottom: "none !important" },
                     "& .MuiDataGrid-cell": {
-                      borderBottom: "none",
-                      borderRight: "none !important",
+                      border: "none !important",
                       display: "flex",
                       alignItems: "center",
                       color: "inherit",
@@ -699,7 +703,7 @@ export default function ResourcePage({
 
             {/* Pagination Footer */}
             {showPagination && (
-              <div className="px-6 py-3 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
+              <div className="px-6 py-3 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] text-slate-400">Rows:</span>
                   <select
@@ -708,7 +712,7 @@ export default function ResourcePage({
                       setPageSize(Number(e.target.value));
                       setPage(1);
                     }}
-                    className="px-2 py-1 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg outline-none transition-all cursor-pointer shadow-sm"
+                    className="px-3 py-1.5 text-[11px] bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-blue-500/50"
                   >
                     {[14, 25, 50, 100].map((s) => (
                       <option key={s} value={s}>
@@ -735,13 +739,13 @@ export default function ResourcePage({
                   <button
                     onClick={handleFirstPage}
                     disabled={page === 1 || loading}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center bg-white"
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all shadow-sm flex items-center justify-center"
                   >
                   </button>
                   <button
                     onClick={handlePrevPage}
                     disabled={page === 1 || loading}
-                    className="px-3.5 py-1.5 bg-white rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-[11px] transition-all shadow-sm"
+                    className="px-3.5 py-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 text-[11px] transition-all shadow-sm"
                   >
                     Prev
                   </button>
@@ -758,7 +762,7 @@ export default function ResourcePage({
                   <button
                     onClick={handleLastPage}
                     disabled={page >= displayTotalPages || loading}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center bg-white"
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all shadow-sm flex items-center justify-center"
                   >
                   </button>
                 </div>

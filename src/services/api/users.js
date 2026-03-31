@@ -46,15 +46,16 @@ export const usersApi = {
     apiClient.get(`/api/identity/users/by-email/${email}`).then((r) => r.data),
   getCustomerUsers: (siteId) =>
     apiClient.get(`/api/app/user/customer-users/${siteId}`).then((r) => r.data),
-  getUsersList: (organizationTypes) => {
-    let url = "/api/app/user/users-list";
-    if (organizationTypes && Array.isArray(organizationTypes)) {
-      const q = organizationTypes
-        .map((t) => `organizationTypes=${t}`)
-        .join("&");
-      url += `?${q}`;
-    }
-    return apiClient.get(url).then((r) => r.data);
+  getUsersList: ({ organizationTypes = [], mustCompleteJobsheet = true, onlyLoadCurrentUser = false } = {}) => {
+    const params = {
+      mustCompleteJobsheet,
+      onlyLoadCurrentUser,
+      "api-version": "1.0",
+    };
+    organizationTypes.forEach((type, i) => {
+      params[`organizationTypes[${i}]`] = type;
+    });
+    return apiClient.get("/api/app/user/users-list", { params }).then((r) => r.data);
   },
   getCustomerList: () =>
     apiClient

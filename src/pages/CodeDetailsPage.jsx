@@ -254,7 +254,7 @@ export default function CodeDetailsPage() {
 
   const filterRow = (
     <div className="relative shrink-0">
-      <div className="bg-white dark:bg-slate-900 px-2 py-0 flex items-center overflow-x-auto no-scrollbar">
+      <div className="bg-white dark:bg-slate-900/60 px-2 py-0 flex items-center overflow-x-auto no-scrollbar">
         <div className="flex shrink-0 pr-[95px]">
           {[
             { label: "Code", key: "newCode", w: 70, isCombo: true },
@@ -282,7 +282,7 @@ export default function CodeDetailsPage() {
                 <input
                   type="text"
                   placeholder={`Search ${f.label.split(' ')[0]}...`}
-                  className="h-[30px] w-full bg-slate-50 dark:bg-slate-950 rounded-lg px-2 text-[10px] text-slate-800 dark:text-slate-200 outline-none border border-slate-200 dark:border-white/10 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 shadow-sm"
+                  className="pl-3 pr-3 py-3 text-[10px] bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full shadow-sm text-slate-700 dark:text-slate-200"
                   value={filters[f.key] || ""}
                   onChange={(e) => setFilters(prev => ({ ...prev, [f.key]: e.target.value }))}
                 />
@@ -293,7 +293,7 @@ export default function CodeDetailsPage() {
           ))}
         </div>
       </div>
-      <div className="absolute right-0 top-0 bottom-0 px-3 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-l border-slate-50 dark:border-white/5 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.05)] z-10">
+      <div className="absolute right-0 top-0 bottom-0 px-3 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-l border-slate-50 dark:border-white/5 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.05)] z-10">
         <button
           onClick={handleClearAll}
           className="h-[26px] px-5 bg-blue-600 text-white rounded-[6px] text-[9.5px] font-black hover:bg-blue-700 transition-all active:scale-95 shadow-[0_4px_10px_-2px_rgba(37,99,235,0.4)] shrink-0"
@@ -305,7 +305,7 @@ export default function CodeDetailsPage() {
   );
 
   return (
-    <div className="h-screen bg-[#f1f5f9] dark:bg-black overflow-hidden flex flex-col no-scrollbar px-2 pt-2 pb-1 transition-colors duration-300">
+    <div className="h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar px-2 pt-2 pb-1 transition-colors duration-300">
       <nav className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 mb-3 ml-1">
         {breadcrumb.map((b, i) => (
           <span key={i} className="flex items-center gap-2">
@@ -320,8 +320,8 @@ export default function CodeDetailsPage() {
         ))}
       </nav>
 
-      <div className="flex-1 bg-white dark:bg-[#0f172a] border border-slate-100 dark:border-white/10 rounded-2xl shadow-xl overflow-hidden flex flex-col transition-all duration-300">
-        <div className="px-6 py-3 flex flex-col gap-2 bg-slate-50/50 dark:bg-transparent shrink-0">
+      <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl shadow-xl backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300">
+        <div className="px-6 py-3 flex flex-col gap-2 bg-slate-50/50 dark:bg-white/5 shrink-0">
           <div className="flex items-center justify-between">
             <h1 className="text-[28px] font-black text-slate-800 dark:text-white tracking-tighter leading-none uppercase">Code Details</h1>
             {selectedParent && (
@@ -347,6 +347,7 @@ export default function CodeDetailsPage() {
                 value={selectedParent}
                 inputValue={parentSearch}
                 onInputChange={(_, val) => setParentSearch(val)}
+                className="dark:text-white"
                 onChange={(_, val) => {
                   setSelectedParent(val);
                   setResetKey(prev => prev + 1);
@@ -354,11 +355,11 @@ export default function CodeDetailsPage() {
                 renderOption={(props, option) => {
                   const { key, ...restProps } = props;
                   return (
-                    <li key={key} {...restProps} className="px-5 py-2.5 border-b border-slate-100 dark:border-white/5 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center transition-colors">
+                    <li key={key} {...restProps} className="px-5 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center transition-colors">
                       <span className="text-[13px] font-black text-slate-900 dark:text-slate-100 w-[140px] shrink-0 uppercase">
                         <HighlightText text={option.lookupCode} term={parentSearch} />
                       </span>
-                      <span className="text-[11px] text-slate-500 dark:text-slate-400 italic truncate flex-1 px-6 border-l border-slate-100 dark:border-white/10">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 italic truncate flex-1 px-6">
                         <HighlightText text={option.description} term={parentSearch} />
                       </span>
                     </li>
@@ -421,10 +422,11 @@ export default function CodeDetailsPage() {
                           border: '1px solid #2563eb'
                         },
                         '.dark &': {
-                          backgroundColor: 'rgba(255,255,255,0.05)',
+                          backgroundColor: 'rgba(255,255,255,0.03)',
                           '&:hover': { backgroundColor: 'rgba(255,255,255,0.08)' },
                           '&.Mui-focused': {
-                            backgroundColor: 'rgba(255,255,255,0.02)',
+                            backgroundColor: 'rgba(255,255,255,0.01)',
+                            border: '1px solid rgba(59, 130, 246, 0.5)'
                           }
                         }
                       },
@@ -532,14 +534,15 @@ export default function CodeDetailsPage() {
         body { overflow: hidden !important; }
         .MuiDataGrid-root { border: none !important; width: 100% !important; overflow: hidden !important; }
         .MuiDataGrid-columnHeaders { display: none !important; }
-        .MuiDataGrid-cell { border-bottom: none !important; }
+        .MuiDataGrid-cell { border-bottom: none !important; border-right: none !important; }
         .MuiDataGrid-row { border-bottom: none !important; }
         .no-scrollbar::-webkit-scrollbar { display: none !important; }
         .no-scrollbar { -ms-overflow-style: none !important; scrollbar-width: none !important; }
         ::-webkit-scrollbar { display: none !important; }
-        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; border-color: transparent !important; }
         .MuiDataGrid-virtualScroller { overflow-x: auto !important; width: 100% !important; }
         .MuiDataGrid-main { border: none !important; }
+        table, tr, td, th { border: none !important; }
       `}</style>
     </div>
   );
