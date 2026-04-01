@@ -5,7 +5,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { DataGrid, getGridStringOperators } from "@mui/x-data-grid";
 import { useResource } from "../hooks/useResource";
 import { useToast } from "./ToastContext";
-import { ArrowLeft, ChevronDown } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Database, Search } from "lucide-react";
 import { Menu, MenuItem, ListItemIcon, ListItemText, Box } from "@mui/material";
 
 export function ActionsMenu({
@@ -18,6 +18,8 @@ export function ActionsMenu({
   onEnable,
   deleteButtonText = "Delete",
 }) {
+  const { dark } = useTheme();
+  const isDark = dark === "dark";
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
@@ -31,6 +33,8 @@ export function ActionsMenu({
   const hasActions = onAuditLog || onEdit || onDetail || onPermissions || onDelete || onDisable || onEnable;
 
   if (!hasActions) return null;
+
+  const menuItemHover = { py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } };
 
   return (
     <div>
@@ -50,44 +54,46 @@ export function ActionsMenu({
           sx: {
             mt: 1,
             borderRadius: "12px",
-            border: "none",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
+            bgcolor: isDark ? "#0f172a" : "#ffffff",
+            color: isDark ? "#f1f5f9" : "inherit",
             boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1)",
             minWidth: 160,
           },
         }}
       >
         {onDetail && (
-          <MenuItem onClick={() => { onDetail(); handleClose(); }} sx={{ py: 1 }}>
+          <MenuItem onClick={() => { onDetail(); handleClose(); }} sx={menuItemHover}>
             <ListItemText primary="View Details" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
           </MenuItem>
         )}
         {onAuditLog && (
-          <MenuItem onClick={() => { onAuditLog(); handleClose(); }} sx={{ py: 1 }}>
+          <MenuItem onClick={() => { onAuditLog(); handleClose(); }} sx={menuItemHover}>
             <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
           </MenuItem>
         )}
         {onPermissions && (
-          <MenuItem onClick={() => { onPermissions(); handleClose(); }} sx={{ py: 1 }}>
+          <MenuItem onClick={() => { onPermissions(); handleClose(); }} sx={menuItemHover}>
             <ListItemText primary="Permissions" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
           </MenuItem>
         )}
         {onEdit && (
-          <MenuItem onClick={() => { onEdit(); handleClose(); }} sx={{ py: 1 }}>
+          <MenuItem onClick={() => { onEdit(); handleClose(); }} sx={menuItemHover}>
             <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
           </MenuItem>
         )}
         {onDisable && (
-          <MenuItem onClick={() => { onDisable(); handleClose(); }} sx={{ py: 1 }}>
+          <MenuItem onClick={() => { onDisable(); handleClose(); }} sx={menuItemHover}>
             <ListItemText primary="Disable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "warning.main" }} />
           </MenuItem>
         )}
         {onEnable && (
-          <MenuItem onClick={() => { onEnable(); handleClose(); }} sx={{ py: 1 }}>
+          <MenuItem onClick={() => { onEnable(); handleClose(); }} sx={menuItemHover}>
             <ListItemText primary="Enable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "success.main" }} />
           </MenuItem>
         )}
         {onDelete && (
-          <MenuItem onClick={() => { onDelete(); handleClose(); }} sx={{ py: 1 }}>
+          <MenuItem onClick={() => { onDelete(); handleClose(); }} sx={menuItemHover}>
             <ListItemText primary={deleteButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }} />
           </MenuItem>
         )}
@@ -140,7 +146,7 @@ export default function ResourcePage({
   wideSearch = false,
   rowHeight = 44,
   headerHeight = 44,
-  containerClassName = "bg-white dark:bg-slate-900/40 rounded-2xl border border-slate-200 dark:border-white/5 shadow-xl backdrop-blur-sm overflow-hidden flex flex-col flex-1",
+  containerClassName = "bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl backdrop-blur-sm shadow-blue-500/5 overflow-hidden flex flex-col flex-1 transition-all duration-300",
   hideHeader = false,
 }) {
   const { dark } = useTheme();
@@ -537,41 +543,43 @@ export default function ResourcePage({
   ]);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-500">
+    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar p-6 transition-all duration-500 animate-in fade-in">
+      {/* Breadcrumb - Moved outside the card to match reference */}
+      {breadcrumb.length > 0 && !hideHeader && (
+        <nav className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-slate-400 dark:text-slate-500 mb-4 ml-1">
+          {breadcrumb.map((b, i) => (
+            <span key={i} className="flex items-center gap-2">
+              <span
+                onClick={() => b === "Home" && navigate("/")}
+                className={
+                  b === "Home"
+                    ? "hover:text-blue-500 cursor-pointer transition-colors"
+                    : ""
+                }
+              >
+                {b}
+              </span>
+              {i < breadcrumb.length - 1 && <span>/</span>}
+            </span>
+          ))}
+        </nav>
+      )}
+
       <div className={containerClassName}>
         {/* Header Section */}
         {!hideHeader && (
-          <div className="px-6 py-4 bg-slate-50/50 dark:bg-white/2 shrink-0">
-            {breadcrumb.length > 0 && (
-              <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3">
-                {breadcrumb.map((b, i) => (
-                  <span key={i} className="flex items-center gap-2">
-                    <span
-                      onClick={() => b === "Home" && navigate("/")}
-                      className={
-                        b === "Home"
-                          ? "hover:text-blue-500 cursor-pointer transition-colors"
-                          : ""
-                      }
-                    >
-                      {b}
-                    </span>
-                    {i < breadcrumb.length - 1 && <span>/</span>}
-                  </span>
-                ))}
-              </nav>
-            )}
+          <div className="px-6 py-6 bg-slate-50/50 dark:bg-transparent shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => navigate(-1)}
-                  className="p-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
+                  className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-400 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
                   title="Go Back"
                 >
                   <ArrowLeft size={16} strokeWidth={2.5} />
                 </button>
                 <div>
-                  <h1 className="text-2xl text-slate-800 dark:text-white leading-none">
+                  <h1 className="text-[26px] font-black text-slate-800 dark:text-white tracking-tighter leading-none uppercase">
                     {title}
                   </h1>
                 </div>
@@ -583,8 +591,8 @@ export default function ResourcePage({
                     onClick={() => setModals((m) => ({ ...m, create: true }))}
                     className={
                       smallHeaderButton
-                        ? "px-3 py-1.5 bg-white border border-blue-500 text-blue-500 hover:bg-blue-50 dark:bg-transparent dark:hover:bg-blue-500/10 rounded-lg text-xs font-medium transition-colors shadow-sm shrink-0 active:scale-95"
-                        : "px-4 py-2 bg-white border border-blue-500 text-blue-500 hover:bg-blue-50 dark:bg-transparent dark:hover:bg-blue-500/10 rounded-lg text-[13px] font-medium transition-colors shadow-sm shrink-0 active:scale-95"
+                        ? "px-4 h-[30px] bg-blue-600 text-white rounded-lg text-[9.5px] font-black hover:bg-blue-700 transition-all shadow-sm shrink-0 active:scale-95 uppercase tracking-widest shadow-blue-500/10"
+                        : "px-6 h-[34px] bg-blue-600 text-white rounded-xl text-[10px] font-black hover:bg-blue-700 transition-all shadow-sm shrink-0 active:scale-95 uppercase tracking-widest shadow-blue-500/20"
                     }
                   >
                     {createButtonText}
@@ -597,7 +605,7 @@ export default function ResourcePage({
 
         {/* Toolbar Section */}
         {(showSearchBar || showFilterBar || customFilterArea) && (
-          <div className="px-6 py-3 flex items-center justify-between bg-white dark:bg-transparent shrink-0 flex-wrap gap-4">
+          <div className="px-6 py-6 flex items-center justify-between bg-transparent shrink-0 flex-wrap gap-6">
             <div className={`flex items-center gap-6 flex-1 min-w-[300px] ${wideSearch === "full" ? "max-w-none" : (wideSearch ? "max-w-2xl" : "max-w-[400px]")}`}>
               {showSearchBar && (
                 <div className="relative w-full group">
@@ -606,7 +614,7 @@ export default function ResourcePage({
                     placeholder={searchPlaceholder}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:bg-white dark:focus:bg-slate-800 transition-all text-slate-800 dark:text-slate-200"
+                    className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
               )}
@@ -616,7 +624,7 @@ export default function ResourcePage({
         )}
 
         {/* Main Content */}
-        <div className="flex-1 flex min-h-0 relative">
+        <div className="flex-1 flex min-h-0 relative px-6 pb-6 pt-2">
           <div className="flex-1 flex flex-col min-w-0">
             {error && (
               <div className="m-8 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 animate-in fade-in slide-in-from-top-4">
@@ -658,27 +666,40 @@ export default function ResourcePage({
                   sx={{
                     border: "none",
                     bgcolor: isDark ? "transparent" : "inherit",
-                    color: isDark ? "rgba(255, 255, 255, 0.85)" : "inherit",
+                    color: isDark ? "rgba(241, 245, 249, 1)" : "rgb(51, 65, 85)",
                     "& .MuiDataGrid-columnHeaders": {
-                      bgcolor: isDark ? "rgba(30, 41, 59, 0.8)" : "rgba(248, 250, 252, 0.8)",
-                      borderBottom: "none",
+                      bgcolor: isDark ? "rgba(15, 23, 42, 1)" : "rgba(248, 250, 252, 1)",
+                      borderBottom: "none !important",
                       minHeight: `${headerHeight}px !important`,
                       maxHeight: `${headerHeight}px !important`,
                       "& .MuiDataGrid-columnHeaderTitle": {
                         fontWeight: 800,
                         fontSize: "10px",
-                        color: isDark ? "rgba(148, 163, 184, 1)" : "rgb(71 85 105)",
+                        color: isDark ? "rgba(203, 213, 225, 1)" : "rgb(71, 85, 105)",
                         letterSpacing: "0.05em",
                       },
                       "&:focus, &:focus-within": { outline: "none !important" },
                     },
-                    "& .MuiDataGrid-columnHeader": { borderRight: "none !important", borderBottom: "none !important" },
+                    "& .MuiDataGrid-columnHeader": {
+                      borderRight: "none !important",
+                      borderBottom: "none !important",
+                    },
                     "& .MuiDataGrid-cell": {
                       border: "none !important",
+                      borderBottom: "none !important",
                       display: "flex",
                       alignItems: "center",
                       color: "inherit",
                       "&:focus, &:focus-within": { outline: "none !important" },
+                    },
+                    "& .MuiDataGrid-row": {
+                      borderBottom: "none !important",
+                    },
+                    "& .MuiDataGrid-withBorderColor": {
+                      borderColor: "transparent !important",
+                    },
+                    "& .MuiDataGrid-footerContainer": {
+                      borderTop: "none !important",
                     },
                     "& .MuiDataGrid-row:hover": {
                       bgcolor: isDark ? "rgba(59, 130, 246, 0.1)" : "rgba(59, 130, 246, 0.04)",
@@ -687,10 +708,11 @@ export default function ResourcePage({
                   slots={{
                     noRowsOverlay: () => (
                       <div className="h-full flex flex-col items-center justify-center p-10 space-y-4">
-                        <div className="w-16 h-16 bg-slate-50 dark:bg-white/5 rounded-3xl flex items-center justify-center text-slate-300 dark:text-slate-600 border border-slate-100 dark:border-white/5">
+                        <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-3xl flex items-center justify-center text-slate-300 dark:text-slate-400 border border-slate-100 dark:border-slate-700">
+                          <Database size={24} className="opacity-50" />
                         </div>
                         <div className="text-center">
-                          <p className="text-sm text-slate-800 dark:text-white tracking-tighter">
+                          <p className="text-sm text-slate-800 dark:text-slate-200 tracking-tighter">
                             No records found
                           </p>
                         </div>
@@ -703,33 +725,33 @@ export default function ResourcePage({
 
             {/* Pagination Footer */}
             {showPagination && (
-              <div className="px-6 py-3 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
+              <div className="px-6 py-6 bg-slate-50/80 dark:bg-slate-900 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] text-slate-400">Rows:</span>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-300">Rows:</span>
                   <select
                     value={pageSize}
                     onChange={(e) => {
                       setPageSize(Number(e.target.value));
                       setPage(1);
                     }}
-                    className="px-3 py-1.5 text-[11px] bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-blue-500/50"
+                    className="px-3.5 py-1.5 text-[10px] font-black bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-blue-500/50 uppercase tracking-widest"
                   >
                     {[14, 25, 50, 100].map((s) => (
-                      <option key={s} value={s}>
+                      <option key={s} value={s} className="font-sans">
                         {s}
                       </option>
                     ))}
                   </select>
-                  <div className="ml-4 h-4 w-[1px] bg-slate-200 dark:bg-white/10 hidden sm:block"></div>
-                  <div className="text-xs text-slate-500 hidden sm:block">
+                  <div className="ml-4 h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 hidden sm:block">
                     <span className="text-slate-900 dark:text-white">
                       {displayTotal > 0 ? (page - 1) * pageSize + 1 : 0}
                     </span>
-                    {" — "}
+                    <span className="text-slate-400 dark:text-slate-500 mx-1"> — </span>
                     <span className="text-slate-900 dark:text-white">
                       {Math.min(page * pageSize, displayTotal)}
                     </span>
-                    <span className="text-slate-400"> of </span>
+                    <span className="text-slate-400 dark:text-slate-500 mx-1"> of </span>
                     <span className="text-slate-900 dark:text-white">
                       {displayTotal}
                     </span>
@@ -739,31 +761,35 @@ export default function ResourcePage({
                   <button
                     onClick={handleFirstPage}
                     disabled={page === 1 || loading}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all shadow-sm flex items-center justify-center"
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-200 transition-all shadow-sm flex items-center justify-center"
                   >
+                    <ChevronsLeft size={16} />
                   </button>
                   <button
                     onClick={handlePrevPage}
                     disabled={page === 1 || loading}
-                    className="px-3.5 py-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 text-[11px] transition-all shadow-sm"
+                    className="px-3 py-1.5 flex items-center gap-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 text-[11px] transition-all shadow-sm"
                   >
+                    <ChevronLeft size={14} />
                     Prev
                   </button>
-                  <div className="px-4 py-1.5 bg-blue-500 text-white rounded-lg text-[11px] shadow-md shadow-blue-500/25">
+                  <div className="px-5 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
                     Page {page} of {displayTotalPages || 1}
                   </div>
                   <button
                     onClick={handleNextPage}
                     disabled={page >= displayTotalPages || loading}
-                    className="px-3.5 py-1.5 bg-white rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-white dark:hover:bg-white/5 text-[11px] transition-all shadow-sm"
+                    className="px-3 py-1.5 flex items-center gap-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 text-[11px] transition-all shadow-sm"
                   >
                     Next
+                    <ChevronRight size={14} />
                   </button>
                   <button
                     onClick={handleLastPage}
                     disabled={page >= displayTotalPages || loading}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all shadow-sm flex items-center justify-center"
+                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-200 transition-all shadow-sm flex items-center justify-center"
                   >
+                    <ChevronsRight size={16} />
                   </button>
                 </div>
               </div>
@@ -772,8 +798,8 @@ export default function ResourcePage({
 
           {/* Side Panel */}
           {sidePanelOpen && SecondaryDetailComponent && (
-            <div className="w-[600px] border-l border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 flex flex-col shadow-2xl animate-in slide-in-from-right duration-500 z-50">
-              <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-white/2">
+            <div className="w-[600px] border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col shadow-2xl animate-in slide-in-from-right duration-500 z-50">
+              <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
                 <div>
                   <h3 className="text-lg text-slate-800 dark:text-white tracking-tighter">
                     Review Details
@@ -833,6 +859,25 @@ export default function ResourcePage({
           onClose={() => setModals((m) => ({ ...m, detail: false }))}
         />
       )}
+      <style>{`
+        .MuiDataGrid-root { border: none !important; }
+        .MuiDataGrid-columnHeaders { border-bottom: none !important; }
+        .MuiDataGrid-row { border-bottom: none !important; }
+        .MuiDataGrid-cell { border-bottom: none !important; border: none !important; outline: none !important; }
+        .MuiDataGrid-virtualScroller { border: none !important; }
+        .MuiDataGrid-virtualScrollerContent { border: none !important; }
+        .MuiDataGrid-filler { display: none !important; border: none !important; }
+        .MuiDataGrid-bottomContainer { border: none !important; }
+        .MuiDataGrid-bottomContainer::before, .MuiDataGrid-bottomContainer::after { display: none !important; content: none !important; }
+        .MuiDataGrid-footerContainer { border-top: none !important; }
+        .MuiDataGrid-withBorderColor { border-color: transparent !important; }
+        div[class*="MuiDataGrid-"] { outline: none !important; }
+        body { overflow: hidden !important; }
+        ::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+        .no-scrollbar::-webkit-scrollbar { display: none !important; }
+        .no-scrollbar { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+      `}</style>
     </div>
   );
 }

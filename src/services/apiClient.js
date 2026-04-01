@@ -2,10 +2,13 @@ import axios from "axios";
 import qs from "qs";
 
 const apiClient = axios.create({
-  baseURL: "", // Use relative path to take advantage of Vite proxy
+  baseURL: "",
   headers: {
     Accept: "application/json",
     "X-Requested-With": "XMLHttpRequest",
+  },
+  params: {
+    "api-version": "1.0", // ← add this
   },
   paramsSerializer: {
     serialize: (params) => {
@@ -18,7 +21,6 @@ apiClient.interceptors.request.use((config) => {
   const manualKey = "tokenAuth:session";
 
   try {
-    // 1. Try manual login token
     const manualSession = JSON.parse(localStorage.getItem(manualKey));
     if (manualSession?.access_token) {
       config.headers.Authorization = `Bearer ${manualSession.access_token}`;
@@ -27,7 +29,19 @@ apiClient.interceptors.request.use((config) => {
     console.error("Failed to parse auth user:", e);
   }
 
-  // DEBUGGER: Log outgoing request
+  // Add tenant header for ABP Framework
+  config.headers["__tenant"] = "";
+
+  // Add antiforgery token for POST/PUT/DELETE
+  const xsrfToken = document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("XSRF-TOKEN="))
+    ?.split("=")[1];
+
+  if (xsrfToken && ["post", "put", "delete"].includes(config.method?.toLowerCase())) {
+    config.headers["RequestVerificationToken"] = decodeURIComponent(xsrfToken);
+  }
+
   console.log(
     `%c[DEBUGGER] Outgoing Request: ${config.method?.toUpperCase()} ${config.url}`,
     "color: #3b82f6; font-weight: bold",

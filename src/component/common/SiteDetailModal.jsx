@@ -47,7 +47,7 @@ function InfoCard({ label, value, mono = false }) {
           boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
           borderColor: "primary.200",
         },
-        className: "dark:bg-white/2 dark:hover:bg-white/5 dark:border-white/5",
+        className: "dark:bg-slate-800/50 dark:hover:bg-white/5 dark:border-slate-800",
       }}
     >
       <Box sx={{ minWidth: 0 }}>
@@ -140,7 +140,7 @@ export function SiteDetailContent({ item, site, onClose }) {
         <Box sx={{ pt: 4 }}>
           <button
             onClick={onClose}
-            className="w-full py-3 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl text-xs hover:bg-white transition-all shadow-sm"
+            className="w-full py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs hover:bg-white transition-all shadow-sm"
           >
             Dismiss Panel
           </button>

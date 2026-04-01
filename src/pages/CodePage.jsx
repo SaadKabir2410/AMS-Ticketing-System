@@ -26,7 +26,7 @@ export default function CodePage() {
             type="checkbox"
             checked={!!val}
             readOnly
-            className="w-4 h-4 text-blue-600 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-white/10 rounded focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-2 cursor-default pointer-events-none transition-all"
+            className="w-4 h-4 text-blue-600 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-2 cursor-default pointer-events-none transition-all"
           />
         </div>
       )
@@ -40,7 +40,7 @@ export default function CodePage() {
             type="checkbox"
             checked={!!val}
             readOnly
-            className="w-4 h-4 text-blue-600 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-white/10 rounded focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-2 cursor-default pointer-events-none transition-all"
+            className="w-4 h-4 text-blue-600 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded focus:ring-blue-500 dark:focus:ring-blue-600 focus:ring-2 cursor-default pointer-events-none transition-all"
           />
         </div>
       )

@@ -282,7 +282,7 @@ export default function CodeDetailsPage() {
                 <input
                   type="text"
                   placeholder={`Search ${f.label.split(' ')[0]}...`}
-                  className="pl-3 pr-3 py-3 text-[10px] bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full shadow-sm text-slate-700 dark:text-slate-200"
+                  className="pl-3 pr-3 py-3 text-[10px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full shadow-sm text-slate-700 dark:text-slate-200"
                   value={filters[f.key] || ""}
                   onChange={(e) => setFilters(prev => ({ ...prev, [f.key]: e.target.value }))}
                 />
@@ -293,7 +293,7 @@ export default function CodeDetailsPage() {
           ))}
         </div>
       </div>
-      <div className="absolute right-0 top-0 bottom-0 px-3 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-l border-slate-50 dark:border-white/5 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.05)] z-10">
+      <div className="absolute right-0 top-0 bottom-0 px-3 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-l border-slate-50 dark:border-slate-800 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.05)] z-10">
         <button
           onClick={handleClearAll}
           className="h-[26px] px-5 bg-blue-600 text-white rounded-[6px] text-[9.5px] font-black hover:bg-blue-700 transition-all active:scale-95 shadow-[0_4px_10px_-2px_rgba(37,99,235,0.4)] shrink-0"
@@ -305,8 +305,8 @@ export default function CodeDetailsPage() {
   );
 
   return (
-    <div className="h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar px-2 pt-2 pb-1 transition-colors duration-300">
-      <nav className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 mb-3 ml-1">
+    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar p-6 transition-colors duration-300">
+      <nav className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-slate-400 dark:text-slate-500 mb-4 ml-1">
         {breadcrumb.map((b, i) => (
           <span key={i} className="flex items-center gap-2">
             <span
@@ -320,10 +320,10 @@ export default function CodeDetailsPage() {
         ))}
       </nav>
 
-      <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-white/5 rounded-2xl shadow-xl backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300">
-        <div className="px-6 py-3 flex flex-col gap-2 bg-slate-50/50 dark:bg-white/5 shrink-0">
+      <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm shadow-blue-500/5 overflow-hidden flex flex-col transition-all duration-300">
+        <div className="px-6 py-6 flex flex-col gap-2 bg-slate-50/50 dark:bg-slate-800 shrink-0">
           <div className="flex items-center justify-between">
-            <h1 className="text-[28px] font-black text-slate-800 dark:text-white tracking-tighter leading-none uppercase">Code Details</h1>
+            <h1 className="text-[26px] font-black text-slate-800 dark:text-white tracking-tighter leading-none uppercase">Code Details</h1>
             {selectedParent && (
               <button
                 onClick={() => setModalOpen(true)}
@@ -460,7 +460,7 @@ export default function CodeDetailsPage() {
                           key={row.id || i}
                           className={`transition-colors
                             ${!row.isActive
-                              ? 'bg-slate-50/50 dark:bg-white/5'
+                              ? 'bg-slate-50/50 dark:bg-slate-800'
                               : 'hover:bg-blue-50/30 dark:hover:bg-blue-500/10'
                             }`}
                         >

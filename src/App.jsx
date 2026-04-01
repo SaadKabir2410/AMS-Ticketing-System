@@ -100,7 +100,7 @@ export default function App() {
           <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-800 dark:text-white animate-pulse">
             Loading...
           </p>
-          <div className="w-32 h-1 bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
+          <div className="w-32 h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
             <div className="h-full bg-blue-600 animate-[loading_1.5s_ease-in-out_infinite]"></div>
           </div>
         </div>

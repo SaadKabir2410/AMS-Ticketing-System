@@ -124,7 +124,7 @@ export default function AuditLogsPage() {
             setOperationType(e.target.value);
             setPage(1);
           }}
-          className="w-full pl-9 pr-8 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer placeholder:text-slate-400"
+          className="w-full pl-9 pr-8 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer placeholder:text-slate-400"
         >
           <option value="all">ALL TYPE</option>
           <option value="1" className="dark:bg-slate-900">CREATE</option>
@@ -142,7 +142,7 @@ export default function AuditLogsPage() {
             setUserNameSearch(e.target.value);
             setPage(1);
           }}
-          className="w-full pl-9 pr-4 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400"
+          className="w-full pl-9 pr-4 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400"
         />
       </div>
 
@@ -155,7 +155,7 @@ export default function AuditLogsPage() {
               setDatePreset(e.target.value);
               setPage(1);
             }}
-            className="w-full pl-9 pr-8 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer placeholder:text-slate-400"
+            className="w-full pl-9 pr-8 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer placeholder:text-slate-400"
           >
             <option value="all">ALL TIME</option>
             <option value="today" className="dark:bg-slate-900">TODAY</option>
@@ -175,7 +175,7 @@ export default function AuditLogsPage() {
                 setCustomFromDate(e.target.value);
                 setPage(1);
               }}
-              className="px-3 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all scheme-light dark:scheme-dark"
+              className="px-3 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all scheme-light dark:scheme-dark"
             />
             <span className="text-slate-400 text-[10px] ">TO</span>
             <input
@@ -185,7 +185,7 @@ export default function AuditLogsPage() {
                 setCustomToDate(e.target.value);
                 setPage(1);
               }}
-              className="px-3 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-white/10 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all scheme-light dark:scheme-dark"
+              className="px-3 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all scheme-light dark:scheme-dark"
             />
           </div>
         )}
@@ -195,14 +195,14 @@ export default function AuditLogsPage() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-500">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-xl overflow-hidden flex flex-col flex-1">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden flex flex-col flex-1">
         {/* Header Section */}
-        <div className="px-8 py-6 bg-slate-50/50 dark:bg-white/2 shrink-0">
+        <div className="px-8 py-6 bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate(-1)}
-                className="p-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
+                className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
               >
                 <ArrowLeft size={18} />
               </button>
@@ -235,7 +235,7 @@ export default function AuditLogsPage() {
           </div>
 
           {/* Filter Toolbar Section */}
-          <div className="mt-6 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-white/10 flex items-center justify-between shadow-sm">
+          <div className="mt-6 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between shadow-sm">
             {customFilterArea}
           </div>
         </div>

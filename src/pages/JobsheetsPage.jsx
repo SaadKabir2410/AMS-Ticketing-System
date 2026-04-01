@@ -164,7 +164,7 @@ export default function JobsheetsPage() {
                 ? "bg-green-50 text-green-600 border-green-100 dark:bg-green-500/10 dark:border-green-500/20"
                 : val === "Absent"
                   ? "bg-red-50 text-red-600 border-red-100 dark:bg-red-500/10 dark:border-red-500/20"
-                  : "bg-slate-50 text-slate-600 border-slate-200 dark:bg-white/5 dark:border-white/10"
+                  : "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
             }`}
           >
             {val || "—"}
@@ -177,7 +177,7 @@ export default function JobsheetsPage() {
         sortable: false,
         render: (val) => (
           <div className="flex items-center gap-2">
-             <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">
+             <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">
                 {(val || 'U').charAt(0)}
              </div>
              <span className="text-slate-600 dark:text-slate-300 text-[11px] font-semibold uppercase tracking-tight">
@@ -235,7 +235,7 @@ export default function JobsheetsPage() {
             className={`px-2 py-0.5 rounded-lg text-[9px] font-black border transition-all ${
               val
                 ? "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-500/10 dark:border-purple-500/20"
-                : "bg-slate-50 text-slate-400 border-slate-200 dark:bg-white/5 dark:border-white/10"
+                : "bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
             }`}
           >
             {val ? "YES" : "NO"}
@@ -247,14 +247,14 @@ export default function JobsheetsPage() {
   );
 
   const filterInputClass =
-    "pl-3 pr-8 py-2 text-[11px] bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm w-full font-semibold text-slate-700 dark:text-slate-200";
+    "pl-3 pr-8 py-2 text-[11px] bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm w-full font-semibold text-slate-700 dark:text-slate-200";
 
   const customFilterArea = (
-    <div className="flex items-center gap-3 bg-slate-50/30 dark:bg-[#0f172a]/50 p-3 rounded-[20px] border border-slate-100 dark:border-white/5 backdrop-blur-sm shadow-inner w-full overflow-hidden flex-nowrap">
+    <div className="flex items-center gap-3 bg-slate-50/30 dark:bg-[#0f172a]/50 p-3 rounded-[20px] border border-slate-100 dark:border-slate-800 backdrop-blur-sm shadow-inner w-full overflow-hidden flex-nowrap">
       {/* Project Filter */}
       <div className="flex-1 min-w-0">
         <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1.5 shrink-0">
+          <label className="text-[9px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5 shrink-0">
             <Filter size={10} className="text-blue-500" />
             Project
           </label>
@@ -284,7 +284,7 @@ export default function JobsheetsPage() {
       {/* Date From */}
       <div className="flex-1 min-w-0">
         <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1.5 shrink-0">
+          <label className="text-[9px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5 shrink-0">
             <Calendar size={10} className="text-indigo-500" />
             From
           </label>
@@ -311,7 +311,7 @@ export default function JobsheetsPage() {
       {/* Date To */}
       <div className="flex-1 min-w-0">
         <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1.5 shrink-0">
+          <label className="text-[9px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5 shrink-0">
             <ArrowRight size={10} className="text-indigo-600" />
             To
           </label>
@@ -338,7 +338,7 @@ export default function JobsheetsPage() {
       {/* Collaborators */}
       <div className="flex-1 min-w-0 relative" ref={collaboratorRef}>
         <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-1.5 shrink-0">
+          <label className="text-[9px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5 shrink-0">
             <Search size={10} className="text-purple-500" />
             Collaborators
           </label>
@@ -370,12 +370,12 @@ export default function JobsheetsPage() {
             )}
           </div>
           {showCollaboratorDropdown && (
-            <div className="absolute top-[105%] left-0 w-full bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-50 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-white/10">
+            <div className="absolute top-[105%] left-0 w-full bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-white/10">
               {collaboratorResults.length > 0 ? (
                 collaboratorResults.map((user) => (
                   <div
                     key={user.id}
-                    className="px-4 py-2.5 text-[11px] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 cursor-pointer border-b border-slate-50 dark:border-white/5 last:border-0 transition-colors"
+                    className="px-4 py-2.5 text-[11px] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 cursor-pointer border-b border-slate-50 dark:border-slate-800 last:border-0 transition-colors"
                     onClick={() => {
                       const name = user.name + (user.surname ? ` ${user.surname}` : "");
                       setCollaboratorSearch(name);
@@ -406,7 +406,7 @@ export default function JobsheetsPage() {
       {/* Clear Button */}
       <button
         onClick={handleClear}
-        className="px-4 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 rounded-xl text-slate-500 dark:text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-sm flex items-center justify-center h-[34px] self-end gap-2 shrink-0 group/clear"
+        className="px-4 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-700 rounded-xl text-slate-500 dark:text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-sm flex items-center justify-center h-[34px] self-end gap-2 shrink-0 group/clear"
         title="Reset All"
       >
         <RotateCcw size={12} className="group-hover/clear:-rotate-45 transition-transform" />
@@ -440,7 +440,7 @@ export default function JobsheetsPage() {
       )}
       <button
         type="button"
-        className="flex items-center justify-center px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 hover:border-blue-500 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-600 dark:text-slate-200 text-xs rounded-xl shadow-sm transition-all active:scale-95"
+        className="flex items-center justify-center px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-600 dark:text-slate-200 text-xs rounded-xl shadow-sm transition-all active:scale-95"
         onClick={() => fetchReport(filters, true)}
         disabled={reportLoading}
       >
@@ -477,7 +477,7 @@ export default function JobsheetsPage() {
         smallHeaderButton={true}
         entityName="Jobsheet"
         wideSearch="full"
-        containerClassName="bg-white dark:bg-[#020617] rounded-3xl border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col flex-1 m-4 mr-1 ml-4 mb-4"
+        containerClassName="bg-white dark:bg-[#020617] rounded-3xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden flex flex-col flex-1 m-4 mr-1 ml-4 mb-4"
       />
 
       {/* Report Data Modal Implementation */}
@@ -488,9 +488,9 @@ export default function JobsheetsPage() {
              onClick={clearReportData}
           />
           
-          <div className="relative bg-white dark:bg-[#0f172a] rounded-[32px] shadow-2xl max-w-7xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-slate-200 dark:border-white/10 animate-in zoom-in-95 duration-300">
+          <div className="relative bg-white dark:bg-[#0f172a] rounded-[32px] shadow-2xl max-w-7xl w-full max-h-[85vh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700 animate-in zoom-in-95 duration-300">
             {/* Modal Header */}
-            <div className="px-10 py-8 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-slate-50/50 dark:bg-transparent shrink-0">
+            <div className="px-10 py-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-transparent shrink-0">
               <div className="flex items-center gap-4">
                  <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
                     <FileText size={24} strokeWidth={2.5} />
@@ -499,7 +499,7 @@ export default function JobsheetsPage() {
                     <h2 className="text-[22px] font-black text-slate-800 dark:text-white uppercase tracking-tighter leading-none">
                       Jobsheet Report
                     </h2>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-2">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold uppercase tracking-widest mt-1.5 flex items-center gap-2">
                        <span className="text-blue-500">{tableData.length}</span> records generated
                        <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
                        Generated on {new Date().toLocaleDateString()}
@@ -509,7 +509,7 @@ export default function JobsheetsPage() {
               
               <button
                 onClick={clearReportData}
-                className="p-3 text-slate-400 dark:text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-2xl transition-all border border-transparent hover:border-red-100 dark:hover:border-red-500/20"
+                className="p-3 text-slate-400 dark:text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-2xl transition-all border border-transparent hover:border-red-100 dark:hover:border-red-500/20"
               >
                 <X size={20} strokeWidth={3} />
               </button>
@@ -524,7 +524,7 @@ export default function JobsheetsPage() {
                       {reportColumns.map((col) => (
                         <th
                           key={col}
-                          className="bg-slate-50 dark:bg-[#1e293b] p-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-white/5 whitespace-nowrap backdrop-blur-md"
+                          className="bg-slate-50 dark:bg-[#1e293b] p-5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 whitespace-nowrap backdrop-blur-md"
                         >
                           {col.replace(/([A-Z])/g, ' $1').trim()}
                         </th>
@@ -553,19 +553,19 @@ export default function JobsheetsPage() {
                 </table>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center p-20 text-center gap-4">
-                  <div className="w-20 h-20 rounded-[32px] bg-slate-50 dark:bg-white/5 flex items-center justify-center text-slate-300 dark:text-slate-700 border border-slate-100 dark:border-white/5">
+                  <div className="w-20 h-20 rounded-[32px] bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-300 dark:text-slate-700 border border-slate-100 dark:border-slate-800">
                     <Search size={32} />
                   </div>
                   <div>
                     <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight">No data available</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-600 mt-1 max-w-[240px]">Try adjusting your filters or search criteria to find what you're looking for.</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-300 mt-1 max-w-[240px]">Try adjusting your filters or search criteria to find what you're looking for.</p>
                   </div>
                 </div>
               )}
             </div>
             
             {/* Modal Footer */}
-            <div className="px-10 py-6 border-t border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-transparent flex justify-end shrink-0">
+            <div className="px-10 py-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-transparent flex justify-end shrink-0">
                <button 
                   onClick={clearReportData}
                   className="px-8 py-2.5 bg-slate-800 dark:bg-white text-white dark:text-[#0f172a] rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-slate-900/20 dark:shadow-white/10"

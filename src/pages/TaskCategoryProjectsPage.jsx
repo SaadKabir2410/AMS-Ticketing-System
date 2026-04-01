@@ -8,6 +8,7 @@ import { Select, MenuItem } from "@mui/material";
 import { ActionsMenu } from "../component/common/ResourcePage";
 import TaskCategoryProjectModal from "../component/common/TaskCategoryProjectModal";
 import DeleteConfirmModal from "../component/common/DeleteConfirmation";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 export default function TaskCategoryProjectsPage() {
   const { toast } = useToast();
@@ -106,9 +107,9 @@ export default function TaskCategoryProjectsPage() {
   const breadcrumb = ["Home", "Management", "Lookups", "Task Category Projects"];
 
   return (
-    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar px-2 pt-2 pb-1 transition-colors duration-300">
+    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar p-6 transition-all duration-300">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-500 mb-3 ml-1">
+      <nav className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-400 mb-4 ml-1">
         {breadcrumb.map((b, i) => (
           <span key={i} className="flex items-center gap-2">
             <span
@@ -122,11 +123,11 @@ export default function TaskCategoryProjectsPage() {
         ))}
       </nav>
 
-      <div className="flex-1 w-full flex flex-col overflow-hidden px-6 pb-6 mb-2">
-        <div className="flex-1 bg-white dark:bg-slate-900/40 border border-slate-100 dark:border-white/5 rounded-2xl shadow-xl backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300">
+      <div className="flex-1 w-full flex flex-col overflow-hidden">
+        <div className="flex-1 bg-white dark:bg-slate-900 h-full w-full border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300">
 
           {/* Header */}
-          <div className="px-12 py-8 flex flex-col gap-6 bg-slate-50/50 dark:bg-transparent shrink-0">
+          <div className="px-6 py-6 flex flex-col gap-6 bg-slate-50/50 dark:bg-transparent shrink-0">
             <div className="flex items-center justify-between">
               <h1 className="text-[26px] font-black text-slate-800 dark:text-white tracking-tighter leading-none uppercase">
                 Task Category Projects
@@ -150,7 +151,7 @@ export default function TaskCategoryProjectsPage() {
                     value={selectedProjectId}
                     onChange={(e) => setSelectedProjectId(e.target.value)}
                     disabled={loadingProjects}
-                    className="w-full appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 text-[11px] font-semibold rounded-lg pl-3 pr-8 py-2 outline-none focus:border-blue-400 transition-all cursor-pointer shadow-sm"
+                    className="w-full appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-semibold rounded-lg pl-3 pr-8 py-2 outline-none focus:border-blue-400 transition-all cursor-pointer shadow-sm"
                   >
                     <option value="">Choose An Option</option>
                     {projects.map((p) => (
@@ -194,7 +195,7 @@ export default function TaskCategoryProjectsPage() {
                           className="group transition-colors hover:bg-blue-50/30 dark:hover:bg-blue-500/10"
                         >
                           {/* Project name — NOW FIRST COLUMN */}
-                          <td className="px-16 py-3 font-semibold text-slate-700 dark:text-slate-300 text-[12px]">
+                          <td className="px-6 py-3 font-semibold text-slate-700 dark:text-slate-300 text-[12px]">
                             {row.projectDescription || row.description || ""}
                           </td>
                           {/* Task Category — NOW SECOND COLUMN */}
@@ -221,7 +222,7 @@ export default function TaskCategoryProjectsPage() {
           </div>
 
           {/* Pagination Footer */}
-          <div className="px-12 py-6 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
+          <div className="px-6 py-6 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Show:</span>
@@ -241,7 +242,7 @@ export default function TaskCategoryProjectsPage() {
                   ))}
                 </Select>
               </div>
-              <div className="h-4 w-px bg-slate-200 dark:bg-white/10 hidden sm:block" />
+              <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block" />
               <div className="text-[10px] text-slate-500 uppercase font-bold tracking-widest hidden sm:block">
                 <span className="text-slate-900 dark:text-white">{totalCount > 0 ? (page - 1) * pageSize + 1 : 0}</span>
                 {" — "}
@@ -253,10 +254,18 @@ export default function TaskCategoryProjectsPage() {
 
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setPage(1)}
+                disabled={page === 1 || loadingMappings}
+                className="p-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95 flex items-center justify-center"
+              >
+                <ChevronsLeft size={16} />
+              </button>
+              <button
                 onClick={() => setPage((p) => p - 1)}
                 disabled={page === 1 || loadingMappings}
-                className="px-4 py-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95"
+                className="px-3.5 py-1.5 flex items-center gap-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95"
               >
+                <ChevronLeft size={14} />
                 Prev
               </button>
               <div className="px-5 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white shadow-lg shadow-blue-500/20">
@@ -265,9 +274,17 @@ export default function TaskCategoryProjectsPage() {
               <button
                 onClick={() => setPage((p) => p + 1)}
                 disabled={page >= Math.ceil(totalCount / pageSize) || loadingMappings}
-                className="px-4 py-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-white/10 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95"
+                className="px-3.5 py-1.5 flex items-center gap-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95"
               >
                 Next
+                <ChevronRight size={14} />
+              </button>
+              <button
+                onClick={() => setPage(Math.ceil(totalCount / pageSize) || 1)}
+                disabled={page >= Math.ceil(totalCount / pageSize) || loadingMappings}
+                className="p-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95 flex items-center justify-center"
+              >
+                <ChevronsRight size={16} />
               </button>
             </div>
           </div>

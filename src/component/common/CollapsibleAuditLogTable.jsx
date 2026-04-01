@@ -233,13 +233,13 @@ export default function CollapsibleAuditLogTable({
       </TableContainer>
 
       {/* Standard Pagination Footer (Site Style) */}
-      <div className="px-8 py-5 bg-slate-50/30 dark:bg-slate-900/50 flex items-center justify-between shrink-0">
+      <div className="px-8 py-5 bg-slate-50/30 dark:bg-slate-800 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-[10px] text-slate-400">Rows:</span>
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="px-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 dark:text-slate-200 rounded-xl outline-none transition-all cursor-pointer shadow-sm"
+            className="px-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 dark:text-slate-200 rounded-xl outline-none transition-all cursor-pointer shadow-sm"
           >
             {[10, 25, 50, 100].map((s) => (
               <option key={s} value={s} className="dark:bg-slate-900">
@@ -247,7 +247,7 @@ export default function CollapsibleAuditLogTable({
               </option>
             ))}
           </select>
-          <div className="ml-4 h-4 w-px bg-slate-200 dark:bg-white/10 hidden sm:block"></div>
+          <div className="ml-4 h-4 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
           <div className="text-xs text-slate-500 hidden sm:block">
             <span className="text-slate-900 dark:text-white">
               {total > 0 ? (page - 1) * pageSize + 1 : 0}
@@ -265,7 +265,7 @@ export default function CollapsibleAuditLogTable({
           <button
             onClick={handleFirstPage}
             disabled={page === 1 || loading}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center"
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-30 bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
@@ -274,7 +274,7 @@ export default function CollapsibleAuditLogTable({
           <button
             onClick={handlePrevPage}
             disabled={page === 1 || loading}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 bg-white dark:bg-slate-950 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm"
+            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-30 bg-white dark:bg-slate-950 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm"
           >
             Prev
           </button>
@@ -286,14 +286,14 @@ export default function CollapsibleAuditLogTable({
           <button
             onClick={handleNextPage}
             disabled={page >= totalPages || loading}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 bg-white dark:bg-slate-950 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm"
+            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-30 bg-white dark:bg-slate-950 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm"
           >
             Next
           </button>
           <button
             onClick={handleLastPage}
             disabled={page >= totalPages || loading}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-white/10 disabled:opacity-30 bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center"
+            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-30 bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />

@@ -40,13 +40,13 @@ export default function TicketCommissionReportPage() {
   };
 
   const filterInputClass =
-    "pl-3 pr-3 py-2.5 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm w-full";
+    "pl-3 pr-3 py-2.5 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm w-full";
 
   return (
     <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-500">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 shadow-xl overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden flex flex-col">
         {/* Header Section */}
-        <div className="px-8 py-6 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2">
+        <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
           <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3 ml-1">
             <span
               onClick={() => navigate("/")}
@@ -66,7 +66,7 @@ export default function TicketCommissionReportPage() {
             <div className="flex items-center gap-5">
               <button
                 onClick={() => navigate(-1)}
-                className="p-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
+                className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
               >
                 <ArrowLeft size={18} />
               </button>
@@ -81,7 +81,7 @@ export default function TicketCommissionReportPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleClear}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl text-[10px] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all active:scale-95 shadow-sm"
+                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all active:scale-95 shadow-sm"
               >
                 <RotateCcw size={14} />
                 Clear

@@ -85,7 +85,7 @@ export default function UsersPage() {
         render: (val, row) => (
           <div className="flex items-center justify-center">
             <div
-              className={`w-3 h-3 rounded-full ${(val ?? row?.extraProperties?.isPrimary) ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-200 dark:bg-white/10"}`}
+              className={`w-3 h-3 rounded-full ${(val ?? row?.extraProperties?.isPrimary) ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-200 dark:bg-slate-700"}`}
             />
           </div>
         ),
@@ -95,7 +95,7 @@ export default function UsersPage() {
   );
 
   const customFilterArea = (
-    <div className="flex flex-wrap items-center gap-3 bg-transparent px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 w-fit">
+    <div className="flex flex-wrap items-center gap-3 bg-transparent px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 w-fit">
       <div className="flex items-center gap-2">
         <span className="text-[10px] text-slate-500 whitespace-nowrap hidden sm:inline">
           Show Customer
@@ -348,7 +348,7 @@ export default function UsersPage() {
           },
         }}
       >
-        <div className="bg-white dark:bg-slate-900 px-6 py-5 border-b border-slate-100 dark:border-white/10 shrink-0 flex justify-between items-center">
+        <div className="bg-white dark:bg-slate-900 px-6 py-5 border-b border-slate-100 dark:border-slate-700 shrink-0 flex justify-between items-center">
           <h2 className="text-base dark:text-white text-slate-800 flex items-center gap-2">
             {item ? "Edit User" : "Create User"}
           </h2>
@@ -411,7 +411,7 @@ export default function UsersPage() {
                       name="userName"
                       autoComplete="new-password"
                       defaultValue={userData?.userName || ""}
-                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.userName ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-white/10 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200`}
+                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.userName ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200`}
                     />
                     {validationErrors.userName && (
                       <p className="text-red-500 text-[9px] mt-1 ml-1">
@@ -426,7 +426,7 @@ export default function UsersPage() {
                     <input
                       name="name"
                       defaultValue={userData?.name || ""}
-                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.name ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-white/10 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200`}
+                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.name ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200`}
                     />
                     {validationErrors.name && (
                       <p className="text-red-500 text-[9px] mt-1 ml-1">
@@ -441,7 +441,7 @@ export default function UsersPage() {
                     <input
                       name="surname"
                       defaultValue={userData?.surname || ""}
-                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
+                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
                     />
                   </div>
                   <div>
@@ -453,7 +453,7 @@ export default function UsersPage() {
                         name="password"
                         autoComplete="new-password"
                         type={showPassword ? "text" : "password"}
-                        className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.password ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-white/10 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm pr-12 transition-all duration-200`}
+                        className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.password ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm pr-12 transition-all duration-200`}
                       />
                       <button
                         type="button"
@@ -477,7 +477,7 @@ export default function UsersPage() {
                       name="email"
                       type="email"
                       defaultValue={userData?.email || ""}
-                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
+                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
                     />
                   </div>
                   <div>
@@ -487,7 +487,7 @@ export default function UsersPage() {
                     <input
                       name="phoneNumber"
                       defaultValue={userData?.phoneNumber || ""}
-                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.phoneNumber ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-white/10 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200`}
+                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.phoneNumber ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200`}
                     />
                     {validationErrors.phoneNumber && (
                       <p className="text-red-500 text-[9px] mt-1 ml-1">
@@ -511,7 +511,7 @@ export default function UsersPage() {
                             setSelectedSite(null);
                           }
                         }}
-                        className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.organizationType ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-white/10 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200`}
+                        className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.organizationType ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200`}
                       >
                         <option value="" disabled>
                           Select an option
@@ -666,7 +666,7 @@ export default function UsersPage() {
                       defaultValue={
                         userData?.baseRateFirstHourAfterWorkingHours || ""
                       }
-                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
+                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
                     />
                   </div>
                   <div>
@@ -680,13 +680,13 @@ export default function UsersPage() {
                       defaultValue={
                         userData?.baseRateAfterFirstHourAfterWorkingHours || ""
                       }
-                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
+                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
                     />
                   </div>
                 </div>
 
                 {/* Checkboxes */}
-                <div className="flex flex-col gap-2 bg-transparent rounded-xl p-3 border border-slate-200 dark:border-white/10">
+                <div className="flex flex-col gap-2 bg-transparent rounded-xl p-3 border border-slate-200 dark:border-slate-700">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -766,7 +766,7 @@ export default function UsersPage() {
                       return (
                         <label
                           key={roleName}
-                          className="flex items-center gap-3 p-3 border-2 border-slate-100 dark:border-white/10 rounded-xl hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 dark:hover:bg-white/5 cursor-pointer transition-all duration-200 group"
+                          className="flex items-center gap-3 p-3 border-2 border-slate-100 dark:border-slate-700 rounded-xl hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 dark:hover:bg-white/5 cursor-pointer transition-all duration-200 group"
                         >
                           <input
                             type="checkbox"
@@ -855,11 +855,11 @@ export default function UsersPage() {
             </div>
           </DialogContent>
 
-          <div className="flex gap-2.5 px-6 py-4 bg-slate-50 dark:bg-[#1a1f2e] border-t border-slate-100 dark:border-white/10 w-full rounded-b-[24px]">
+          <div className="flex gap-2.5 px-6 py-4 bg-slate-50 dark:bg-[#1a1f2e] border-t border-slate-100 dark:border-slate-700 w-full rounded-b-[24px]">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 text-xs rounded-xl bg-transparent border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+              className="flex-1 py-2 text-xs rounded-xl bg-transparent border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
             >
               Cancel
             </button>

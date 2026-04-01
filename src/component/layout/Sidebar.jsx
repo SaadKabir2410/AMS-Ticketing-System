@@ -61,7 +61,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
         {/* Logo section */}
         <div
           className={clsx(
-            "flex border-b border-slate-100 dark:border-white/5 transition-all duration-300 relative",
+            "flex border-b border-slate-100 dark:border-slate-800 transition-all duration-300 relative",
             collapsed ? "flex-col items-center justify-center py-5 gap-5" : "items-center px-6 py-6 gap-3",
           )}
         >
@@ -97,7 +97,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
           {filteredGroups.map((group, idx) => (
             <div key={idx} className="space-y-1">
               {!collapsed && (
-                <p className="px-4 text-[10px] font-bold tracking-[2px] text-slate-400/80 dark:text-slate-500/80 mb-3 uppercase">
+                <p className="px-4 text-[10px] font-bold tracking-[2px] text-slate-400/80 dark:text-slate-400/80 mb-3 uppercase">
                   {group.title}
                 </p>
               )}
@@ -197,7 +197,7 @@ function NavItem({ item, collapsed }) {
 
       {/* Submenu with slide-in animation */}
       {!collapsed && hasSubMenu && isOpen && (
-        <ul className="mt-2 ml-4 border-l border-slate-100 dark:border-white/5 pl-4 space-y-1 animate-slide-in">
+        <ul className="mt-2 ml-4 border-l border-slate-100 dark:border-slate-800 pl-4 space-y-1 animate-slide-in">
           {item.subMenu.map((sub) => {
             const subActive = window.location.pathname === sub.href;
             return (

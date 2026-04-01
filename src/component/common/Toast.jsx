@@ -29,7 +29,7 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-xl min-w-[260px] max-w-sm pointer-events-auto animate-slide-in"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl min-w-[260px] max-w-sm pointer-events-auto animate-slide-in"
           >
             {icons[t.type] || icons.success}
             <p className="text-sm text-slate-700 dark:text-slate-200 flex-1">

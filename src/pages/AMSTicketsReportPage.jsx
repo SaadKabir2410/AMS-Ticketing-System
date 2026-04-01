@@ -409,13 +409,13 @@ export default function AMSTicketsReportPage() {
   ];
 
   const filterInputClass =
-    "px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full";
+    "px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full";
 
   return (
     <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-500">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
         {/* Header Section */}
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-white/2 shrink-0">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
           <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3">
             <span
               onClick={() => navigate("/")}
@@ -435,7 +435,7 @@ export default function AMSTicketsReportPage() {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate(-1)}
-                className="p-2 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
+                className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
               >
                 <ArrowLeft size={16} strokeWidth={2.5} />
               </button>
@@ -450,7 +450,7 @@ export default function AMSTicketsReportPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleClear}
-                className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg text-[11px] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all active:scale-95 focus:outline-none"
+                className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all active:scale-95 focus:outline-none"
               >
                 <RotateCcw size={14} />
                 Clear
@@ -589,7 +589,7 @@ export default function AMSTicketsReportPage() {
                     "& fieldset": { border: "none" },
                   },
                 }}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all w-full text-slate-800 dark:text-slate-200"
+                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all w-full text-slate-800 dark:text-slate-200"
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -649,7 +649,7 @@ export default function AMSTicketsReportPage() {
                     "& fieldset": { border: "none" },
                   },
                 }}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all w-full text-slate-800 dark:text-slate-200"
+                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all w-full text-slate-800 dark:text-slate-200"
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -694,7 +694,7 @@ export default function AMSTicketsReportPage() {
                     "& fieldset": { border: "none" },
                   },
                 }}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all w-full text-slate-800 dark:text-slate-200"
+                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all w-full text-slate-800 dark:text-slate-200"
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -735,7 +735,7 @@ export default function AMSTicketsReportPage() {
                     "& fieldset": { border: "none" },
                   },
                 }}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-lg outline-none focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all w-full text-slate-800 dark:text-slate-200"
+                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-4 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all w-full text-slate-800 dark:text-slate-200"
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -764,7 +764,7 @@ export default function AMSTicketsReportPage() {
         </div>
 
         {/* Data Grid Section */}
-        <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-white/5 relative">
+        <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 relative">
           <div className="absolute inset-0">
             <DataGrid
               rows={reportData.map((row, index) => ({

@@ -173,7 +173,7 @@ export default function HolidayModal({
       ? `bg-red-50/50 border-red-400 text-red-900 placeholder:text-red-300 dark:bg-red-500/10 dark:border-red-500/50 dark:text-red-200`
       : isValid
         ? `bg-green-50/50 border-green-500 focus:border-green-600 text-green-900 dark:bg-green-500/10 dark:border-green-500/50 dark:text-green-200`
-        : `bg-slate-50 border-slate-200 hover:border-slate-300 focus:bg-white focus:border-blue-500 text-slate-700 placeholder:text-slate-400 dark:bg-slate-800 dark:border-white/10 dark:text-slate-200 dark:focus:border-blue-500`);
+        : `bg-slate-50 border-slate-200 hover:border-slate-300 focus:bg-white focus:border-blue-500 text-slate-700 placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:focus:border-blue-500`);
 
   return (
     <Dialog
@@ -201,7 +201,7 @@ export default function HolidayModal({
         </div>
         <IconButton
           onClick={onClose}
-          className="bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10"
+          className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700"
         >
           <X size={18} />
         </IconButton>
@@ -210,9 +210,9 @@ export default function HolidayModal({
       <form onSubmit={handleSubmit} className="px-8 py-6">
         <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 no-scrollbar">
           {(submitError || errors.server) && (
-            <PremiumErrorAlert 
-              open={!!(submitError || errors.server)} 
-              message={submitError || errors.server} 
+            <PremiumErrorAlert
+              open={!!(submitError || errors.server)}
+              message={submitError || errors.server}
               onClose={() => setErrors(prev => ({ ...prev, server: null }))}
             />
           )}
@@ -368,7 +368,7 @@ export default function HolidayModal({
             <div className="pb-2.5">
               <label className="flex items-center gap-3 cursor-pointer group">
                 <div
-                  className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${form.disabled ? "bg-red-500 border-red-500 shadow-lg shadow-red-500/20" : "border-slate-200 dark:border-white/10 group-hover:border-red-400"}`}
+                  className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${form.disabled ? "bg-red-500 border-red-500 shadow-lg shadow-red-500/20" : "border-slate-200 dark:border-slate-700 group-hover:border-red-400"}`}
                 >
                   <input
                     type="checkbox"
@@ -394,7 +394,7 @@ export default function HolidayModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-8 py-3 rounded-2xl border border-slate-200 dark:border-white/10 text-sm text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-95"
+            className="px-8 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-95"
           >
             Cancel
           </button>

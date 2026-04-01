@@ -22,9 +22,7 @@ const getSource = () => {
       _cache = Array.isArray(r.data) ? r.data : (r.data?.items ?? []);
       _cacheTs = Date.now();
       _inflight = null;
-      console.log(
-        `[DB.holidays] Fetch complete. Found ${_cache.length} records.`,
-      );
+      console.log(`[DB.holidays] Fetch complete. Found ${_cache.length} records.`);
       return _cache;
     })
     .catch((err) => {
@@ -39,6 +37,27 @@ const match = (field, query) =>
   String(field ?? "")
     .toLowerCase()
     .includes(String(query).toLowerCase());
+
+// Build exact payload matching PUT schema
+const toUpdatePayload = (row) => ({
+  id: row.id,
+  creationTime: row.creationTime,
+  creatorId: row.creatorId,
+  lastModificationTime: row.lastModificationTime,
+  lastModifierId: row.lastModifierId,
+  isDeleted: row.isDeleted,
+  deleterId: row.deleterId,
+  deletionTime: row.deletionTime,
+  name: row.name,
+  description: row.description,
+  date: row.date,
+  countryISOCode: row.countryISOCode,
+  countryName: row.countryName,
+  type: row.type,
+  year: row.year,
+  locations: row.locations,
+  concurrencyStamp: row.concurrencyStamp,
+});
 
 export const holidaysApi = {
   getAll: ({
@@ -80,19 +99,32 @@ export const holidaysApi = {
 
   create: (data) =>
     apiClient.post("/api/app/holiday", data).then((r) => {
-      _cache = null; // Clear cache
+      _cache = null;
       return r.data;
     }),
 
   update: (id, data) =>
     apiClient.put(`/api/app/holiday/${id}`, data).then((r) => {
-      _cache = null; // Clear cache
+      _cache = null;
+      return r.data;
+    }),
+  // Disable = soft delete → DELETE
+  disable: (row) =>
+    apiClient.delete(`/api/app/holiday/${row.id}`).then((r) => {
+      _cache = null;
+      return r.data;
+    }),
+
+  // Enable = restore → POST /{id}/enable
+  enable: (row) =>
+    apiClient.post(`/api/app/holiday/${row.id}/enable`, {}).then((r) => {
+      _cache = null;
       return r.data;
     }),
 
   delete: (id) =>
     apiClient.delete(`/api/app/holiday/${id}`).then((r) => {
-      _cache = null; // Clear cache
+      _cache = null;
       return r.data;
     }),
 };

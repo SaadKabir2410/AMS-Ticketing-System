@@ -47,7 +47,7 @@ function InfoCard({ icon: IconElement, label, value, mono = false }) {
           boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
           borderColor: "primary.200",
         },
-        className: "dark:bg-white/2 dark:hover:bg-white/5 dark:border-white/5",
+        className: "dark:bg-slate-800/50 dark:hover:bg-white/5 dark:border-slate-800",
       }}
     >
       {IconElement && (
@@ -286,7 +286,7 @@ export default function TicketDetailModal({ open, onClose, item, ticket }) {
       >
         <button
           onClick={onClose}
-          className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+          className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
         >
           Close
         </button>

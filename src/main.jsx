@@ -6,7 +6,7 @@ import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { AuthProvider as CustomAuthProvider } from "./context/Authcontext";
 import { PermissionProvider } from "./context/PermissionContext";
 import { BrowserRouter } from "react-router-dom";
-import { ToastProvider } from "./component/common/Toast";
+import { ToastProvider } from "./component/common/ToastContext";
 import {
   ThemeProvider as MuiThemeProvider,
   createTheme,
@@ -41,7 +41,7 @@ class ErrorBoundary extends Component {
 
 function MuiThemeWrapper({ children }) {
   const { dark } = useTheme();
-  
+
   const muiTheme = useMemo(
     () =>
       createTheme({
@@ -99,9 +99,7 @@ createRoot(document.getElementById("root")).render(
           <PermissionProvider>
             <ThemeProvider>
               <ToastProvider>
-                <MuiThemeWrapper>
-                  <App />
-                </MuiThemeWrapper>
+                <App />
               </ToastProvider>
             </ThemeProvider>
           </PermissionProvider>

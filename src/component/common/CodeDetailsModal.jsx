@@ -351,7 +351,7 @@ export default function CodeDetailsModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-y-3 pt-3 border-t border-slate-50 dark:border-white/5 bg-slate-50/50 dark:bg-black/50 p-3 rounded-lg">
+          <div className="grid grid-cols-2 gap-y-3 pt-3 border-t border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-black/50 p-3 rounded-lg">
             {[
               { label: "Default Indicator", name: "isDefaultIndicator" },
               { label: "Extra Description", name: "hasExtraDescription" },
@@ -386,7 +386,7 @@ export default function CodeDetailsModal({
       <div className="flex items-center justify-end gap-3 px-6 pb-6 pt-3 dark:bg-black rounded-b-xl">
         <button
           onClick={onClose}
-          className="h-[30px] px-6 rounded-lg text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-95 transition-all duration-200"
+          className="h-[30px] px-6 rounded-lg text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-95 transition-all duration-200"
         >
           Cancel
         </button>

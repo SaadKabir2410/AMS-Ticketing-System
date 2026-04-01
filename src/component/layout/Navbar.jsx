@@ -32,7 +32,7 @@ export default function Navbar({ setCollapsed }) {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between gap-4 px-6 py-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-slate-200/60 dark:border-white/5">
+    <header className="sticky top-0 z-40 flex items-center justify-between gap-4 px-6 py-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800">
       <div className="flex items-center gap-4">
         {/* Left side actions (if any) can go here */}
       </div>
@@ -53,7 +53,7 @@ export default function Navbar({ setCollapsed }) {
           <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">EN</span>
         </IconBtn>
 
-        <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-2" />
+        <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-2" />
 
         <div className="relative">
           <button
@@ -72,8 +72,8 @@ export default function Navbar({ setCollapsed }) {
           </button>
 
           {showMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
-              <div className="px-4 py-2 border-b border-slate-100 dark:border-white/5 mb-2">
+            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 mb-2">
                 <p className="text-xs dark:text-white truncate">
                   {user?.email}
                 </p>

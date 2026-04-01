@@ -206,8 +206,8 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
               disabled={loading || submitting || isHandoffEdit}
-              className={`w-full appearance-none bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:border-white/10 text-slate-700 dark:text-slate-300 text-xs rounded-lg pl-3 pr-8 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 transition-all shadow-sm
-                ${isHandoffEdit ? "cursor-not-allowed opacity-70 bg-slate-100 dark:bg-white/5" : "cursor-pointer font-bold"}
+              className={`w-full appearance-none bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded-lg pl-3 pr-8 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 transition-all shadow-sm
+                ${isHandoffEdit ? "cursor-not-allowed opacity-70 bg-slate-100 dark:bg-slate-800" : "cursor-pointer font-bold"}
               `}
             >
               <option value="" disabled className="text-slate-400">Choose An Option</option>
@@ -267,7 +267,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
 
         {/* Category Pagination Controls */}
         {!loading && categories.length > catPageSize && (
-          <div className="mt-3 pt-2 border-t border-slate-50 dark:border-white/5 flex items-center justify-between">
+          <div className="mt-3 pt-2 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
             <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
               {Math.min((catPage - 1) * catPageSize + 1, totalCatCount)} - {Math.min(catPage * catPageSize, totalCatCount)} of {totalCatCount}
             </div>
@@ -275,7 +275,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
               <button
                 disabled={catPage === 1}
                 onClick={() => setCatPage(prev => prev - 1)}
-                className="w-6 h-6 flex items-center justify-center rounded-md border border-slate-100 dark:border-white/10 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all disabled:opacity-30"
+                className="w-6 h-6 flex items-center justify-center rounded-md border border-slate-100 dark:border-slate-700 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all disabled:opacity-30"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
@@ -287,7 +287,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
               <button
                 disabled={catPage >= Math.ceil(totalCatCount / catPageSize)}
                 onClick={() => setCatPage(prev => prev + 1)}
-                className="w-6 h-6 flex items-center justify-center rounded-md border border-slate-100 dark:border-white/10 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all disabled:opacity-30"
+                className="w-6 h-6 flex items-center justify-center rounded-md border border-slate-100 dark:border-slate-700 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all disabled:opacity-30"
               >
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
@@ -303,7 +303,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
         <button
           onClick={onClose}
           disabled={submitting}
-          className="h-[30px] px-6 rounded-lg text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-all"
+          className="h-[30px] px-6 rounded-lg text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all"
         >
           Cancel
         </button>
