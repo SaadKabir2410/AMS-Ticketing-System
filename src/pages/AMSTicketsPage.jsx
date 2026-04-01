@@ -28,9 +28,9 @@ export default function AMSTicketsPage() {
         type="checkbox"
         checked={isAdvancedSearch}
         onChange={(e) => setIsAdvancedSearch(e.target.checked)}
-        className="form-checkbox w-[15px] h-[15px] text-[#5da3d5] rounded-sm bg-[#f8f9fa] border-slate-200 focus:ring-[#5da3d5]/30 focus:border-[#5da3d5]"
+        className="form-checkbox w-[15px] h-[15px] text-[#5da3d5] rounded-sm bg-[#f8f9fa] dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-[#5da3d5]/30 focus:border-[#5da3d5]"
       />
-      <span className="text-[12px] text-slate-500 font-medium whitespace-nowrap">Advanced Search</span>
+      <span className="text-[12px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">Advanced Search</span>
     </label>
   );
 

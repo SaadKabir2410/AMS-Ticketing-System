@@ -98,9 +98,11 @@ createRoot(document.getElementById("root")).render(
         <CustomAuthProvider>
           <PermissionProvider>
             <ThemeProvider>
-              <ToastProvider>
-                <App />
-              </ToastProvider>
+              <MuiThemeWrapper>
+                <ToastProvider>
+                  <App />
+                </ToastProvider>
+              </MuiThemeWrapper>
             </ThemeProvider>
           </PermissionProvider>
         </CustomAuthProvider>

@@ -146,7 +146,7 @@ export default function ResourcePage({
   wideSearch = false,
   rowHeight = 44,
   headerHeight = 44,
-  containerClassName = "bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl backdrop-blur-sm shadow-blue-500/5 overflow-hidden flex flex-col flex-1 transition-all duration-300",
+  containerClassName = "bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl backdrop-blur-sm shadow-blue-500/5 dark:shadow-none overflow-hidden flex flex-col flex-1 transition-all duration-300",
   hideHeader = false,
 }) {
   const { dark } = useTheme();
@@ -455,7 +455,7 @@ export default function ResourcePage({
           <HighlightText
             text={val}
             searchTerm={termToHighlight}
-            className={`text-sm ${col.bold ? " text-slate-800 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}
+            className={`text-sm ${col.bold ? "text-slate-800 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}
           />
         );
       },
@@ -669,6 +669,7 @@ export default function ResourcePage({
                     color: isDark ? "rgba(241, 245, 249, 1)" : "rgb(51, 65, 85)",
                     "& .MuiDataGrid-columnHeaders": {
                       bgcolor: isDark ? "rgba(15, 23, 42, 1)" : "rgba(248, 250, 252, 1)",
+                      backgroundImage: "none !important",
                       borderBottom: "none !important",
                       minHeight: `${headerHeight}px !important`,
                       maxHeight: `${headerHeight}px !important`,

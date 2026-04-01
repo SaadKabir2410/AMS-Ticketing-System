@@ -320,7 +320,7 @@ export default function CodeDetailsPage() {
         ))}
       </nav>
 
-      <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm shadow-blue-500/5 overflow-hidden flex flex-col transition-all duration-300">
+      <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm shadow-blue-500/5 dark:shadow-none overflow-hidden flex flex-col transition-all duration-300">
         <div className="px-6 py-6 flex flex-col gap-2 bg-slate-50/50 dark:bg-slate-800 shrink-0">
           <div className="flex items-center justify-between">
             <h1 className="text-[26px] font-black text-slate-800 dark:text-white tracking-tighter leading-none uppercase">Code Details</h1>
@@ -444,11 +444,11 @@ export default function CodeDetailsPage() {
           <div className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar relative mt-1 min-h-[400px]">
             {selectedParent ? (
               loadingDetails ? (
-                <div className="flex items-center justify-center h-full text-slate-300 text-[11px] font-black uppercase tracking-widest">
+                <div className="flex items-center justify-center h-full text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest">
                   Loading...
                 </div>
               ) : codeDetails.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-slate-300 text-[11px] font-black uppercase tracking-widest">
+                <div className="flex items-center justify-center h-full text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest">
                   No records found
                 </div>
               ) : (
@@ -484,8 +484,8 @@ export default function CodeDetailsPage() {
               )
             ) : (
               <div className="flex flex-col items-center justify-center h-full gap-4 text-slate-300">
-                <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-14 h-14 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center border border-slate-100 dark:border-slate-700">
+                  <svg className="w-8 h-8 text-slate-300 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
                   </svg>
                 </div>

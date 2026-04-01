@@ -166,7 +166,7 @@ export default function WorkCodeModal({
       maxWidth="xs"
       fullWidth
       PaperProps={{
-        sx: { borderRadius: "16px", bgcolor: "background.paper", p: 1 },
+        sx: { borderRadius: "16px", p: 1 },
         className: "bg-white dark:bg-slate-900 dark:text-white",
       }}
     >
@@ -257,7 +257,7 @@ export default function WorkCodeModal({
         <button
           type="button"
           onClick={onClose}
-          className="px-6 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50 transition-all"
+          className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
         >
           Cancel
         </button>

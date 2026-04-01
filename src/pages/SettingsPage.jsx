@@ -4,6 +4,26 @@ import { useNavigate } from "react-router-dom";
 import SettingsService from "../services/api/settings";
 import { useToast } from "../component/common/ToastContext";
 
+const InputField = ({ label, required, value, name, onChange, type = "text" }) => (
+  <div className="mb-5 max-w-2xl">
+    <label className="block text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-1.5 leading-none">
+      {label} {required && <span className="text-red-500">*</span>}
+    </label>
+    <input
+      type={type}
+      name={name}
+      value={value}
+      onChange={onChange}
+      onKeyDown={(e) => {
+        if (e.key === "Backspace") {
+          e.stopPropagation();
+        }
+      }}
+      className={`${type === "number" ? "max-w-[300px]" : "max-w-lg"} w-full h-10 px-4 bg-[#f8f9fa] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 font-medium`}
+    />
+  </div>
+);
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("Emailing");
   const [loading, setLoading] = useState(false);
@@ -108,23 +128,8 @@ export default function SettingsPage() {
     }
   };
 
-  const InputField = ({ label, required, value, name, onChange, type = "text" }) => (
-    <div className="mb-5 max-w-2xl">
-      <label className="block text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-1.5">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        className={`${type === "number" ? "max-w-[300px]" : "max-w-lg"} w-full h-10 px-4 bg-[#f8f9fa] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 transition-all font-medium`}
-      />
-    </div>
-  );
-
   return (
-    <div className="flex flex-col h-full max-w-6xl mx-auto w-full">
+    <div className="flex flex-col max-w-6xl mx-auto w-full py-6">
       {/* Breadcrumb & Title */}
       <div className="mb-6">
         <div className="flex items-center text-[12px] text-slate-500 dark:text-slate-400 gap-2 mb-3">
@@ -142,7 +147,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Main Card */}
-      <div className="flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-100 dark:border-slate-800/50 min-h-[500px] p-6 lg:p-8">
+      <div className="flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-100 dark:border-slate-800/50 p-6 lg:p-8">
 
         {/* Sidebar */}
         <div className="w-full md:w-64 flex flex-col gap-1 pr-6 shrink-0 border-r border-slate-100 dark:border-slate-800/50 mb-8 md:mb-0">
@@ -219,29 +224,31 @@ export default function SettingsPage() {
                 </span>
               </div>
 
-              {!emailSettings.useDefaultCredentials && (
-                <div className="animate-in slide-in-from-top-2 duration-300 space-y-1">
-                  <InputField
-                    label="Domain"
-                    name="domain"
-                    value={emailSettings.domain}
-                    onChange={handleEmailChange}
-                  />
-                  <InputField
-                    label="User name"
-                    name="username"
-                    value={emailSettings.username}
-                    onChange={handleEmailChange}
-                  />
-                  <InputField
-                    label="Password"
-                    type="password"
-                    name="password"
-                    value={emailSettings.password}
-                    onChange={handleEmailChange}
-                  />
+              <div className={`grid transition-all duration-500 ease-in-out ${!emailSettings.useDefaultCredentials ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                <div className="overflow-hidden">
+                  <div className="space-y-1 pt-4">
+                    <InputField
+                      label="Domain"
+                      name="domain"
+                      value={emailSettings.domain}
+                      onChange={handleEmailChange}
+                    />
+                    <InputField
+                      label="User name"
+                      name="username"
+                      value={emailSettings.username}
+                      onChange={handleEmailChange}
+                    />
+                    <InputField
+                      label="Password"
+                      type="password"
+                      name="password"
+                      value={emailSettings.password}
+                      onChange={handleEmailChange}
+                    />
+                  </div>
                 </div>
-              )}
+              </div>
 
               <div className="flex gap-4 pt-6 border-t border-slate-100 dark:border-slate-800 pb-2">
                 <button
