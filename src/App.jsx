@@ -5,8 +5,10 @@ import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "./component/layout/Navbar";
 import Sidebar from "./component/layout/Sidebar";
 import LoginPage from "./pages/Auth/Login";
-import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./component/auth/ProtectedRoute";
+import PermissionGuard from "./component/auth/PermissionGuard";
+
+// Pages
 import AMSTicketsPage from "./pages/AMSTicketsPage";
 import SitesPage from "./pages/SitesPage";
 import CountriesPage from "./pages/CountriesPage";
@@ -35,34 +37,160 @@ function Layout({ collapsed, setCollapsed }) {
         <Navbar Collapsed={collapsed} setCollapsed={setCollapsed} />
         <main className="flex-1 overflow-auto p-6 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
           <Routes>
+            {/* Dashboard / Home */}
             <Route path="/" element={<AMSTicketsPage />} />
-            <Route path="/ams-tickets" element={<AMSTicketsPage />} />
-            <Route path="/sites" element={<SitesPage />} />
-            <Route path="/countries" element={<CountriesPage />} />
-            <Route path="/work-codes" element={<WorkCodesPage />} />
-            <Route path="/codes" element={<CodePage />} />
-            <Route path="/holidays" element={<HolidaysPage />} />
-            <Route path="/working-hours" element={<UserWorkingHoursPage />} />
-            <Route path="/jobsheets" element={<JobsheetsPage />} />
+
+            {/* Main Menu */}
             <Route
-              path="/reports/commission"
-              element={<TicketCommissionReportPage />}
+              path="/ams-tickets"
+              element={
+                <PermissionGuard permission="Billing.AMSTickets">
+                  <AMSTicketsPage />
+                </PermissionGuard>
+              }
+            />
+
+            {/* Management - Jobsheets */}
+            <Route
+              path="/jobsheets"
+              element={
+                <PermissionGuard permission="Billing.Jobsheets">
+                  <JobsheetsPage />
+                </PermissionGuard>
+              }
+            />
+
+            {/* Management - Reports */}
+            <Route
+                path="/reports/general"
+                element={
+                  <PermissionGuard permission="Billing.Reports">
+                    <GeneralReportPage />
+                  </PermissionGuard>
+                }
+              />
+            <Route
+              path="/reports/tickets"
+              element={
+                <PermissionGuard permission="Billing.Reports.AMSTicketsReport">
+                  <AMSTicketsReportPage />
+                </PermissionGuard>
+              }
             />
             <Route
               path="/reports/after-hours"
-              element={<AfterWorkingHoursReportPage />}
+              element={
+                <PermissionGuard permission="Billing.Reports.AfterWorkingHoursReport">
+                  <AfterWorkingHoursReportPage />
+                </PermissionGuard>
+              }
             />
-            <Route path="/reports/tickets" element={<AMSTicketsReportPage />} />
-            <Route path="/reports/general" element={<GeneralReportPage />} />
-            <Route path="/users" element={<UsersPage />} />
-            <Route path="/roles" element={<RolesPage />} />
-            <Route path="/task-category-projects" element={<TaskCategoryProjectsPage />} />
-            <Route path="/code-details" element={<CodeDetailsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route
+              path="/reports/commission"
+              element={
+                <PermissionGuard permission="Billing.Reports">
+                  <TicketCommissionReportPage />
+                </PermissionGuard>
+              }
+            />
+
+            {/* Lookups / Master Data */}
+            <Route
+              path="/working-hours"
+              element={
+                <PermissionGuard permission="Billing.UserWorkingHours">
+                  <UserWorkingHoursPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="/sites"
+              element={
+                <PermissionGuard permission="Billing.Sites">
+                  <SitesPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="/countries"
+              element={
+                <PermissionGuard permission="Billing.Countries">
+                  <CountriesPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="/work-codes"
+              element={
+                <PermissionGuard permission="Billing.WorkDoneCodes">
+                  <WorkCodesPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="/holidays"
+              element={
+                <PermissionGuard permission="Billing.Holidays">
+                  <HolidaysPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="/codes"
+              element={
+                <PermissionGuard permission="Billing.Lookups">
+                  <CodePage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="/code-details"
+              element={
+                <PermissionGuard permission="Billing.Lookups">
+                  <CodeDetailsPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="/task-category-projects"
+              element={
+                <PermissionGuard permission="Billing.TaskCategoryProjects">
+                  <TaskCategoryProjectsPage />
+                </PermissionGuard>
+              }
+            />
+
+            {/* Administration */}
+            <Route
+              path="/users"
+              element={
+                <PermissionGuard permission="AbpIdentity.Users">
+                  <UsersPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="/roles"
+              element={
+                <PermissionGuard permission="AbpIdentity.Roles">
+                  <RolesPage />
+                </PermissionGuard>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <PermissionGuard permission="AbpSettingManagement.Emailing">
+                  <SettingsPage />
+                </PermissionGuard>
+              }
+            />
+
+            {/* Common / Self-Service */}
             <Route path="/my-account" element={<MyAccountPage />} />
-
-
             <Route path="/audit-logs" element={<AuditLogsPage />} />
+
+            {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
@@ -76,7 +204,6 @@ export default function App() {
   const navigate = useNavigate();
   const { isLoading } = usePermissionContext();
 
-  // Handle session expiry (401 from API)
   useEffect(() => {
     const handleAuthExpired = () => {
       console.warn("[App] auth:expired — redirecting to login");

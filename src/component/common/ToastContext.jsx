@@ -16,7 +16,7 @@ export const ToastProvider = ({ children }) => {
     }, []);
 
     return (
-        <ToastContext.Provider value={{ showToast }}>
+        <ToastContext.Provider value={{ showToast, toast: showToast }}>
             {children}
 
             <div className="fixed bottom-5 right-5 flex flex-col gap-2 z-50">

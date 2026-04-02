@@ -13,36 +13,37 @@ export default function Sidebar({ collapsed, setCollapsed }) {
     if (isLoading) return [];
 
     return NAV_GROUPS.map((group) => {
+      // 1. Filter Top-Level Links
       const validLinks = group.links
         .filter((link) => {
+          // Admin override
           const isAdmin = user?.role?.toLowerCase().includes("admin") || user?.roles?.includes("admin");
-          if (link.adminOnly && !isAdmin) {
-            return false;
-          }
-          if (link.permission && !hasPermission(link.permission)) {
-            return false;
-          }
+          if (link.adminOnly && !isAdmin) return false;
+
+          // Direct Permission check for root items
+          if (link.permission && !hasPermission(link.permission)) return false;
+
           return true;
         })
         .map((link) => {
+          // 2. Filter Sub-Menus if they exist
           if (link.subMenu) {
-            return {
-              ...link,
-              subMenu: link.subMenu.filter((sub) => {
-                const isAdmin = user?.role?.toLowerCase().includes("admin") || user?.roles?.includes("admin");
-                if (sub.adminOnly && !isAdmin) {
-                  return false;
-                }
-                if (sub.permission && !hasPermission(sub.permission)) {
-                  return false;
-                }
-                return true;
-              }),
-            };
+            const validSubMenu = link.subMenu.filter((sub) => {
+              const isAdmin = user?.role?.toLowerCase().includes("admin") || user?.roles?.includes("admin");
+              if (sub.adminOnly && !isAdmin) return false;
+              if (sub.permission && !hasPermission(sub.permission)) return false;
+              return true;
+            });
+            
+            return { ...link, subMenu: validSubMenu };
           }
           return link;
         })
-        .filter((link) => !link.subMenu || link.subMenu.length > 0);
+        .filter((link) => {
+          // 3. Hide parent items if their submenu is now empty
+          if (link.subMenu && link.subMenu.length === 0) return false;
+          return true;
+        });
 
       return { ...group, links: validLinks };
     }).filter((group) => group.links.length > 0);
@@ -84,7 +85,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
             onClick={() => setCollapsed(!collapsed)}
             title="Toggle Sidebar"
             className={clsx(
-              "flex items-center justify-center p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-white dark:hover:bg-white/10 transition-colors shrink-0",
+              "flex items-center justify-center p-1.5 rounded-lg text-slate-400 hover:text-[#ec4899] dark:hover:text-[#ec4899] transition-colors shrink-0",
               !collapsed && "ml-auto"
             )}
           >
@@ -140,14 +141,14 @@ function NavItem({ item, collapsed }) {
           "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative cursor-pointer",
           active && !hasSubMenu
             ? "bg-blue-600/10 text-blue-500 border border-blue-500/20"
-            : "text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white",
+            : "text-slate-500 hover:text-[#ec4899] dark:text-slate-400 dark:hover:text-[#ec4899]",
           collapsed && "justify-center",
         )}
         title={collapsed ? item.name : ""}
       >
         {Icon && (
           <div className={clsx("flex items-center justify-center shrink-0", collapsed ? "w-6 h-6" : "w-5 h-5")}>
-            <Icon size={collapsed ? 20 : 18} strokeWidth={2} className={clsx("transition-colors", active ? "text-blue-500" : "text-slate-500 group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-white")} />
+            <Icon size={collapsed ? 20 : 18} strokeWidth={2} className={clsx("transition-colors", active ? "text-blue-500" : "text-slate-500 group-hover:text-[#ec4899] dark:text-slate-400 dark:group-hover:text-[#ec4899]")} />
           </div>
         )}
         
@@ -176,7 +177,7 @@ function NavItem({ item, collapsed }) {
               isOpen ? "rotate-180" : "",
             )}
           >
-            <ChevronDown size={16} className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-colors" />
+            <ChevronDown size={16} className="text-slate-400 group-hover:text-[#ec4899] dark:group-hover:text-[#ec4899] transition-colors" />
           </div>
         )}
 
@@ -208,7 +209,7 @@ function NavItem({ item, collapsed }) {
                     "block px-3 py-2 text-xs rounded-lg transition-all",
                     subActive
                       ? "text-blue-500 bg-blue-500/5 font-semibold"
-                      : "text-slate-500 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/5",
+                      : "text-slate-500 hover:text-[#ec4899] dark:text-slate-400 dark:hover:text-[#ec4899]",
                   )}
                 >
                   {sub.name}

@@ -3,6 +3,8 @@ import ResourcePage from "../component/common/ResourcePage";
 import { rolesApi } from "../services/api/roles";
 import { useToast } from "../component/common/ToastContext";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
+import { X, ShieldCheck, ChevronDown, ChevronRight } from "lucide-react";
+import IconButton from "@mui/material/IconButton";
 
 
 
@@ -26,7 +28,7 @@ const PermissionTree = ({
 
   return (
     <div
-      className={`space-y-2 ${parentName ? "ml-6 mt-2 border-l-2 border-slate-100 pl-4" : "mt-2"}`}
+      className={`space-y-2 ${parentName ? "ml-6 mt-2 border-l-2 border-slate-700/50 pl-4" : "mt-2"}`}
     >
       {children.map((perm) => (
         <div key={perm.name} className="flex flex-col">
@@ -36,11 +38,11 @@ const PermissionTree = ({
               id={perm.name}
               checked={!!checkedPerms[perm.name]}
               onChange={(e) => onToggle(perm, e.target.checked)}
-              className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+              className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-blue-500 bg-slate-950 border-slate-600 text-blue-500"
             />
             <label
               htmlFor={perm.name}
-              className={`text-sm cursor-pointer ${parentName ? "text-slate-600" : "text-slate-800 "}`}
+              className={`text-sm cursor-pointer ${parentName ? "text-slate-400" : "text-slate-200 font-semibold"}`}
             >
               {perm.displayName || perm.name}
             </label>
@@ -63,6 +65,14 @@ export default function RolesPage() {
   const [permissionsData, setPermissionsData] = useState(null);
   const [loadingPermissions, setLoadingPermissions] = useState(false);
   const [checkedPerms, setCheckedPerms] = useState({});
+  const [expandedGroups, setExpandedGroups] = useState({});
+
+  const toggleGroup = (groupName) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupName]: !prev[groupName],
+    }));
+  };
 
   const columns = useMemo(
     () => [
@@ -73,7 +83,7 @@ export default function RolesPage() {
         flex: 1,
         render: (val, row) => (
           <div className="flex items-center gap-2.5">
-            <span className="text-sm text-slate-800 dark:text-white capitalize truncate">
+            <span className="text-sm text-slate-800 dark:text-slate-200 capitalize truncate">
               {val}
             </span>
             {row.isDefault && (
@@ -129,7 +139,7 @@ export default function RolesPage() {
           onClick={onClose}
         />
         <div className="relative bg-white dark:bg-slate-900 rounded-[24px] p-6 w-full max-w-[360px] shadow-2xl shadow-blue-500/10 border border-slate-100 dark:border-slate-700 transition-all duration-300">
-          <h2 className="text-base dark:text-white mb-4 text-slate-800">
+          <h2 className="text-base dark:text-slate-200 mb-4 text-slate-800">
             {item ? "Edit Role" : "Create Role"}
           </h2>
           <div className="space-y-3">
@@ -141,7 +151,7 @@ export default function RolesPage() {
                 id="role-name-input"
                 type="text"
                 defaultValue={item?.name || ""}
-                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-white text-sm transition-all duration-200"
+                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 dark:text-slate-200 text-sm transition-all duration-200"
                 placeholder="Enter role name..."
               />
             </div>
@@ -160,14 +170,14 @@ export default function RolesPage() {
             <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1 px-3 py-2 border-2 border-slate-100 dark:border-slate-700 rounded-xl hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 dark:hover:bg-white/5 cursor-pointer transition-all duration-200 group">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-slate-700 dark:text-slate-300 group-hover:text-blue-600 transition-colors">
+                  <span className="text-[11px] text-slate-700 dark:text-slate-400 group-hover:text-[#ec4899] transition-colors">
                     Default
                   </span>
                   <input
                     type="checkbox"
                     id="role-isdefault-input"
                     defaultChecked={item?.isDefault || false}
-                    className="w-3.5 h-3.5 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer transition-transform"
+                    className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-blue-500 bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-blue-500"
                   />
                 </div>
                 <span className="text-[8px] text-slate-400 ">
@@ -176,14 +186,14 @@ export default function RolesPage() {
               </label>
               <label className="flex flex-col gap-1 px-3 py-2 border-2 border-slate-100 dark:border-slate-700 rounded-xl hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 dark:hover:bg-white/5 cursor-pointer transition-all duration-200 group">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-slate-700 dark:text-slate-300 group-hover:text-blue-600 transition-colors">
+                  <span className="text-[11px] text-slate-700 dark:text-slate-400 group-hover:text-[#ec4899] transition-colors">
                     Public
                   </span>
                   <input
                     type="checkbox"
                     id="role-ispublic-input"
                     defaultChecked={item?.isPublic || false}
-                    className="w-3.5 h-3.5 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer transition-transform"
+                    className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-blue-500 bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-blue-500"
                   />
                 </div>
                 <span className="text-[8px] text-slate-400 ">
@@ -197,14 +207,14 @@ export default function RolesPage() {
           <div className="flex gap-2.5 mt-5">
             <button
               onClick={onClose}
-              className="flex-1 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-200 transition-colors "
+              className="flex-1 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 transition-colors "
             >
               Cancel
             </button>
             <button
               disabled={loading}
               onClick={handleSubmit}
-              className="flex-1 py-2 text-xs rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 transition-all duration-200 "
+              className="flex-1 py-2 text-xs rounded-xl bg-blue-600 text-slate-200 shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 transition-all duration-200 "
             >
               {loading ? "Wait..." : item ? "Save" : "Create"}
             </button>
@@ -239,10 +249,12 @@ export default function RolesPage() {
       });
   };
 
-  const handleClosePermissions = () => {
+  const handleClosePermissions = (event, reason) => {
+    if (reason === "backdropClick") return;
     setPermissionRole(null);
     setPermissionsData(null);
     setCheckedPerms({});
+    setExpandedGroups({});
   };
 
   const handleGrantAll = (isChecked) => {
@@ -360,29 +372,37 @@ export default function RolesPage() {
         maxWidth="sm"
         fullWidth
         PaperProps={{
-          sx: { borderRadius: "20px", padding: "10px" },
+          sx: { 
+            borderRadius: "20px", 
+            backgroundImage: "none", 
+            backgroundColor: "#0f172a", // Dark Blue
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)", // Extra shadow for depth since border is gone
+          },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 800, color: "#1e293b" }}>
-          Permissions - {permissionRole?.name}
+        <DialogTitle className="flex items-center justify-between px-6 pt-5 pb-2">
+          <span className="text-lg font-bold text-slate-200">
+            Permissions - {permissionRole?.name}
+          </span>
+          <IconButton onClick={() => handleClosePermissions()} size="small" sx={{ color: "rgba(255, 255, 255, 0.6)" }}>
+            <X size={20} />
+          </IconButton>
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent sx={{ border: "none" }}>
           {loadingPermissions ? (
             <div className="flex justify-center items-center py-10">
-              <CircularProgress />
+              <CircularProgress sx={{ color: "#3b82f6" }} />
             </div>
           ) : (
-            <div className="text-sm text-slate-600 space-y-3">
-              <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-200">
+            <div className="text-sm text-slate-400 space-y-3">
+              <div className="flex justify-between items-center mb-4 pb-2">
                 <p>
-                  Here you can control what{" "}
-                  <strong>{permissionRole?.name}</strong> can do in the
-                  application.
+                  Control what <strong className="text-slate-200">{permissionRole?.name}</strong> can do.
                 </p>
 
                 {/* Grant All Checkbox */}
                 {permissionsData?.groups && (
-                  <div className="flex items-center gap-2 bg-blue-50/50 px-3 py-1.5 rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-2 px-3 py-2">
                     <input
                       type="checkbox"
                       id="grant-all-permissions"
@@ -394,11 +414,11 @@ export default function RolesPage() {
                           .every((p) => checkedPerms[p.name])
                       }
                       onChange={(e) => handleGrantAll(e.target.checked)}
-                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                      className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-blue-500 bg-slate-950 border-slate-600 text-blue-500"
                     />
                     <label
                       htmlFor="grant-all-permissions"
-                      className="text-sm text-blue-900 cursor-pointer"
+                      className="text-sm text-slate-200 cursor-pointer font-medium"
                     >
                       Grant all permissions
                     </label>
@@ -412,16 +432,28 @@ export default function RolesPage() {
                 const isAllChecked =
                   groupPerms.length > 0 &&
                   groupPerms.every((p) => checkedPerms[p.name]);
+                const isExpanded = !!expandedGroups[group.name];
+                
                 return (
                   <div
                     key={idx}
-                    className="mb-6 p-4 border border-slate-100 rounded-xl bg-slate-50/50"
+                    className="mb-3"
                   >
-                    <div className="flex items-center justify-between border-b border-slate-200 pb-3 mb-3">
-                      <h4 className=" text-slate-800 text-lg">
-                        {group.displayName || group.name}
-                      </h4>
-                      <div className="flex items-center gap-2">
+                    {/* Collapsible Header (Combobox style) */}
+                    <div 
+                      onClick={() => toggleGroup(group.name)}
+                      className="flex items-center justify-between px-4 py-2.5 bg-slate-800/40 rounded-xl hover:bg-slate-800/80 cursor-pointer transition-all duration-200 group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
+                          <ChevronDown size={18} className="text-slate-500 group-hover:text-[#ec4899]" />
+                        </div>
+                        <h4 className="text-slate-200 text-[14px] font-bold uppercase tracking-wider">
+                          {group.displayName || group.name}
+                        </h4>
+                      </div>
+                      
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           id={`select-all-${group.name}`}
@@ -429,39 +461,52 @@ export default function RolesPage() {
                           onChange={(e) =>
                             handleSelectAllGroup(group.name, e.target.checked)
                           }
-                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                          className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-blue-500 bg-slate-950 border-slate-600 text-blue-500"
                         />
                         <label
                           htmlFor={`select-all-${group.name}`}
-                          className="text-sm text-slate-600 cursor-pointer hover:text-blue-600 transition-colors"
+                          className="text-[10px] text-slate-500 uppercase font-black tracking-widest cursor-pointer hover:text-[#ec4899] transition-colors"
                         >
                           Select all
                         </label>
                       </div>
                     </div>
-                    <PermissionTree
-                      permissions={groupPerms}
-                      parentName={null}
-                      checkedPerms={checkedPerms}
-                      onToggle={handleTogglePerm}
-                    />
+
+                    {/* Drop Down Menu (Content) */}
+                    {isExpanded && (
+                      <div className="mt-2 ml-2 p-3 bg-slate-800/20 rounded-xl animate-in slide-in-from-top-2 duration-200">
+                        <PermissionTree
+                          permissions={groupPerms}
+                          parentName={null}
+                          checkedPerms={checkedPerms}
+                          onToggle={handleTogglePerm}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}
 
               {!permissionsData?.groups?.length && (
-                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 text-center text-slate-400">
                   No specific permissions defined.
                 </div>
               )}
             </div>
           )}
         </DialogContent>
-        <DialogActions sx={{ paddingTop: "20px" }}>
+        <DialogActions sx={{ padding: "16px 24px", backgroundColor: "#0f172a", border: "none" }}>
           <Button
-            onClick={handleClosePermissions}
-            color="inherit"
-            sx={{ fontWeight: 700, borderRadius: "10px" }}
+            onClick={() => handleClosePermissions()}
+            variant="outlined"
+            sx={{ 
+              fontWeight: 600, 
+              borderRadius: "8px", 
+              textTransform: "none", 
+              color: "#94a3b8", 
+              borderColor: "#334155",
+              "&:hover": { borderColor: "#475569", backgroundColor: "rgba(255, 255, 255, 0.05)" }
+            }}
           >
             Cancel
           </Button>
@@ -470,9 +515,9 @@ export default function RolesPage() {
             variant="contained"
             color="primary"
             disabled={loadingPermissions}
-            sx={{ fontWeight: 700, borderRadius: "10px", boxShadow: "none" }}
+            sx={{ fontWeight: 600, borderRadius: "8px", textTransform: "none", px: 4, boxShadow: "none" }}
           >
-            Save
+            {loadingPermissions ? "Wait..." : "Save"}
           </Button>
         </DialogActions>
       </Dialog>

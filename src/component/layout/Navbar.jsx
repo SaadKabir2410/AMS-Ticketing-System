@@ -15,7 +15,7 @@ function IconBtn({
     <button
       onClick={onClick}
       title={title}
-      className={`relative p-1 rounded hover:bg-slate-200/50 dark:hover:bg-white/10 ${className}`}
+      className={`relative p-1 rounded hover:text-[#ec4899] dark:hover:text-[#ec4899] ${className}`}
     >
       {children}
       {badge && (
@@ -58,7 +58,7 @@ export default function Navbar({ setCollapsed }) {
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="flex items-center gap-3 p-1 pr-3 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors"
+            className="flex items-center gap-3 p-1 pr-3 hover:text-[#ec4899] dark:hover:text-[#ec4899] rounded-xl transition-colors"
           >
 
             <div className="text-left hidden lg:block">
@@ -83,7 +83,7 @@ export default function Navbar({ setCollapsed }) {
                   setShowMenu(false);
                   navigate("/my-account");
                 }}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-slate-600 dark:text-slate-300 font-medium hover:text-[#ec4899] dark:hover:text-[#ec4899] transition-colors"
               >
                 <User size={16} />
                 My Account

@@ -355,7 +355,7 @@ export default function UsersPage() {
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors rounded-lg hover:bg-slate-100 dark:hover:bg-white/5"
+            className="p-1 text-slate-400 hover:text-[#ec4899] dark:hover:text-[#ec4899] transition-colors rounded-lg"
           >
             
           </button>
@@ -774,7 +774,7 @@ export default function UsersPage() {
                             onChange={() => toggleRole(roleName)}
                             className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer transition-transform"
                           />
-                          <span className="text-xs text-slate-700 dark:text-slate-300 group-hover:text-blue-600 transition-colors">
+                          <span className="text-xs text-slate-700 dark:text-slate-300 group-hover:text-[#ec4899] transition-colors">
                             {displayRole}
                           </span>
                         </label>

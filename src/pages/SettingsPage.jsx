@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { Home, ArrowLeft, Settings as SettingsIcon } from "lucide-react";
+import { Home, ArrowLeft, Settings as SettingsIcon, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import SettingsService from "../services/api/settings";
 import { useToast } from "../component/common/ToastContext";
 
-const InputField = ({ label, required, value, name, onChange, type = "text" }) => (
+const InputField = ({ label, required, value, name, onChange, type = "text", placeholder }) => (
   <div className="mb-5 max-w-2xl">
     <label className="block text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-1.5 leading-none">
       {label} {required && <span className="text-red-500">*</span>}
@@ -14,20 +14,146 @@ const InputField = ({ label, required, value, name, onChange, type = "text" }) =
       name={name}
       value={value}
       onChange={onChange}
+      placeholder={placeholder ?? ""}
       onKeyDown={(e) => {
         if (e.key === "Backspace") {
           e.stopPropagation();
         }
       }}
-      className={`${type === "number" ? "max-w-[300px]" : "max-w-lg"} w-full h-10 px-4 bg-[#f8f9fa] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 font-medium`}
+      className={`${type === "number" ? "max-w-[300px]" : "max-w-lg"} w-full h-10 px-4 bg-[#f8f9fa] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 font-medium placeholder:text-slate-400 placeholder:font-normal`}
     />
   </div>
 );
+
+// ─── Features Modal ───────────────────────────────────────────────────────────
+const FeaturesModal = ({ onClose }) => {
+  const [features, setFeatures] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const { showToast } = useToast();
+
+  React.useEffect(() => {
+    const fetchFeatures = async () => {
+      setLoading(true);
+      try {
+        const data = await SettingsService.getFeatures();
+        setFeatures(data.features ?? []);
+      } catch (error) {
+        console.error("Failed to fetch features:", error);
+        showToast("Failed to load features", "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFeatures();
+  }, []);
+
+  const handleToggle = (name) => {
+    setFeatures((prev) =>
+      prev.map((f) =>
+        f.name === name ? { ...f, value: f.value === "true" ? "false" : "true" } : f
+      )
+    );
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await SettingsService.updateFeatures(
+        features.map((f) => ({ name: f.name, value: f.value }))
+      );
+      showToast("Features saved successfully!", "success");
+      onClose();
+    } catch (error) {
+      console.error("Failed to save features:", error);
+      showToast("Failed to save features", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <h2 className="text-base font-bold text-slate-800 dark:text-white">Features</h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          {loading ? (
+            <div className="flex items-center justify-center h-32 text-slate-400 text-sm">
+              Loading features...
+            </div>
+          ) : features.length === 0 ? (
+            <div className="flex items-center justify-center h-32 text-slate-400 text-sm">
+              There isn't any available feature.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {features.map((feature) => (
+                <div
+                  key={feature.name}
+                  className="flex items-center justify-between py-3 px-4 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700"
+                >
+                  <div>
+                    <p className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">
+                      {feature.displayName}
+                    </p>
+                    {feature.description && (
+                      <p className="text-[11px] text-slate-400 mt-0.5">{feature.description}</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleToggle(feature.name)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${feature.value === "true" ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"
+                      }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition duration-200 ${feature.value === "true" ? "translate-x-4" : "translate-x-0"
+                        }`}
+                    />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {!loading && features.length > 0 && (
+          <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+            <button
+              onClick={onClose}
+              className="px-5 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("Emailing");
   const [loading, setLoading] = useState(false);
   const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [systemLoading, setSystemLoading] = useState(false);
+  const [showFeaturesModal, setShowFeaturesModal] = useState(false);
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -40,7 +166,7 @@ export default function SettingsPage() {
     useDefaultCredentials: false,
     domain: "",
     username: "",
-    password: "",
+    password: "", // never populated from API
   });
 
   const [systemSettings, setSystemSettings] = useState({
@@ -51,8 +177,9 @@ export default function SettingsPage() {
     specificTicketsCommissionPercentage: "",
   });
 
+  // Fetch email settings on mount
   React.useEffect(() => {
-    const fetchSettings = async () => {
+    const fetchEmailSettings = async () => {
       setLoading(true);
       try {
         const data = await SettingsService.getEmailSettings();
@@ -65,7 +192,7 @@ export default function SettingsPage() {
           useDefaultCredentials: data.smtpUseDefaultCredentials ?? false,
           domain: data.smtpDomain ?? "",
           username: data.smtpUserName ?? "",
-          password: data.smtpPassword ?? "",
+          password: "", // ← never load password from API response
         });
       } catch (error) {
         console.error("Failed to fetch email settings:", error);
@@ -75,8 +202,34 @@ export default function SettingsPage() {
       }
     };
 
-    fetchSettings();
+    fetchEmailSettings();
   }, []);
+
+  // Fetch system settings when System Settings tab is opened
+  React.useEffect(() => {
+    if (activeTab !== "System Settings") return;
+
+    const fetchSystemSettings = async () => {
+      setSystemLoading(true);
+      try {
+        const data = await SettingsService.getSystemSettings();
+        setSystemSettings({
+          baseNumberOfTicketsForAfterOfficeHours: data.baseNumberOfTicketsForAfterOfficeHours ?? "",
+          jobsheetCanBeModifiedUpToDays: data.jobsheetCanBeModifiedUpToDays ?? "",
+          workingHoursFrom: data.workingHoursFrom ?? "",
+          workingHoursTo: data.workingHoursTo ?? "",
+          specificTicketsCommissionPercentage: data.specificTicketsCommissionPercentage ?? "",
+        });
+      } catch (error) {
+        console.error("Failed to fetch system settings:", error);
+        showToast("Failed to load system settings", "error");
+      } finally {
+        setSystemLoading(false);
+      }
+    };
+
+    fetchSystemSettings();
+  }, [activeTab]);
 
   const handleEmailChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -107,7 +260,7 @@ export default function SettingsPage() {
   const handleSendTestEmail = async () => {
     setTestEmailLoading(true);
     try {
-      await SettingsService.sendTestEmail(emailSettings.defaultFromAddress);
+      await SettingsService.sendTestEmail(emailSettings);
       showToast("Test email sent successfully!", "success");
     } catch (error) {
       console.error("Send Test Email Error:", error);
@@ -118,18 +271,26 @@ export default function SettingsPage() {
   };
 
   const handleSaveSystemSettings = async () => {
-    setLoading(true);
+    setSystemLoading(true);
     try {
+      await SettingsService.updateSystemSettings(systemSettings);
       showToast("System settings saved successfully!", "success");
     } catch (error) {
+      console.error("Save System Settings Error:", error);
       showToast("Failed to save system settings", "error");
     } finally {
-      setLoading(false);
+      setSystemLoading(false);
     }
   };
 
   return (
     <div className="flex flex-col max-w-6xl mx-auto w-full py-6">
+
+      {/* Features Modal */}
+      {showFeaturesModal && (
+        <FeaturesModal onClose={() => setShowFeaturesModal(false)} />
+      )}
+
       {/* Breadcrumb & Title */}
       <div className="mb-6">
         <div className="flex items-center text-[12px] text-slate-500 dark:text-slate-400 gap-2 mb-3">
@@ -245,6 +406,7 @@ export default function SettingsPage() {
                       name="password"
                       value={emailSettings.password}
                       onChange={handleEmailChange}
+                      placeholder="Leave empty to keep current password"
                     />
                   </div>
                 </div>
@@ -275,7 +437,10 @@ export default function SettingsPage() {
               <p className="text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-6">
                 You can manage the host side features by clicking the following button.
               </p>
-              <button className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md active:scale-95">
+              <button
+                onClick={() => setShowFeaturesModal(true)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md active:scale-95"
+              >
                 <SettingsIcon size={16} strokeWidth={2.5} />
                 Manage host features
               </button>
@@ -285,55 +450,63 @@ export default function SettingsPage() {
           {/* System Settings Tab */}
           {activeTab === "System Settings" && (
             <div className="animate-in fade-in duration-300">
-              <InputField
-                label="Base Number Of Tickets For After Office Hours"
-                required
-                type="number"
-                name="baseNumberOfTicketsForAfterOfficeHours"
-                value={systemSettings.baseNumberOfTicketsForAfterOfficeHours}
-                onChange={handleSystemChange}
-              />
-              <InputField
-                label="Jobsheet can be modified up to (days)"
-                required
-                type="number"
-                name="jobsheetCanBeModifiedUpToDays"
-                value={systemSettings.jobsheetCanBeModifiedUpToDays}
-                onChange={handleSystemChange}
-              />
-              <InputField
-                label="Working Hours From"
-                required
-                type="number"
-                name="workingHoursFrom"
-                value={systemSettings.workingHoursFrom}
-                onChange={handleSystemChange}
-              />
-              <InputField
-                label="Working Hours To"
-                required
-                type="number"
-                name="workingHoursTo"
-                value={systemSettings.workingHoursTo}
-                onChange={handleSystemChange}
-              />
-              <InputField
-                label="Specific Tickets Commission Percentage (%)"
-                required
-                type="number"
-                name="specificTicketsCommissionPercentage"
-                value={systemSettings.specificTicketsCommissionPercentage}
-                onChange={handleSystemChange}
-              />
-              <div className="pt-3">
-                <button
-                  onClick={handleSaveSystemSettings}
-                  disabled={loading}
-                  className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 tracking-wide min-w-[100px] disabled:opacity-50"
-                >
-                  {loading ? "Saving..." : "Save"}
-                </button>
-              </div>
+              {systemLoading ? (
+                <div className="flex items-center justify-center h-40 text-slate-400 text-sm">
+                  Loading system settings...
+                </div>
+              ) : (
+                <>
+                  <InputField
+                    label="Base Number Of Tickets For After Office Hours"
+                    required
+                    type="number"
+                    name="baseNumberOfTicketsForAfterOfficeHours"
+                    value={systemSettings.baseNumberOfTicketsForAfterOfficeHours}
+                    onChange={handleSystemChange}
+                  />
+                  <InputField
+                    label="Jobsheet can be modified up to (days)"
+                    required
+                    type="number"
+                    name="jobsheetCanBeModifiedUpToDays"
+                    value={systemSettings.jobsheetCanBeModifiedUpToDays}
+                    onChange={handleSystemChange}
+                  />
+                  <InputField
+                    label="Working Hours From"
+                    required
+                    type="number"
+                    name="workingHoursFrom"
+                    value={systemSettings.workingHoursFrom}
+                    onChange={handleSystemChange}
+                  />
+                  <InputField
+                    label="Working Hours To"
+                    required
+                    type="number"
+                    name="workingHoursTo"
+                    value={systemSettings.workingHoursTo}
+                    onChange={handleSystemChange}
+                  />
+                  <InputField
+                    label="Specific Tickets Commission Percentage (%)"
+                    required
+                    type="number"
+                    name="specificTicketsCommissionPercentage"
+                    value={systemSettings.specificTicketsCommissionPercentage}
+                    onChange={handleSystemChange}
+                  />
+                  <div className="pt-3">
+                    <button
+                      onClick={handleSaveSystemSettings}
+                      disabled={systemLoading}
+                      className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 tracking-wide min-w-[100px] disabled:opacity-50"
+                    >
+                      {systemLoading ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

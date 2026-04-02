@@ -573,7 +573,7 @@ export default function ResourcePage({
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => navigate(-1)}
-                  className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 dark:text-slate-300 hover:text-blue-500 dark:hover:text-blue-400 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
+                  className="p-1 hover:text-[#ec4899] dark:hover:text-[#ec4899] rounded-lg transition-colors text-slate-700 dark:text-slate-200"
                   title="Go Back"
                 >
                   <ArrowLeft size={16} strokeWidth={2.5} />
@@ -636,7 +636,8 @@ export default function ResourcePage({
                 </div>
                 <button
                   onClick={refetch}
-                  className="px-4 py-2 bg-red-600 text-white text-[10px] rounded-lg hover:bg-red-700 transition-colors"
+                  className="p-1.5 hover:text-[#ec4899] dark:hover:text-[#ec4899] rounded-lg transition-colors text-slate-400 dark:text-slate-500"
+                  title="Retry"
                 >
                   Retry
                 </button>

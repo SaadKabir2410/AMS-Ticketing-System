@@ -375,7 +375,7 @@ export default function JobsheetsPage() {
                 collaboratorResults.map((user) => (
                   <div
                     key={user.id}
-                    className="px-4 py-2.5 text-[11px] text-slate-700 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-500/10 cursor-pointer border-b border-slate-50 dark:border-slate-800 last:border-0 transition-colors"
+                    className="px-4 py-2.5 text-[11px] text-slate-700 dark:text-slate-300 hover:text-[#ec4899] dark:hover:text-[#ec4899] cursor-pointer border-b border-slate-50 dark:border-slate-800 last:border-0 transition-colors"
                     onClick={() => {
                       const name = user.name + (user.surname ? ` ${user.surname}` : "");
                       setCollaboratorSearch(name);
@@ -440,7 +440,7 @@ export default function JobsheetsPage() {
       )}
       <button
         type="button"
-        className="flex items-center justify-center px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-slate-600 dark:text-slate-200 text-xs rounded-xl shadow-sm transition-all active:scale-95"
+        className="flex items-center justify-center px-5 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-[#ec4899] hover:text-[#ec4899] disabled:opacity-50 disabled:cursor-not-allowed text-slate-600 dark:text-slate-200 text-xs rounded-xl shadow-sm transition-all active:scale-95"
         onClick={() => fetchReport(filters, true)}
         disabled={reportLoading}
       >

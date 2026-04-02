@@ -121,6 +121,7 @@ export const NAV_GROUPS = [
         name: "Settings",
         icon: Settings,
         href: "/settings",
+        permission: "AbpSettingManagement.Emailing",
       },
     ],
   },
