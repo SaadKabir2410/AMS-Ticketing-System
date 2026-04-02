@@ -44,7 +44,7 @@ The dashboard is powered by a robust, enterprise-grade backend built with the **
 
 | Category | Frontend | Backend |
 | :--- | :--- | :--- |
-| **Framework** | React 19, Vite 8 | .NET Core / ABP Framework |
+| **Framework** | React 19, Vite 8, TypeScript | .NET Core / ABP Framework |
 | **Auth** | OIDC Client, React Context | Identity Server / OpenIddict |
 | **API** | Axios (Interceptor enabled) | RESTful API (DDD Architecture) |
 | **Styling** | Tailwind CSS 4, MUI | N/A |
