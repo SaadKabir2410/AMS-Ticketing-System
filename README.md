@@ -1,6 +1,5 @@
 # 🚀 AMS Ticketing System
 
-![Sureze Logo](src/assets/Sureze_Logo.png)
 
 [![Frontend](https://img.shields.io/badge/Frontend-React_19-blue?style=for-the-badge&logo=react)](https://react.dev/)
 [![Backend](https://img.shields.io/badge/Backend-ABP_Framework-red?style=for-the-badge&logo=dotnet)](https://abp.io/)
