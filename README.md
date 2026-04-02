@@ -1,4 +1,4 @@
-# 🚀 Sureze Admin Dashboard
+# 🚀 AMS Ticketing System
 
 ![Sureze Logo](src/assets/Sureze_Logo.png)
 
