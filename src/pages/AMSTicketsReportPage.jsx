@@ -458,7 +458,7 @@ export default function AMSTicketsReportPage() {
               <button
                 onClick={() => handleGetReport(false)}
                 disabled={loading}
-                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-[11px] transition-all active:scale-95 shadow-sm focus:outline-none"
+                className="flex items-center gap-1.5 px-4 py-2 btn-flagship  disabled:opacity-50 text-white rounded-lg text-[11px] transition-all active:scale-95 shadow-sm focus:outline-none"
               >
                 {loading ? "Loading..." : "Get Report"}
               </button>
@@ -809,3 +809,5 @@ export default function AMSTicketsReportPage() {
     </div>
   );
 }
+
+

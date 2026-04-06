@@ -21,6 +21,7 @@ import JobsheetsPage from "./pages/JobsheetsPage";
 import TicketCommissionReportPage from "./pages/TicketCommissionReportPage";
 import AMSTicketsReportPage from "./pages/AMSTicketsReportPage";
 import GeneralReportPage from "./pages/GeneralReportPage";
+import UserYearlyReportPage from "./pages/UserYearlyReportPage";
 import AfterWorkingHoursReportPage from "./pages/AfterWorkingHoursReportPage";
 import UsersPage from "./pages/UsersPage";
 import RolesPage from "./pages/RolesPage";
@@ -66,6 +67,14 @@ function Layout({ collapsed, setCollapsed }) {
                 element={
                   <PermissionGuard permission="Billing.Reports">
                     <GeneralReportPage />
+                  </PermissionGuard>
+                }
+              />
+            <Route
+                path="/reports/user-yearly"
+                element={
+                  <PermissionGuard permission="Billing.Reports">
+                    <UserYearlyReportPage />
                   </PermissionGuard>
                 }
               />
@@ -220,7 +229,7 @@ export default function App() {
           <div className="absolute inset-0 border-4 border-blue-500/10 rounded-full"></div>
           <div className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+            <div className="w-2 h-2 btn-flagship rounded-full animate-pulse"></div>
           </div>
         </div>
         <div className="flex flex-col items-center gap-2">
@@ -228,7 +237,7 @@ export default function App() {
             Loading...
           </p>
           <div className="w-32 h-1 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-600 animate-[loading_1.5s_ease-in-out_infinite]"></div>
+            <div className="h-full btn-flagship animate-[loading_1.5s_ease-in-out_infinite]"></div>
           </div>
         </div>
         <style>{`
@@ -255,3 +264,5 @@ export default function App() {
     </Routes>
   );
 }
+
+

@@ -62,7 +62,7 @@ const FeaturesModal = ({ onClose }) => {
       await SettingsService.updateFeatures(
         features.map((f) => ({ name: f.name, value: f.value }))
       );
-      showToast("Features saved successfully!", "success");
+      showToast("Features saved !successfully", "success");
       onClose();
     } catch (error) {
       console.error("Failed to save features:", error);
@@ -111,7 +111,7 @@ const FeaturesModal = ({ onClose }) => {
                   </div>
                   <button
                     onClick={() => handleToggle(feature.name)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${feature.value === "true" ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${feature.value === "true" ? "btn-flagship" : "bg-slate-300 dark:bg-slate-600"
                       }`}
                   >
                     <span
@@ -129,14 +129,14 @@ const FeaturesModal = ({ onClose }) => {
           <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
             <button
               onClick={onClose}
-              className="px-5 py-2 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="flex-1 btn-flagship h-[38px]! text-[11px]! border-slate-200! dark:border-slate-700! text-slate-500! hover:bg-slate-50! dark:hover:bg-white/5!"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold transition-all shadow-md active:scale-95 disabled:opacity-50"
+              className="flex-1 btn-flagship h-[38px]! text-[11px]!"
             >
               {saving ? "Saving..." : "Save"}
             </button>
@@ -248,7 +248,7 @@ export default function SettingsPage() {
     setLoading(true);
     try {
       await SettingsService.updateEmailSettings(emailSettings);
-      showToast("Email settings saved successfully!", "success");
+      showToast("Email settings saved !successfully", "success");
     } catch (error) {
       console.error("Save Email Settings Error:", error);
       showToast("Failed to save email settings", "error");
@@ -261,7 +261,7 @@ export default function SettingsPage() {
     setTestEmailLoading(true);
     try {
       await SettingsService.sendTestEmail(emailSettings);
-      showToast("Test email sent successfully!", "success");
+      showToast("Test email sent !successfully", "success");
     } catch (error) {
       console.error("Send Test Email Error:", error);
       showToast("Failed to send test email", "error");
@@ -274,7 +274,7 @@ export default function SettingsPage() {
     setSystemLoading(true);
     try {
       await SettingsService.updateSystemSettings(systemSettings);
-      showToast("System settings saved successfully!", "success");
+      showToast("System settings saved !successfully", "success");
     } catch (error) {
       console.error("Save System Settings Error:", error);
       showToast("Failed to save system settings", "error");
@@ -416,14 +416,14 @@ export default function SettingsPage() {
                 <button
                   onClick={handleSendTestEmail}
                   disabled={testEmailLoading || loading}
-                  className="px-6 py-2 border-2 border-blue-500 text-blue-600 dark:text-blue-400 rounded-lg text-[13px] font-bold hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors shadow-sm tracking-wide disabled:opacity-50"
+                  className="btn-flagship border-pink-500/50! text-pink-500! hover:bg-pink-500/5!"
                 >
                   {testEmailLoading ? "Sending..." : "Send test email"}
                 </button>
                 <button
                   onClick={handleSaveEmailSettings}
                   disabled={loading}
-                  className="px-8 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[13px] font-bold transition-all shadow-md active:scale-95 tracking-wide disabled:opacity-50"
+                  className="btn-flagship"
                 >
                   {loading ? "Saving..." : "Save"}
                 </button>
@@ -439,9 +439,9 @@ export default function SettingsPage() {
               </p>
               <button
                 onClick={() => setShowFeaturesModal(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-all shadow-md active:scale-95"
+                className="btn-flagship"
               >
-                <SettingsIcon size={16} strokeWidth={2.5} />
+                <SettingsIcon size={14} strokeWidth={2.5} />
                 Manage host features
               </button>
             </div>
@@ -500,7 +500,7 @@ export default function SettingsPage() {
                     <button
                       onClick={handleSaveSystemSettings}
                       disabled={systemLoading}
-                      className="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 tracking-wide min-w-[100px] disabled:opacity-50"
+                      className="btn-flagship"
                     >
                       {systemLoading ? "Saving..." : "Save"}
                     </button>
@@ -515,3 +515,5 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+

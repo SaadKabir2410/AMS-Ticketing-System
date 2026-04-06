@@ -144,10 +144,10 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
     try {
       if (item) {
         await workingHoursApi.update(item.id, payload);
-        toast("Working hour updated successfully!");
+        toast("Working hour updated !successfully");
       } else {
         await workingHoursApi.create(payload);
-        toast("Working hour created successfully!");
+        toast("Working hour created !successfully");
       }
       onSave();
       onClose();
@@ -343,7 +343,7 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
             <button
               type="submit"
               disabled={loading}
-              className="flex-2 px-4 py-1.5 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 shadow-md shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-2 px-4 py-1.5 btn-flagship rounded-lg text-[10px] font-black uppercase tracking-widest hover:btn-flagship shadow-md  transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -360,3 +360,7 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
     </Dialog>
   );
 }
+
+
+
+

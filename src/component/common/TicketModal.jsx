@@ -302,20 +302,23 @@ export default function TicketModal({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-700">
+          <div className="flex items-center justify-end gap-3 px-6 pt-4 pb-5">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+              disabled={submitting}
+              className="flex-1 btn-flagship h-[38px]! text-[11px]! border-slate-200! dark:border-slate-700! text-slate-500! hover:bg-slate-50! dark:hover:bg-white/5!"
             >
               Cancel
             </button>
             <button
-              type="submit"
-              disabled={loading}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 text-white text-sm transition-all shadow-lg shadow-blue-500/25"
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="flex-1 btn-flagship h-[38px]! text-[11px]!"
             >
-              {loading ? "Saving..." : isEdit ? "Update Ticket" : "Create Ticket"}
+              {submitting ? (
+                <div className="w-4 h-4 border-2 border-white! border-t-transparent rounded-full animate-spin"></div>
+              ) : isEdit ? "Save Changes" : "Create"}
             </button>
           </div>
         </form>
@@ -323,3 +326,4 @@ export default function TicketModal({
     </div>
   );
 }
+

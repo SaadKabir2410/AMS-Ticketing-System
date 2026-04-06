@@ -18,6 +18,12 @@ export function useResource(apiObject, params) {
       return;
     }
 
+    if (!apiObject) {
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await apiObject.getAll(params);

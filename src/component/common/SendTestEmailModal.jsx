@@ -166,7 +166,7 @@ export default function SendTestEmailModal({
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="px-9 py-2.5 bg-blue-600 hover:bg-blue-700 text-white dark:text-slate-200 font-bold text-sm rounded-xl transition-all shadow-lg shadow-blue-500/20 dark:shadow-blue-500/10 active:scale-95 disabled:opacity-50"
+          className="px-9 py-2.5 btn-flagship  text-white dark:text-slate-200 font-bold text-sm rounded-xl transition-all shadow-lg  dark:shadow-blue-500/10 active:scale-95 disabled:opacity-50"
         >
           {loading ? "Sending..." : "Send"}
         </button>
@@ -174,3 +174,7 @@ export default function SendTestEmailModal({
     </Dialog>
   );
 }
+
+
+
+

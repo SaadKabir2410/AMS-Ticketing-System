@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContextHook";
-
+import { AlertCircle } from "lucide-react";
 import Logo from "../../assets/Sureze_Logo.png";
 
 
@@ -38,11 +38,10 @@ function InputField({
           onChange={onChange}
           placeholder={placeholder}
           required
-          className={`w-full pl-11 pr-11 py-3 bg-white dark:bg-slate-900 border ${
-            error
-              ? "border-red-500 ring-2 ring-red-500/10"
-              : "border-slate-200 dark:border-slate-800 group-focus-within:border-blue-500 group-focus-within:ring-4 group-focus-within:ring-blue-500/10"
-          } rounded-xl text-slate-700 dark:text-slate-200 placeholder:text-slate-400 outline-none transition-all`}
+          className={`w-full pl-11 pr-11 py-3 bg-white dark:bg-slate-900 border ${error
+            ? "border-red-500 ring-2 ring-red-500/10"
+            : "border-slate-200 dark:border-slate-800 group-focus-within:border-blue-500 group-focus-within:ring-4 group-focus-within:ring-blue-500/10"
+            } rounded-xl text-slate-700 dark:text-slate-200 placeholder:text-slate-400 outline-none transition-all`}
         />
         {isPassword && (
           <button
@@ -76,6 +75,7 @@ export default function LoginPage() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [localError, setLocalError] = useState("");
   const [showLoggedOutMessage, setShowLoggedOutMessage] = useState(false);
+  const [shouldShake, setShouldShake] = useState(false);
 
   // If already authenticated, skip login page
   useEffect(() => {
@@ -97,156 +97,101 @@ export default function LoginPage() {
     setLocalError("");
     clearError();
     setIsLoggingIn(true);
+    setShouldShake(false);
 
     const success = await login({ email: username, password });
     if (success) {
       navigate(from, { replace: true });
     } else {
       setIsLoggingIn(false);
+      setShouldShake(true);
+      // Reset shake after animation duration
+      setTimeout(() => setShouldShake(false), 500);
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-[#0f1117]">
-      {/* ── Left Panel ── */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-linear-to-br from-[#1e3a5f] via-[#1a2d4e] to-[#0f1a2e] flex-col items-center justify-center p-12">
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-3xl" />
-          <div className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] rounded-full bg-indigo-600/10 blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] rounded-full bg-blue-500/5 blur-2xl" />
-          <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
-              backgroundSize: "40px 40px",
-            }}
-          />
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0f1117] p-6 relative overflow-hidden">
+      <style>
+        {`
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+          }
+          .shake-animation {
+            animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+          }
+        `}
+      </style>
 
-        <div className="relative z-10 text-center max-w-md">
-          <div className="flex flex-col items-center gap-10 mb-16 group relative">
+      {/* Background Glow Decorations */}
+      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full bg-[#ec4899]/5 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-indigo-600/5 blur-[120px] pointer-events-none" />
+
+      <div className={`w-full max-w-md relative z-10 ${shouldShake ? 'shake-animation' : ''}`}>
+        {/* ── Consolidated Login Card ── */}
+        <div className="w-full min-h-[650px] flex flex-col justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-10 lg:p-16 rounded-[48px] shadow-2xl shadow-slate-200/50 dark:shadow-none transition-all overflow-hidden relative group/card">
+          
+          {/* Subtle Internal Glow */}
+          <div className="absolute -top-24 -right-24 w-48 h-48 bg-[#ec4899]/10 blur-[60px] rounded-full group-hover/card:bg-[#ec4899]/20 transition-all duration-1000" />
+          
+          {/* ── Animated Logo (Consolidated Inside) ── */}
+          <div className="flex flex-col items-center gap-6 mb-10 group relative">
             <style>
               {`
- @keyframes float {
- 0%, 100% { transform: translateY(0px); }
- 50% { transform: translateY(-20px); }
- }
- @keyframes rotate-slow {
- from { transform: rotate(0deg); }
- to { transform: rotate(360deg); }
- }
- .logo-container {
- animation: float 6s ease-in-out infinite;
- }
- .ray {
- animation: rotate-slow 15s linear infinite;
- }
- `}
+                @keyframes float {
+                  0%, 100% { transform: translateY(0px); }
+                  50% { transform: translateY(-15px); }
+                }
+                @keyframes rotate-slow {
+                  from { transform: rotate(0deg); }
+                  to { transform: rotate(360deg); }
+                }
+                .logo-container {
+                  animation: float 6s ease-in-out infinite;
+                }
+                .ray {
+                  animation: rotate-slow 15s linear infinite;
+                }
+              `}
             </style>
 
             <div className="relative logo-container">
-              <div className="ray absolute inset-0 -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 w-[400px] h-[400px] bg-[conic-gradient(from_0deg,transparent,rgba(59,130,246,0.1),transparent_30%)] blur-3xl opacity-50" />
-              <div className="absolute inset-0 bg-blue-400/30 blur-[80px] rounded-full scale-[1.8] group-hover:bg-blue-400/40 transition-all duration-1000" />
-              <div className="relative z-10 p-8 rounded-[40px] bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl overflow-hidden group-hover:border-blue-500/30 transition-colors duration-500">
+              <div className="ray absolute inset-0 -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 w-[240px] h-[240px] bg-[conic-gradient(from_0deg,transparent,rgba(236,72,153,0.1),transparent_30%)] blur-3xl opacity-50" />
+              <div className="absolute inset-0 bg-[#ec4899]/20 blur-[50px] rounded-full scale-[1.4] group-hover:bg-[#ec4899]/30 transition-all duration-1000" />
+              <div className="relative z-10 p-5 rounded-[28px] bg-slate-50/50 dark:bg-white/5 border border-slate-100 dark:border-white/10 backdrop-blur-xl shadow-xl overflow-hidden group-hover:border-[#ec4899]/30 transition-colors duration-500">
                 <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/10 to-transparent skew-y-[-10deg] -translate-y-1/2" />
                 <img
                   src={Logo}
                   alt="Sureze Logo"
-                  className="w-56 h-auto object-contain drop-shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                  className="w-24 h-auto object-contain drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]"
                 />
               </div>
-              <div className="absolute -top-4 -right-4 w-3 h-3 bg-blue-400 rounded-full blur-[2px] animate-pulse" />
-              <div className="absolute -bottom-6 -left-6 w-2 h-2 bg-indigo-400 rounded-full blur-[1px] animate-pulse delay-700" />
-            </div>
-
-            <div className="relative">
-              <h2 className="text-5xl text-white tracking-tighter mt-1">
-                SUREZE
-              </h2>
-              <div className="flex items-center gap-2 justify-center mt-2">
-                <div className="h-[2px] w-8 bg-gradient-to-r from-transparent to-blue-500" />
-                <span className="text-[10px] text-blue-400/80 tracking-[0.4em] ">
-                  YOUR ICT PARTNER
-                </span>
-                <div className="h-[2px] w-8 bg-gradient-to-l from-transparent to-blue-500" />
-              </div>
+              <div className="absolute -top-2 -right-2 w-2 h-2 bg-[#ec4899] rounded-full blur-[1px] animate-pulse" />
             </div>
           </div>
 
-          <h2 className="text-3xl text-slate-300 mb-3 leading-tight">
-            Manage everything
-            <br />
-            from one place
-          </h2>
-          <p className="text-slate-400 text-sm leading-relaxed mb-10">
-            Support portal for SUREZE employees. Manage tickets, customer
-            requests, and technical operations securely.
-          </p>
-
-          <div className="grid grid-cols-3 gap-4">
-            {[
-              { value: "1,718", label: "Tickets" },
-              { value: "248", label: "Customers" },
-              { value: "99.9%", label: "Uptime" },
-            ].map((s) => (
-              <div
-                key={s.label}
-                className="bg-white/5 rounded-2xl p-3 border border-white/10 backdrop-blur-sm"
-              >
-                <p className="text-xl text-white">{s.value}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Right Panel (Form) ── */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-md">
-          {/* Mobile logo */}
-          <div className="flex items-center gap-3 mb-8 lg:hidden">
-            <div className="relative">
-              <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full" />
-              <img
-                src={Logo}
-                alt="Sureze Logo"
-                className="relative z-10 w-12 h-auto"
-              />
-            </div>
-            <span className="text-2xl text-slate-800 dark:text-white ">
-              SUREZE
-            </span>
-          </div>
-
-          <div className="mb-8">
-            <h1 className="text-3xl text-slate-800 dark:text-white">
+          <div className="mb-10 text-center">
+            <h1 className="text-3xl font-black text-slate-800 dark:text-white uppercase tracking-tight">
               Welcome back
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm">
-              Sign in to your account with your credentials
+            <p className="text-slate-500 dark:text-slate-400 mt-2 text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
+              Sign in with credentials
             </p>
           </div>
 
           {/* Logout Warning Message */}
           {showLoggedOutMessage && (
-            <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-sm animate-in fade-in slide-in-from-top-4 duration-500">
-              <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                <AlertCircle size={18} />
-              </div>
-              <div>
-                <p className=" text-amber-500">Session Ended</p>
-                <p className="text-amber-500/80 text-xs">
-                  You have been logged out successfully.
-                </p>
-              </div>
+            <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs animate-in fade-in slide-in-from-top-4 duration-500">
+              <AlertCircle size={16} />
+              <p>You have been logged out successfully.</p>
             </div>
           )}
 
-          {/* Error messages (Local or Context) */}
+          {/* Error messages */}
           {(localError || authContextError) && (
-            <div className="mb-5 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-sm animate-in fade-in slide-in-from-top-2">
+            <div className="mb-6 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs animate-in fade-in slide-in-from-top-2">
               <AlertCircle size={16} className="flex-shrink-0" />
               {localError || authContextError}
             </div>
@@ -258,7 +203,10 @@ export default function LoginPage() {
               label="Username or Email"
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                clearError();
+              }}
               placeholder="Enter your username"
             />
             <InputField
@@ -266,24 +214,22 @@ export default function LoginPage() {
               label="Password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                clearError();
+              }}
               placeholder="Enter your password"
             />
 
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-blue-500 hover:bg-blue-600 disabled:bg-blue-400 text-white text-sm transition-all shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0 mt-6"
+              className="w-full flex items-center justify-center gap-2 py-5 rounded-2xl bg-[#ec4899] text-white font-black text-[11px] uppercase tracking-[0.2em] transition-all shadow-xl shadow-pink-500/25 hover:bg-[#d946ef] hover:-translate-y-0.5 active:translate-y-0 mt-6 disabled:opacity-50 disabled:cursor-not-allowed group/btn overflow-hidden relative"
             >
-              {isLoggingIn ? (
-                <>
-                   Verifying...
-                </>
-              ) : (
-                <>
-                  Sign In
-                </>
-              )}
+              <div className="absolute inset-0 bg-white/10 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
+              <span className="relative z-10">
+                {isLoggingIn ? "Verifying..." : "Login"}
+              </span>
             </button>
           </form>
         </div>
@@ -291,3 +237,7 @@ export default function LoginPage() {
     </div>
   );
 }
+
+
+
+

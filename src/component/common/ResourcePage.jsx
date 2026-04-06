@@ -17,6 +17,8 @@ export function ActionsMenu({
   onDisable,
   onEnable,
   deleteButtonText = "Delete",
+  actionButtonText = "Actions",
+  className = "btn-flagship-solid h-[22px]! px-2! text-[9px]!",
 }) {
   const { dark } = useTheme();
   const isDark = dark === "dark";
@@ -40,9 +42,9 @@ export function ActionsMenu({
     <div>
       <button
         onClick={handleClick}
-        className="h-[26px] w-fit px-3 bg-blue-600 hover:bg-blue-700 text-white text-[9.5px] font-black rounded-lg border-none outline-none transition-all inline-flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20"
+        className={className}
       >
-        Actions <ChevronDown size={12} strokeWidth={2.5} />
+        {actionButtonText} <ChevronDown size={className.includes('h-[22px]') ? 9 : 10} strokeWidth={2.5} className="ml-1" />
       </button>
       <Menu
         anchorEl={anchorEl}
@@ -104,6 +106,8 @@ export function ActionsMenu({
 
 
 export default function ResourcePage({
+  actionButtonText = "Actions",
+  actionButtonClassName = null,
   title,
   apiObject,
   columns,
@@ -142,7 +146,10 @@ export default function ResourcePage({
   onRefetchReady = null,
   onEdit = null,
   onDetail = null,
+  onAdd = null,
   hideGrid = false,
+  overrideData = null,
+  emptyMessage = "No records found",
   wideSearch = false,
   rowHeight = 44,
   headerHeight = 44,
@@ -238,7 +245,7 @@ export default function ResourcePage({
   );
 
   const { data, total, totalPages, loading, error, refetch } = useResource(
-    apiObject,
+    overrideData ? null : apiObject,
     params,
   );
 
@@ -257,6 +264,9 @@ export default function ResourcePage({
   }, [error]);
 
   const { visibleData, displayTotal, displayTotalPages } = useMemo(() => {
+    if (overrideData) {
+      return { visibleData: overrideData, displayTotal: overrideData.length, displayTotalPages: 1 };
+    }
     if (!data)
       return { visibleData: [], displayTotal: 0, displayTotalPages: 0 };
     let filtered = [...data];
@@ -353,7 +363,7 @@ export default function ResourcePage({
     setCreateLoading(true);
     try {
       const res = await apiObject.create(p);
-      toast(`${res?.name || title} created!`);
+      toast(`${res?.name || title} !created`);
       setLastModifiedId(res?.id || null);
       setModals((m) => ({ ...m, create: false }));
       setPage(1);
@@ -379,7 +389,7 @@ export default function ResourcePage({
     setUpdateLoading(true);
     try {
       await apiObject.update(activeItem.id, p);
-      toast(`${title} updated!`);
+      toast(`${title} !updated`);
       setLastModifiedId(activeItem.id);
       setModals((m) => ({ ...m, edit: false }));
       refetch();
@@ -396,8 +406,8 @@ export default function ResourcePage({
   };
 
   const handleFirstPage = () => page > 1 && setPage(1);
-  const handleLastPage = () => page < totalPages && setPage(totalPages);
-  const handleNextPage = () => page < totalPages && setPage((p) => p + 1);
+  const handleLastPage = () => page < displayTotalPages && setPage(displayTotalPages);
+  const handleNextPage = () => page < displayTotalPages && setPage((p) => p + 1);
   const handlePrevPage = () => page > 1 && setPage((p) => p - 1);
 
   const muiColumns = useMemo(() => {
@@ -472,6 +482,8 @@ export default function ResourcePage({
           if (hideActionsCheck && hideActionsCheck(params.row)) return null;
           return (
             <ActionsMenu
+              actionButtonText={actionButtonText}
+              className={actionButtonClassName || "btn-flagship-solid h-[22px]! px-2! text-[9px]!"}
               onDetail={
                 (onDetail || apiObject.id === "auditLogs")
                   ? () => {
@@ -533,7 +545,7 @@ export default function ResourcePage({
   }, [
     showActions,
     detailViewMode,
-    apiObject.id,
+    apiObject?.id,
     entityName,
     title,
     columns,
@@ -553,7 +565,7 @@ export default function ResourcePage({
                 onClick={() => b === "Home" && navigate("/")}
                 className={
                   b === "Home"
-                    ? "hover:text-blue-500 cursor-pointer transition-colors"
+                    ? "hover:text-pink-500 cursor-pointer transition-colors"
                     : ""
                 }
               >
@@ -586,14 +598,10 @@ export default function ResourcePage({
               </div>
               <div className="flex items-center gap-3">
                 {customHeaderActions}
-                {apiObject.create && ModalComponent && createButtonText && (
+                {apiObject?.create && ModalComponent && createButtonText && (
                   <button
-                    onClick={() => setModals((m) => ({ ...m, create: true }))}
-                    className={
-                      smallHeaderButton
-                        ? "px-4 h-[30px] bg-blue-600 text-white rounded-lg text-[9.5px] font-black hover:bg-blue-700 transition-all shadow-sm shrink-0 active:scale-95 uppercase tracking-widest shadow-blue-500/10"
-                        : "px-6 h-[34px] bg-blue-600 text-white rounded-xl text-[10px] font-black hover:bg-blue-700 transition-all shadow-sm shrink-0 active:scale-95 uppercase tracking-widest shadow-blue-500/20"
-                    }
+                    onClick={onAdd || (() => setModals((m) => ({ ...m, create: true })))}
+                    className="btn-flagship-solid"
                   >
                     {createButtonText}
                   </button>
@@ -605,7 +613,7 @@ export default function ResourcePage({
 
         {/* Toolbar Section */}
         {(showSearchBar || showFilterBar || customFilterArea) && (
-          <div className="px-6 py-6 flex items-center justify-between bg-transparent shrink-0 flex-wrap gap-6">
+          <div className="relative z-20 px-6 py-6 flex items-center justify-between bg-transparent shrink-0 flex-wrap gap-6">
             <div className={`flex items-center gap-6 flex-1 min-w-[300px] ${wideSearch === "full" ? "max-w-none" : (wideSearch ? "max-w-2xl" : "max-w-[400px]")}`}>
               {showSearchBar && (
                 <div className="relative w-full group">
@@ -614,7 +622,7 @@ export default function ResourcePage({
                     placeholder={searchPlaceholder}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/20 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-4 focus:ring-pink-500/20 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
               )}
@@ -636,7 +644,7 @@ export default function ResourcePage({
                 </div>
                 <button
                   onClick={refetch}
-                  className="p-1.5 hover:text-[#ec4899] dark:hover:text-[#ec4899] rounded-lg transition-colors text-slate-400 dark:text-slate-500"
+                  className="btn-flagship py-0 px-2 h-[24px]"
                   title="Retry"
                 >
                   Retry
@@ -715,7 +723,7 @@ export default function ResourcePage({
                         </div>
                         <div className="text-center">
                           <p className="text-sm text-slate-800 dark:text-slate-200 tracking-tighter">
-                            No records found
+                            {emptyMessage}
                           </p>
                         </div>
                       </div>
@@ -727,72 +735,92 @@ export default function ResourcePage({
 
             {/* Pagination Footer */}
             {showPagination && (
-              <div className="px-6 py-6 bg-slate-50/80 dark:bg-slate-900 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] text-slate-400 dark:text-slate-300">Rows:</span>
-                  <select
-                    value={pageSize}
-                    onChange={(e) => {
-                      setPageSize(Number(e.target.value));
-                      setPage(1);
-                    }}
-                    className="px-3.5 py-1.5 text-[10px] font-black bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-blue-500/50 uppercase tracking-widest"
-                  >
-                    {[14, 25, 50, 100].map((s) => (
-                      <option key={s} value={s} className="font-sans">
-                        {s}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="ml-4 h-4 w-[1px] bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 hidden sm:block">
-                    <span className="text-slate-900 dark:text-white">
-                      {displayTotal > 0 ? (page - 1) * pageSize + 1 : 0}
-                    </span>
-                    <span className="text-slate-400 dark:text-slate-500 mx-1"> — </span>
-                    <span className="text-slate-900 dark:text-white">
-                      {Math.min(page * pageSize, displayTotal)}
-                    </span>
-                    <span className="text-slate-400 dark:text-slate-500 mx-1"> of </span>
-                    <span className="text-slate-900 dark:text-white">
-                      {displayTotal}
-                    </span>
+              <div className="px-6 py-4 bg-slate-50/80 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Page Size:</span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => {
+                        setPageSize(Number(e.target.value));
+                        setPage(1);
+                      }}
+                      className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
+                    >
+                      {[14, 25, 50, 100].map((s) => (
+                        <option key={s} value={s} className="font-sans">
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                      <span className="text-slate-900 dark:text-white tabular-nums">
+                        {displayTotal > 0 ? (page - 1) * pageSize + 1 : 0}
+                      </span>
+                      <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
+                      <span className="text-slate-900 dark:text-white tabular-nums">
+                        {Math.min(page * pageSize, displayTotal)}
+                      </span>
+                      <span className="text-slate-400 dark:text-slate-600 mx-2 lowercase font-bold tracking-normal italic">of</span>
+                      <span className="text-slate-900 dark:text-white tabular-nums font-black">
+                        {displayTotal}
+                      </span>
+                    </p>
                   </div>
                 </div>
+
                 <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={handleFirstPage}
-                    disabled={page === 1 || loading}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-200 transition-all shadow-sm flex items-center justify-center"
-                  >
-                    <ChevronsLeft size={16} />
-                  </button>
-                  <button
-                    onClick={handlePrevPage}
-                    disabled={page === 1 || loading}
-                    className="px-3 py-1.5 flex items-center gap-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 text-[11px] transition-all shadow-sm"
-                  >
-                    <ChevronLeft size={14} />
-                    Prev
-                  </button>
-                  <div className="px-5 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20">
-                    Page {page} of {displayTotalPages || 1}
+                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
+                    <button
+                      onClick={handleFirstPage}
+                      disabled={page === 1 || loading}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                      title="First Page"
+                    >
+                      <ChevronsLeft size={14} strokeWidth={2.5} />
+                    </button>
+                    <button
+                      onClick={handlePrevPage}
+                      disabled={page === 1 || loading}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                      title="Previous Page"
+                    >
+                      <ChevronLeft size={14} strokeWidth={2.5} />
+                    </button>
+                    
+                    <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+                    
+                    <div className="px-3 flex items-center gap-2 py-1">
+                      <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Page</span>
+                      <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
+                        <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{page}</span>
+                        <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">/</span>
+                        <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums leading-none">{displayTotalPages || 1}</span>
+                      </div>
+                    </div>
+
+                    <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+
+                    <button
+                      onClick={handleNextPage}
+                      disabled={page >= displayTotalPages || loading}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                      title="Next Page"
+                    >
+                      <ChevronRight size={14} strokeWidth={2.5} />
+                    </button>
+                    <button
+                      onClick={handleLastPage}
+                      disabled={page >= displayTotalPages || loading}
+                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                      title="Last Page"
+                    >
+                      <ChevronsRight size={14} strokeWidth={2.5} />
+                    </button>
                   </div>
-                  <button
-                    onClick={handleNextPage}
-                    disabled={page >= displayTotalPages || loading}
-                    className="px-3 py-1.5 flex items-center gap-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 text-[11px] transition-all shadow-sm"
-                  >
-                    Next
-                    <ChevronRight size={14} />
-                  </button>
-                  <button
-                    onClick={handleLastPage}
-                    disabled={page >= displayTotalPages || loading}
-                    className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-200 transition-all shadow-sm flex items-center justify-center"
-                  >
-                    <ChevronsRight size={16} />
-                  </button>
                 </div>
               </div>
             )}
@@ -883,3 +911,6 @@ export default function ResourcePage({
     </div>
   );
 }
+
+
+

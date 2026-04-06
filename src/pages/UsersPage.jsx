@@ -20,6 +20,12 @@ import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import apiClient from "../services/apiClient";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 
 
 
@@ -105,7 +111,7 @@ export default function UsersPage() {
         </span>
         <button
           onClick={() => toggleFilter("isCustomer")}
-          className={`relative w-8 h-4 rounded-full transition-colors duration-200 focus:outline-none shrink-0 ${filters.isCustomer ? "bg-blue-500" : "bg-slate-300 dark:bg-slate-700"}`}
+          className={`relative w-8 h-4 rounded-full transition-colors duration-200 focus:outline-none shrink-0 ${filters.isCustomer ? "btn-flagship h-4! px-0!" : "bg-slate-300 dark:bg-slate-700"}`}
         >
           <div
             className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-200 ${filters.isCustomer ? "translate-x-4" : "translate-x-0"}`}
@@ -130,7 +136,7 @@ export default function UsersPage() {
     usersApi
       .delete(deleteUser.id)
       .then(() => {
-        toast(`${deleteUser.userName} deleted successfully!`);
+        toast(`${deleteUser.userName} deleted !successfully`);
         window.location.reload();
       })
       .catch((err) => toast(`Error: ${err.message}`, "error"))
@@ -357,7 +363,7 @@ export default function UsersPage() {
             onClick={onClose}
             className="p-1 text-slate-400 hover:text-[#ec4899] dark:hover:text-[#ec4899] transition-colors rounded-lg"
           >
-            
+
           </button>
         </div>
 
@@ -392,10 +398,10 @@ export default function UsersPage() {
 
             <div className="p-4">
               {submitError && (
-                <PremiumErrorAlert 
-                  open={!!submitError} 
-                  message={submitError} 
-                  onClose={() => {}} 
+                <PremiumErrorAlert
+                  open={!!submitError}
+                  message={submitError}
+                  onClose={() => { }}
                 />
               )}
 
@@ -781,33 +787,48 @@ export default function UsersPage() {
                       );
                     })}
 
-                  {availableRoles.length > rolesPerPage && (
-                    <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-100">
-                      <div className="flex gap-1.5">
+                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
+                      <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm mx-auto">
                         <button
                           type="button"
                           onClick={() => setRolesPage(1)}
                           disabled={rolesPage === 1}
-                          className="px-3 py-1.5 text-xs text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                          title="First Page"
                         >
-                          First
+                          <ChevronsLeft size={14} strokeWidth={2.5} />
                         </button>
                         <button
                           type="button"
-                          onClick={() =>
-                            setRolesPage((prev) => Math.max(1, prev - 1))
-                          }
+                          onClick={() => setRolesPage((prev) => Math.max(1, prev - 1))}
                           disabled={rolesPage === 1}
-                          className="px-3 py-1.5 text-xs text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                          title="Previous Page"
                         >
-                          Prev
+                          <ChevronLeft size={14} strokeWidth={2.5} />
                         </button>
-                      </div>
-                      <span className="text-[10px] text-slate-400">
-                        Page {rolesPage} of{" "}
-                        {Math.ceil(availableRoles.length / rolesPerPage)}
-                      </span>
-                      <div className="flex gap-1.5">
+
+                        <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+
+                        <div className="px-3 flex items-center gap-2 py-1">
+                          <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                            Page
+                          </span>
+                          <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
+                            <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">
+                              {rolesPage}
+                            </span>
+                            <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">
+                              /
+                            </span>
+                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums leading-none">
+                              {Math.ceil(availableRoles.length / rolesPerPage)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+
                         <button
                           type="button"
                           onClick={() =>
@@ -822,9 +843,10 @@ export default function UsersPage() {
                             rolesPage ===
                             Math.ceil(availableRoles.length / rolesPerPage)
                           }
-                          className="px-3 py-1.5 text-xs text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                          title="Next Page"
                         >
-                          Next
+                          <ChevronRight size={14} strokeWidth={2.5} />
                         </button>
                         <button
                           type="button"
@@ -837,13 +859,13 @@ export default function UsersPage() {
                             rolesPage ===
                             Math.ceil(availableRoles.length / rolesPerPage)
                           }
-                          className="px-3 py-1.5 text-xs text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                          title="Last Page"
                         >
-                          Last
+                          <ChevronsRight size={14} strokeWidth={2.5} />
                         </button>
                       </div>
                     </div>
-                  )}
                 </div>
               </div>
 
@@ -859,14 +881,14 @@ export default function UsersPage() {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2 text-xs rounded-xl bg-transparent border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+              className="flex-1 btn-flagship !h-[38px] !text-[11px] !border-slate-200 dark:border-slate-700! !text-slate-500 hover:bg-slate-50! dark:hover:bg-white/5!"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-2 text-xs rounded-xl bg-transparent border border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-50 transition-all duration-200"
+              className="flex-1 btn-flagship !h-[38px] !text-[11px]"
             >
               {loading ? "Wait..." : item ? "Save" : "Create"}
             </button>
@@ -878,79 +900,80 @@ export default function UsersPage() {
 
   return (
     <>
-    <ResourcePage
-      title="Users"
-      apiObject={usersApi}
-      columns={columns}
-      ModalComponent={UserModal}
-      searchPlaceholder="Search users by name, email or phone..."
-      createButtonText="New User"
-      breadcrumb={["Home", "Administration", "Identity Management", "Users"]}
-      smallHeaderButton={true}
-      showPagination={true}
-      initialPageSize={14}
-      entityName="User"
-      customFilterArea={customFilterArea}
-      extraParams={{
-        isCustomer: filters.isCustomer ? true : undefined,
-        notActive: filters.notActive ? true : undefined,
-        mustCompleteJobsheet: filters.mustCompleteJobsheet ? true : undefined,
-        isITS: filters.isITS ? true : undefined,
-        onlyLoadCurrentUser: filters.onlyLoadCurrentUser ? true : undefined,
+      <ResourcePage
+        title="Users"
+        apiObject={usersApi}
+        columns={columns}
+        ModalComponent={UserModal}
+        searchPlaceholder="Search users by name, email or phone..."
+        createButtonText="New User"
+        breadcrumb={["Home", "Administration", "Identity Management", "Users"]}
+        smallHeaderButton={true}
+        showPagination={true}
+        initialPageSize={14}
+        entityName="User"
+        customFilterArea={customFilterArea}
+        extraParams={{
+          isCustomer: filters.isCustomer ? true : undefined,
+          notActive: filters.notActive ? true : undefined,
+          mustCompleteJobsheet: filters.mustCompleteJobsheet ? true : undefined,
+          isITS: filters.isITS ? true : undefined,
+          onlyLoadCurrentUser: filters.onlyLoadCurrentUser ? true : undefined,
 
-        organizationTypes: filters.organizationTypes
-          ? [parseInt(filters.organizationTypes, 10)]
-          : undefined,
-      }}
-      showAuditLog={false}
-      onDelete={handleDelete}
-      onDeleteVisibilityCheck={(row) => {
-        if (row.userName?.toLowerCase() === "admin") return false;
-        if (filters.isCustomer) return false;
-        const orgType = row.organizationType ?? row.extraProperties?.organizationType;
-        if (orgType === 1) return false;
-        return true;
-      }}
-    />
+          organizationTypes: filters.organizationTypes
+            ? [parseInt(filters.organizationTypes, 10)]
+            : undefined,
+        }}
+        showAuditLog={false}
+        onDelete={handleDelete}
+        onDeleteVisibilityCheck={(row) => {
+          if (row.userName?.toLowerCase() === "admin") return false;
+          if (filters.isCustomer) return false;
+          const orgType = row.organizationType ?? row.extraProperties?.organizationType;
+          if (orgType === 1) return false;
+          return true;
+        }}
+      />
 
 
-    {/* Material UI Delete Confirmation Dialog */}
-    <Dialog
-      open={Boolean(deleteUser)}
-      onClose={() => setDeleteUser(null)}
-      maxWidth="xs"
-      PaperProps={{
-        sx: { borderRadius: "20px", padding: "4px", maxWidth: "320px", width: "100%" },
-      }}
-    >
-      <DialogTitle sx={{ fontWeight: 800, color: "#1e293b", fontSize: "16px" }}>
-        Confirm Deletion
-      </DialogTitle>
-      <DialogContent sx={{ pb: 1 }}>
-        <div className="text-[13px] text-slate-600">
-          Are you sure you want to delete the user{" "}
-          <strong className="text-rose-500">{deleteUser?.userName}</strong>?
-          This action cannot be undone.
-        </div>
-      </DialogContent>
-      <DialogActions sx={{ paddingTop: "10px", paddingBottom: "10px" }}>
-        <Button
-          onClick={() => setDeleteUser(null)}
-          color="inherit"
-          sx={{ fontWeight: 700, borderRadius: "10px", textTransform: "none", fontSize: "12px" }}
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={confirmDelete}
-          variant="contained"
-          color="error"
-          sx={{ fontWeight: 700, borderRadius: "10px", boxShadow: "none", textTransform: "none", fontSize: "12px" }}
-        >
-          Delete
-        </Button>
-      </DialogActions>
-    </Dialog>
+      {/* Material UI Delete Confirmation Dialog */}
+      <Dialog
+        open={Boolean(deleteUser)}
+        onClose={() => setDeleteUser(null)}
+        maxWidth="xs"
+        PaperProps={{
+          sx: { borderRadius: "20px", padding: "4px", maxWidth: "320px", width: "100%" },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: "#1e293b", fontSize: "16px" }}>
+          Confirm Deletion
+        </DialogTitle>
+        <DialogContent sx={{ pb: 1 }}>
+          <div className="text-[13px] text-slate-600">
+            Are you sure you want to delete the user{" "}
+            <strong className="text-rose-500">{deleteUser?.userName}</strong>?
+            This action cannot be undone.
+          </div>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1.5 }}>
+          <button
+            onClick={() => setDeleteUser(null)}
+            className="flex-1 btn-flagship h-[34px]! border-slate-200! text-slate-500!"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={confirmDelete}
+            className="flex-1 btn-flagship h-[34px]! border-rose-500/50! text-rose-500! hover:border-rose-500! hover:bg-rose-500/5!"
+          >
+            Delete
+          </button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }
+
+
+
+

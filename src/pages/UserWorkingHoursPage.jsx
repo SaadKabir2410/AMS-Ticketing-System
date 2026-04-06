@@ -108,7 +108,7 @@ export default function UserWorkingHoursPage() {
               <PermissionGuard permission="Billing.UserWorkingHours.Create">
                 <button
                   onClick={handleNew}
-                  className="h-[34px] px-6 bg-blue-600 text-white rounded-xl text-[10px] font-black hover:bg-blue-700 transition-all active:scale-95 shadow-sm uppercase tracking-widest shadow-blue-500/20"
+                  className="h-[34px] px-6 btn-flagship rounded-xl text-[10px] font-black  transition-all active:scale-95 shadow-sm uppercase tracking-widest "
                 >
                   New Working Hour
                 </button>
@@ -142,7 +142,7 @@ export default function UserWorkingHoursPage() {
                     {data.map((row, i) => (
                       <tr
                         key={row.id || i}
-                        className="group transition-colors hover:bg-blue-50/50 dark:hover:bg-blue-500/5"
+                        className="group transition-colors hover:bg-pink-50 dark:hover:bg-[#ec4899]/5"
                       >
                         <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-200 text-[12px]">
                           <div className="flex items-center gap-3">
@@ -197,70 +197,87 @@ export default function UserWorkingHoursPage() {
           </div>
 
           {/* Pagination Section */}
-          <div className="px-6 py-6 bg-slate-50/30 dark:bg-white/1 flex items-center justify-between shrink-0">
+          <div className="px-6 py-4 bg-slate-50/80 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 transition-colors">
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Show:</span>
-                <Select
+              <div className="flex items-center gap-2.5">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Page Size:</span>
+                <select
                   value={pageSize}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                  size="small"
-                  sx={{
-                    "& .MuiSelect-select": { py: "6px", px: "14px", fontSize: "10px", fontWeight: "900", color: "#3b82f6", textTransform: 'uppercase' },
-                    "& .MuiOutlinedInput-notchedOutline": { border: "none" },
-                    bgcolor: "rgba(59, 130, 246, 0.05)",
-                    borderRadius: "8px",
-                  }}
+                  className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
                 >
                   {[10, 25, 50, 100].map((s) => (
-                    <MenuItem key={s} value={s} sx={{ fontSize: "10px", fontWeight: "900" }}>{s}</MenuItem>
+                    <option key={s} value={s} className="font-sans">{s}</option>
                   ))}
-                </Select>
+                </select>
               </div>
-              <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block" />
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 hidden sm:block">
-                <span className="text-slate-900 dark:text-white">{totalCount > 0 ? (page - 1) * pageSize + 1 : 0}</span>
-                <span className="text-slate-400 dark:text-slate-500 mx-1"> — </span>
-                <span className="text-slate-900 dark:text-white">{Math.min(page * pageSize, totalCount)}</span>
-                <span className="text-slate-400 dark:text-slate-500 mx-1"> OF </span>
-                <span className="text-slate-900 dark:text-white">{totalCount}</span>
+              
+              <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                  <span className="text-slate-900 dark:text-white tabular-nums">
+                    {totalCount > 0 ? (page - 1) * pageSize + 1 : 0}
+                  </span>
+                  <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
+                  <span className="text-slate-900 dark:text-white tabular-nums">
+                    {Math.min(page * pageSize, totalCount)}
+                  </span>
+                  <span className="text-slate-400 dark:text-slate-600 mx-2 lowercase font-bold tracking-normal italic">of</span>
+                  <span className="text-slate-900 dark:text-white tabular-nums font-black">
+                    {totalCount}
+                  </span>
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage(1)}
-                disabled={page === 1 || loading}
-                className="p-2 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95 flex items-center justify-center shadow-blue-500/5"
-              >
-                <ChevronsLeft size={16} />
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1 || loading}
-                className="px-4 py-2 flex items-center gap-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95 shadow-blue-500/5"
-              >
-                <ChevronLeft size={14} />
-                Prev
-              </button>
-              <div className="px-5 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest bg-blue-600 text-white shadow-xl shadow-blue-500/20">
-                Page {page} of {Math.ceil(totalCount / pageSize) || 1}
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
+                <button
+                  onClick={() => setPage(1)}
+                  disabled={page === 1 || loading}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  title="First Page"
+                >
+                  <ChevronsLeft size={14} strokeWidth={2.5} />
+                </button>
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1 || loading}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  title="Previous Page"
+                >
+                  <ChevronLeft size={14} strokeWidth={2.5} />
+                </button>
+                
+                <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+                
+                <div className="px-3 flex items-center gap-2 py-1">
+                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Page</span>
+                  <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
+                    <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{page}</span>
+                    <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">/</span>
+                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums leading-none">{Math.ceil(totalCount / pageSize) || 1}</span>
+                  </div>
+                </div>
+
+                <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={page >= Math.ceil(totalCount / pageSize) || loading}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  title="Next Page"
+                >
+                  <ChevronRight size={14} strokeWidth={2.5} />
+                </button>
+                <button
+                  onClick={() => setPage(Math.ceil(totalCount / pageSize))}
+                  disabled={page >= Math.ceil(totalCount / pageSize) || loading}
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  title="Last Page"
+                >
+                  <ChevronsRight size={14} strokeWidth={2.5} />
+                </button>
               </div>
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= Math.ceil(totalCount / pageSize) || loading}
-                className="px-4 py-2 flex items-center gap-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95 shadow-blue-500/5"
-              >
-                Next
-                <ChevronRight size={14} />
-              </button>
-              <button
-                onClick={() => setPage(Math.ceil(totalCount / pageSize) || 1)}
-                disabled={page >= Math.ceil(totalCount / pageSize) || loading}
-                className="p-2 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 disabled:opacity-50 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95 flex items-center justify-center shadow-blue-500/5"
-              >
-                <ChevronsRight size={16} />
-              </button>
             </div>
           </div>
         </div>
@@ -283,3 +300,7 @@ export default function UserWorkingHoursPage() {
     </div>
   );
 }
+
+
+
+

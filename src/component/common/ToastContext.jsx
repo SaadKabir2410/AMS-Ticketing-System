@@ -25,7 +25,7 @@ export const ToastProvider = ({ children }) => {
                         key={toast.id}
                         className={`px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-2 ${toast.type === "success" ? "bg-green-500" :
                                 toast.type === "error" ? "bg-red-500" :
-                                    "bg-blue-500"
+                                    "btn-flagship"
                             }`}
                     >
                         {toast.message}
@@ -35,3 +35,4 @@ export const ToastProvider = ({ children }) => {
         </ToastContext.Provider>
     );
 };
+

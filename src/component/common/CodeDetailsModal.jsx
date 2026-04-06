@@ -365,7 +365,7 @@ export default function CodeDetailsModal({
                     name={check.name}
                     checked={formData[check.name]}
                     onChange={handleChange}
-                    className="peer appearance-none w-4 h-4 rounded border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 checked:bg-blue-600 checked:border-blue-600 transition-all duration-200 cursor-pointer shadow-sm"
+                    className="peer appearance-none w-4 h-4 rounded border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 checked:btn-flagship checked:border-blue-600 transition-all duration-200 cursor-pointer shadow-sm"
                   />
                   <svg
                     className="absolute w-2.5 h-2.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
@@ -393,7 +393,7 @@ export default function CodeDetailsModal({
         <button
           onClick={handleSubmitInternal}
           disabled={submitting}
-          className="h-[30px] px-8 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg text-[10.5px] font-black uppercase shadow-lg shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-[30px] px-8 btn-flagship  active:bg-blue-800 text-white rounded-lg text-[10.5px] font-black uppercase shadow-lg  transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? "Processing..." : isEdit ? "Update Code" : "Save"}
         </button>
@@ -406,3 +406,7 @@ export default function CodeDetailsModal({
     </Dialog>
   );
 }
+
+
+
+

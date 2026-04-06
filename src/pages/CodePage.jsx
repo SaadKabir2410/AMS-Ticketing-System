@@ -53,10 +53,10 @@ export default function CodePage() {
     try {
       if (actionType === "disable") {
         await codesApi.disable(actionItem.id);
-        toast(`Record disabled successfully!`);
+        toast(`Record disabled !successfully`);
       } else if (actionType === "enable") {
         await codesApi.enable(actionItem.id);
-        toast(`Record enabled successfully!`);
+        toast(`Record enabled !successfully`);
       }
       if (refetchRef.current) {
         await refetchRef.current();
@@ -114,3 +114,5 @@ export default function CodePage() {
     </>
   );
 }
+
+

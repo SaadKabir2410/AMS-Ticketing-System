@@ -215,20 +215,24 @@ export default function CodeModal({
           type="button"
           onClick={onClose}
           disabled={submitting}
-          className="px-5 py-2 rounded-xl text-sm font-medium text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors dark:text-slate-300 dark:hover:bg-white/10 dark:border-slate-700"
+          className="flex-1 btn-flagship h-[38px]! text-[11px]! border-slate-200! dark:border-slate-700! text-slate-500! hover:bg-slate-50! dark:hover:bg-white/5!"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={submitting}
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-sm font-medium transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed min-w-[100px] flex items-center justify-center"
+          className="flex-1 btn-flagship h-[38px]! text-[11px]!"
         >
           {submitting ? (
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-white! border-t-transparent rounded-full animate-spin"></div>
           ) : isEdit ? "Save Changes" : "Create"}
         </button>
       </div>
     </Dialog>
   );
 }
+
+
+
+

@@ -229,7 +229,7 @@ export default function AuditLogsPage() {
                 </h1>
               </div>
             </div>
-            <div className="w-12 h-12 bg-blue-50 dark:bg-blue-500/10 text-blue-500 rounded-2xl flex items-center justify-center border border-blue-100 dark:border-blue-500/20 shadow-inner">
+            <div className="w-12 h-12 bg-pink-50 dark:bg-[#ec4899]/10 text-pink-500 rounded-2xl flex items-center justify-center border border-pink-100 dark:border-[#ec4899]/20 shadow-inner">
               
             </div>
           </div>
@@ -259,3 +259,5 @@ export default function AuditLogsPage() {
     </div>
   );
 }
+
+

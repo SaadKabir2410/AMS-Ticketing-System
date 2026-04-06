@@ -24,3 +24,5 @@ export default function PermissionGuard({ permission, children, redirectTo = "/"
   console.warn(`[PermissionGuard] Access denied for permission: ${permission}. Redirecting to ${redirectTo}`);
   return <Navigate to={redirectTo} replace />;
 }
+
+

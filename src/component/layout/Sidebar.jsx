@@ -66,7 +66,7 @@ export default function Sidebar({ collapsed, setCollapsed }) {
             collapsed ? "flex-col items-center justify-center py-5 gap-5" : "items-center px-6 py-6 gap-3",
           )}
         >
-          <div className="w-9 h-9 rounded-xl bg-linear-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shrink-0 shadow-lg shadow-blue-500/20 text-white font-bold text-sm">
+          <div className="w-9 h-9 rounded-xl bg-linear-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shrink-0 shadow-lg  text-white font-bold text-sm">
             S
           </div>
 
@@ -140,7 +140,7 @@ function NavItem({ item, collapsed }) {
         className={clsx(
           "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative cursor-pointer",
           active && !hasSubMenu
-            ? "bg-blue-600/10 text-blue-500 border border-blue-500/20"
+            ? "bg-[#ec4899]/10 text-[#ec4899] border border-[#ec4899]/20"
             : "text-slate-500 hover:text-[#ec4899] dark:text-slate-400 dark:hover:text-[#ec4899]",
           collapsed && "justify-center",
         )}
@@ -148,7 +148,7 @@ function NavItem({ item, collapsed }) {
       >
         {Icon && (
           <div className={clsx("flex items-center justify-center shrink-0", collapsed ? "w-6 h-6" : "w-5 h-5")}>
-            <Icon size={collapsed ? 20 : 18} strokeWidth={2} className={clsx("transition-colors", active ? "text-blue-500" : "text-slate-500 group-hover:text-[#ec4899] dark:text-slate-400 dark:group-hover:text-[#ec4899]")} />
+            <Icon size={collapsed ? 20 : 18} strokeWidth={2} className={clsx("transition-colors", active ? "text-[#ec4899]" : "text-slate-500 group-hover:text-[#ec4899] dark:text-slate-400 dark:group-hover:text-[#ec4899]")} />
           </div>
         )}
         
@@ -183,7 +183,7 @@ function NavItem({ item, collapsed }) {
 
         {/* Active Glow Indicator */}
         {active && !collapsed && (
-          <div className="absolute left-0 w-1 h-5 bg-blue-500 rounded-r-full shadow-[0_0_12px_rgba(59,130,246,0.6)]" />
+          <div className="absolute left-0 w-1 h-5 bg-[#ec4899] rounded-r-full shadow-[0_0_12px_rgba(236,72,153,0.6)]" />
         )}
       </a>
 
@@ -208,7 +208,7 @@ function NavItem({ item, collapsed }) {
                   className={clsx(
                     "block px-3 py-2 text-xs rounded-lg transition-all",
                     subActive
-                      ? "text-blue-500 bg-blue-500/5 font-semibold"
+                      ? "text-[#ec4899] bg-[#ec4899]/5 font-semibold"
                       : "text-slate-500 hover:text-[#ec4899] dark:text-slate-400 dark:hover:text-[#ec4899]",
                   )}
                 >
@@ -222,3 +222,7 @@ function NavItem({ item, collapsed }) {
     </li>
   );
 }
+
+
+
+

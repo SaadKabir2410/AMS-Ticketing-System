@@ -44,6 +44,11 @@ export const NAV_GROUPS = [
             href: "/reports/general",
           },
           {
+            id: "sub-reports-user-yearly",
+            name: "User Yearly Report",
+            href: "/reports/user-yearly",
+          },
+          {
             id: "sub-reports-afterhours",
             name: "After Working Hours Report",
             href: "/reports/after-hours",

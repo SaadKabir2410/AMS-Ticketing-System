@@ -82,7 +82,7 @@ export default function HolidaysPage() {
     setIsCreating(true);
     try {
       await holidaysApi.create(payload);
-      toast("Holiday created successfully!");
+      toast("Holiday created !successfully");
       setIsCreateOpen(false);
       if (triggerRefetchRef.current) triggerRefetchRef.current();
     } catch (error) {
@@ -158,7 +158,7 @@ export default function HolidaysPage() {
               type="checkbox"
               checked={!!val}
               readOnly
-              className="w-4 h-4 rounded accent-blue-500 border-slate-300 dark:border-white/20 pointer-events-none appearance-none checked:bg-blue-500 dark:checked:bg-blue-600 checked:border-transparent bg-slate-100 dark:bg-slate-800 border relative after:content-[''] after:hidden checked:after:block after:absolute after:left-[5px] after:top-[1px] after:w-[4px] after:h-[8px] after:border-white after:border-b-2 after:border-r-2 after:rotate-45"
+              className="w-4 h-4 rounded accent-blue-500 border-slate-300 dark:border-white/20 pointer-events-none appearance-none checked:btn-flagship dark:checked:btn-flagship checked:border-transparent bg-slate-100 dark:bg-slate-800 border relative after:content-[''] after:hidden checked:after:block after:absolute after:left-[5px] after:top-[1px] after:w-[4px] after:h-[8px] after:border-white after:border-b-2 after:border-r-2 after:rotate-45"
             />
           </div>
         )
@@ -235,7 +235,7 @@ export default function HolidaysPage() {
         <div className="flex justify-end px-[10px] w-full">
           <button
             onClick={handleClear}
-            className="group/clear h-[34px] px-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-500 dark:text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 text-[9px] font-black uppercase tracking-widest shadow-sm flex items-center justify-center w-full"
+            className="btn-flagship h-[34px]! px-4! border-slate-200! dark:border-slate-700/50! text-slate-500! hover:text-blue-500! hover:border-blue-500/30! w-full"
             title="Reset All Filters"
           >
             Clear
@@ -292,7 +292,6 @@ export default function HolidaysPage() {
 
         containerClassName="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm overflow-hidden flex flex-col flex-1 transition-all duration-300"
         rowHeight={54}
-        actionButtonClassName="grid-action-button"
         actionButtonText="Actions"
       />
 
@@ -341,30 +340,16 @@ export default function HolidaysPage() {
           background-color: rgba(255, 255, 255, 0.04) !important;
         }
         .dark .MuiDataGrid-row.Mui-selected {
-          background-color: rgba(37, 99, 235, 0.15) !important;
+          background-color: rgba(236, 72, 153, 0.05) !important;
         }
         .dark .MuiDataGrid-row.Mui-selected:hover {
-          background-color: rgba(37, 99, 235, 0.2) !important;
-        }
-        /* Custom Actions Button Look from screenshot */
-        .grid-action-button {
-          background-color: #2563eb !important;
-          color: white !important;
-          border-radius: 4px !important;
-          padding: 4px 12px !important;
-          font-size: 11px !important;
-          font-weight: 700 !important;
-          display: flex !important;
-          align-items: center !important;
-          gap: 4px !important;
-          text-transform: capitalize !important;
-        }
-        .grid-action-button::after {
-          content: '▼';
-          font-size: 8px;
-          margin-left: 4px;
+          background-color: rgba(236, 72, 153, 0.1) !important;
         }
       `}</style>
     </div>
   );
 }
+
+
+
+

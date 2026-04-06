@@ -126,7 +126,7 @@ export default function AfterWorkingHoursReportPage() {
               </button>
               <button
                 onClick={handleGetReport}
-                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[10px] transition-all active:scale-95 shadow-md shadow-blue-500/20"
+                className="flex items-center gap-2 px-5 py-2.5 btn-flagship  text-white rounded-xl text-[10px] transition-all active:scale-95 shadow-md "
               >
                 <FileText size={14} />
                 Get Report
@@ -208,3 +208,5 @@ export default function AfterWorkingHoursReportPage() {
     </div>
   );
 }
+
+

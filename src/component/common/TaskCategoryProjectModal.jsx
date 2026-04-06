@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Dialog, IconButton } from "@mui/material";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { codesApi } from "../../services/api/Code";
 import codeDetailsApi from "../../services/api/CodeDetails";
 import { taskCategoryProjectsApi } from "../../services/api/taskCategoryProjects";
@@ -145,14 +146,14 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
           taskCategoryIds: selectedCategories,
           concurrencyStamp: existingRecord.concurrencyStamp
         });
-        toast("Task Category Project(s) updated successfully!");
+        toast("Task Category Project(s) updated !successfully");
       } else {
         // Create new record
         await taskCategoryProjectsApi.create({
           projectId,
           taskCategoryIds: selectedCategories,
         });
-        toast("Task Category Project(s) created successfully!");
+        toast("Task Category Project(s) created !successfully");
       }
 
       if (onSave) onSave();
@@ -248,7 +249,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
                     checked={selectedCategories.includes(cat.id)}
                     onChange={() => handleToggle(cat.id)}
                     disabled={submitting}
-                    className="peer appearance-none w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 checked:bg-blue-600 checked:border-blue-600 transition-all cursor-pointer"
+                    className="peer appearance-none w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 checked:btn-flagship checked:border-blue-600 transition-all cursor-pointer"
                   />
                   <svg
                     className="absolute w-2.5 h-2.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
@@ -266,32 +267,57 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
         </div>
 
         {/* Category Pagination Controls */}
+        {/* Category Pagination Controls */}
         {!loading && categories.length > catPageSize && (
-          <div className="mt-3 pt-2 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
-            <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+          <div className="mt-4 pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">
               {Math.min((catPage - 1) * catPageSize + 1, totalCatCount)} - {Math.min(catPage * catPageSize, totalCatCount)} of {totalCatCount}
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
+              <button
+                disabled={catPage === 1}
+                onClick={() => setCatPage(1)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                title="First Page"
+              >
+                <ChevronsLeft size={14} strokeWidth={2.5} />
+              </button>
               <button
                 disabled={catPage === 1}
                 onClick={() => setCatPage(prev => prev - 1)}
-                className="w-6 h-6 flex items-center justify-center rounded-md border border-slate-100 dark:border-slate-700 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all disabled:opacity-30"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                title="Previous Page"
               >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-                </svg>
+                <ChevronLeft size={14} strokeWidth={2.5} />
               </button>
-              <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 min-w-[30px] text-center">
-                {catPage} / {Math.ceil(totalCatCount / catPageSize)}
-              </span>
+              
+              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-0.5"></div>
+              
+              <div className="px-2 flex items-center gap-1.5 py-1">
+                <div className="flex items-center gap-1 min-w-[35px] justify-center">
+                  <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{catPage}</span>
+                  <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">/</span>
+                  <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums leading-none">{Math.ceil(totalCatCount / catPageSize)}</span>
+                </div>
+              </div>
+
+              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-0.5"></div>
+
               <button
                 disabled={catPage >= Math.ceil(totalCatCount / catPageSize)}
                 onClick={() => setCatPage(prev => prev + 1)}
-                className="w-6 h-6 flex items-center justify-center rounded-md border border-slate-100 dark:border-slate-700 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all disabled:opacity-30"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                title="Next Page"
               >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
-                </svg>
+                <ChevronRight size={14} strokeWidth={2.5} />
+              </button>
+              <button
+                disabled={catPage >= Math.ceil(totalCatCount / catPageSize)}
+                onClick={() => setCatPage(Math.ceil(totalCatCount / catPageSize))}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                title="Last Page"
+              >
+                <ChevronsRight size={14} strokeWidth={2.5} />
               </button>
             </div>
           </div>
@@ -310,7 +336,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
         <button
           onClick={handleSave}
           disabled={submitting || loading}
-          className="h-[30px] px-8 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg text-[10.5px] font-black uppercase shadow-lg shadow-blue-500/20 transition-all active:scale-95 disabled:opacity-50"
+          className="h-[30px] px-8 btn-flagship  active:bg-blue-800 text-white rounded-lg text-[10.5px] font-black uppercase shadow-lg  transition-all active:scale-95 disabled:opacity-50"
         >
           {submitting ? "Processing..." : "Save"}
         </button>
@@ -323,3 +349,6 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
     </Dialog>
   );
 }
+
+
+

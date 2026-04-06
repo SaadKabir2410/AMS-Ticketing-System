@@ -377,7 +377,7 @@ export function AuditLogDetailsContent({
         >
           <button
             onClick={onClose}
-            className="w-full py-2.5 bg-slate-900 dark:bg-blue-600 text-white rounded-xl text-[10px] tracking-[0.2em] hover:bg-black dark:hover:bg-blue-700 transition-all shadow-xl shadow-slate-200 dark:shadow-none"
+            className="w-full py-2.5 bg-slate-900 dark:btn-flagship rounded-xl text-[10px] tracking-[0.2em] hover:bg-black dark: transition-all shadow-xl shadow-slate-200 dark:shadow-none"
           >
             Close Inspection
           </button>
@@ -407,3 +407,5 @@ export default function AuditLogDetailModal({ open, onClose, item }) {
     </Dialog>
   );
 }
+
+

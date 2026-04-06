@@ -207,14 +207,14 @@ export default function RolesPage() {
           <div className="flex gap-2.5 mt-5">
             <button
               onClick={onClose}
-              className="flex-1 py-2 text-xs rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 transition-colors "
+              className="flex-1 btn-flagship !h-[38px] !text-[11px] !border-slate-200 dark:border-slate-700! !text-slate-500 hover:bg-slate-50! dark:hover:bg-white/5!"
             >
               Cancel
             </button>
             <button
               disabled={loading}
               onClick={handleSubmit}
-              className="flex-1 py-2 text-xs rounded-xl bg-blue-600 text-slate-200 shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 transition-all duration-200 "
+              className="flex-1 btn-flagship !h-[38px] !text-[11px]"
             >
               {loading ? "Wait..." : item ? "Save" : "Create"}
             </button>
@@ -280,7 +280,7 @@ export default function RolesPage() {
     rolesApi
       .updatePermissions("R", permissionRole.name, payload)
       .then(() => {
-        toast(`Permissions for ${permissionRole.name} updated successfully!`);
+        toast(`Permissions for ${permissionRole.name} updated !successfully`);
         handleClosePermissions();
       })
       .catch((err) => {
@@ -337,7 +337,7 @@ export default function RolesPage() {
     rolesApi
       .delete(role.id)
       .then(() => {
-        toast(`${role.name} role deleted successfully!`);
+        toast(`${role.name} role deleted !successfully`);
         window.location.reload();
       })
       .catch((err) => toast(`Error: ${err.message}`, "error"));
@@ -495,32 +495,26 @@ export default function RolesPage() {
             </div>
           )}
         </DialogContent>
-        <DialogActions sx={{ padding: "16px 24px", backgroundColor: "#0f172a", border: "none" }}>
-          <Button
+        <DialogActions sx={{ p: 2.5, gap: 1.5, backgroundColor: "#0f172a", border: "none" }}>
+          <button
             onClick={() => handleClosePermissions()}
-            variant="outlined"
-            sx={{ 
-              fontWeight: 600, 
-              borderRadius: "8px", 
-              textTransform: "none", 
-              color: "#94a3b8", 
-              borderColor: "#334155",
-              "&:hover": { borderColor: "#475569", backgroundColor: "rgba(255, 255, 255, 0.05)" }
-            }}
+            className="flex-1 btn-flagship !h-[38px] !text-[11px] !border-slate-700 !text-slate-400 hover:bg-white/5!"
           >
             Cancel
-          </Button>
-          <Button
+          </button>
+          <button
             onClick={handleSavePermissions}
-            variant="contained"
-            color="primary"
             disabled={loadingPermissions}
-            sx={{ fontWeight: 600, borderRadius: "8px", textTransform: "none", px: 4, boxShadow: "none" }}
+            className="flex-1 btn-flagship !h-[38px] !text-[11px]"
           >
-            {loadingPermissions ? "Wait..." : "Save"}
-          </Button>
+            {loadingPermissions ? "Wait..." : "Save Changes"}
+          </button>
         </DialogActions>
       </Dialog>
     </>
   );
 }
+
+
+
+

@@ -102,3 +102,5 @@ export default function Navbar({ setCollapsed }) {
     </header>
   );
 }
+
+

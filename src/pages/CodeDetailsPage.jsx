@@ -119,7 +119,7 @@ export default function CodeDetailsPage() {
         lookupCode: selectedParent?.lookupCode
       };
       await codeDetailsApi.create(finalPayload);
-      toast("Code detail created successfully!");
+      toast("Code detail created !successfully");
       setModalOpen(false);
       fetchCodeDetails();
     } catch (err) {
@@ -130,7 +130,7 @@ export default function CodeDetailsPage() {
   const handleUpdate = async (id, payload) => {
     try {
       await codeDetailsApi.update(id, { ...payload, lookupId: selectedParent?.id });
-      toast("Code detail updated successfully!");
+      toast("Code detail updated !successfully");
       setActionItem(null);
       setActionType("");
       fetchCodeDetails();
@@ -146,10 +146,10 @@ export default function CodeDetailsPage() {
     try {
       if (actionType === "disable") {
         await codeDetailsApi.disable(actionItem.id);
-        toast("Record disabled successfully!");
+        toast("Record disabled !successfully");
       } else if (actionType === "enable") {
         await codeDetailsApi.enable(actionItem.id);
-        toast("Record enabled successfully!");
+        toast("Record enabled !successfully");
       }
       fetchCodeDetails();
     } catch (err) {
@@ -296,7 +296,7 @@ export default function CodeDetailsPage() {
       <div className="absolute right-0 top-0 bottom-0 px-3 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-l border-slate-50 dark:border-slate-800 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.05)] z-10">
         <button
           onClick={handleClearAll}
-          className="h-[26px] px-5 bg-blue-600 text-white rounded-[6px] text-[9.5px] font-black hover:bg-blue-700 transition-all active:scale-95 shadow-[0_4px_10px_-2px_rgba(37,99,235,0.4)] shrink-0"
+          className="h-[26px] px-5 btn-flagship rounded-[6px] text-[9.5px] font-black  transition-all active:scale-95 shadow-[0_4px_10px_-2px_rgba(37,99,235,0.4)] shrink-0"
         >
           Clear
         </button>
@@ -327,7 +327,7 @@ export default function CodeDetailsPage() {
             {selectedParent && (
               <button
                 onClick={() => setModalOpen(true)}
-                className="h-[30px] px-8 bg-blue-600 text-white rounded-lg text-[10px] font-black hover:bg-blue-700 transition-all active:scale-95 shadow-sm uppercase shrink-0"
+                className="h-[30px] px-8 btn-flagship rounded-lg text-[10px] font-black  transition-all active:scale-95 shadow-sm uppercase shrink-0"
               >
                 Add New Code
               </button>
@@ -355,7 +355,7 @@ export default function CodeDetailsPage() {
                 renderOption={(props, option) => {
                   const { key, ...restProps } = props;
                   return (
-                    <li key={key} {...restProps} className="px-5 py-2.5 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center transition-colors">
+                    <li key={key} {...restProps} className="px-5 py-2.5 hover:bg-pink-50 dark:hover:bg-[#ec4899]/10 flex items-center transition-colors">
                       <span className="text-[13px] font-black text-slate-900 dark:text-slate-100 w-[140px] shrink-0 uppercase">
                         <HighlightText text={option.lookupCode} term={parentSearch} />
                       </span>
@@ -461,7 +461,7 @@ export default function CodeDetailsPage() {
                           className={`transition-colors
                             ${!row.isActive
                               ? 'bg-slate-50/50 dark:bg-slate-800'
-                              : 'hover:bg-blue-50/30 dark:hover:bg-blue-500/10'
+                              : "hover:bg-pink-50/30 dark:hover:bg-[#ec4899]/10"
                             }`}
                         >
                           {columns.map((col) => (
@@ -547,3 +547,6 @@ export default function CodeDetailsPage() {
     </div>
   );
 }
+
+
+

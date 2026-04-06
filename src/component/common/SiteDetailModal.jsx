@@ -169,3 +169,5 @@ export default function SiteDetailModal({ open, onClose, item, site }) {
     </Dialog>
   );
 }
+
+

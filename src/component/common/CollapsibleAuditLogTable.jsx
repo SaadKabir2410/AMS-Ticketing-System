@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Activity, Database } from "lucide-react";
+import { Activity, Database, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -233,74 +233,95 @@ export default function CollapsibleAuditLogTable({
       </TableContainer>
 
       {/* Standard Pagination Footer (Site Style) */}
-      <div className="px-8 py-5 bg-slate-50/30 dark:bg-slate-800 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] text-slate-400">Rows:</span>
-          <select
-            value={pageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="px-3 py-1.5 text-xs bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 dark:text-slate-200 rounded-xl outline-none transition-all cursor-pointer shadow-sm"
-          >
-            {[10, 25, 50, 100].map((s) => (
-              <option key={s} value={s} className="dark:bg-slate-900">
-                {s}
-              </option>
-            ))}
-          </select>
-          <div className="ml-4 h-4 w-px bg-slate-200 dark:bg-slate-700 hidden sm:block"></div>
-          <div className="text-xs text-slate-500 hidden sm:block">
-            <span className="text-slate-900 dark:text-white">
-              {total > 0 ? (page - 1) * pageSize + 1 : 0}
-            </span>
-            {" — "}
-            <span className="text-slate-900 dark:text-white">
-              {Math.min(page * pageSize, total)}
-            </span>
-            <span className="text-slate-400 "> of </span>
-            <span className="text-slate-900 dark:text-white">{total}</span>
+      <div className="px-8 py-4 bg-slate-50/80 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 transition-colors">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2.5">
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Page Size:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => onPageSizeChange(Number(e.target.value))}
+              className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest text-pink-600 dark:text-pink-400"
+            >
+              {[10, 25, 50, 100].map((s) => (
+                <option key={s} value={s} className="dark:bg-slate-900 font-sans">
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+              <span className="text-slate-900 dark:text-white tabular-nums">
+                {total > 0 ? (page - 1) * pageSize + 1 : 0}
+              </span>
+              <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
+              <span className="text-slate-900 dark:text-white tabular-nums">
+                {Math.min(page * pageSize, total)}
+              </span>
+              <span className="text-slate-400 dark:text-slate-600 mx-2 lowercase font-bold tracking-normal italic">of</span>
+              <span className="text-slate-900 dark:text-white tabular-nums font-black">
+                {total}
+              </span>
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleFirstPage}
-            disabled={page === 1 || loading}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-30 bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
-          </button>
-          <button
-            onClick={handlePrevPage}
-            disabled={page === 1 || loading}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-30 bg-white dark:bg-slate-950 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm"
-          >
-            Prev
-          </button>
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
+            <button
+              onClick={handleFirstPage}
+              disabled={page === 1 || loading}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+              title="First Page"
+            >
+              <ChevronsLeft size={14} strokeWidth={2.5} />
+            </button>
+            <button
+              onClick={handlePrevPage}
+              disabled={page === 1 || loading}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+              title="Previous Page"
+            >
+              <ChevronLeft size={14} strokeWidth={2.5} />
+            </button>
+            
+            <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+            
+            <div className="px-3 flex items-center gap-2 py-1">
+              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Page</span>
+              <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
+                <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{page}</span>
+                <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">/</span>
+                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums leading-none">{totalPages}</span>
+              </div>
+            </div>
 
-          <div className="px-6 py-2.5 bg-blue-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-500/25">
-            Page {page} of {totalPages}
+            <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+
+            <button
+              onClick={handleNextPage}
+              disabled={page >= totalPages || loading}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+              title="Next Page"
+            >
+              <ChevronRight size={14} strokeWidth={2.5} />
+            </button>
+            <button
+              onClick={handleLastPage}
+              disabled={page >= totalPages || loading}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+              title="Last Page"
+            >
+              <ChevronsRight size={14} strokeWidth={2.5} />
+            </button>
           </div>
-
-          <button
-            onClick={handleNextPage}
-            disabled={page >= totalPages || loading}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-30 bg-white dark:bg-slate-950 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm"
-          >
-            Next
-          </button>
-          <button
-            onClick={handleLastPage}
-            disabled={page >= totalPages || loading}
-            className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 disabled:opacity-30 bg-white dark:bg-slate-950 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 transition-all shadow-sm flex items-center justify-center"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-            </svg>
-          </button>
         </div>
       </div>
     </div>
   );
 }
+
+
+
+

@@ -47,7 +47,7 @@ export default function PremiumErrorAlert({ open, message, onClose }) {
         <div className="flex justify-center">
           <button
             onClick={onClose}
-            className="min-w-[120px] py-3 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-all active:scale-[0.98] shadow-lg shadow-blue-500/25"
+            className="min-w-[120px] py-3 px-8 rounded-xl btn-flagship  text-white font-bold text-sm transition-all active:scale-[0.98] shadow-lg "
           >
             OK
           </button>
@@ -57,3 +57,5 @@ export default function PremiumErrorAlert({ open, message, onClose }) {
     </Dialog>
   );
 }
+
+

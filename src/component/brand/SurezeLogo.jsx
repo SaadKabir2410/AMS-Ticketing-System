@@ -4,7 +4,7 @@ export default function SurezeLogo({ className = "w-12 h-12" }) {
   return (
     <div className={`relative flex items-center justify-center ${className}`}>
       {/* Background Glow */}
-      <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full animate-pulse" />
+      <div className="absolute inset-0 bg-[#ec4899]/20 blur-xl rounded-full animate-pulse" />
 
       {/* SVG Icon */}
       <svg
@@ -57,3 +57,5 @@ export default function SurezeLogo({ className = "w-12 h-12" }) {
     </div>
   );
 }
+
+

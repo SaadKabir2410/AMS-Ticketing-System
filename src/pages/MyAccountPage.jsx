@@ -91,7 +91,7 @@ export default function MyAccountPage() {
                 <PasswordField label="Confirm new password" />
 
                 <div className="pt-2">
-                  <button className="px-6 py-2.5 bg-[#3b82f6] hover:bg-blue-600 text-white rounded font-semibold text-[14px] tracking-wide active:scale-95 transition-all outline-none">
+                  <button className="px-6 py-2.5 bg-[#3b82f6] hover:btn-flagship rounded font-semibold text-[14px] tracking-wide active:scale-95 transition-all outline-none">
                     Submit
                   </button>
                 </div>
@@ -123,7 +123,7 @@ export default function MyAccountPage() {
                 <InputField label="Phone number" />
 
                 <div className="pt-2">
-                  <button className="px-6 py-2.5 bg-[#3b82f6] hover:bg-blue-600 text-white rounded font-semibold text-[14px] tracking-wide active:scale-95 transition-all outline-none">
+                  <button className="px-6 py-2.5 bg-[#3b82f6] hover:btn-flagship rounded font-semibold text-[14px] tracking-wide active:scale-95 transition-all outline-none">
                     Submit
                   </button>
                 </div>
@@ -136,3 +136,5 @@ export default function MyAccountPage() {
     </div>
   );
 }
+
+

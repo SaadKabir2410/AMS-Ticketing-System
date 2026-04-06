@@ -401,7 +401,7 @@ export default function HolidayModal({
           <button
             type="submit"
             disabled={loading}
-            className="px-10 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-sm flex items-center justify-center min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl shadow-blue-500/30 transition-all active:scale-95"
+            className="px-10 py-3 btn-flagship  text-white rounded-2xl text-sm flex items-center justify-center min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl shadow-blue-500/30 transition-all active:scale-95"
           >
             {loading ? "Saving..." : isEdit ? "Save Changes" : "Create Holiday"}
           </button>
@@ -410,3 +410,7 @@ export default function HolidayModal({
     </Dialog>
   );
 }
+
+
+
+
