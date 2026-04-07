@@ -1,29 +1,48 @@
 import React, { useState } from "react";
-import { Home, ArrowLeft, Settings as SettingsIcon, X } from "lucide-react";
+import { Home, ArrowLeft, Settings as SettingsIcon, X, Eye, EyeOff } from "lucide-react";
+
 import { useNavigate } from "react-router-dom";
 import SettingsService from "../services/api/settings";
 import { useToast } from "../component/common/ToastContext";
 
-const InputField = ({ label, required, value, name, onChange, type = "text", placeholder }) => (
-  <div className="mb-5 max-w-2xl">
-    <label className="block text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-1.5 leading-none">
-      {label} {required && <span className="text-red-500">*</span>}
-    </label>
-    <input
-      type={type}
-      name={name}
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder ?? ""}
-      onKeyDown={(e) => {
-        if (e.key === "Backspace") {
-          e.stopPropagation();
-        }
-      }}
-      className={`${type === "number" ? "max-w-[300px]" : "max-w-lg"} w-full h-10 px-4 bg-[#f8f9fa] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 font-medium placeholder:text-slate-400 placeholder:font-normal`}
-    />
-  </div>
-);
+const InputField = ({ label, required, value, name, onChange, type = "text", placeholder }) => {
+  const [show, setShow] = useState(false);
+  const isPassword = type === "password";
+  const finalType = isPassword ? (show ? "text" : "password") : type;
+
+  return (
+    <div className="mb-5 max-w-2xl">
+      <label className="block text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-1.5 leading-none">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <div className="relative max-w-lg">
+        <input
+          type={finalType}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder ?? ""}
+          onKeyDown={(e) => {
+            if (e.key === "Backspace") {
+              e.stopPropagation();
+            }
+          }}
+          className={`${type === "number" ? "max-w-[300px]" : "w-full"} h-10 px-4 ${isPassword ? "pr-10" : ""} bg-[#f8f9fa] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-100 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 font-medium placeholder:text-slate-400 placeholder:font-normal`}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShow(!show)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+          >
+            {show ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 
 // ─── Features Modal ───────────────────────────────────────────────────────────
 const FeaturesModal = ({ onClose }) => {
@@ -62,7 +81,8 @@ const FeaturesModal = ({ onClose }) => {
       await SettingsService.updateFeatures(
         features.map((f) => ({ name: f.name, value: f.value }))
       );
-      showToast("Features saved !successfully", "success");
+      showToast("Features saved successfully", "success");
+
       onClose();
     } catch (error) {
       console.error("Failed to save features:", error);
@@ -192,8 +212,9 @@ export default function SettingsPage() {
           useDefaultCredentials: data.smtpUseDefaultCredentials ?? false,
           domain: data.smtpDomain ?? "",
           username: data.smtpUserName ?? "",
-          password: "", // ← never load password from API response
+          password: data.smtpPassword ?? "",
         });
+
       } catch (error) {
         console.error("Failed to fetch email settings:", error);
         showToast("Failed to load email settings", "error");
@@ -248,7 +269,8 @@ export default function SettingsPage() {
     setLoading(true);
     try {
       await SettingsService.updateEmailSettings(emailSettings);
-      showToast("Email settings saved !successfully", "success");
+      showToast("Email settings saved successfully", "success");
+
     } catch (error) {
       console.error("Save Email Settings Error:", error);
       showToast("Failed to save email settings", "error");
@@ -261,7 +283,8 @@ export default function SettingsPage() {
     setTestEmailLoading(true);
     try {
       await SettingsService.sendTestEmail(emailSettings);
-      showToast("Test email sent !successfully", "success");
+      showToast("Test email sent successfully", "success");
+
     } catch (error) {
       console.error("Send Test Email Error:", error);
       showToast("Failed to send test email", "error");
@@ -274,7 +297,8 @@ export default function SettingsPage() {
     setSystemLoading(true);
     try {
       await SettingsService.updateSystemSettings(systemSettings);
-      showToast("System settings saved !successfully", "success");
+      showToast("System settings saved successfully", "success");
+
     } catch (error) {
       console.error("Save System Settings Error:", error);
       showToast("Failed to save system settings", "error");
@@ -385,32 +409,30 @@ export default function SettingsPage() {
                 </span>
               </div>
 
-              <div className={`grid transition-all duration-500 ease-in-out ${!emailSettings.useDefaultCredentials ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
-                <div className="overflow-hidden">
-                  <div className="space-y-1 pt-4">
-                    <InputField
-                      label="Domain"
-                      name="domain"
-                      value={emailSettings.domain}
-                      onChange={handleEmailChange}
-                    />
-                    <InputField
-                      label="User name"
-                      name="username"
-                      value={emailSettings.username}
-                      onChange={handleEmailChange}
-                    />
-                    <InputField
-                      label="Password"
-                      type="password"
-                      name="password"
-                      value={emailSettings.password}
-                      onChange={handleEmailChange}
-                      placeholder="Leave empty to keep current password"
-                    />
-                  </div>
+              <div className={`overflow-hidden transition-all duration-500 ease-in-out ${!emailSettings.useDefaultCredentials ? "max-h-[500px] opacity-100 mt-4" : "max-h-0 opacity-0 pointer-events-none"}`}>
+                <div className="space-y-1">
+                  <InputField
+                    label="Domain"
+                    name="domain"
+                    value={emailSettings.domain}
+                    onChange={handleEmailChange}
+                  />
+                  <InputField
+                    label="User name"
+                    name="username"
+                    value={emailSettings.username}
+                    onChange={handleEmailChange}
+                  />
+                  <InputField
+                    label="Password"
+                    type="password"
+                    name="password"
+                    value={emailSettings.password}
+                    onChange={handleEmailChange}
+                  />
                 </div>
               </div>
+
 
               <div className="flex gap-4 pt-6 border-t border-slate-100 dark:border-slate-800 pb-2">
                 <button

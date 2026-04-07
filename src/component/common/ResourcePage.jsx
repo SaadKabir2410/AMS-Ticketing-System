@@ -16,10 +16,12 @@ export function ActionsMenu({
   onDelete,
   onDisable,
   onEnable,
+  customActions = [],
   deleteButtonText = "Delete",
   actionButtonText = "Actions",
   className = "btn-flagship-solid h-[22px]! px-2! text-[9px]!",
 }) {
+
   const { dark } = useTheme();
   const isDark = dark === "dark";
   const [anchorEl, setAnchorEl] = useState(null);
@@ -32,9 +34,10 @@ export function ActionsMenu({
     setAnchorEl(null);
   };
 
-  const hasActions = onAuditLog || onEdit || onDetail || onPermissions || onDelete || onDisable || onEnable;
+  const hasActions = onAuditLog || onEdit || onDetail || onPermissions || onDelete || onDisable || onEnable || (customActions && customActions.length > 0);
 
   if (!hasActions) return null;
+
 
   const menuItemHover = { py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } };
 
@@ -66,9 +69,10 @@ export function ActionsMenu({
       >
         {onDetail && (
           <MenuItem onClick={() => { onDetail(); handleClose(); }} sx={menuItemHover}>
-            <ListItemText primary="View Details" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+            <ListItemText primary="View" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
           </MenuItem>
         )}
+
         {onAuditLog && (
           <MenuItem onClick={() => { onAuditLog(); handleClose(); }} sx={menuItemHover}>
             <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
@@ -99,7 +103,31 @@ export function ActionsMenu({
             <ListItemText primary={deleteButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }} />
           </MenuItem>
         )}
+        {customActions?.map((action, idx) => (
+          <MenuItem
+            key={action.key || idx}
+            onClick={() => {
+              if (action.onClick) action.onClick();
+              handleClose();
+            }}
+            sx={{
+              ...menuItemHover,
+              ...(action.className ? {} : {}) // placeholder for potential style overrides
+            }}
+          >
+            {action.icon && <ListItemIcon sx={{ minWidth: "32px !important", color: "inherit" }}>{action.icon}</ListItemIcon>}
+            <ListItemText
+              primary={action.label}
+              primaryTypographyProps={{
+                fontSize: "12px",
+                fontWeight: 600,
+                className: action.className || ""
+              }}
+            />
+          </MenuItem>
+        ))}
       </Menu>
+
     </div>
   );
 }
@@ -149,13 +177,17 @@ export default function ResourcePage({
   onAdd = null,
   hideGrid = false,
   overrideData = null,
+  loading: externalLoading = false, // Add this
   emptyMessage = "No records found",
   wideSearch = false,
   rowHeight = 44,
   headerHeight = 44,
   containerClassName = "bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl backdrop-blur-sm shadow-blue-500/5 dark:shadow-none overflow-hidden flex flex-col flex-1 transition-all duration-300",
   hideHeader = false,
+  customActions = [],
 }) {
+
+
   const { dark } = useTheme();
   const isDark = dark === "dark";
   const { toast } = useToast();
@@ -244,10 +276,12 @@ export default function ResourcePage({
     ],
   );
 
-  const { data, total, totalPages, loading, error, refetch } = useResource(
+  const { data, total, totalPages, loading: internalLoading, error, refetch } = useResource(
     overrideData ? null : apiObject,
     params,
   );
+  const loading = externalLoading || internalLoading;
+
 
   // ✅ Expose refetch to parent via onRefetchReady
   useEffect(() => {
@@ -346,7 +380,9 @@ export default function ResourcePage({
     sortKey,
     sortDir,
     lastModifiedId,
+    overrideData,
   ]);
+
 
   const auth = useAuth();
   const [createError, setCreateError] = useState(null);
@@ -535,7 +571,12 @@ export default function ResourcePage({
                   : null
               }
               deleteButtonText={deleteButtonText}
+              customActions={customActions?.map(ca => ({
+                ...ca,
+                onClick: () => ca.onClick(params.row)
+              }))}
             />
+
           );
         },
       });
@@ -552,7 +593,9 @@ export default function ResourcePage({
     search,
     filterField,
     filterValue,
+    customActions,
   ]);
+
 
   return (
     <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar p-6 transition-all duration-500 animate-in fade-in">

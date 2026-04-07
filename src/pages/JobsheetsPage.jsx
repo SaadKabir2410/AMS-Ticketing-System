@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom"; // Add this
 import ResourcePage from "../component/common/ResourcePage";
+
 import { jobsheetsApi } from "../services/api/jobsheets";
 import { usersApi } from "../services/api/users";
 import { codesApi } from "../services/api/Code";
@@ -10,15 +12,27 @@ import {
   X,
   Calendar,
   FileText,
+  History,
+  Eye,
 } from "lucide-react";
+
+
 
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.css";
 import "flatpickr/dist/themes/dark.css";
 import { useAuth } from "../context/AuthContextHook";
+import JobsheetModal from "../component/common/JobsheetModal";
+
+
+
 
 export default function JobsheetsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate(); // Add this
+  const isAdmin = user?.role?.toLowerCase().includes("admin");
+
+
 
   const [projects, setProjects] = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
@@ -54,7 +68,12 @@ export default function JobsheetsPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState(null);
   const clearReportData = () => setReportData(null);
-  const clearReportError = () => setReportError(null);
+  const [showModal, setShowModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedJobsheet, setSelectedJobsheet] = useState(null);
+
+
+
 
   // ── Fetch projects on mount ──
   useEffect(() => {
@@ -175,14 +194,23 @@ export default function JobsheetsPage() {
     setReportLoading(true);
     setReportError(null);
     try {
-      const data = await jobsheetsApi.getReport({ filters, currentUserId: user?.id });
+      // Non-admins can only see their own jobsheets
+      const finalFilters = isAdmin 
+        ? filters 
+        : { ...filters, user: [user?.id] };
+
+      const data = await jobsheetsApi.getReport({ filters: finalFilters, currentUserId: user?.id });
       setReportData(data);
+
     } catch (err) {
       setReportError(err?.message || "Failed to generate report.");
     } finally {
       setReportLoading(false);
     }
   };
+
+
+
 
   const columns = useMemo(() => [
     {
@@ -218,9 +246,9 @@ export default function JobsheetsPage() {
       ),
     },
     {
-      key: "createdBy",
+      key: "userName",
       label: "CREATED BY",
-      sortable: false,
+      sortable: true, // paged api supports sorting
       render: (val) => (
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">
@@ -232,6 +260,7 @@ export default function JobsheetsPage() {
         </div>
       ),
     },
+
     {
       key: "totalDurationHours",
       label: "Total Duration (Hours)",
@@ -333,68 +362,71 @@ export default function JobsheetsPage() {
         </div>
       </div>
 
-      {/* User — Vendor-Sureze only */}
-      <div className="flex-1 min-w-0 relative" ref={userRef}>
-        <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">User</label>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder={filters.user.length > 0 ? `${filters.user.length} selected` : "Search User..."}
-              value={userSearch}
-              onFocus={() => setShowUserDropdown(true)}
-              onChange={(e) => {
-                setUserSearch(e.target.value);
-                setShowUserDropdown(true);
-              }}
-              className={filterInputClass}
-            />
-            {(userSearch || filters.user.length > 0) && (
-              <button
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 text-[9px] font-black uppercase"
-                onClick={() => { setUserSearch(""); setFilters({ ...filters, user: [] }); }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-          {showUserDropdown && (
-            <div className="absolute top-[105%] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 max-h-56 overflow-y-auto no-scrollbar">
-              {isLoadingUsers ? (
-                <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-black uppercase tracking-widest">Loading...</div>
-              ) : userResults.length > 0 ? (
-                userResults.map((u) => {
-                  const isChecked = filters.user.includes(u.id);
-                  return (
-                    <div
-                      key={u.id}
-                      className="px-4 py-2.5 cursor-pointer border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-pink-50 dark:hover:bg-pink-500/5 flex items-center gap-3 group"
-                      onClick={() => {
-                        const newUsers = isChecked
-                          ? filters.user.filter(id => id !== u.id)
-                          : [...filters.user, u.id];
-                        setFilters({ ...filters, user: newUsers });
-                      }}
-                    >
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isChecked ? 'bg-[#ec4899] border-[#ec4899]' : 'border-slate-200 dark:border-slate-700'}`}>
-                        {isChecked && <div className="w-2 h-2 bg-white rounded-[1px] rotate-45 border-b-2 border-r-2" style={{ transform: 'rotate(45deg) translate(-1px, -1px)' }}></div>}
-                      </div>
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-bold text-[11px] text-slate-800 dark:text-white uppercase tracking-tight group-hover:text-[#ec4899] transition-colors">
-                          {u.name} {u.surname}
-                        </span>
-                        <span className="text-[9px] text-slate-400 lowercase">{u.email || "no email"}</span>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-black uppercase tracking-widest">No matches</div>
+      {/* User — Vendor-Sureze only (ADMIN ONLY) */}
+      {isAdmin && (
+        <div className="flex-1 min-w-0 relative" ref={userRef}>
+          <div className="flex flex-col gap-1">
+            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">User</label>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder={filters.user.length > 0 ? `${filters.user.length} selected` : "Search User..."}
+                value={userSearch}
+                onFocus={() => setShowUserDropdown(true)}
+                onChange={(e) => {
+                  setUserSearch(e.target.value);
+                  setShowUserDropdown(true);
+                }}
+                className={filterInputClass}
+              />
+              {(userSearch || filters.user.length > 0) && (
+                <button
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 text-[9px] font-black uppercase"
+                  onClick={() => { setUserSearch(""); setFilters({ ...filters, user: [] }); }}
+                >
+                  Clear
+                </button>
               )}
             </div>
-          )}
+            {showUserDropdown && (
+              <div className="absolute top-[105%] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 max-h-56 overflow-y-auto no-scrollbar">
+                {isLoadingUsers ? (
+                  <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-black uppercase tracking-widest">Loading...</div>
+                ) : userResults.length > 0 ? (
+                  userResults.map((u) => {
+                    const isChecked = filters.user.includes(u.id);
+                    return (
+                      <div
+                        key={u.id}
+                        className="px-4 py-2.5 cursor-pointer border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-pink-50 dark:hover:bg-pink-500/5 flex items-center gap-3 group"
+                        onClick={() => {
+                          const newUsers = isChecked
+                            ? filters.user.filter(id => id !== u.id)
+                            : [...filters.user, u.id];
+                          setFilters({ ...filters, user: newUsers });
+                        }}
+                      >
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isChecked ? 'bg-[#ec4899] border-[#ec4899]' : 'border-slate-200 dark:border-slate-700'}`}>
+                          {isChecked && <div className="w-2 h-2 bg-white rounded-[1px] rotate-45 border-b-2 border-r-2" style={{ transform: 'rotate(45deg) translate(-1px, -1px)' }}></div>}
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-bold text-[11px] text-slate-800 dark:text-white uppercase tracking-tight group-hover:text-[#ec4899] transition-colors">
+                            {u.name} {u.surname}
+                          </span>
+                          <span className="text-[9px] text-slate-400 lowercase">{u.email || "no email"}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-black uppercase tracking-widest">No matches</div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
 
       {/* Collaborators — all users */}
       <div className="flex-1 min-w-0 relative" ref={collaboratorRef}>
@@ -476,9 +508,13 @@ export default function JobsheetsPage() {
     if (filters.dateFrom) p.FromDate = filters.dateFrom;
     if (filters.dateTo) p.ToDate = filters.dateTo;
     if (filters.collaborator) p.UserIdsSearchValues = filters.collaborator;
-    if (filters.user) p.userId = filters.user;
+    
+    // Force current user if not admin
+    p.userId = isAdmin ? filters.user : [user?.id];
+    
     return p;
-  }, [filters, user]);
+  }, [filters, user, isAdmin]);
+
 
   const headerActions = (
     <div className="flex items-center gap-2">
@@ -499,6 +535,15 @@ export default function JobsheetsPage() {
           Close Report
         </button>
       )}
+      {!user?.role?.toLowerCase().includes("admin") && (
+        <button
+          type="button"
+          className="btn-flagship border-pink-200 dark:border-pink-500/20 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-500/5 flex items-center gap-2"
+          onClick={() => setShowModal(true)}
+        >
+          New Jobsheet
+        </button>
+      )}
       <button
         type="button"
         className="btn-flagship-solid"
@@ -510,18 +555,54 @@ export default function JobsheetsPage() {
     </div>
   );
 
-  let tableData = [];
-  if (Array.isArray(reportData)) tableData = reportData;
-  else if (reportData && Array.isArray(reportData.items)) tableData = reportData.items;
-  else if (reportData && Array.isArray(reportData.data)) tableData = reportData.data;
+  const handleAction = async (action, row) => {
+    if (action === "view") {
+      try {
+        const fullData = await jobsheetsApi.getById(row.id);
+        setSelectedJobsheet(fullData);
+        setShowViewModal(true);
+      } catch (error) {
+        console.error("Failed to fetch jobsheet details:", error);
+      }
+    } else if (action === "audit") {
+      navigate(`/audit-logs?primaryKey=${row.id}&entityName=Jobsheet`);
+    }
+  };
+
+
+
+  const customActions = [
+    {
+      key: "view",
+      label: "View",
+      icon: <Eye size={14} />,
+      onClick: (row) => handleAction("view", row),
+      className: "text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10",
+    },
+    {
+      key: "audit",
+      label: "Audit Log",
+      icon: <History size={14} />,
+      onClick: (row) => handleAction("audit", row),
+      className: "text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10",
+    },
+  ];
+
+
+  const tableData = Array.isArray(reportData)
+    ? reportData
+    : reportData?.items || reportData?.data || [];
 
   const overrideData = reportData ? tableData.map((t, i) => ({ ...t, id: t.id || i })) : null;
+  const resourceRef = useRef(null);
+
 
   return (
     <div className="h-full flex flex-col bg-[#f1f5f9] dark:bg-black transition-colors duration-500">
       <ResourcePage
+        ref={resourceRef}
         title="Jobsheets"
-        apiObject={null}
+        apiObject={jobsheetsApi}
         columns={columns}
         searchPlaceholder="Global Jobsheet Search..."
         breadcrumb={["Home", "Management", "Jobsheets"]}
@@ -529,11 +610,19 @@ export default function JobsheetsPage() {
         customFilterArea={customFilterArea}
         customHeaderActions={headerActions}
         extraParams={extraParams}
-        overrideData={overrideData || []}
-        hideGrid={!reportData}
-        emptyMessage="No ticket is found."
-        showActions={false}
+        overrideData={overrideData} // Keep for when report is explicitly requested
+        loading={reportLoading}
+        hideGrid={false}
+
+        emptyMessage="No jobsheets found."
+        showActions={true}
+        showAuditLog={false}
+        customActions={customActions}
+
+
         initialPageSize={14}
+
+
         showPagination={true}
         smallHeaderButton={true}
         entityName="Jobsheet"
@@ -541,10 +630,36 @@ export default function JobsheetsPage() {
         containerClassName="bg-white dark:bg-[#020617] rounded-3xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col flex-1"
       />
 
+
       <style>{`
         .no-scrollbar::-webkit-scrollbar { display: none !important; }
         .no-scrollbar { -ms-overflow-style: none !important; scrollbar-width: none !important; }
       `}</style>
+
+      <JobsheetModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        onSave={() => {
+          if (reportData) fetchReport();
+          if (resourceRef.current?.refresh) {
+            resourceRef.current.refresh();
+          }
+        }}
+      />
+
+      <JobsheetModal
+        open={showViewModal}
+        onClose={() => {
+          setShowViewModal(false);
+          setSelectedJobsheet(null);
+        }}
+        viewOnly={true}
+        jobsheet={selectedJobsheet}
+      />
+
+
+
+
     </div>
   );
 }

@@ -18,7 +18,9 @@ export default function AuditLogsPage() {
   const [debouncedUserName, setDebouncedUserName] = useState("");
   const [datePreset, setDatePreset] = useState("all");
   const [operationType, setOperationType] = useState("all");
-  const [entityType] = useState(searchParams.get("entityName") || "Site");
+  const [entityType, setEntityType] = useState(searchParams.get("entityName") || "all");
+
+
   const [customFromDate, setCustomFromDate] = useState("");
   const [customToDate, setCustomToDate] = useState("");
 
@@ -31,9 +33,22 @@ export default function AuditLogsPage() {
   }, [primaryKeySearch]);
 
   useEffect(() => {
+    const key = searchParams.get("primaryKey") || "";
+    const ent = searchParams.get("entityName") || "all";
+    
+    if (key !== debouncedPrimaryKey) {
+      setDebouncedPrimaryKey(key);
+    }
+    if (ent !== entityType) {
+      setEntityType(ent);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     const timer = setTimeout(() => setDebouncedUserName(userNameSearch), 500);
     return () => clearTimeout(timer);
   }, [userNameSearch]);
+
 
   const toLocalISO = useCallback((d) => {
     if (!d || isNaN(d.getTime())) return null;
