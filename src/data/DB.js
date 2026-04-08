@@ -1,4 +1,4 @@
-import { ticketsApi } from "../services/api/tickets";
+import amsTicketApi from "../services/api/amsTicketApi";
 import { sitesApi } from "../services/api/sites";
 import { countriesApi } from "../services/api/countries";
 import { workCodesApi } from "../services/api/workCodes";
@@ -11,7 +11,7 @@ import { auditLogsApi } from "../services/api/auditLogs";
 import apiClient from "../services/apiClient";
 
 const DB = {
-  tickets: ticketsApi,
+  tickets: amsTicketApi,
   sites: sitesApi,
   countries: countriesApi,
   workCodes: workCodesApi,

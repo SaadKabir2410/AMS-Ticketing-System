@@ -787,85 +787,85 @@ export default function UsersPage() {
                       );
                     })}
 
-                    <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
-                      <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm mx-auto">
-                        <button
-                          type="button"
-                          onClick={() => setRolesPage(1)}
-                          disabled={rolesPage === 1}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                          title="First Page"
-                        >
-                          <ChevronsLeft size={14} strokeWidth={2.5} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setRolesPage((prev) => Math.max(1, prev - 1))}
-                          disabled={rolesPage === 1}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                          title="Previous Page"
-                        >
-                          <ChevronLeft size={14} strokeWidth={2.5} />
-                        </button>
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
+                    <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm mx-auto">
+                      <button
+                        type="button"
+                        onClick={() => setRolesPage(1)}
+                        disabled={rolesPage === 1}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                        title="First Page"
+                      >
+                        <ChevronsLeft size={14} strokeWidth={2.5} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRolesPage((prev) => Math.max(1, prev - 1))}
+                        disabled={rolesPage === 1}
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                        title="Previous Page"
+                      >
+                        <ChevronLeft size={14} strokeWidth={2.5} />
+                      </button>
 
-                        <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+                      <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
 
-                        <div className="px-3 flex items-center gap-2 py-1">
-                          <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                            Page
+                      <div className="px-3 flex items-center gap-2 py-1">
+                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                          Page
+                        </span>
+                        <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
+                          <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">
+                            {rolesPage}
                           </span>
-                          <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
-                            <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">
-                              {rolesPage}
-                            </span>
-                            <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">
-                              /
-                            </span>
-                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums leading-none">
-                              {Math.ceil(availableRoles.length / rolesPerPage)}
-                            </span>
-                          </div>
+                          <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">
+                            /
+                          </span>
+                          <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums leading-none">
+                            {Math.ceil(availableRoles.length / rolesPerPage)}
+                          </span>
                         </div>
-
-                        <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setRolesPage((prev) =>
-                              Math.min(
-                                Math.ceil(availableRoles.length / rolesPerPage),
-                                prev + 1,
-                              ),
-                            )
-                          }
-                          disabled={
-                            rolesPage ===
-                            Math.ceil(availableRoles.length / rolesPerPage)
-                          }
-                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                          title="Next Page"
-                        >
-                          <ChevronRight size={14} strokeWidth={2.5} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setRolesPage(
-                              Math.ceil(availableRoles.length / rolesPerPage),
-                            )
-                          }
-                          disabled={
-                            rolesPage ===
-                            Math.ceil(availableRoles.length / rolesPerPage)
-                          }
-                          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                          title="Last Page"
-                        >
-                          <ChevronsRight size={14} strokeWidth={2.5} />
-                        </button>
                       </div>
+
+                      <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRolesPage((prev) =>
+                            Math.min(
+                              Math.ceil(availableRoles.length / rolesPerPage),
+                              prev + 1,
+                            ),
+                          )
+                        }
+                        disabled={
+                          rolesPage ===
+                          Math.ceil(availableRoles.length / rolesPerPage)
+                        }
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                        title="Next Page"
+                      >
+                        <ChevronRight size={14} strokeWidth={2.5} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRolesPage(
+                            Math.ceil(availableRoles.length / rolesPerPage),
+                          )
+                        }
+                        disabled={
+                          rolesPage ===
+                          Math.ceil(availableRoles.length / rolesPerPage)
+                        }
+                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                        title="Last Page"
+                      >
+                        <ChevronsRight size={14} strokeWidth={2.5} />
+                      </button>
                     </div>
+                  </div>
                 </div>
               </div>
 

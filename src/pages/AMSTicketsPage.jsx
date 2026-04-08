@@ -1,12 +1,20 @@
 import { useState } from "react";
 import ResourcePage from "../component/common/ResourcePage";
-import { ticketsApi } from "../services/api/tickets";
+import amsTicketApi from "../services/api/amsTicketApi";
 import TicketModal from "../component/common/TicketModal";
 import TicketDetailModal from "../component/common/TicketDetailModal";
 import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 
 export default function AMSTicketsPage() {
   const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
+
+  // Advanced search filter state (only used when isAdvancedSearch = true)
+  const [advancedFilters, setAdvancedFilters] = useState({
+    userId: undefined,
+    status: "",
+    dateFrom: "",
+    dateTo: "",
+  });
 
   const columns = [
     { key: "siteName", label: "SITE NAME", bold: true, flex: 1, minWidth: 60 },
@@ -22,16 +30,90 @@ export default function AMSTicketsPage() {
     { key: "serviceClosedDate", label: "SERVICE CLOSED DATE", flex: 1.5, minWidth: 80 },
   ];
 
+  // Build the extra params that ResourcePage/getAll will receive when advanced search is on
+  const extraParams = isAdvancedSearch
+    ? {
+      userId: advancedFilters.userId,
+      status: advancedFilters.status || undefined,
+      dateFrom: advancedFilters.dateFrom
+        ? new Date(advancedFilters.dateFrom).toISOString()
+        : undefined,
+      dateTo: advancedFilters.dateTo
+        ? new Date(advancedFilters.dateTo).toISOString()
+        : undefined,
+    }
+    : {};
+
   const customFilterArea = (
-    <label className="flex items-center gap-2.5 cursor-pointer ml-4">
-      <input
-        type="checkbox"
-        checked={isAdvancedSearch}
-        onChange={(e) => setIsAdvancedSearch(e.target.checked)}
-        className="form-checkbox w-[15px] h-[15px] text-[#5da3d5] rounded-sm bg-[#f8f9fa] dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-[#5da3d5]/30 focus:border-[#5da3d5]"
-      />
-      <span className="text-[12px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">Advanced Search</span>
-    </label>
+    <div className="flex items-center gap-4 flex-wrap">
+      {/* Advanced Search toggle */}
+      <label className="flex items-center gap-2.5 cursor-pointer ml-4">
+        <input
+          type="checkbox"
+          checked={isAdvancedSearch}
+          onChange={(e) => setIsAdvancedSearch(e.target.checked)}
+          className="form-checkbox w-[15px] h-[15px] text-[#5da3d5] rounded-sm bg-[#f8f9fa] dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus:ring-[#5da3d5]/30 focus:border-[#5da3d5]"
+        />
+        <span className="text-[12px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+          Advanced Search
+        </span>
+      </label>
+
+      {/* Advanced search fields — only visible when toggled on */}
+      {isAdvancedSearch && (
+        <>
+          {/* Status filter */}
+          <select
+            value={advancedFilters.status}
+            onChange={(e) =>
+              setAdvancedFilters((prev) => ({ ...prev, status: e.target.value }))
+            }
+            className="text-[12px] h-8 px-2 rounded border border-slate-200 dark:border-slate-700 bg-[#f8f9fa] dark:bg-slate-800 text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#5da3d5]/50"
+          >
+            <option value="">All Status</option>
+            <option value="Opened">Opened</option>
+            <option value="Closed">Closed</option>
+            <option value="Voided">Voided</option>
+          </select>
+
+          {/* Date From */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-400 whitespace-nowrap">From</span>
+            <input
+              type="datetime-local"
+              value={advancedFilters.dateFrom}
+              onChange={(e) =>
+                setAdvancedFilters((prev) => ({ ...prev, dateFrom: e.target.value }))
+              }
+              className="text-[12px] h-8 px-2 rounded border border-slate-200 dark:border-slate-700 bg-[#f8f9fa] dark:bg-slate-800 text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#5da3d5]/50"
+            />
+          </div>
+
+          {/* Date To */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-400 whitespace-nowrap">To</span>
+            <input
+              type="datetime-local"
+              value={advancedFilters.dateTo}
+              onChange={(e) =>
+                setAdvancedFilters((prev) => ({ ...prev, dateTo: e.target.value }))
+              }
+              className="text-[12px] h-8 px-2 rounded border border-slate-200 dark:border-slate-700 bg-[#f8f9fa] dark:bg-slate-800 text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-[#5da3d5]/50"
+            />
+          </div>
+
+          {/* Clear advanced filters */}
+          <button
+            onClick={() =>
+              setAdvancedFilters({ userId: undefined, status: "", dateFrom: "", dateTo: "" })
+            }
+            className="text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 underline whitespace-nowrap"
+          >
+            Clear
+          </button>
+        </>
+      )}
+    </div>
   );
 
   return (
@@ -74,22 +156,16 @@ export default function AMSTicketsPage() {
       `}</style>
       <ResourcePage
         title="AMS Tickets"
-        apiObject={ticketsApi}
+        apiObject={amsTicketApi}
         columns={columns}
         ModalComponent={TicketModal}
         DetailComponent={TicketDetailModal}
         DeleteModal={DeleteConfirmModal}
-        createButtonText={null}
-        searchPlaceholder="Search..."
-        showActions={false}
-        wideSearch={true}
+        createButtonText="New Ticket"
         customFilterArea={customFilterArea}
         breadcrumb={["Home", "AMS Tickets"]}
+        extraParams={extraParams}
       />
     </>
   );
 }
-
-
-
-

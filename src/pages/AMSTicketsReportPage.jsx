@@ -12,7 +12,7 @@ import apiClient from "../services/apiClient";
 import countriesApi from "../services/api/countries";
 import usersApi from "../services/api/users";
 import workCodesApi from "../services/api/workCodes";
-import ticketsApi from "../services/api/tickets";
+import amsTicketApi from "../services/api/amsTicketApi";
 
 import { DataGrid, GridToolbar } from "@mui/x-data-grid";
 
@@ -78,7 +78,7 @@ export default function AMSTicketsReportPage() {
       let fullTicket = row;
       try {
         if (ticketId) {
-          fullTicket = await ticketsApi.getAMSTicketById(ticketId);
+          fullTicket = await amsTicketApi.getById(ticketId);
         }
       } catch (e) {
         console.warn(
@@ -89,22 +89,21 @@ export default function AMSTicketsReportPage() {
 
       switch (action) {
         case "Close":
-          await ticketsApi.closeAMSTicket(ticketId, fullTicket);
+          await amsTicketApi.close(ticketId, fullTicket);
           break;
         case "Open":
-          await ticketsApi.isAnyTicketsOpen(fullTicket);
+          await amsTicketApi.isAnyOpen(fullTicket);
           break;
         case "Void":
-          await ticketsApi.voidAMSTicket(ticketId, fullTicket);
+          await amsTicketApi.delete(ticketId, fullTicket);
           break;
         case "Re-Open":
-          await ticketsApi.reOpenAMSTicket(ticketId, fullTicket);
+          await amsTicketApi.reOpen(ticketId, fullTicket);
           break;
         default:
           break;
       }
 
-      // Optionally re-fetch the report to update the grid instantly
       handleGetReport(false);
     } catch (error) {
       console.error("Failed to update status:", error);
@@ -331,11 +330,8 @@ export default function AMSTicketsReportPage() {
         },
       };
 
-      const payload = {
-        ...rawParams.AMSTicketSearch,
-      };
+      const payload = { ...rawParams.AMSTicketSearch };
 
-      // Clean up undefined/empty string properties from the API payload
       Object.keys(payload).forEach((key) => {
         if (
           payload[key] === "" ||
@@ -346,7 +342,7 @@ export default function AMSTicketsReportPage() {
         }
       });
 
-      const response = await ticketsApi.compareTickets(payload);
+      const response = await amsTicketApi.compareTickets(payload);
 
       const items = response?.items || response || [];
       const dataArray = Array.isArray(items) ? items : [];
@@ -378,17 +374,17 @@ export default function AMSTicketsReportPage() {
   const dynamicColumns =
     reportData.length > 0
       ? Object.keys(reportData[0]).map((key) => ({
-          field: key,
-          headerName: key.replace(/([A-Z])/g, " $1").trim(), // Add space before capital letters
-          flex: 1,
-          minWidth: 150,
-          renderCell: (params) => {
-            const val = params.value;
-            if (typeof val === "boolean") return val ? "Yes" : "No";
-            if (val === null || val === undefined) return "-";
-            return String(val);
-          },
-        }))
+        field: key,
+        headerName: key.replace(/([A-Z])/g, " $1").trim(),
+        flex: 1,
+        minWidth: 150,
+        renderCell: (params) => {
+          const val = params.value;
+          if (typeof val === "boolean") return val ? "Yes" : "No";
+          if (val === null || val === undefined) return "-";
+          return String(val);
+        },
+      }))
       : [];
 
   const columnsWithActions = [
@@ -401,7 +397,7 @@ export default function AMSTicketsReportPage() {
           size="small"
           onClick={(e) => handleActionClick(e, params.row)}
         >
-          
+
         </IconButton>
       ),
     },
@@ -446,7 +442,6 @@ export default function AMSTicketsReportPage() {
               </div>
             </div>
 
-            {/* Small Action Buttons in Header */}
             <div className="flex items-center gap-2">
               <button
                 onClick={handleClear}
@@ -458,7 +453,7 @@ export default function AMSTicketsReportPage() {
               <button
                 onClick={() => handleGetReport(false)}
                 disabled={loading}
-                className="flex items-center gap-1.5 px-4 py-2 btn-flagship  disabled:opacity-50 text-white rounded-lg text-[11px] transition-all active:scale-95 shadow-sm focus:outline-none"
+                className="flex items-center gap-1.5 px-4 py-2 btn-flagship disabled:opacity-50 text-white rounded-lg text-[11px] transition-all active:scale-95 shadow-sm focus:outline-none"
               >
                 {loading ? "Loading..." : "Get Report"}
               </button>
@@ -804,10 +799,6 @@ export default function AMSTicketsReportPage() {
           </div>
         </div>
       </div>
-
-      
     </div>
   );
 }
-
-
