@@ -140,6 +140,7 @@ export default function ResourcePage({
   apiObject,
   columns,
   ModalComponent,
+  DeleteModal = null,
   DetailComponent,
   searchPlaceholder = "Search records...",
   createButtonText = "Create",
@@ -157,7 +158,7 @@ export default function ResourcePage({
   entityName = "",
   initialSortKey = "id",
   initialSortDir = "desc",
-  initialPageSize = 14,
+  initialPageSize = 10,
   showPagination = true,
   smallHeaderButton = false,
   onPermissions = null,
@@ -176,7 +177,10 @@ export default function ResourcePage({
   onDetail = null,
   onAdd = null,
   hideGrid = false,
+  gridAutoHeight = false,
   overrideData = null,
+  getRowClassName = null,
+  getRowSpacing = null,
   loading: externalLoading = false, // Add this
   emptyMessage = "No records found",
   wideSearch = false,
@@ -185,6 +189,7 @@ export default function ResourcePage({
   containerClassName = "bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl backdrop-blur-sm shadow-blue-500/5 dark:shadow-none overflow-hidden flex flex-col flex-1 transition-all duration-300",
   hideHeader = false,
   customActions = [],
+  wrapperClassName = "h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar p-6 transition-all duration-500 animate-in fade-in",
 }) {
 
 
@@ -291,7 +296,7 @@ export default function ResourcePage({
   }, [refetch, onRefetchReady]);
 
   useEffect(() => {
-    if (error && sortKey !== "id") {
+    if (error) {
       setSortKey("id");
       setSortDir("desc");
     }
@@ -452,7 +457,10 @@ export default function ResourcePage({
     );
 
     const HighlightText = ({ text, searchTerm, className }) => {
-      const baseClass = `flex items-center truncate w-full ${className || ""}`;
+      const isDynamic = rowHeight === "auto";
+      const textClass = isDynamic ? "whitespace-normal break-words py-2" : "truncate";
+      const baseClass = `flex items-center justify-center text-center w-full ${textClass} ${className || ""}`;
+
       if (!searchTerm || !text)
         return (
           <div className={baseClass} title={text || "—"}>
@@ -487,6 +495,7 @@ export default function ResourcePage({
       sortable: col.sortable !== false,
       filterable: col.filterable !== false,
       filterOperators: textFilterOperators,
+      renderHeader: col.renderHeader,
       renderCell: (params) => {
         const val = params.value;
         const row = params.row;
@@ -565,9 +574,14 @@ export default function ResourcePage({
                   : null
               }
               onDelete={
-                onDelete &&
-                  (!onDeleteVisibilityCheck || onDeleteVisibilityCheck(params.row))
-                  ? () => onDelete(params.row)
+                (onDelete || DeleteModal) && (!onDeleteVisibilityCheck || onDeleteVisibilityCheck(params.row))
+                  ? () => {
+                    if (onDelete) onDelete(params.row);
+                    else {
+                      setActiveItem(params.row);
+                      setModals((m) => ({ ...m, delete: true }));
+                    }
+                  }
                   : null
               }
               deleteButtonText={deleteButtonText}
@@ -598,7 +612,7 @@ export default function ResourcePage({
 
 
   return (
-    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar p-6 transition-all duration-500 animate-in fade-in">
+    <div className={wrapperClassName}>
       {/* Breadcrumb - Moved outside the card to match reference */}
       {breadcrumb.length > 0 && !hideHeader && (
         <nav className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-slate-400 dark:text-slate-500 mb-4 ml-1">
@@ -697,23 +711,37 @@ export default function ResourcePage({
             {hideGrid ? (
               <div className="flex-1 overflow-hidden min-h-[400px] bg-white dark:bg-slate-900"></div>
             ) : (
-              <div className="flex-1 overflow-hidden">
+              <div className={`flex-1 ${gridAutoHeight ? 'overflow-auto pb-4' : 'overflow-hidden'}`}>
                 <DataGrid
+                  autoHeight={gridAutoHeight}
                   rows={visibleData}
                   columns={muiColumns}
+                  getRowClassName={getRowClassName}
+                  getRowSpacing={getRowSpacing}
                   rowCount={displayTotal || 0}
                   loading={loading}
                   paginationMode="server"
-                  sortingMode="server"
+                  sortingMode="client"
                   onSortModelChange={(m) => {
                     if (m.length) {
+                      const col = columns.find(c => c.key === m[0].field);
+                      if (col?.sortable === false) {
+                        setSortKey("id");
+                        setSortDir("desc");
+                        return;
+                      }
                       setSortKey(m[0].field);
                       setSortDir(m[0].sort);
+                    } else {
+                      setSortKey("id");
+                      setSortDir("desc");
                     }
                   }}
                   hideFooter
                   disableRowSelectionOnClick
-                  rowHeight={rowHeight}
+                  rowHeight={rowHeight === "auto" ? undefined : rowHeight}
+                  getRowHeight={rowHeight === "auto" ? () => "auto" : undefined}
+                  getEstimatedRowHeight={rowHeight === "auto" ? () => 44 : undefined}
                   columnHeaderHeight={headerHeight}
                   sx={{
                     border: "none",
@@ -790,14 +818,14 @@ export default function ResourcePage({
                       }}
                       className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
                     >
-                      {[14, 25, 50, 100].map((s) => (
+                      {[10, 25, 50, 100].map((s) => (
                         <option key={s} value={s} className="font-sans">
                           {s}
                         </option>
                       ))}
                     </select>
                   </div>
-                  
+
                   <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                       <span className="text-slate-900 dark:text-white tabular-nums">
@@ -833,9 +861,9 @@ export default function ResourcePage({
                     >
                       <ChevronLeft size={14} strokeWidth={2.5} />
                     </button>
-                    
+
                     <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-                    
+
                     <div className="px-3 flex items-center gap-2 py-1">
                       <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Page</span>
                       <div className="flex items-center gap-1.5 min-w-[40px] justify-center">

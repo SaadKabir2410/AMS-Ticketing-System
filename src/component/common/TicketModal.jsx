@@ -5,6 +5,7 @@ import SiteModal from "./SiteModal";
 
 import { usersApi } from "../../services/api/users";
 import { sitesApi } from "../../services/api/sites";
+import { amsTicketApi } from "../../services/api/amsTicketApi";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.css";
 
@@ -91,6 +92,17 @@ export default function TicketModal({
           cmsTicketAddedOn: ticket.cmsTicketAddedOn ? ticket.cmsTicketAddedOn.slice(0, 16) : "",
           isTicketForwarded: !!ticket.ticketForwardedBy,
         });
+
+        // Hydrate thoroughly from backend to guarantee perfectly fresh un-cached records
+        amsTicketApi.getById(ticket.id).then((fullData) => {
+          setForm(prev => ({
+            ...prev,
+            ...fullData,
+            receivedAt: fullData.receivedAt ? fullData.receivedAt.slice(0, 16) : prev.receivedAt,
+            cmsTicketAddedOn: fullData.cmsTicketAddedOn ? fullData.cmsTicketAddedOn.slice(0, 16) : prev.cmsTicketAddedOn,
+            isTicketForwarded: !!fullData.ticketForwardedBy,
+          }));
+        }).catch(err => console.error("Failed to fetch secure ticket record:", err));
       } else {
         setForm({
           ...EMPTY,

@@ -10,7 +10,6 @@ export function useResource(apiObject, params) {
   const [error, setError] = useState(null);
 
   const fetch = useCallback(async () => {
-    // Wait for auth to finish loading
     if (isAuthLoading) return;
 
     if (!user) {
@@ -31,7 +30,6 @@ export function useResource(apiObject, params) {
       let nextTotal = 0;
       let nextTotalPages = 0;
 
-      // Normalize response (handle wrapping like { result: { items: [], totalCount: 0 } })
       const responseData = res?.result || res;
 
       if (Array.isArray(responseData)) {
@@ -40,7 +38,7 @@ export function useResource(apiObject, params) {
         nextTotalPages = Math.ceil(nextTotal / (params?.perPage || 10));
       } else if (responseData) {
         nextData = responseData.data || responseData.items || [];
-        // More aggressive total count detection
+
         nextTotal =
           responseData.totalCount ??
           responseData.total ??
@@ -49,7 +47,6 @@ export function useResource(apiObject, params) {
           responseData.totalItems;
 
         if (nextTotal === undefined) {
-          // Fallback: If we got a full page of data, assume there might be a next page
           nextTotal =
             nextData.length === (params?.perPage || 10)
               ? (params?.page || 1) * (params?.perPage || 10) + 1
@@ -68,9 +65,10 @@ export function useResource(apiObject, params) {
         count: nextData.length,
         total: nextTotal,
       });
-      setError(null); // clear any previous error
+      setError(null);
     } catch (e) {
       console.error("useResource fetch error:", e);
+      console.error("Backend error detail:", e?.response?.data);
       setError(e);
       setData([]);
       setTotal(0);
@@ -82,5 +80,6 @@ export function useResource(apiObject, params) {
   useEffect(() => {
     fetch();
   }, [fetch]);
+
   return { data, total, totalPages, loading, error, refetch: fetch };
 }
