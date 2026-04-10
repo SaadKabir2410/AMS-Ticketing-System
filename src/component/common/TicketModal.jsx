@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { AlertCircle, X, Plus } from "lucide-react";
 import PremiumErrorAlert from "./PremiumErrorAlert";
 import SiteModal from "./SiteModal";
+import ActivityModal from "./ActivityModal";
 
 import { usersApi } from "../../services/api/users";
 import { sitesApi } from "../../services/api/sites";
@@ -52,6 +53,11 @@ const EMPTY = {
   notes: "",
   totalDuration: "",
   pre: false,
+  ticketResolutionVerifiedBy: "",
+  ticketResolutionVerifiedOn: "",
+  cmsTicketClosedBy: "",
+  cmsTicketClosedOn: "",
+  serviceClosedDate: "",
 };
 
 export default function TicketModal({
@@ -71,6 +77,7 @@ export default function TicketModal({
     siteNames: [],
     customers: [],
     assignees: [],
+    itsUsers: [],
     ticketTypes: []
   });
   const [rawSites, setRawSites] = useState([]);
@@ -79,6 +86,9 @@ export default function TicketModal({
   const [isSiteModalOpen, setIsSiteModalOpen] = useState(false);
   // Placeholder for customer modal if it existed
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [activityToEdit, setActivityToEdit] = useState(null);
 
   useEffect(() => {
     if (open) {
@@ -115,14 +125,16 @@ export default function TicketModal({
       Promise.all([
         sitesApi.getAll({ perPage: 1000 }).catch(() => ({ items: [] })),
         usersApi.getUsersList().catch(() => []),
+        usersApi.getUsersList({ organizationTypes: [2, 3], isITS: true, onlyLoadCurrentUser: false, mustCompleteJobsheet: undefined }).catch(() => []),
       ])
-        .then(([sitesRes, usersRes]) => {
+        .then(([sitesRes, usersRes, itsUsersRes]) => {
           const fetchedSites = sitesRes?.items || [];
           setRawSites(fetchedSites);
           setApiData((prev) => ({
             ...prev,
             siteNames: fetchedSites.map(s => s.name || s.Name).filter(Boolean),
             assignees: (usersRes || []).map(u => u.name || u.userName).filter(Boolean),
+            itsUsers: (itsUsersRes || []).map(u => u.name || u.userName).filter(Boolean),
             ticketTypes: ["Hardware", "Software", "Network", "General Inquiry"],
           }));
         })
@@ -314,8 +326,8 @@ export default function TicketModal({
                         disabled={loadingApis || loadingCustomers || !form.siteName}
                       >
                         <option value="">
-                          {!form.siteName 
-                            ? "Select Site Name first..." 
+                          {!form.siteName
+                            ? "Select Site Name first..."
                             : loadingCustomers ? "Loading Customers..." : "Search customers..."}
                         </option>
                         {apiData.customers.map((c) => (
@@ -500,14 +512,177 @@ export default function TicketModal({
             )}
 
             {activeTab === "Activities" && (
-              <div className="p-4 text-center text-slate-500 italic">
-                Activities placeholder text.
+              <div className="flex flex-col h-full space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Ticket Activities</h3>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-pink-500 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition shadow-sm border border-none"
+                    onClick={() => {
+                      setActivityToEdit(null);
+                      setIsActivityModalOpen(true);
+                    }}
+                  >
+                    <Plus size={14} /> Add Activity
+                  </button>
+                </div>
+
+                <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800 flex-1">
+                  <div className="overflow-x-auto h-full">
+                    <table className="w-full text-left text-xs whitespace-nowrap">
+                      <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
+                        <tr>
+                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 w-20 text-center">Actions</th>
+                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Activity Type</th>
+                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Start Date</th>
+                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">End Date</th>
+                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-center">Duration (Minutes)</th>
+                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Work Done Code</th>
+                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Likely Cause</th>
+                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Resolved By</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {(!form.activities || form.activities.length === 0) ? (
+                          <tr>
+                            <td colSpan="8" className="px-4 py-8 text-center text-slate-500 italic">No activities found.</td>
+                          </tr>
+                        ) : (
+                          form.activities.map((act, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                              <td className="px-4 py-3 text-center">
+                                <button
+                                  type="button"
+                                  className="text-blue-500 hover:text-blue-700 px-1 font-medium"
+                                  onClick={() => {
+                                    setActivityToEdit(act);
+                                    setIsActivityModalOpen(true);
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-red-500 hover:text-red-700 px-1 font-medium ml-1"
+                                  onClick={() => {
+                                    setForm(f => ({
+                                      ...f,
+                                      activities: f.activities.filter(a => a !== act)
+                                    }));
+                                  }}
+                                >
+                                  Del
+                                </button>
+                              </td>
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{act.activityType || '—'}</td>
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{act.startDate ? new Date(act.startDate).toLocaleString() : '—'}</td>
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{act.endDate ? new Date(act.endDate).toLocaleString() : '—'}</td>
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300 text-center">{act.durationMinutes || '—'}</td>
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{act.workDoneCode || '—'}</td>
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{act.likelyCause || '—'}</td>
+                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{act.resolvedBy || '—'}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
               </div>
             )}
 
             {activeTab === "Ticket Verification" && (
-              <div className="p-4 text-center text-slate-500 italic">
-                Ticket Verification placeholder text.
+              <div className="flex flex-col space-y-6 max-w-full mx-auto pb-4">
+                <Field label="Ticket Resolution Verified By Sureze *" error={errors.ticketResolutionVerifiedBy}>
+                  <select
+                    value={form.ticketResolutionVerifiedBy}
+                    onChange={setField("ticketResolutionVerifiedBy")}
+                    className={inputClass}
+                    disabled={loadingApis}
+                  >
+                    <option value="" disabled selected>Search users...</option>
+                    {apiData.itsUsers.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="Ticket Resolution Verified On By Sureze *" error={errors.ticketResolutionVerifiedOn}>
+                  <div className={`flex items-center w-full rounded-lg border overflow-hidden focus-within:ring-2 focus-within:ring-pink-500/20 focus-within:border-pink-400 transition-all ${errors.ticketResolutionVerifiedOn
+                    ? 'border-[#e91e63] bg-[#fff0f4]'
+                    : form.ticketResolutionVerifiedOn
+                      ? 'border-[#e91e63] bg-[#fffbed]'
+                      : 'border-slate-200 bg-slate-50 dark:bg-slate-800 dark:border-slate-700'
+                    }`}>
+                    <div className="flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 w-10 border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white h-full py-2 shrink-0">
+                      <svg className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"></path></svg>
+                    </div>
+                    <Flatpickr
+                      data-enable-time
+                      value={form.ticketResolutionVerifiedOn}
+                      onChange={(date, dateStr) => {
+                        setForm(f => ({ ...f, ticketResolutionVerifiedOn: dateStr }));
+                        if (errors.ticketResolutionVerifiedOn) setErrors(e => ({ ...e, ticketResolutionVerifiedOn: "" }));
+                      }}
+                      options={{ enableTime: true, dateFormat: "d/m/Y", time_24hr: true }}
+                      className="w-full bg-transparent text-sm min-h-[38px] px-3 outline-none text-slate-700 dark:text-slate-200 border-none"
+                      placeholder="DD/MM/YYYY"
+                    />
+                  </div>
+                </Field>
+
+                <Field label="CMS Ticket Closed By *" error={errors.cmsTicketClosedBy}>
+                  <select
+                    value={form.cmsTicketClosedBy}
+                    onChange={setField("cmsTicketClosedBy")}
+                    className={inputClass}
+                    disabled={loadingApis}
+                  >
+                    <option value="" disabled selected>Search users...</option>
+                    {apiData.itsUsers.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </Field>
+
+                <Field label="CMS Ticket Closed On *" error={errors.cmsTicketClosedOn}>
+                  <div className="flex items-center w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all">
+                    <div className="flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 w-10 border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white h-full py-2 shrink-0">
+                      <svg className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"></path></svg>
+                    </div>
+                    <Flatpickr
+                      data-enable-time
+                      value={form.cmsTicketClosedOn}
+                      onChange={(date, dateStr) => {
+                        setForm(f => ({ ...f, cmsTicketClosedOn: dateStr }));
+                        if (errors.cmsTicketClosedOn) setErrors(e => ({ ...e, cmsTicketClosedOn: "" }));
+                      }}
+                      options={{ enableTime: true, dateFormat: "d/m/Y", time_24hr: true }}
+                      className="w-full bg-transparent text-sm min-h-[38px] px-3 outline-none text-slate-700 dark:text-slate-200 border-none"
+                      placeholder="DD/MM/YYYY"
+                    />
+                  </div>
+                </Field>
+
+                <Field label="Service Closed Date *" error={errors.serviceClosedDate}>
+                  <div className="flex items-center w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all">
+                    <div className="flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 w-10 border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white h-full py-2 shrink-0">
+                      <svg className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"></path></svg>
+                    </div>
+                    <Flatpickr
+                      data-enable-time
+                      value={form.serviceClosedDate}
+                      onChange={(date, dateStr) => {
+                        setForm(f => ({ ...f, serviceClosedDate: dateStr }));
+                        if (errors.serviceClosedDate) setErrors(e => ({ ...e, serviceClosedDate: "" }));
+                      }}
+                      options={{ enableTime: true, dateFormat: "d/m/Y", time_24hr: true }}
+                      className="w-full bg-transparent text-sm min-h-[38px] px-3 outline-none text-slate-700 dark:text-slate-200 border-none"
+                      placeholder="DD/MM/YYYY"
+                    />
+                  </div>
+                </Field>
               </div>
             )}
 
@@ -535,6 +710,29 @@ export default function TicketModal({
           </div>
         </div>
       </div>
+
+      {/* Activity Modal */}
+      <ActivityModal
+        open={isActivityModalOpen}
+        activity={activityToEdit}
+        onClose={() => setIsActivityModalOpen(false)}
+        onSubmit={(data) => {
+          if (activityToEdit) {
+            // Update existing
+            setForm(f => ({
+              ...f,
+              activities: (f.activities || []).map(a => a === activityToEdit ? data : a)
+            }));
+          } else {
+            // Add new
+            setForm(f => ({
+              ...f,
+              activities: [...(f.activities || []), data]
+            }));
+          }
+          setIsActivityModalOpen(false);
+        }}
+      />
 
       {/* Trigger existing new site modal */}
       <SiteModal

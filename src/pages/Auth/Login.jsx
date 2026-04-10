@@ -101,6 +101,8 @@ export default function LoginPage() {
 
     const success = await login({ email: username, password });
     if (success) {
+      // Ensure the unclosed tickets modal will show after this fresh login
+      sessionStorage.removeItem("hasSeenUnclosedTicketsModal");
       navigate(from, { replace: true });
     } else {
       setIsLoggingIn(false);

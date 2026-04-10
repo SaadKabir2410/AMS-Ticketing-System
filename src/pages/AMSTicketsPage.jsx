@@ -4,11 +4,13 @@ import amsTicketApi from "../services/api/amsTicketApi";
 import TicketModal from "../component/common/TicketModal";
 import TicketDetailModal from "../component/common/TicketDetailModal";
 import DeleteConfirmModal from "../component/common/DeleteConfirmation";
+import UnclosedTicketsModal from "../component/common/UnclosedTicketsModal";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.css";
 
 export default function AMSTicketsPage() {
   const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
+  const [isUnclosedModalOpen, setIsUnclosedModalOpen] = useState(false);
 
   // Advanced search filter state (only used when isAdvancedSearch = true)
   const [advancedFilters, setAdvancedFilters] = useState({
@@ -20,6 +22,14 @@ export default function AMSTicketsPage() {
     dateFrom: "",
     dateTo: "",
   });
+
+  useEffect(() => {
+    // Simulate auto-showing pop-up after login (once per session)
+    if (!sessionStorage.getItem("hasSeenUnclosedTicketsModal")) {
+      setIsUnclosedModalOpen(true);
+      sessionStorage.setItem("hasSeenUnclosedTicketsModal", "true");
+    }
+  }, []);
 
   // Function to render inline header filters inside DataGrid columns
   const renderAdvancedHeader = (field, label, type = "text", options = null, listId = null) => {
@@ -368,6 +378,11 @@ export default function AMSTicketsPage() {
         gridAutoHeight={true}
         wideSearch="full"
         wrapperClassName="min-h-full h-auto bg-[#f1f5f9] dark:bg-slate-950 overflow-y-auto flex flex-col no-scrollbar p-2 transition-all duration-500 animate-in fade-in"
+      />
+      
+      <UnclosedTicketsModal 
+        open={isUnclosedModalOpen} 
+        onClose={() => setIsUnclosedModalOpen(false)} 
       />
     </>
   );
