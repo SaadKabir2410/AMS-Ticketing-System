@@ -54,9 +54,14 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
   });
 
   useEffect(() => {
-    if (open) {
+    if (!open) {
+      setForm({ ...EMPTY });
       setErrors({});
-      if (activity) {
+      return;
+    }
+
+    setErrors({});
+    if (activity) {
         setForm({
           ...EMPTY,
           ...activity,
@@ -82,7 +87,6 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
       }).finally(() => {
         setLoadingApis(false);
       });
-    }
   }, [open, activity]);
 
   const setField = (key) => (e) => {

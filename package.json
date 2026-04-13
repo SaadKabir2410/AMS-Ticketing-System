@@ -16,8 +16,11 @@
     "@mui/material": "^7.3.8",
     "@mui/x-data-grid": "^8.27.1",
     "@mui/x-tree-view": "^8.27.2",
+    "@tanstack/react-table": "^8.21.3",
     "axios": "^1.13.5",
     "clsx": "^2.1.1",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
     "flatpickr": "^4.6.13",
     "lucide-react": "^0.575.0",
     "oidc-client-ts": "^3.4.1",
@@ -28,7 +31,8 @@
     "react-oidc-context": "^3.3.0",
     "react-router-dom": "^7.13.0",
     "recharts": "^3.7.0",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "^3.5.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

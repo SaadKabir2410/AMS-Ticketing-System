@@ -3,6 +3,8 @@ import { AlertCircle, X, Plus } from "lucide-react";
 import PremiumErrorAlert from "./PremiumErrorAlert";
 import SiteModal from "./SiteModal";
 import ActivityModal from "./ActivityModal";
+import { useToast } from "./ToastContext";
+import { useAuth } from "../../context/AuthContextHook";
 
 import { usersApi } from "../../services/api/users";
 import { sitesApi } from "../../services/api/sites";
@@ -68,6 +70,10 @@ export default function TicketModal({
   submitting = false,
 }) {
   const isEdit = !!ticket;
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const isAdmin = user?.role?.toLowerCase().includes("admin");
+
   const [activeTab, setActiveTab] = useState("Ticket");
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
@@ -90,11 +96,24 @@ export default function TicketModal({
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [activityToEdit, setActivityToEdit] = useState(null);
 
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showDateWarning, setShowDateWarning] = useState(false);
+
   useEffect(() => {
-    if (open) {
+    if (!open) {
+      setForm({ ...EMPTY });
       setErrors({});
       setActiveTab("Ticket");
-      if (ticket) {
+      setShowExitConfirm(false);
+      setShowDateWarning(false);
+      return;
+    }
+
+    setShowExitConfirm(false);
+    setShowDateWarning(false);
+    setErrors({});
+    setActiveTab("Ticket");
+    if (ticket) {
         setForm({
           ...EMPTY,
           ...ticket,
@@ -115,9 +134,7 @@ export default function TicketModal({
         }).catch(err => console.error("Failed to fetch secure ticket record:", err));
       } else {
         setForm({
-          ...EMPTY,
-          receivedAt: new Date().toISOString().slice(0, 16),
-          cmsTicketAddedOn: new Date().toISOString().slice(0, 16),
+          ...EMPTY
         });
       }
 
@@ -141,7 +158,6 @@ export default function TicketModal({
         .finally(() => {
           setLoadingApis(false);
         });
-    }
   }, [open, ticket]);
 
   // Fetch customers when siteName changes
@@ -214,7 +230,7 @@ export default function TicketModal({
             </div>
             {/* Close icon ONLY closes the modal */}
             <button
-              onClick={onClose}
+              onClick={() => setShowExitConfirm(true)}
               className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-white/5 transition-all outline-none"
             >
               <X size={20} />
@@ -303,14 +319,16 @@ export default function TicketModal({
                           <option key={site} value={site}>{site}</option>
                         ))}
                       </select>
-                      <button
-                        type="button"
-                        onClick={() => setIsSiteModalOpen(true)}
-                        className="p-1.5 px-3 bg-white border border-blue-400 text-blue-500 rounded-lg hover:bg-blue-50 transition-all dark:bg-slate-800"
-                        title="New Site"
-                      >
-                        <Plus size={16} />
-                      </button>
+                      {!isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => setIsSiteModalOpen(true)}
+                          className="p-1.5 px-3 bg-white border border-pink-400 text-pink-500 rounded-lg hover:bg-pink-50 transition-all dark:bg-slate-800"
+                          title="New Site"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      )}
                     </div>
                   </Field>
                 </div>
@@ -334,6 +352,16 @@ export default function TicketModal({
                           <option key={c} value={c}>{c}</option>
                         ))}
                       </select>
+                      {!isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => setIsCustomerModalOpen(true)}
+                          className="p-1.5 px-3 bg-white border border-pink-400 text-pink-500 rounded-lg hover:bg-pink-50 transition-all dark:bg-slate-800"
+                          title="New Customer"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      )}
                     </div>
                   </Field>
                 </div>
@@ -515,16 +543,22 @@ export default function TicketModal({
               <div className="flex flex-col h-full space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Ticket Activities</h3>
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-pink-500 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition shadow-sm border border-none"
-                    onClick={() => {
-                      setActivityToEdit(null);
-                      setIsActivityModalOpen(true);
-                    }}
-                  >
-                    <Plus size={14} /> Add Activity
-                  </button>
+                  {!isAdmin && (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-pink-500 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition shadow-sm border border-none"
+                      onClick={() => {
+                        if (!form.receivedAt) {
+                          setShowDateWarning(true);
+                          return;
+                        }
+                        setActivityToEdit(null);
+                        setIsActivityModalOpen(true);
+                      }}
+                    >
+                      <Plus size={14} /> Add Activity
+                    </button>
+                  )}
                 </div>
 
                 <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800 flex-1">
@@ -692,7 +726,7 @@ export default function TicketModal({
           <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => setShowExitConfirm(true)}
               disabled={submitting}
               className="px-5 py-2.5 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all disabled:opacity-50"
             >
@@ -757,6 +791,57 @@ export default function TicketModal({
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-sm transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Exit Confirmation Modal */}
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 text-center animate-fade-in">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">Warning</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Are you sure to exit without saving data?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowExitConfirm(false);
+                  onClose();
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 font-medium"
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Date Warning Modal */}
+      {showDateWarning && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 text-center animate-fade-in">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">Warning</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Enter Recevied Date before adding an activity
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDateWarning(false)}
+                className="flex-1 py-2.5 rounded-xl bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
+              >
+                ok
               </button>
             </div>
           </div>

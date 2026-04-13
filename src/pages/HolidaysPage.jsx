@@ -278,6 +278,7 @@ export default function HolidaysPage() {
         initialSortDir="desc"
         onRefetchReady={(refetch) => { triggerRefetchRef.current = refetch; }}
         showAuditLog={false}
+        onEditVisibilityCheck={() => false}
 
         onDisable={(row) => holidaysApi.disable(row)
           .then(() => { toast("Holiday disabled"); triggerRefetchRef.current?.(); })

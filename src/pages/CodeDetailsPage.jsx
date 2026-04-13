@@ -305,7 +305,7 @@ export default function CodeDetailsPage() {
   );
 
   return (
-    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar p-6 transition-colors duration-300">
+    <div className="min-h-full h-auto bg-[#f1f5f9] dark:bg-slate-950 flex flex-col no-scrollbar p-6 transition-colors duration-300">
       <nav className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-slate-400 dark:text-slate-500 mb-4 ml-1">
         {breadcrumb.map((b, i) => (
           <span key={i} className="flex items-center gap-2">
@@ -320,7 +320,7 @@ export default function CodeDetailsPage() {
         ))}
       </nav>
 
-      <div className="flex-1 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm shadow-blue-500/5 dark:shadow-none overflow-hidden flex flex-col transition-all duration-300">
+      <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm shadow-blue-500/5 dark:shadow-none overflow-visible flex flex-col transition-all duration-300">
         <div className="px-6 py-6 flex flex-col gap-2 bg-slate-50/50 dark:bg-slate-800 shrink-0">
           <div className="flex items-center justify-between">
             <h1 className="text-[26px] font-black text-slate-800 dark:text-white tracking-tighter leading-none uppercase">Code Details</h1>
@@ -439,9 +439,9 @@ export default function CodeDetailsPage() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col w-full overflow-hidden mt-1">
+        <div className="w-full mt-1">
           {filterRow}
-          <div className="flex-1 overflow-x-auto overflow-y-auto no-scrollbar relative mt-1 min-h-[400px]">
+          <div className="overflow-x-auto relative mt-1 min-h-[400px]">
             {selectedParent ? (
               loadingDetails ? (
                 <div className="flex items-center justify-center h-full text-slate-400 dark:text-slate-500 text-[11px] font-black uppercase tracking-widest">
@@ -452,7 +452,7 @@ export default function CodeDetailsPage() {
                   No records found
                 </div>
               ) : (
-                <div className="overflow-auto h-full pr-[140px]">
+                <div className="h-auto pr-[140px]">
                   <table className="w-full text-[10px] text-slate-800 dark:text-slate-200 border-collapse">
                     <tbody>
                       {filteredData.map((row, i) => (
@@ -531,7 +531,6 @@ export default function CodeDetailsPage() {
       )}
 
       <style>{`
-        body { overflow: hidden !important; }
         .MuiDataGrid-root { border: none !important; width: 100% !important; overflow: hidden !important; }
         .MuiDataGrid-columnHeaders { display: none !important; }
         .MuiDataGrid-cell { border-bottom: none !important; border-right: none !important; }
@@ -542,7 +541,7 @@ export default function CodeDetailsPage() {
         * { -ms-overflow-style: none !important; scrollbar-width: none !important; border-color: transparent !important; }
         .MuiDataGrid-virtualScroller { overflow-x: auto !important; width: 100% !important; }
         .MuiDataGrid-main { border: none !important; }
-        table, tr, td, th { border: none !important; }
+        table, tr, td, th { border: none !important; overflow: visible !important; }
       `}</style>
     </div>
   );

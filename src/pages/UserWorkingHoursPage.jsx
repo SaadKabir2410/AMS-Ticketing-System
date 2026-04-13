@@ -6,7 +6,6 @@ import { Select, MenuItem } from "@mui/material";
 import { ActionsMenu } from "../component/common/ResourcePage";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import UserWorkingHourModal from "../component/common/UserWorkingHourModal";
-import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import { useAuth } from "../context/AuthContextHook";
 import { usePermission } from "../hooks/usePermission";
 import { PermissionGuard } from "../component/common/PermissionGuard";
@@ -27,9 +26,7 @@ export default function UserWorkingHoursPage() {
   const { user } = useAuth();
   const isAdmin = useMemo(() => user?.role?.toLowerCase().includes("admin"), [user]);
 
-  const canCreate = usePermission("Billing.UserWorkingHours.Create");
   const canEdit = usePermission("Billing.UserWorkingHours.Edit");
-  const canDelete = usePermission("Billing.UserWorkingHours.Delete");
   const canViewAuditLog = usePermission("Billing.UserWorkingHours.ViewAuditLog");
 
   const [data, setData] = useState([]);
@@ -41,8 +38,6 @@ export default function UserWorkingHoursPage() {
   // Modals
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
-  const [deleteId, setDeleteId] = useState(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -94,8 +89,8 @@ export default function UserWorkingHoursPage() {
         ))}
       </nav>
 
-      <div className="flex-1 w-full flex flex-col overflow-hidden">
-        <div className="flex-1 bg-white dark:bg-slate-900 h-full w-full border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300">
+      <div className="w-full flex flex-col h-auto">
+        <div className="bg-white dark:bg-slate-900 w-full border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm overflow-visible flex flex-col transition-all duration-300">
 
           {/* Header Section */}
           <div className="px-6 py-6 flex flex-col gap-6 bg-slate-50/50 dark:bg-transparent shrink-0">
@@ -105,19 +100,12 @@ export default function UserWorkingHoursPage() {
                   User Working Hours
                 </h1>
               </div>
-              <PermissionGuard permission="Billing.UserWorkingHours.Create">
-                <button
-                  onClick={handleNew}
-                  className="h-[34px] px-6 btn-flagship rounded-xl text-[10px] font-black  transition-all active:scale-95 shadow-sm uppercase tracking-widest "
-                >
-                  New Working Hour
-                </button>
-              </PermissionGuard>
+
             </div>
           </div>
 
           {/* Table */}
-          <div className="flex-1 flex flex-col w-full h-0 overflow-hidden relative">
+          <div className="flex flex-col w-full h-auto relative">
             {loading ? (
               <div className="flex-1 flex items-center justify-center text-slate-300 dark:text-slate-300 text-[11px] font-black uppercase tracking-[0.2em] animate-pulse">
                 Refreshing data...
@@ -127,15 +115,15 @@ export default function UserWorkingHoursPage() {
                 No working hours found
               </div>
             ) : (
-              <div className="flex-1 overflow-y-auto no-scrollbar">
+              <div className="h-auto">
                 <table className="w-full text-[11px] text-slate-800 dark:text-slate-200 border-collapse">
                   <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 backdrop-blur-md z-10">
                     <tr>
-                      <th className="px-6 py-4 text-left font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">User Name</th>
-                      <th className="px-6 py-4 text-left font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">Week Day</th>
-                      <th className="px-6 py-4 text-left font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">Start Time</th>
-                      <th className="px-6 py-4 text-left font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">End Time</th>
-                      <th className="px-6 py-4 text-right font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">Actions</th>
+                      <th className="px-6 py-4 text-center font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">User Name</th>
+                      <th className="px-6 py-4 text-center font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">Week Day</th>
+                      <th className=" px-6 py-4 text-center font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">Start Time</th>
+                      <th className="px-6 py-4 text-center font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">End Time</th>
+                      <th className="px-6 py-4 text-center font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -144,15 +132,15 @@ export default function UserWorkingHoursPage() {
                         key={row.id || i}
                         className="group transition-colors hover:bg-pink-50 dark:hover:bg-[#ec4899]/5"
                       >
-                        <td className="px-6 py-4 font-bold text-slate-800 dark:text-slate-200 text-[12px]">
-                          <div className="flex items-center gap-3">
+                        <td className="px-6 py-4 text-center font-bold text-slate-800 dark:text-slate-200 text-[12px]">
+                          <div className="flex items-center gap-3 justify-center">
                             <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-[10px]">
                               {(row.userName || 'U').charAt(0).toUpperCase()}
                             </div>
                             {row.userName || "—"}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 text-center">
                           <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                             {(() => {
                               const val = row.weekDay;
@@ -162,30 +150,29 @@ export default function UserWorkingHoursPage() {
                             })()}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-mono font-bold text-[12px]">
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-mono font-bold text-[12px] justify-center">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
                             </svg>
                             {row.startTime || "—"}
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-mono font-bold text-[12px]">
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-mono font-bold text-[12px] justify-center">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
                             </svg>
                             {row.endTime || "—"}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-6 py-4 text-center">
                           <ActionsMenu
                             onEdit={canEdit ? () => handleEdit(row) : undefined}
                             onAuditLog={canViewAuditLog ? () =>
                               navigate(`/audit-logs?primaryKey=${row.id}&entityName=UserWorkingHour`)
                               : undefined
                             }
-                            onDelete={canDelete ? () => { setDeleteId(row.id); } : undefined}
                           />
                         </td>
                       </tr>
@@ -211,7 +198,7 @@ export default function UserWorkingHoursPage() {
                   ))}
                 </select>
               </div>
-              
+
               <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   <span className="text-slate-900 dark:text-white tabular-nums">
@@ -247,9 +234,9 @@ export default function UserWorkingHoursPage() {
                 >
                   <ChevronLeft size={14} strokeWidth={2.5} />
                 </button>
-                
+
                 <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-                
+
                 <div className="px-3 flex items-center gap-2 py-1">
                   <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Page</span>
                   <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
@@ -291,11 +278,9 @@ export default function UserWorkingHoursPage() {
       />
 
       <style>{`
-        body { overflow: hidden !important; }
         .no-scrollbar::-webkit-scrollbar { display: none !important; }
         .no-scrollbar { -ms-overflow-style: none !important; scrollbar-width: none !important; }
-        ::-webkit-scrollbar { display: none !important; }
-        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+        td, tr { overflow: visible !important; }
       `}</style>
     </div>
   );

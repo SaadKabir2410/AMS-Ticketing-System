@@ -2,25 +2,23 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { RotateCcw, ArrowLeft, Search } from "lucide-react";
 import apiClient from "../services/apiClient";
+import * as XLSX from 'xlsx';
 
 export default function UserYearlyReportPage() {
   const navigate = useNavigate();
   const [filters, setFilters] = useState({ year: "" });
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState("");
-  const [reportData, setReportData] = useState(null);
 
   const handleClear = () => {
     setFormError("");
     setFilters({ year: "" });
-    setReportData(null);
   };
 
   const handleGetReport = async () => {
     try {
       setLoading(true);
       setFormError("");
-      setReportData(null);
 
       if (!filters.year) {
         setFormError("Please select a Year before proceeding.");
@@ -36,7 +34,16 @@ export default function UserYearlyReportPage() {
         ? response.data
         : response.data?.items || response.data?.data || [];
 
-      setReportData(data);
+      if (data.length === 0) {
+        setFormError(`No data available for the year ${filters.year}.`);
+        return;
+      }
+
+      // Generate Excel
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Yearly Report");
+      XLSX.writeFile(wb, `User_Yearly_Report_${filters.year}.xlsx`);
 
     } catch (error) {
       setFormError(error?.response?.data?.error?.message || "Failed to generate report.");
@@ -47,8 +54,6 @@ export default function UserYearlyReportPage() {
 
   const filterInputClass =
     "px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-4 focus:ring-[#ec4899]/10 focus:border-[#ec4899] transition-all placeholder:text-slate-400 w-full font-semibold text-slate-700 dark:text-slate-200";
-
-  const reportColumns = reportData?.length > 0 ? Object.keys(reportData[0]) : [];
 
   return (
     <div className="animate-in fade-in duration-500">
@@ -80,7 +85,7 @@ export default function UserYearlyReportPage() {
             </div>
 
             <div className="flex items-center gap-1">
-              {(filters.year || reportData !== null) && (
+              {filters.year && (
                 <button
                   onClick={handleClear}
                   className="btn-flagship !border-rose-500/40 !text-rose-500 hover:!border-rose-500 hover:!bg-rose-50/10"
@@ -94,7 +99,7 @@ export default function UserYearlyReportPage() {
                 disabled={loading}
                 className="btn-flagship"
               >
-                {loading ? "Generating..." : "Get Report"}
+                {loading ? "Generating..." : "Excel Report"}
               </button>
             </div>
           </div>
@@ -128,59 +133,6 @@ export default function UserYearlyReportPage() {
         </div>
 
         {/* Results — only renders after Get Report is clicked */}
-        {reportData !== null && (
-          <div className="border-t border-slate-100 dark:border-slate-800 overflow-auto no-scrollbar max-h-[60vh]">
-            {reportData.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
-                <div className="w-16 h-16 rounded-[24px] bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-300 dark:text-slate-700 border border-slate-100 dark:border-slate-800">
-                  <Search size={24} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight">
-                    No Tickets Found
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                    No data available for the year {filters.year}.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <table className="w-full text-left border-collapse min-w-max">
-                <thead>
-                  <tr className="sticky top-0 z-10">
-                    {reportColumns.map((col) => (
-                      <th
-                        key={col}
-                        className="bg-slate-50 dark:bg-[#1e293b] p-4 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 whitespace-nowrap"
-                      >
-                        {col.replace(/([A-Z])/g, " $1").trim()}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {reportData.map((row, i) => (
-                    <tr
-                      key={i}
-                      className="hover:bg-blue-50/30 dark:hover:bg-blue-500/5 border-b border-slate-50 dark:border-white/[0.02] last:border-0 transition-colors"
-                    >
-                      {reportColumns.map((col) => (
-                        <td
-                          key={col}
-                          className="p-4 text-[11px] font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap border-r border-slate-50 dark:border-white/[0.02] last:border-r-0"
-                        >
-                          {typeof row[col] === "object"
-                            ? <pre className="text-[10px] opacity-60 font-mono">{JSON.stringify(row[col])}</pre>
-                            : String(row[col] ?? "—")}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        )}
       </div>
 
       <style>{`

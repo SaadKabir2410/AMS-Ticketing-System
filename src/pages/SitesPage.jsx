@@ -4,7 +4,6 @@ import SiteModal from "../component/common/SiteModal";
 import SiteDetailModal, {
   SiteDetailContent,
 } from "../component/common/SiteDetailModal";
-import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 
 export default function SitesPage() {
   const columns = [
@@ -43,7 +42,6 @@ export default function SitesPage() {
       DetailComponent={SiteDetailModal}
       SecondaryDetailComponent={SiteDetailContent}
       detailViewMode="modal"
-      DeleteModal={DeleteConfirmModal}
       searchPlaceholder="Search by Site name, OCN, or Location..."
       createButtonText="Create Site"
       breadcrumb={["Home", "Management", "Lookups", "Sites"]}

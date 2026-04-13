@@ -6,7 +6,7 @@ import { DataGrid, getGridStringOperators } from "@mui/x-data-grid";
 import { useResource } from "../hooks/useResource";
 import { useToast } from "./ToastContext";
 import { ArrowLeft, ChevronDown, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Database, Search } from "lucide-react";
-import { Menu, MenuItem, ListItemIcon, ListItemText, Box } from "@mui/material";
+import { Menu, MenuItem, ListItemIcon, ListItemText, Box, Popper, Fade, Paper, ClickAwayListener } from "@mui/material";
 
 export function ActionsMenu({
   onAuditLog,
@@ -42,92 +42,119 @@ export function ActionsMenu({
   const menuItemHover = { py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } };
 
   return (
-    <div>
+    <div className="inline-block relative">
       <button
         onClick={handleClick}
         className={className}
       >
         {actionButtonText} <ChevronDown size={className.includes('h-[22px]') ? 9 : 10} strokeWidth={2.5} className="ml-1" />
       </button>
-      <Menu
-        anchorEl={anchorEl}
+
+      <Popper
         open={open}
-        onClose={handleClose}
-        transformOrigin={{ horizontal: "right", vertical: "top" }}
-        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-        PaperProps={{
-          sx: {
-            mt: 1,
-            borderRadius: "12px",
-            border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
-            bgcolor: isDark ? "#0f172a" : "#ffffff",
-            color: isDark ? "#f1f5f9" : "inherit",
-            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1)",
-            minWidth: 160,
+        anchorEl={anchorEl}
+        placement="bottom-end"
+        transition
+        disablePortal={true} // Forces the menu to stay inside the table row's scroll container
+        modifiers={[
+          {
+            name: 'preventOverflow',
+            enabled: true,
+            options: {
+              boundary: 'viewport',
+            },
           },
-        }}
+          {
+            name: 'flip',
+            enabled: true,
+          },
+        ]}
+        sx={{ zIndex: 1400 }}
       >
-        {onDetail && (
-          <MenuItem onClick={() => { onDetail(); handleClose(); }} sx={menuItemHover}>
-            <ListItemText primary="View" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-          </MenuItem>
-        )}
+        {({ TransitionProps }) => (
+          <Fade {...TransitionProps} timeout={350}>
+            <div className="z-[1400]">
+              <ClickAwayListener onClickAway={handleClose}>
+                <Paper
+                  elevation={8}
+                  sx={{
+                    mt: 1,
+                    borderRadius: "12px",
+                    border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
+                    bgcolor: isDark ? "#0f172a" : "#ffffff",
+                    color: isDark ? "#f1f5f9" : "inherit",
+                    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1)",
+                    minWidth: 160,
+                    overflow: 'hidden'
+                  }}
+                >
+                  <Box sx={{ py: 1 }}>
+                    {onDetail && (
+                      <MenuItem onClick={() => { onDetail(); handleClose(); }} sx={menuItemHover}>
+                        <ListItemText primary="View" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                      </MenuItem>
+                    )}
 
-        {onAuditLog && (
-          <MenuItem onClick={() => { onAuditLog(); handleClose(); }} sx={menuItemHover}>
-            <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-          </MenuItem>
+                    {onAuditLog && (
+                      <MenuItem onClick={() => { onAuditLog(); handleClose(); }} sx={menuItemHover}>
+                        <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                      </MenuItem>
+                    )}
+                    {onPermissions && (
+                      <MenuItem onClick={() => { onPermissions(); handleClose(); }} sx={menuItemHover}>
+                        <ListItemText primary="Permissions" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                      </MenuItem>
+                    )}
+                    {onEdit && (
+                      <MenuItem onClick={() => { onEdit(); handleClose(); }} sx={menuItemHover}>
+                        <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                      </MenuItem>
+                    )}
+                    {onDisable && (
+                      <MenuItem onClick={() => { onDisable(); handleClose(); }} sx={menuItemHover}>
+                        <ListItemText primary="Disable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "warning.main" }} />
+                      </MenuItem>
+                    )}
+                    {onEnable && (
+                      <MenuItem onClick={() => { onEnable(); handleClose(); }} sx={menuItemHover}>
+                        <ListItemText primary="Enable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "success.main" }} />
+                      </MenuItem>
+                    )}
+                    {onDelete && (
+                      <MenuItem onClick={() => { onDelete(); handleClose(); }} sx={menuItemHover}>
+                        <ListItemText primary={deleteButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }} />
+                      </MenuItem>
+                    )}
+                    {customActions?.map((action, idx) => (
+                      <MenuItem
+                        key={action.key || idx}
+                        onClick={() => {
+                          if (action.onClick) action.onClick();
+                          handleClose();
+                        }}
+                        sx={{
+                          ...menuItemHover,
+                          ...(action.className ? {} : {})
+                        }}
+                      >
+                        {action.icon && <ListItemIcon sx={{ minWidth: "32px !important", color: "inherit" }}>{action.icon}</ListItemIcon>}
+                        <ListItemText
+                          primary={action.label}
+                          primaryTypographyProps={{
+                            fontSize: "12px",
+                            fontWeight: 600,
+                            className: action.className || ""
+                          }}
+                        />
+                      </MenuItem>
+                    ))}
+                  </Box>
+                </Paper>
+              </ClickAwayListener>
+            </div>
+          </Fade>
         )}
-        {onPermissions && (
-          <MenuItem onClick={() => { onPermissions(); handleClose(); }} sx={menuItemHover}>
-            <ListItemText primary="Permissions" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-          </MenuItem>
-        )}
-        {onEdit && (
-          <MenuItem onClick={() => { onEdit(); handleClose(); }} sx={menuItemHover}>
-            <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-          </MenuItem>
-        )}
-        {onDisable && (
-          <MenuItem onClick={() => { onDisable(); handleClose(); }} sx={menuItemHover}>
-            <ListItemText primary="Disable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "warning.main" }} />
-          </MenuItem>
-        )}
-        {onEnable && (
-          <MenuItem onClick={() => { onEnable(); handleClose(); }} sx={menuItemHover}>
-            <ListItemText primary="Enable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "success.main" }} />
-          </MenuItem>
-        )}
-        {onDelete && (
-          <MenuItem onClick={() => { onDelete(); handleClose(); }} sx={menuItemHover}>
-            <ListItemText primary={deleteButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }} />
-          </MenuItem>
-        )}
-        {customActions?.map((action, idx) => (
-          <MenuItem
-            key={action.key || idx}
-            onClick={() => {
-              if (action.onClick) action.onClick();
-              handleClose();
-            }}
-            sx={{
-              ...menuItemHover,
-              ...(action.className ? {} : {}) // placeholder for potential style overrides
-            }}
-          >
-            {action.icon && <ListItemIcon sx={{ minWidth: "32px !important", color: "inherit" }}>{action.icon}</ListItemIcon>}
-            <ListItemText
-              primary={action.label}
-              primaryTypographyProps={{
-                fontSize: "12px",
-                fontWeight: 600,
-                className: action.className || ""
-              }}
-            />
-          </MenuItem>
-        ))}
-      </Menu>
-
+      </Popper>
     </div>
   );
 }
@@ -521,6 +548,8 @@ export default function ResourcePage({
         field: "actions",
         headerName: "",
         width: 100,
+        align: "center",
+        headerAlign: "center",
         sortable: false,
         filterable: false,
         renderCell: (params) => {

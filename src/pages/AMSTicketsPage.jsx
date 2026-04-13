@@ -7,10 +7,14 @@ import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import UnclosedTicketsModal from "../component/common/UnclosedTicketsModal";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.css";
+import { useAuth } from "../context/AuthContextHook";
 
 export default function AMSTicketsPage() {
   const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
   const [isUnclosedModalOpen, setIsUnclosedModalOpen] = useState(false);
+  const { user } = useAuth();
+  
+  const isAdmin = user?.role?.toLowerCase().includes("admin");
 
   // Advanced search filter state (only used when isAdvancedSearch = true)
   const [advancedFilters, setAdvancedFilters] = useState({
@@ -34,8 +38,8 @@ export default function AMSTicketsPage() {
   // Function to render inline header filters inside DataGrid columns
   const renderAdvancedHeader = (field, label, type = "text", options = null, listId = null) => {
     return (params) => (
-      <div className="flex flex-col w-full h-full justify-between items-start pt-1 pb-1">
-        <div className="w-full text-left font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis" style={{ fontSize: "10px" }}>
+      <div className="flex flex-col w-full h-full justify-between items-center pt-1 pb-1">
+        <div className="w-full text-center font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis px-1" style={{ fontSize: "10px" }}>
           {label}
         </div>
         {isAdvancedSearch && (
@@ -106,8 +110,8 @@ export default function AMSTicketsPage() {
       key: "ticketReceivedDate", label: "TICKET RECEIVED DATE TIME", flex: 1.5, minWidth: 130,
       render: (val) => val ? new Date(val).toLocaleString() : "—",
       renderHeader: (params) => (
-        <div className="flex flex-col flex-1 min-w-0 h-full justify-between items-start pt-1 pb-1">
-          <div className="w-full text-left font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis pr-6" style={{ fontSize: "10px" }}>
+        <div className="flex flex-col flex-1 min-w-0 h-full justify-between items-center pt-1 pb-1">
+          <div className="w-full text-center font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis px-1" style={{ fontSize: "10px" }}>
             TICKET RECEIVED DATE TIME
           </div>
           {isAdvancedSearch && (
@@ -157,7 +161,7 @@ export default function AMSTicketsPage() {
       ),
       renderHeader: (params) => (
         <div className="flex flex-col flex-1 min-w-0 h-full pt-1 pb-1">
-          <div className="w-full text-center font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis px-1 pr-6" style={{ fontSize: "10px" }}>PRE</div>
+          <div className="w-full text-center font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis px-1" style={{ fontSize: "10px" }}>PRE</div>
         </div>
       )
     },
@@ -165,7 +169,7 @@ export default function AMSTicketsPage() {
       key: "ticketClosedByName", label: "TICKET CLOSED BY", flex: 1.2, minWidth: 90,
       renderHeader: (params) => (
         <div className="flex flex-col flex-1 min-w-0 h-full pt-1 pb-1">
-          <div className="w-full text-left font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis pr-6" style={{ fontSize: "10px" }}>TICKET CLOSED BY</div>
+          <div className="w-full text-center font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis px-1" style={{ fontSize: "10px" }}>TICKET CLOSED BY</div>
         </div>
       )
     },
@@ -173,7 +177,7 @@ export default function AMSTicketsPage() {
       key: "createdBy", label: "CREATED BY", flex: 1.2, minWidth: 90, sortable: false,
       renderHeader: (params) => (
         <div className="flex flex-col flex-1 min-w-0 h-full pt-1 pb-1">
-          <div className="w-full text-left font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis pr-6" style={{ fontSize: "10px" }}>CREATED BY</div>
+          <div className="w-full text-center font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis px-1" style={{ fontSize: "10px" }}>CREATED BY</div>
         </div>
       )
     },
@@ -181,7 +185,7 @@ export default function AMSTicketsPage() {
       key: "activityTotalDuration", label: "TOTAL DURATION (HOURS)", flex: 1.2, minWidth: 90,
       renderHeader: (params) => (
         <div className="flex flex-col flex-1 min-w-0 h-full pt-1 pb-1">
-          <div className="w-full text-left font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis pr-6" style={{ fontSize: "10px" }}>TOTAL DURATION (HOURS)</div>
+          <div className="w-full text-center font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis px-1" style={{ fontSize: "10px" }}>TOTAL DURATION (HOURS)</div>
         </div>
       )
     },
@@ -189,8 +193,8 @@ export default function AMSTicketsPage() {
       key: "cmsTicketClosedOn", label: "CMS TICKET CLOSED ON", flex: 1.5, minWidth: 100,
       render: (val) => val ? new Date(val).toLocaleString() : "—",
       renderHeader: (params) => (
-        <div className="flex flex-col flex-1 min-w-0 h-full justify-between items-start pt-1 pb-1">
-          <div className="w-full text-left font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis pr-6" style={{ fontSize: "10px" }}>
+        <div className="flex flex-col flex-1 min-w-0 h-full justify-between items-center pt-1 pb-1">
+          <div className="w-full text-center font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis px-1" style={{ fontSize: "10px" }}>
             CMS CLOSED ON
           </div>
           {isAdvancedSearch && (
@@ -219,7 +223,7 @@ export default function AMSTicketsPage() {
       render: (val) => val ? new Date(val).toLocaleString() : "—",
       renderHeader: (params) => (
         <div className="flex flex-col flex-1 min-w-0 h-full pt-1 pb-1">
-          <div className="w-full text-left font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis pr-6" style={{ fontSize: "10px" }}>SERVICE CLOSED DATE</div>
+          <div className="w-full text-center font-extrabold uppercase text-black dark:text-white whitespace-nowrap overflow-hidden text-ellipsis px-1" style={{ fontSize: "10px" }}>SERVICE CLOSED DATE</div>
         </div>
       )
     }
@@ -363,7 +367,7 @@ export default function AMSTicketsPage() {
         ModalComponent={TicketModal}
         DetailComponent={TicketDetailModal}
         DeleteModal={DeleteConfirmModal}
-        createButtonText="New Ticket"
+        createButtonText={isAdmin ? null : "New Ticket"}
         customFilterArea={customFilterArea}
         breadcrumb={["Home", "AMS Tickets"]}
         extraParams={extraParams}

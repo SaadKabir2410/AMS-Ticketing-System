@@ -26,49 +26,6 @@ export const NAV_GROUPS = [
     title: "Management",
     links: [
       {
-        id: "mgmt-report",
-        name: "Reports",
-        href: "/reports",
-        icon: FileText,
-        permission: "Billing.Reports",
-        subMenu: [
-          {
-            id: "sub-reports-tickets",
-            name: "AMS Tickets Report",
-            href: "/reports/tickets",
-            permission: "Billing.Reports.AMSTicketsReport",
-          },
-          {
-            id: "sub-reports-general",
-            name: "General Report",
-            href: "/reports/general",
-          },
-          {
-            id: "sub-reports-user-yearly",
-            name: "User Yearly Report",
-            href: "/reports/user-yearly",
-          },
-          {
-            id: "sub-reports-afterhours",
-            name: "After Working Hours Report",
-            href: "/reports/after-hours",
-            permission: "Billing.Reports.AfterWorkingHoursReport",
-          },
-          {
-            id: "sub-reports-commission",
-            name: "Ticket Commission Report",
-            href: "/reports/commission",
-          },
-        ],
-      },
-      {
-        id: "mgmt-jobsheets",
-        name: "Jobsheets",
-        href: "/jobsheets",
-        icon: Briefcase,
-        permission: "Billing.Jobsheets",
-      },
-      {
         id: "lookup-master",
         name: "Lookups",
         icon: Database,
@@ -123,8 +80,53 @@ export const NAV_GROUPS = [
           },
         ],
       },
+
+      {
+        id: "mgmt-report",
+        name: "Reports",
+        href: "/reports",
+        icon: FileText,
+        permission: "Billing.Reports",
+        subMenu: [
+          {
+            id: "sub-reports-tickets",
+            name: "AMS Tickets Report",
+            href: "/reports/tickets",
+            permission: "Billing.Reports.AMSTicketsReport",
+          },
+          {
+            id: "sub-reports-general",
+            name: "General Report",
+            href: "/reports/general",
+          },
+          {
+            id: "sub-reports-user-yearly",
+            name: "User Yearly Report",
+            href: "/reports/user-yearly",
+          },
+          {
+            id: "sub-reports-afterhours",
+            name: "After Working Hours Report",
+            href: "/reports/after-hours",
+            permission: "Billing.Reports.AfterWorkingHoursReport",
+          },
+          {
+            id: "sub-reports-commission",
+            name: "Ticket Commission Report",
+            href: "/reports/commission",
+          },
+        ],
+      },
+      {
+        id: "mgmt-jobsheets",
+        name: "Jobsheets",
+        href: "/jobsheets",
+        icon: Briefcase,
+        permission: "Billing.Jobsheets",
+      },
     ],
   },
+
   {
     title: " Administration",
     links: [
