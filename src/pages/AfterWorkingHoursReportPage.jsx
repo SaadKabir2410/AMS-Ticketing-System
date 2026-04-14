@@ -13,12 +13,12 @@ import usersApi from "../services/api/users";
 import afterWorkingHoursReportApi from "../services/api/afterWorkingHoursReport";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
 
-const STATUS_OPTIONS = ["All", "Open", "Closed", "Void"];
-const STATUS_MAP = {
-  Open: "Opened",
-  Closed: "Closed",
-  Void: "Void",
-};
+const STATUS_OPTIONS = [
+  { label: "All", value: "" },
+  { label: "Open", value: "Open" },
+  { label: "Closed", value: "Closed" },
+  { label: "Void", value: "Void" },
+];
 
 export default function AfterWorkingHoursReportPage() {
   const navigate = useNavigate();
@@ -69,32 +69,42 @@ export default function AfterWorkingHoursReportPage() {
 
       const formatDateStart = (d) => {
         if (!d) return undefined;
-        return d.includes("T") ? d : `${d}T00:00:00.000Z`;
+        return d.includes("T") ? d : `${d}T15:59:59.0000000Z`;
       };
       const formatDateEnd = (d) => {
         if (!d) return undefined;
-        return d.includes("T") ? d : `${d}T23:59:59.999Z`;
+        return d.includes("T") ? d : `${d}T15:59:59.0000000Z`;
       };
+
+      // Get status label string (e.g. "Closed") instead of numeric value
+      const selectedStatus = STATUS_OPTIONS.find(
+        (s) => String(s.value) === String(filters.status)
+      );
+      const statusLabel = selectedStatus?.label;
 
       const rawParams = {
         UserId: filters.user || undefined,
         DateFrom: formatDateStart(filters.dateFrom),
         DateTo: formatDateEnd(filters.dateTo),
-        Status:
-          filters.status !== "All" && filters.status !== ""
-            ? STATUS_MAP[filters.status]
-            : undefined,
+        Status: statusLabel && statusLabel !== "All" ? statusLabel : undefined,
       };
+
       const params = Object.fromEntries(
         Object.entries(rawParams).filter(
-          ([_, v]) => v !== "" && v !== null && v !== undefined,
-        ),
+          ([_, v]) => v !== "" && v !== null && v !== undefined
+        )
       );
 
       const data = await afterWorkingHoursReportApi.getReport(params);
-      console.log("Report Data:", data);
-
-      const dataArray = Array.isArray(data) ? data : (data?.items || []);
+      console.log("Full response:", JSON.stringify(data, null, 2));
+      console.log("Keys:", data ? Object.keys(data) : "data is null/undefined");
+      const dataArray =
+        data?.afterWorkingHoursDetails ||  // PascalCase
+        data?.reportList ||
+        data?.result ||
+        data?.data ||
+        data?.items ||
+        (Array.isArray(data) ? data : []);
 
       if (dataArray.length === 0) {
         setFormError("No data available for the selected filters.");
@@ -247,7 +257,7 @@ export default function AfterWorkingHoursReportPage() {
                 <option value="">All Users</option>
                 {usersList.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.name || u.userName}
+                    {u.userName}
                   </option>
                 ))}
               </select>
@@ -283,7 +293,7 @@ export default function AfterWorkingHoursReportPage() {
                 className={filterInputClass}
               >
                 {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                  <option key={s.label} value={s.value}>{s.label}</option>
                 ))}
               </select>
             </div>
