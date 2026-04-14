@@ -1,20 +1,58 @@
 /**
  * tokenAuth.js
  * Resource Owner Password Credentials (ROPC) login utility.
- *
- * Trades a username + password for an access_token directly with the OpenIddict token endpoint.
  */
 
 const TOKEN_ENDPOINT = "/connect/token";
-const CLIENT_ID = "Billing_React";
+const CLIENT_ID = "Billing_React_Staging";
 const SCOPE = "email profile roles Billing";
 const STORAGE_KEY = "tokenAuth:session";
 
-/**
- * Attempt login with username / password.
- * Returns the parsed token response or throws an Error.
- */
+// ─── Logger ───────────────────────────────────────────────────────────────────
+const IS_PROD = import.meta.env.PROD;
+const LOG_LEVEL = import.meta.env.VITE_LOG_LEVEL ?? (IS_PROD ? "error" : "debug");
+const LOG_ENDPOINT = "/api/logs";
+const LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
+
+async function sendToServer(level, args) {
+  try {
+    await fetch(LOG_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        level,
+        tag: "tokenAuth",
+        message: args
+          .map((a) => (typeof a === "object" ? JSON.stringify(a) : String(a)))
+          .join(" "),
+        timestamp: new Date().toISOString(),
+        url: window.location.href,
+      }),
+    });
+  } catch {
+    // never let logging crash the app
+  }
+}
+
+function log(level, ...args) {
+  if (LEVELS[level] < LEVELS[LOG_LEVEL]) return;
+  console[level]("[tokenAuth]", ...args);
+  if (IS_PROD && LEVELS[level] >= LEVELS["warn"]) {
+    sendToServer(level, args);
+  }
+}
+
+const logger = {
+  debug: (...a) => log("debug", ...a),
+  info: (...a) => log("info", ...a),
+  warn: (...a) => log("warn", ...a),
+  error: (...a) => log("error", ...a),
+};
+// ──────────────────────────────────────────────────────────────────────────────
+
 export async function loginWithPassword(username, password) {
+  logger.info("loginWithPassword() → attempting login", { username });
+
   const body = new URLSearchParams({
     grant_type: "password",
     client_id: CLIENT_ID,
@@ -23,57 +61,104 @@ export async function loginWithPassword(username, password) {
     scope: SCOPE,
   });
 
-  const res = await fetch(TOKEN_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
-  });
+  let res, data;
 
-  const data = await res.json();
+  try {
+    res = await fetch(TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+  } catch (networkErr) {
+    logger.error("Network error — could not reach token endpoint", String(networkErr));
+    throw new Error("Network error — server unreachable. Please try again.");
+  }
+
+  logger.debug("Token endpoint responded", { status: res.status, ok: res.ok });
+
+  // ── Safely parse response (handles 502 HTML pages, empty body, etc.) ────────
+  const contentType = res.headers.get("content-type") ?? "";
+  try {
+    if (contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      logger.error("Non-JSON response from token endpoint", {
+        status: res.status,
+        body: text.slice(0, 300),
+      });
+      data = {};
+    }
+  } catch (parseErr) {
+    logger.error("Failed to parse token endpoint response", String(parseErr));
+    data = {};
+  }
 
   if (!res.ok) {
     const msg =
       data?.error_description ||
       data?.error ||
       `Login failed (HTTP ${res.status})`;
+    logger.warn("Login failed", {
+      status: res.status,
+      error: data?.error,
+      description: data?.error_description,
+    });
     throw new Error(msg);
   }
 
-  // Persist session
   const session = {
     access_token: data.access_token,
     refresh_token: data.refresh_token ?? null,
     expires_at: Date.now() + (data.expires_in || 3600) * 1000,
     token_type: data.token_type ?? "Bearer",
   };
+
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  logger.info("Login successful — session stored", {
+    token_type: session.token_type,
+    expires_in: data.expires_in,
+    has_refresh: !!session.refresh_token,
+  });
 
   return session;
 }
 
-/** Read the current session from storage. */
 export function getSession() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
+    if (!raw) {
+      logger.debug("getSession() → no session in storage");
+      return null;
+    }
+
     const session = JSON.parse(raw);
-    if (session.expires_at - Date.now() < 30_000) return null;
+    const ttl = session.expires_at - Date.now();
+
+    if (ttl < 30_000) {
+      logger.warn("getSession() → session expired or expiring soon", { ttl_ms: ttl });
+      return null;
+    }
+
+    logger.debug("getSession() → valid session", { ttl_ms: ttl });
     return session;
-  } catch {
+  } catch (err) {
+    logger.error("getSession() → failed to parse session from storage", String(err));
     return null;
   }
 }
 
-/** Remove the stored session. */
 export function clearSession() {
+  logger.info("clearSession() → session removed");
   localStorage.removeItem(STORAGE_KEY);
 }
 
-/** Simple helper — returns { isAuthenticated, accessToken } */
 export function getAuthState() {
   const session = getSession();
-  return {
+  const state = {
     isAuthenticated: !!session,
     accessToken: session?.access_token ?? null,
   };
+  logger.debug("getAuthState()", { isAuthenticated: state.isAuthenticated });
+  return state;
 }
