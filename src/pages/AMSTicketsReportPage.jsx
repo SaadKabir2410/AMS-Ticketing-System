@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowLeftRight, RotateCcw } from "lucide-react";
+import { useAuth } from "../context/AuthContextHook";
+import { useToast } from "../component/common/ToastContext";
+import { ArrowLeft, ArrowLeftRight, RotateCcw, MoreVertical } from "lucide-react";
 import {
   Autocomplete,
   TextField,
@@ -26,9 +28,9 @@ import { saveAs } from "file-saver";
 
 const STATUS_OPTIONS = [
   { label: "All", value: "" },
-  { label: "Open", value: 0 },
-  { label: "Closed", value: 1 },
-  { label: "Void", value: 2 },
+  { label: "Open", value: 1 },
+  { label: "Closed", value: 2 },
+  { label: "Void", value: 3 },
 ];
 
 const TICKET_TYPES = [
@@ -72,9 +74,14 @@ export default function AMSTicketsReportPage() {
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const isAdmin = user?.role?.toLowerCase().includes("admin");
+
   const [selectedRow, setSelectedRow] = useState(null);
 
   const handleActionClick = (event, row) => {
+    event.stopPropagation();
     setAnchorEl(event.currentTarget);
     setSelectedRow(row);
   };
@@ -105,12 +112,16 @@ export default function AMSTicketsReportPage() {
       switch (action) {
         case "Close":
           await amsTicketApi.close(ticketId, fullTicket);
+          toast("Ticket closed successfully");
           break;
         case "Open":
-          await amsTicketApi.isAnyOpen(fullTicket);
+        case "Re-Open":
+          await amsTicketApi.reOpen(ticketId, fullTicket);
+          toast("Ticket re-opened successfully");
           break;
         case "Void":
           await amsTicketApi.delete(ticketId, fullTicket);
+          toast("Ticket voided successfully");
           break;
         case "Re-Open":
           await amsTicketApi.reOpen(ticketId, fullTicket);
@@ -122,9 +133,18 @@ export default function AMSTicketsReportPage() {
       handleGetReport(false);
     } catch (error) {
       console.error("Failed to update status:", error);
+      toast(error.message || "Failed to update status", "error");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAuditLog = () => {
+    const row = selectedRow;
+    handleActionClose();
+    if (!row) return;
+
+    navigate(`/audit-logs?primaryKey=${row.id || row.ticketNo}&entityName=AMSTicket`);
   };
 
   useEffect(() => {
@@ -424,7 +444,7 @@ export default function AMSTicketsReportPage() {
               onClick={(e) => handleActionClick(e, info.row.original)}
               className="hover:bg-pink-50 text-slate-400 hover:text-pink-600 transition-colors"
             >
-              <ArrowLeftRight size={14} />
+              <MoreVertical size={14} />
             </IconButton>
           </div>
         ),
@@ -820,7 +840,7 @@ export default function AMSTicketsReportPage() {
           },
         }}
       >
-        {["Close", "Open", "Void", "Re-Open"].map((action) => (
+        {!isAdmin && ["Close", "Open", "Void", "Re-Open"].map((action) => (
           <MenuItem
             key={action}
             onClick={() => handleStatusUpdate(action)}
@@ -829,6 +849,14 @@ export default function AMSTicketsReportPage() {
             {action}
           </MenuItem>
         ))}
+        {isAdmin && (
+          <MenuItem
+            onClick={handleAuditLog}
+            sx={{ fontSize: "12px", fontWeight: 600, color: "primary.main", borderTop: "1px solid", borderColor: "divider" }}
+          >
+            Audit Log
+          </MenuItem>
+        )}
       </Menu>
     </div>
   );

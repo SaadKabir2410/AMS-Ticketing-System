@@ -16,6 +16,7 @@ export default function CodeModal({
   onClose,
   onSubmit, // Function called after successful form validation and payload building
   item = null, // If item is passed, we fetch its full details externally or pass via props
+  readOnly = false,
 }) {
   const isEdit = !!item;
   const [formData, setFormData] = useState(EMPTY_FORM);
@@ -58,6 +59,7 @@ export default function CodeModal({
   }, [open, isEdit, item]);
 
   const handleChange = (e) => {
+    if (readOnly) return;
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -69,6 +71,7 @@ export default function CodeModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (readOnly) return;
 
     // Frontend strict validation
     if (!formData.lookupCode || formData.lookupCode.trim().length !== 3) {
@@ -134,7 +137,7 @@ export default function CodeModal({
     >
       <div className="flex items-center justify-between px-6 pt-5 pb-3">
         <h2 className="text-lg font-medium text-slate-800 dark:text-white">
-          {isEdit ? "Edit Code" : "Add Code"}
+          {readOnly ? "View Code" : (isEdit ? "Edit Code" : "Add Code")}
         </h2>
         <IconButton onClick={onClose} size="small" disabled={submitting}>
           <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,11 +169,13 @@ export default function CodeModal({
               maxLength={3}
               required
               className={getInputClass()}
-              disabled={submitting || isEdit}
+              disabled={submitting || isEdit || readOnly}
             />
-            <small style={{ color: "gray" }} className="ml-1 text-[10px]">
-              {isEdit ? "Lookup Code cannot be changed." : "Must be exactly 3 characters."}
-            </small>
+            {!readOnly && (
+              <small style={{ color: "gray" }} className="ml-1 text-[10px]">
+                {isEdit ? "Lookup Code cannot be changed." : "Must be exactly 3 characters."}
+              </small>
+            )}
           </div>
 
           {/* Description */}
@@ -184,7 +189,7 @@ export default function CodeModal({
               onChange={handleChange}
               required
               className={getInputClass(true)}
-              disabled={submitting}
+              disabled={submitting || readOnly}
             />
           </div>
 
@@ -203,7 +208,7 @@ export default function CodeModal({
               onChange={handleChange}
               required
               className={getInputClass()}
-              disabled={submitting}
+              disabled={submitting || readOnly}
             />
           </div>
 
@@ -215,19 +220,21 @@ export default function CodeModal({
           type="button"
           onClick={onClose}
           disabled={submitting}
-          className="flex-1 btn-flagship h-[38px]! text-[11px]! border-slate-200! dark:border-slate-700! text-slate-500! hover:bg-slate-50! dark:hover:bg-white/5!"
+          className={`${readOnly ? "w-full" : "flex-1"} btn-flagship h-[38px]! text-[11px]! border-slate-200! dark:border-slate-700! text-slate-500! hover:bg-slate-50! dark:hover:bg-white/5!`}
         >
-          Cancel
+          {readOnly ? "Close" : "Cancel"}
         </button>
-        <button
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="flex-1 btn-flagship h-[38px]! text-[11px]!"
-        >
-          {submitting ? (
-            <div className="w-4 h-4 border-2 border-white! border-t-transparent rounded-full animate-spin"></div>
-          ) : isEdit ? "Save Changes" : "Create"}
-        </button>
+        {!readOnly && (
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="flex-1 btn-flagship h-[38px]! text-[11px]!"
+          >
+            {submitting ? (
+              <div className="w-4 h-4 border-2 border-white! border-t-transparent rounded-full animate-spin"></div>
+            ) : isEdit ? "Save Changes" : "Create"}
+          </button>
+        )}
       </div>
     </Dialog>
   );

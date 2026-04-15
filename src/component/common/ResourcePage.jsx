@@ -28,9 +28,11 @@ export function ActionsMenu({
   const open = Boolean(anchorEl);
 
   const handleClick = (event) => {
+    event.stopPropagation();
     setAnchorEl(event.currentTarget);
   };
-  const handleClose = () => {
+  const handleClose = (e) => {
+    if (e) e.stopPropagation();
     setAnchorEl(null);
   };
 
@@ -50,111 +52,85 @@ export function ActionsMenu({
         {actionButtonText} <ChevronDown size={className.includes('h-[22px]') ? 9 : 10} strokeWidth={2.5} className="ml-1" />
       </button>
 
-      <Popper
-        open={open}
+      <Menu
         anchorEl={anchorEl}
-        placement="bottom-end"
-        transition
-        disablePortal={true} // Forces the menu to stay inside the table row's scroll container
-        modifiers={[
-          {
-            name: 'preventOverflow',
-            enabled: true,
-            options: {
-              boundary: 'viewport',
-            },
-          },
-          {
-            name: 'flip',
-            enabled: true,
-          },
-        ]}
-        sx={{ zIndex: 1400 }}
+        open={open}
+        onClose={handleClose}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+        PaperProps={{
+          elevation: 8,
+          sx: {
+            mt: 0.5,
+            borderRadius: "12px",
+            border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
+            bgcolor: isDark ? "#0f172a" : "#ffffff",
+            color: isDark ? "#f1f5f9" : "inherit",
+            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1)",
+            minWidth: 160,
+            overflow: 'hidden'
+          }
+        }}
       >
-        {({ TransitionProps }) => (
-          <Fade {...TransitionProps} timeout={350}>
-            <div className="z-[1400]">
-              <ClickAwayListener onClickAway={handleClose}>
-                <Paper
-                  elevation={8}
-                  sx={{
-                    mt: 1,
-                    borderRadius: "12px",
-                    border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
-                    bgcolor: isDark ? "#0f172a" : "#ffffff",
-                    color: isDark ? "#f1f5f9" : "inherit",
-                    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1)",
-                    minWidth: 160,
-                    overflow: 'hidden'
-                  }}
-                >
-                  <Box sx={{ py: 1 }}>
-                    {onDetail && (
-                      <MenuItem onClick={() => { onDetail(); handleClose(); }} sx={menuItemHover}>
-                        <ListItemText primary="View" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-                      </MenuItem>
-                    )}
+        <Box sx={{ py: 0.5 }}>
+          {onDetail && (
+            <MenuItem onClick={() => { onDetail(); handleClose(); }} sx={menuItemHover}>
+              <ListItemText primary="View" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+            </MenuItem>
+          )}
 
-                    {onAuditLog && (
-                      <MenuItem onClick={() => { onAuditLog(); handleClose(); }} sx={menuItemHover}>
-                        <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-                      </MenuItem>
-                    )}
-                    {onPermissions && (
-                      <MenuItem onClick={() => { onPermissions(); handleClose(); }} sx={menuItemHover}>
-                        <ListItemText primary="Permissions" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-                      </MenuItem>
-                    )}
-                    {onEdit && (
-                      <MenuItem onClick={() => { onEdit(); handleClose(); }} sx={menuItemHover}>
-                        <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-                      </MenuItem>
-                    )}
-                    {onDisable && (
-                      <MenuItem onClick={() => { onDisable(); handleClose(); }} sx={menuItemHover}>
-                        <ListItemText primary="Disable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "warning.main" }} />
-                      </MenuItem>
-                    )}
-                    {onEnable && (
-                      <MenuItem onClick={() => { onEnable(); handleClose(); }} sx={menuItemHover}>
-                        <ListItemText primary="Enable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "success.main" }} />
-                      </MenuItem>
-                    )}
-                    {onDelete && (
-                      <MenuItem onClick={() => { onDelete(); handleClose(); }} sx={menuItemHover}>
-                        <ListItemText primary={deleteButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }} />
-                      </MenuItem>
-                    )}
-                    {customActions?.map((action, idx) => (
-                      <MenuItem
-                        key={action.key || idx}
-                        onClick={() => {
-                          if (action.onClick) action.onClick();
-                          handleClose();
-                        }}
-                        sx={{
-                          ...menuItemHover,
-                          ...(action.className ? {} : {})
-                        }}
-                      >
-                        {action.icon && <ListItemIcon sx={{ minWidth: "32px !important", color: "inherit" }}>{action.icon}</ListItemIcon>}
-                        <ListItemText
-                          primary={action.label}
-                          primaryTypographyProps={{
-                            fontSize: "12px",
-                            fontWeight: 600,
-                            className: action.className || ""
-                          }}
-                        />
-                      </MenuItem>
-                    ))}
-                  </Box>
-                </Paper>
-              </ClickAwayListener>
-            </div>
-          </Fade>
-        )}
-      </Popper>
+          {onAuditLog && (
+            <MenuItem onClick={() => { onAuditLog(); handleClose(); }} sx={menuItemHover}>
+              <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+            </MenuItem>
+          )}
+          {onPermissions && (
+            <MenuItem onClick={() => { onPermissions(); handleClose(); }} sx={menuItemHover}>
+              <ListItemText primary="Permissions" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+            </MenuItem>
+          )}
+          {onEdit && (
+            <MenuItem onClick={() => { onEdit(); handleClose(); }} sx={menuItemHover}>
+              <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+            </MenuItem>
+          )}
+          {onDisable && (
+            <MenuItem onClick={() => { onDisable(); handleClose(); }} sx={menuItemHover}>
+              <ListItemText primary="Disable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "warning.main" }} />
+            </MenuItem>
+          )}
+          {onEnable && (
+            <MenuItem onClick={() => { onEnable(); handleClose(); }} sx={menuItemHover}>
+              <ListItemText primary="Enable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "success.main" }} />
+            </MenuItem>
+          )}
+          {onDelete && (
+            <MenuItem onClick={() => { onDelete(); handleClose(); }} sx={menuItemHover}>
+              <ListItemText primary={deleteButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }} />
+            </MenuItem>
+          )}
+          {customActions?.map((action, idx) => (
+            <MenuItem
+              key={action.key || idx}
+              onClick={() => {
+                if (action.onClick) action.onClick();
+                handleClose();
+              }}
+              sx={menuItemHover}
+            >
+              {action.icon && <ListItemIcon sx={{ minWidth: "32px !important", color: "inherit" }}>{action.icon}</ListItemIcon>}
+              <ListItemText
+                primary={action.label}
+                primaryTypographyProps={{
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  className: action.className || ""
+                }}
+              />
+            </MenuItem>
+          ))}
+        </Box>
+      </Menu>
     </div>
   );
 }
@@ -571,7 +547,7 @@ export default function ResourcePage({
                   : null
               }
               onAuditLog={
-                showAuditLog && apiObject.id !== "auditLogs"
+                showAuditLog && apiObject.id !== "auditLogs" && auth.user?.role?.toLowerCase()?.includes("admin")
                   ? () =>
                     navigate(
                       `/audit-logs?primaryKey=${params.row.id}&entityName=${entityName || title.slice(0, -1)}`,
@@ -579,7 +555,7 @@ export default function ResourcePage({
                   : null
               }
               onEdit={
-                (onEdit || ModalComponent) && (!onEditVisibilityCheck || onEditVisibilityCheck(params.row))
+                (onEdit || ModalComponent) && (!onEditVisibilityCheck || onEditVisibilityCheck(params.row)) && !auth.user?.role?.toLowerCase()?.includes("admin")
                   ? () => {
                     if (onEdit) onEdit(params.row);
                     else {
@@ -603,7 +579,7 @@ export default function ResourcePage({
                   : null
               }
               onDelete={
-                (onDelete || DeleteModal) && (!onDeleteVisibilityCheck || onDeleteVisibilityCheck(params.row))
+                (onDelete || DeleteModal) && (!onDeleteVisibilityCheck || onDeleteVisibilityCheck(params.row)) && !auth.user?.role?.toLowerCase()?.includes("admin")
                   ? () => {
                     if (onDelete) onDelete(params.row);
                     else {
@@ -637,6 +613,7 @@ export default function ResourcePage({
     filterField,
     filterValue,
     customActions,
+    auth.user,
   ]);
 
 
