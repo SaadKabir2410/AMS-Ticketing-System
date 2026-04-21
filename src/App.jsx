@@ -32,11 +32,11 @@ import MyAccountPage from "./pages/MyAccountPage";
 
 function Layout({ collapsed, setCollapsed }) {
   return (
-    <div className="flex h-screen w-screen dark:bg-slate-950 bg-slate-50 text-slate-900 dark:text-white transition-colors duration-300">
+    <div className="flex h-screen w-screen dark:bg-slate-950 bg-slate-100 text-slate-900 dark:text-white transition-colors duration-300">
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <div className="flex flex-col flex-1 h-screen overflow-hidden">
         <Navbar Collapsed={collapsed} setCollapsed={setCollapsed} />
-        <main className="flex-1 overflow-auto p-6 bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+        <main className="flex-1 overflow-hidden p-6 bg-slate-100 dark:bg-slate-950 transition-colors duration-300">
           <Routes>
             {/* Dashboard / Home */}
             <Route path="/" element={<AMSTicketsPage />} />
@@ -63,21 +63,21 @@ function Layout({ collapsed, setCollapsed }) {
 
             {/* Management - Reports */}
             <Route
-                path="/reports/general"
-                element={
-                  <PermissionGuard permission="Billing.Reports">
-                    <GeneralReportPage />
-                  </PermissionGuard>
-                }
-              />
+              path="/reports/general"
+              element={
+                <PermissionGuard permission="Billing.Reports">
+                  <GeneralReportPage />
+                </PermissionGuard>
+              }
+            />
             <Route
-                path="/reports/user-yearly"
-                element={
-                  <PermissionGuard permission="Billing.Reports">
-                    <UserYearlyReportPage />
-                  </PermissionGuard>
-                }
-              />
+              path="/reports/user-yearly"
+              element={
+                <PermissionGuard permission="Billing.Reports">
+                  <UserYearlyReportPage />
+                </PermissionGuard>
+              }
+            />
             <Route
               path="/reports/tickets"
               element={
