@@ -192,7 +192,8 @@ export default function ResourcePage({
   containerClassName = "bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl backdrop-blur-sm shadow-blue-500/5 dark:shadow-none overflow-hidden flex flex-col flex-1 transition-all duration-300",
   hideHeader = false,
   customActions = [],
-  wrapperClassName = "h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar p-6 transition-all duration-500 animate-in fade-in",
+  wrapperClassName = "h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar p-2 sm:p-6 transition-all duration-500 animate-in fade-in",
+
 }) {
 
 
@@ -643,8 +644,9 @@ export default function ResourcePage({
       <div className={containerClassName}>
         {/* Header Section */}
         {!hideHeader && (
-          <div className="px-6 py-6 bg-slate-50/50 dark:bg-transparent shrink-0">
-            <div className="flex items-center justify-between">
+          <div className="px-4 py-4 sm:px-6 sm:py-6 bg-slate-50/50 dark:bg-transparent shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => navigate(-1)}
@@ -676,8 +678,9 @@ export default function ResourcePage({
 
         {/* Toolbar Section */}
         {(showSearchBar || showFilterBar || customFilterArea) && (
-          <div className="relative z-20 px-6 py-6 flex items-center justify-between bg-transparent shrink-0 flex-wrap gap-6">
-            <div className={`flex items-center gap-6 flex-1 min-w-[300px] ${wideSearch === "full" ? "max-w-none" : (wideSearch ? "max-w-2xl" : "max-w-[400px]")}`}>
+          <div className="relative z-20 px-4 py-4 sm:px-6 sm:py-6 flex items-center justify-between bg-transparent shrink-0 flex-wrap gap-4 sm:gap-6">
+            <div className={`flex items-center gap-4 sm:gap-6 flex-1 min-w-[200px] ${wideSearch === "full" ? "max-w-none" : (wideSearch ? "max-w-2xl" : "max-w-[400px]")}`}>
+
               {showSearchBar && (
                 <div className="relative w-full group">
                   <input

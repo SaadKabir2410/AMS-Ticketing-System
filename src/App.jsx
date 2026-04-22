@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
+import clsx from "clsx";
 import { useAuth } from "./context/AuthContextHook";
+
 import { usePermissionContext } from "./context/PermissionContext";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "./component/layout/Navbar";
@@ -31,12 +33,34 @@ import SettingsPage from "./pages/SettingsPage";
 import MyAccountPage from "./pages/MyAccountPage";
 
 function Layout({ collapsed, setCollapsed }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
-    <div className="flex h-screen w-screen dark:bg-slate-950 bg-slate-100 text-slate-900 dark:text-white transition-colors duration-300">
+    <div className="flex h-screen w-screen dark:bg-slate-950 bg-slate-100 text-slate-900 dark:text-white transition-colors duration-300 relative">
+      {/* Mobile Sidebar Overlay */}
+      {mobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] lg:hidden animate-in fade-in duration-300"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar for Mobile */}
+      <div className={clsx(
+        "fixed inset-y-0 left-0 z-[70] transition-transform duration-300 lg:hidden",
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <Sidebar collapsed={false} setCollapsed={() => {}} isMobile={true} closeMobile={() => setMobileOpen(false)} />
+      </div>
+
+      {/* Sidebar for Desktop */}
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+
       <div className="flex flex-col flex-1 h-screen overflow-hidden">
-        <Navbar Collapsed={collapsed} setCollapsed={setCollapsed} />
-        <main className="flex-1 overflow-hidden p-6 bg-slate-100 dark:bg-slate-950 transition-colors duration-300">
+        <Navbar setCollapsed={setCollapsed} setMobileOpen={setMobileOpen} />
+
+        <main className="flex-1 overflow-hidden p-3 sm:p-6 bg-slate-100 dark:bg-slate-950 transition-colors duration-300">
+
           <Routes>
             {/* Dashboard / Home */}
             <Route path="/" element={<AMSTicketsPage />} />
@@ -240,6 +264,7 @@ export default function App() {
             <div className="h-full btn-flagship animate-[loading_1.5s_ease-in-out_infinite]"></div>
           </div>
         </div>
+
         <style>{`
           @keyframes loading {
             0% { transform: translateX(-100%); }

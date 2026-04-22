@@ -25,7 +25,7 @@ function IconBtn({
   );
 }
 
-export default function Navbar({ setCollapsed }) {
+export default function Navbar({ setMobileOpen }) {
   const { dark, setDark } = useTheme();
   const { user, logout } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
@@ -34,8 +34,14 @@ export default function Navbar({ setCollapsed }) {
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between gap-4 px-6 py-3 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 mx-6 mt-6 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
       <div className="flex items-center gap-4">
-        {/* Left side actions (if any) can go here */}
+        <IconBtn 
+          onClick={() => setMobileOpen(true)}
+          className="lg:hidden p-2 -ml-2"
+        >
+          <MenuIcon size={20} className="text-slate-600 dark:text-slate-400" />
+        </IconBtn>
       </div>
+
 
       <div className="flex items-center gap-1.5 ml-auto">
         <IconBtn

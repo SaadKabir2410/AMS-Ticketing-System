@@ -5,7 +5,8 @@ import { useAuth } from "../../context/AuthContextHook";
 import { usePermissionContext } from "../../context/PermissionContext";
 import { ChevronDown, Menu as MenuIcon, Search, Settings, Mail, LayoutDashboard, Component, Map, FileText, Briefcase, Database, Shield, ChevronLeft, ChevronRight } from "lucide-react";
 
-export default function Sidebar({ collapsed, setCollapsed }) {
+export default function Sidebar({ collapsed, setCollapsed, isMobile, closeMobile }) {
+
   const { user } = useAuth();
   const { hasPermission, isLoading } = usePermissionContext();
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,11 +47,23 @@ export default function Sidebar({ collapsed, setCollapsed }) {
   return (
     <aside
       className={clsx(
-        "flex mt-2 mb-2 flex-col h-[calc(100vh-1rem)] sticky top-0 transition-all duration-300 z-50",
-        "bg-gradient-to-b from-[#111827] via-[#0a0f1c] to-black rounded-tr-xl rounded-br-xl overflow-hidden shrink-0",
-        collapsed ? "w-[85px]" : "w-[250px]"
+        "flex flex-col h-full transition-all duration-300 z-50",
+        "bg-gradient-to-b from-[#111827] via-[#0a0f1c] to-black overflow-hidden shrink-0",
+        // Desktop behavior
+        !isMobile ? "hidden lg:flex mt-2 mb-2 h-[calc(100vh-1rem)] sticky top-0 rounded-tr-xl rounded-br-xl" : "w-[280px]",
+        !isMobile && (collapsed ? "w-[85px]" : "w-[250px]")
       )}
     >
+      {isMobile && (
+        <button 
+          onClick={closeMobile}
+          className="absolute top-4 right-4 text-slate-400 hover:text-white lg:hidden z-[60]"
+        >
+          <ChevronLeft size={24} />
+        </button>
+      )}
+
+
       {/* Header Section */}
       <div className={clsx("flex flex-col pt-8 pb-4 gap-6", collapsed ? "items-center" : "px-4")}>
         <div className={clsx("flex items-center w-full", collapsed ? "justify-center" : "justify-between gap-3")}>
@@ -126,7 +139,10 @@ function NavItem({ item, collapsed }) {
     <li className="relative block">
       <a
         href={item.href}
-        onClick={handleClick}
+        onClick={(e) => {
+          handleClick(e);
+          if (!hasSubMenu && isMobile) closeMobile();
+        }}
         className={clsx(
           "flex items-center transition-all duration-300 group relative",
           collapsed
@@ -136,6 +152,7 @@ function NavItem({ item, collapsed }) {
           "hover:bg-white/10"
         )}
       >
+
         {Icon && (
           <div className="flex items-center justify-center shrink-0 w-6 h-6">
             <Icon
@@ -192,6 +209,7 @@ function NavItem({ item, collapsed }) {
               <li key={sub.id}>
                 <a
                   href={sub.href}
+                  onClick={() => isMobile && closeMobile()}
                   className={clsx(
                     "block px-4 py-2 text-[13px] font-bold transition-all",
                     subActive ? "text-white" : "text-slate-200 hover:text-white"
@@ -199,6 +217,7 @@ function NavItem({ item, collapsed }) {
                 >
                   {sub.name}
                 </a>
+
               </li>
             );
           })}

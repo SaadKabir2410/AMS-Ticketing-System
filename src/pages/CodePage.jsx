@@ -332,8 +332,9 @@ export default function CodePage() {
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="flex-1 w-full bg-white dark:bg-[#161920] shadow-[0_8px_30px_rgba(0,0,0,0.06)] flex flex-col relative rounded-3xl overflow-hidden"      >
         {/* ── Header ── */}
-        <div className="flex flex-col gap-6 py-6 px-6 md:px-8 transition-colors">
-          <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-6 py-6 px-4 md:px-8 transition-colors">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
             <div className="flex items-center gap-4">
               <motion.button
                 whileHover={{ scale: 1.1, x: -2 }}

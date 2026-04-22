@@ -256,7 +256,8 @@ export default function AMSTicketsPage() {
   }, []);
 
   const customFilterArea = (
-    <div className="flex items-center relative gap-4">
+    <div className="flex flex-col sm:flex-row sm:items-center relative gap-4">
+
       {/* Hidden Datalists for Combobox behavior */}
       <datalist id="site-names">
         {sites.map(s => <option key={s.id} value={s.name} />)}
