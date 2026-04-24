@@ -322,7 +322,7 @@ export default function CodePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="h-full bg-transparent dark:bg-[rgb(172,172,172)] p-1 pb-[10px] flex flex-col relative overflow-hidden"
+      className="h-full bg-transparent dark:bg-[rgb(172,172,172)] p-1 pb-[10px] flex flex-col relative overflow-auto"
     >
 
       {/* ── Unified Full-Screen Card ── */}
@@ -419,7 +419,7 @@ export default function CodePage() {
         </div>
 
         {/* ── Table Area ── */}
-        <div className="flex-1 w-full overflow-hidden no-scrollbar">
+        <div className="flex-1 w-full overflow-auto no-scrollbar">
           <div className="overflow-x-auto px-4 pb-4">
             <table className="w-full text-left border-separate border-spacing-y-0">
               <thead>

@@ -107,7 +107,7 @@ export default function TaskCategoryProjectsPage() {
   const breadcrumb = ["Home", "Management", "Lookups", "Task Category Projects"];
 
   return (
-    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar p-6 transition-all duration-300">
+    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-auto flex flex-col no-scrollbar p-6 transition-all duration-300">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-400 mb-4 ml-1">
         {breadcrumb.map((b, i) => (
@@ -123,8 +123,8 @@ export default function TaskCategoryProjectsPage() {
         ))}
       </nav>
 
-      <div className="flex-1 w-full flex flex-col overflow-hidden">
-        <div className="flex-1 bg-white dark:bg-slate-900 h-full w-full border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm overflow-hidden flex flex-col transition-all duration-300">
+      <div className="flex-1 w-full flex flex-col overflow-auto">
+        <div className="flex-1 bg-white dark:bg-slate-900 h-full w-full border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm overflow-auto flex flex-col transition-all duration-300">
 
           {/* Header */}
           <div className="px-6 py-6 flex flex-col gap-6 bg-slate-50/50 dark:bg-transparent shrink-0">

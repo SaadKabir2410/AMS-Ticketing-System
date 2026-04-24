@@ -468,8 +468,8 @@ export default function AMSTicketsReportPage() {
     "px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full";
 
   return (
-    <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-500">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+    <div className="h-full flex flex-col overflow-auto animate-in fade-in duration-500">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-auto flex flex-col">
         {/* Header Section */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
           <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3">

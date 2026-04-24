@@ -59,7 +59,7 @@ function Layout({ collapsed, setCollapsed }) {
       <div className="flex flex-col flex-1 h-screen overflow-hidden">
         <Navbar setCollapsed={setCollapsed} setMobileOpen={setMobileOpen} />
 
-        <main className="flex-1 overflow-hidden p-3 sm:p-6 bg-slate-100 dark:bg-slate-950 transition-colors duration-300">
+        <main className="flex-1 overflow-auto p-3 sm:p-6 bg-slate-100 dark:bg-slate-950 transition-colors duration-300">
 
           <Routes>
             {/* Dashboard / Home */}
@@ -233,7 +233,15 @@ function Layout({ collapsed, setCollapsed }) {
 }
 
 export default function App() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("sidebar-collapsed", JSON.stringify(collapsed));
+  }, [collapsed]);
+
   const navigate = useNavigate();
   const { isLoading } = usePermissionContext();
 

@@ -192,7 +192,7 @@ export default function ResourcePage({
   containerClassName = "bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl backdrop-blur-sm shadow-blue-500/5 dark:shadow-none overflow-hidden flex flex-col flex-1 transition-all duration-300",
   hideHeader = false,
   customActions = [],
-  wrapperClassName = "h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar p-2 sm:p-6 transition-all duration-500 animate-in fade-in",
+  wrapperClassName = "h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-auto flex flex-col no-scrollbar p-2 sm:p-6 transition-all duration-500 animate-in fade-in",
 
 }) {
 

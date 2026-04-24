@@ -209,8 +209,8 @@ export default function AuditLogsPage() {
   );
 
   return (
-    <div className="h-full flex flex-col overflow-hidden animate-in fade-in duration-500">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-hidden flex flex-col flex-1">
+    <div className="h-full flex flex-col overflow-auto animate-in fade-in duration-500">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-auto flex flex-col flex-1">
         {/* Header Section */}
         <div className="px-8 py-6 bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
           <div className="flex items-center justify-between mb-4">
@@ -256,7 +256,7 @@ export default function AuditLogsPage() {
         </div>
 
         {/* Table Area (Flush to the card) */}
-        <div className="flex-1 overflow-hidden min-h-0 relative">
+        <div className="flex-1 overflow-auto min-h-0 relative">
           <CollapsibleAuditLogTable
             data={data}
             loading={loading}

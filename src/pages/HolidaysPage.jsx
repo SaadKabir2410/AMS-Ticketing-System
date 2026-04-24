@@ -258,7 +258,7 @@ export default function HolidaysPage() {
   }, [filters]);
 
   return (
-    <div className="h-full flex flex-col bg-[#f1f5f9] dark:bg-slate-950 transition-colors duration-300 overflow-hidden no-scrollbar">
+    <div className="h-full flex flex-col bg-[#f1f5f9] dark:bg-slate-950 transition-colors duration-300 overflow-auto no-scrollbar">
       <ResourcePage
         title="Holidays"
         apiObject={holidaysApi}
@@ -291,7 +291,7 @@ export default function HolidaysPage() {
         onDisableVisibilityCheck={(row) => !row?.isDeleted}   // show Disable only when NOT deleted
         onEnableVisibilityCheck={(row) => !!row?.isDeleted}    // show Enable only when deleted
 
-        containerClassName="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm overflow-hidden flex flex-col flex-1 transition-all duration-300"
+        containerClassName="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm overflow-auto flex flex-col flex-1 transition-all duration-300"
         rowHeight={54}
         actionButtonText="Actions"
       />

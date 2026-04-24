@@ -73,7 +73,7 @@ export default function UserWorkingHoursPage() {
   const breadcrumb = ["Home", "Management", "Users", "Working Hours"];
 
   return (
-    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-hidden flex flex-col no-scrollbar p-6 transition-colors duration-300">
+    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-auto flex flex-col no-scrollbar p-6 transition-colors duration-300">
       {/* Breadcrumb - Standardized Style */}
       <nav className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-slate-400 dark:text-slate-500 mb-4 ml-1">
         {breadcrumb.map((b, i) => (

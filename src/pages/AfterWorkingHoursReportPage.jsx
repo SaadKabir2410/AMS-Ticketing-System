@@ -191,7 +191,7 @@ export default function AfterWorkingHoursReportPage() {
     "px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all appearance-none cursor-pointer shadow-sm group-hover:border-pink-500/50";
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 dark:bg-[#0b0f19] overflow-hidden selection:bg-pink-500/20">
+    <div className="h-full flex flex-col bg-slate-50 dark:bg-[#0b0f19] overflow-auto selection:bg-pink-500/20">
       {/* Top Professional Header */}
       <header className="shrink-0 px-6 py-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 z-30">
         <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -329,7 +329,7 @@ export default function AfterWorkingHoursReportPage() {
       </section>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden flex flex-col relative px-6 py-4">
+      <main className="flex-1 overflow-auto flex flex-col relative px-6 py-4">
         {formError && (
           <div className="absolute top-4 left-6 right-6 z-40 max-w-[800px] mx-auto lg:left-1/2 lg:-translate-x-1/2 w-full px-6">
             <PremiumErrorAlert
@@ -341,7 +341,7 @@ export default function AfterWorkingHoursReportPage() {
 
         {reportData.length > 0 ? (
           <div className="flex-1 flex flex-col max-w-[1600px] mx-auto w-full">
-            <div className="flex-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden flex flex-col">
+            <div className="flex-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-auto flex flex-col">
               <div className="flex-1 overflow-auto custom-scrollbar">
                 <table className="w-full text-left text-xs border-separate border-spacing-0">
                   <thead className="sticky top-0 z-20">
