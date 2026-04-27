@@ -48,7 +48,7 @@ function saveUsers(users) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
-      const stored = localStorage.getItem(SESSION_KEY);
+      const stored = sessionStorage.getItem(SESSION_KEY);
       if (!stored) return null;
       const parsed = JSON.parse(stored);
       // Basic validation: must be an object with an id
@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
     if (!isManualAuth && user) {
       // No authentication at all, clear internal state
       setUser(null);
-      localStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(SESSION_KEY);
     }
   }, [user]);
 
@@ -107,7 +107,7 @@ export function AuthProvider({ children }) {
       role: newUser.role,
       avatar: newUser.avatar,
     };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
     setUser(session);
     setLoading(false);
     return true;
@@ -182,7 +182,7 @@ export function AuthProvider({ children }) {
         permissions: permissionsMap,
       };
 
-      localStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
       setUser(userProfile);
       setLoading(false);
       return true;
@@ -200,10 +200,10 @@ export function AuthProvider({ children }) {
       console.log("[Auth] Starting logout process...");
 
       // 1. Clear ALL storage keys related to auth
-      localStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem("auth_token");
-      localStorage.removeItem("spike_session");
-      localStorage.removeItem("spike_users"); // Just in case
+      sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem("auth_token");
+      sessionStorage.removeItem("spike_session");
+      // localStorage.removeItem("spike_users"); // Keep simulated DB persisted
 
       // 2. Clear manual password-token session (from tokenAuth.js)
       clearSession();

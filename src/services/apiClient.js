@@ -21,7 +21,7 @@ apiClient.interceptors.request.use((config) => {
   const manualKey = "tokenAuth:session";
 
   try {
-    const manualSession = JSON.parse(localStorage.getItem(manualKey));
+    const manualSession = JSON.parse(sessionStorage.getItem(manualKey));
     if (manualSession?.access_token) {
       config.headers.Authorization = `Bearer ${manualSession.access_token}`;
     }

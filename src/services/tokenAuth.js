@@ -114,7 +114,7 @@ export async function loginWithPassword(username, password) {
     token_type: data.token_type ?? "Bearer",
   };
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   logger.info("Login successful — session stored", {
     token_type: session.token_type,
     expires_in: data.expires_in,
@@ -126,7 +126,7 @@ export async function loginWithPassword(username, password) {
 
 export function getSession() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) {
       logger.debug("getSession() → no session in storage");
       return null;
@@ -150,11 +150,11 @@ export function getSession() {
 
 export function clearSession() {
   logger.info("clearSession() → session removed");
-  localStorage.removeItem(STORAGE_KEY);
+  sessionStorage.removeItem(STORAGE_KEY);
 }
 
 export async function refreshAccessToken() {
-  const session = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  const session = JSON.parse(sessionStorage.getItem(STORAGE_KEY));
   if (!session?.refresh_token) {
     logger.warn("refreshAccessToken() → no refresh token available");
     return null;
@@ -186,12 +186,12 @@ export async function refreshAccessToken() {
       token_type: data.token_type ?? "Bearer",
     };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
     logger.info("Refresh successful — new session stored");
     return newSession;
   } catch (err) {
     logger.error("refreshAccessToken() → failed", String(err));
-    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
     return null;
   }
 }
