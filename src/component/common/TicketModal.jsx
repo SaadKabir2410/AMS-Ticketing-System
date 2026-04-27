@@ -1,5 +1,19 @@
 import { useState, useEffect } from "react";
-import { AlertCircle, X, Plus } from "lucide-react";
+import {
+  AlertCircle,
+  X,
+  Plus,
+  ChevronLeft,
+  Calendar,
+  FileText,
+  Activity,
+  ShieldCheck,
+  Search,
+  ChevronDown,
+  Check,
+} from "lucide-react";
+import { useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import PremiumErrorAlert from "./PremiumErrorAlert";
 import SiteModal from "./SiteModal";
 import ActivityModal from "./ActivityModal";
@@ -9,33 +23,152 @@ import { useAuth } from "../../context/AuthContextHook";
 import { usersApi } from "../../services/api/users";
 import { sitesApi } from "../../services/api/sites";
 import { amsTicketApi } from "../../services/api/amsTicketApi";
+import codeDetailsApi from "../../services/api/CodeDetails";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.css";
 
 function Field({ label, error, children }) {
   return (
-    <div className="space-y-2 flex flex-col">
+    <div className="space-y-1.5 flex flex-col group/field">
       {label && (
-        <label className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-          {label.includes('*') ? (
-            <>{label.split('*')[0]}<span className="text-[#e91e63] ml-0.5">*</span></>
+        <label className="text-[10px] uppercase font-bold tracking-widest text-black dark:text-slate-400 mb-0.5 group-focus-within/field:text-pink-600 transition-colors flex items-center gap-2">
+          {label.includes("*") ? (
+            <>
+              {label.split("*")[0]}
+              <span className="text-rose-500">*</span>
+            </>
           ) : (
             label
           )}
         </label>
       )}
-      {children}
+      <div className="relative">{children}</div>
       {error && (
-        <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
-          <AlertCircle size={10} /> {error}
-        </p>
+        <motion.p
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-[10px] font-bold text-rose-600 flex items-center gap-1.5 mt-1.5 uppercase tracking-widest"
+        >
+          <AlertCircle size={10} strokeWidth={2.5} /> {error}
+        </motion.p>
       )}
     </div>
   );
 }
 
 const inputClass =
-  "w-full text-sm px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 placeholder-slate-400 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all";
+  "w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm outline-none transition-all focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 shadow-sm font-medium text-black dark:text-slate-200 placeholder:text-slate-400/60";
+
+function Combobox({
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled,
+  loading,
+  error,
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredOptions = (options || []).filter((opt) =>
+    String(opt).toLowerCase().includes(search.toLowerCase()),
+  );
+
+  return (
+    <div className="relative w-full" ref={containerRef}>
+      <div
+        onClick={() => !disabled && setOpen(!open)}
+        className={`${inputClass} flex items-center justify-between cursor-pointer ${disabled ? "opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/30" : ""} ${error ? "border-rose-500" : ""}`}
+      >
+        <span
+          className={`truncate ${!value ? "text-slate-400" : "text-black dark:text-white"}`}
+        >
+          {value || placeholder}
+        </span>
+        <ChevronDown
+          size={16}
+          className={`transition-transform duration-200 ${open ? "rotate-180" : ""} text-slate-400 shrink-0 ml-2`}
+        />
+      </div>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 5 }}
+            className="absolute z-[100] mt-2 w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[300px]"
+          >
+            <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="relative">
+                <Search
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Search..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-4 focus:ring-pink-500/10 transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-y-auto no-scrollbar flex-1">
+              {loading ? (
+                <div className="p-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  Loading...
+                </div>
+              ) : filteredOptions.length === 0 ? (
+                <div className="p-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  No results found
+                </div>
+              ) : (
+                <div className="p-2 space-y-1">
+                  {filteredOptions.map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => {
+                        onChange(opt);
+                        setOpen(false);
+                        setSearch("");
+                      }}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-sm transition-all flex items-center justify-between ${
+                        value === opt
+                          ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 font-bold"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-black dark:hover:text-white"
+                      }`}
+                    >
+                      <span className="truncate">{opt}</span>
+                      {value === opt && <Check size={14} />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 const EMPTY = {
   pdfFile: null,
@@ -65,10 +198,12 @@ const EMPTY = {
 export default function TicketModal({
   open,
   onClose,
-  onSubmit,
+  onSave,
+  onSubmit: onSubmitProp,
   ticket = null,
   submitting = false,
 }) {
+  const onSubmit = onSave || onSubmitProp;
   const isEdit = !!ticket;
   const { toast } = useToast();
   const { user } = useAuth();
@@ -84,7 +219,8 @@ export default function TicketModal({
     customers: [],
     assignees: [],
     itsUsers: [],
-    ticketTypes: []
+    ticketTypes: [],
+    incomingChannels: [],
   });
   const [rawSites, setRawSites] = useState([]);
   const [loadingCustomers, setLoadingCustomers] = useState(false);
@@ -114,72 +250,122 @@ export default function TicketModal({
     setErrors({});
     setActiveTab("Ticket");
     if (ticket) {
-        setForm({
-          ...EMPTY,
-          ...ticket,
-          receivedAt: ticket.receivedAt ? ticket.receivedAt.slice(0, 16) : "",
-          cmsTicketAddedOn: ticket.cmsTicketAddedOn ? ticket.cmsTicketAddedOn.slice(0, 16) : "",
-          isTicketForwarded: !!ticket.ticketForwardedBy,
-        });
+      setForm({
+        ...EMPTY,
+        ...ticket,
+        receivedAt: ticket.receivedAt ? ticket.receivedAt.slice(0, 16) : "",
+        cmsTicketAddedOn: ticket.cmsTicketAddedOn
+          ? ticket.cmsTicketAddedOn.slice(0, 16)
+          : "",
+        isTicketForwarded: !!ticket.ticketForwardedBy,
+      });
 
-        // Hydrate thoroughly from backend to guarantee perfectly fresh un-cached records
-        amsTicketApi.getById(ticket.id).then((fullData) => {
-          setForm(prev => ({
+      // Hydrate thoroughly from backend to guarantee perfectly fresh un-cached records
+      amsTicketApi
+        .getById(ticket.id)
+        .then((fullData) => {
+          setForm((prev) => ({
             ...prev,
             ...fullData,
-            receivedAt: fullData.receivedAt ? fullData.receivedAt.slice(0, 16) : prev.receivedAt,
-            cmsTicketAddedOn: fullData.cmsTicketAddedOn ? fullData.cmsTicketAddedOn.slice(0, 16) : prev.cmsTicketAddedOn,
+            receivedAt: fullData.receivedAt
+              ? fullData.receivedAt.slice(0, 16)
+              : prev.receivedAt,
+            cmsTicketAddedOn: fullData.cmsTicketAddedOn
+              ? fullData.cmsTicketAddedOn.slice(0, 16)
+              : prev.cmsTicketAddedOn,
             isTicketForwarded: !!fullData.ticketForwardedBy,
           }));
-        }).catch(err => console.error("Failed to fetch secure ticket record:", err));
-      } else {
-        setForm({
-          ...EMPTY
-        });
-      }
-
-      setLoadingApis(true);
-      Promise.all([
-        sitesApi.getAll({ perPage: 1000 }).catch(() => ({ items: [] })),
-        usersApi.getUsersList().catch(() => []),
-        usersApi.getUsersList({ organizationTypes: [2, 3], isITS: true, onlyLoadCurrentUser: false, mustCompleteJobsheet: undefined }).catch(() => []),
-      ])
-        .then(([sitesRes, usersRes, itsUsersRes]) => {
-          const fetchedSites = sitesRes?.items || [];
-          setRawSites(fetchedSites);
-          setApiData((prev) => ({
-            ...prev,
-            siteNames: fetchedSites.map(s => s.name || s.Name).filter(Boolean),
-            assignees: (usersRes || []).map(u => u.name || u.userName).filter(Boolean),
-            itsUsers: (itsUsersRes || []).map(u => u.name || u.userName).filter(Boolean),
-            ticketTypes: ["Hardware", "Software", "Network", "General Inquiry"],
-          }));
         })
-        .finally(() => {
-          setLoadingApis(false);
-        });
+        .catch((err) =>
+          console.error("Failed to fetch secure ticket record:", err),
+        );
+    } else {
+      setForm({
+        ...EMPTY,
+      });
+    }
+
+    setLoadingApis(true);
+    Promise.all([
+      sitesApi.getAll({ perPage: 1000 }).catch(() => ({ items: [] })),
+      usersApi.getUsersList().catch(() => []),
+      usersApi
+        .getUsersList({
+          organizationTypes: [2, 3],
+          isITS: true,
+          onlyLoadCurrentUser: false,
+          mustCompleteJobsheet: undefined,
+        })
+        .catch(() => []),
+      // Fetch dynamic lookup codes
+      codeDetailsApi.getListByLookupCodes({ 
+        lookupCodes: ["TicketType", "TicketIncomingChannel"] 
+      }).catch(() => ({}))
+    ])
+      .then(([sitesRes, usersRes, itsUsersRes, lookupsRes]) => {
+        const fetchedSites = sitesRes?.items || [];
+        setRawSites(fetchedSites);
+
+        // Map lookup details to simple string arrays
+        const ticketTypes = (lookupsRes["TicketType"] || [])
+          .map(item => item.description || item.newCode)
+          .sort((a, b) => a.localeCompare(b));
+
+        const incomingChannels = (lookupsRes["TicketIncomingChannel"] || [])
+          .map(item => item.description || item.newCode)
+          .sort((a, b) => a.localeCompare(b));
+
+        setApiData((prev) => ({
+          ...prev,
+          siteNames: fetchedSites
+            .map((s) => s.name || s.Name)
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b)),
+          assignees: (usersRes || [])
+            .map((u) => u.name || u.userName)
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b)),
+          itsUsers: (itsUsersRes || [])
+            .map((u) => u.name || u.userName)
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b)),
+          ticketTypes: ticketTypes.length > 0 
+            ? ticketTypes 
+            : ["Hardware", "Software", "Network", "General Inquiry"].sort((a, b) => a.localeCompare(b)),
+          incomingChannels: incomingChannels.length > 0
+            ? incomingChannels
+            : ["Direct", "Email", "Phone", "Portal"].sort((a, b) => a.localeCompare(b)),
+        }));
+      })
+      .finally(() => {
+        setLoadingApis(false);
+      });
   }, [open, ticket]);
 
   // Fetch customers when siteName changes
   useEffect(() => {
     if (!form.siteName) {
-      setApiData(prev => ({ ...prev, customers: [] }));
+      setApiData((prev) => ({ ...prev, customers: [] }));
       return;
     }
 
     const selectedSite = rawSites.find(
-      (s) => s.name === form.siteName || s.Name === form.siteName
+      (s) => s.name === form.siteName || s.Name === form.siteName,
     );
 
     if (selectedSite && selectedSite.id) {
       setLoadingCustomers(true);
-      usersApi.getCustomerUsers(selectedSite.id)
+      usersApi
+        .getCustomerUsers(selectedSite.id)
         .then((res) => {
-          const customers = (res?.items || res || []).map(c => c.name || c.userName).filter(Boolean);
-          setApiData(prev => ({ ...prev, customers }));
+          const customers = (res?.items || res || [])
+            .map((c) => c.name || c.userName)
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
+          setApiData((prev) => ({ ...prev, customers }));
         })
         .catch(() => {
-          setApiData(prev => ({ ...prev, customers: [] }));
+          setApiData((prev) => ({ ...prev, customers: [] }));
         })
         .finally(() => {
           setLoadingCustomers(false);
@@ -188,10 +374,10 @@ export default function TicketModal({
   }, [form.siteName, rawSites]);
 
   const setField = (key) => (e) => {
-    let val = e.target.value;
-    if (e.target.type === "checkbox") {
+    let val = e?.target ? e.target.value : e;
+    if (e?.target?.type === "checkbox") {
       val = e.target.checked;
-    } else if (e.target.type === "file") {
+    } else if (e?.target?.type === "file") {
       val = e.target.files[0];
     }
     setForm((f) => ({ ...f, [key]: val }));
@@ -200,7 +386,11 @@ export default function TicketModal({
 
   const handleToggleForwarded = (e) => {
     const isChecked = e.target.checked;
-    setForm(f => ({ ...f, isTicketForwarded: isChecked, ticketForwardedBy: isChecked ? f.ticketForwardedBy : "" }));
+    setForm((f) => ({
+      ...f,
+      isTicketForwarded: isChecked,
+      ticketForwardedBy: isChecked ? f.ticketForwardedBy : "",
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -213,537 +403,749 @@ export default function TicketModal({
 
   if (!open) return null;
 
+  const tabIcons = {
+    Ticket: null,
+    Activities: null,
+    "Ticket Verification": null,
+  };
+
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        {/* Backdrop (Does NOT close the modal on click as per requirements) */}
-        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <AnimatePresence>
+        {open && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 overflow-hidden">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/60"
+            />
 
-        {/* Modal */}
-        <div className="relative w-full max-w-6xl bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col min-h-[85vh] max-h-[95vh] overflow-hidden animate-fade-in">
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
-            <div>
-              <h2 className="text-lg text-slate-800 dark:text-white font-semibold">
-                {isEdit ? "Edit Ticket" : "New AMS Ticket"}
-              </h2>
-            </div>
-            {/* Close icon ONLY closes the modal */}
-            <button
-              onClick={() => setShowExitConfirm(true)}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-white/5 transition-all outline-none"
+            {/* Modal Container */}
+            <motion.div
+              layout
+              initial={{ opacity: 0, scale: 0.98, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 10 }}
+              className="relative w-full max-w-6xl bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-auto max-h-[95vh] overflow-hidden"
             >
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex px-6 border-b border-slate-100 dark:border-slate-700 gap-6">
-            {["Ticket", "Activities", "Ticket Verification"].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`py-3 text-sm font-medium border-b-2 transition-all ${activeTab === tab
-                  ? "border-[#e91e63] text-[#e91e63]"
-                  : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                  }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          {/* Form Content */}
-          <div className="flex-1 overflow-y-auto px-6 py-3">
-            {errors.server && (
-              <PremiumErrorAlert
-                open={!!errors.server}
-                message={errors.server}
-                onClose={() => setErrors(prev => ({ ...prev, server: null }))}
-              />
-            )}
-
-            {activeTab === "Ticket" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                {/* 1. Upload PDF */}
-                <div className="md:col-span-2">
-                  <Field label="Upload PDF" error={errors.pdfFile}>
-                    <input
-                      type="file"
-                      accept=".pdf"
-                      onChange={setField("pdfFile")}
-                      className="w-full max-w-sm text-sm text-slate-500 file:mr-4 file:py-1.5 file:px-4 file:rounded-l-lg file:border-0 file:border-r file:border-slate-200 file:text-xs file:font-medium file:bg-white file:text-slate-700 hover:file:bg-slate-50 transition-all border border-slate-200 rounded-lg bg-slate-50 dark:bg-slate-800 dark:border-slate-700"
-                    />
-                  </Field>
-                </div>
-
-                {/* 2. Ticket Received Date Time */}
-                <Field label="Ticket Received Date Time *" error={errors.receivedAt}>
-                  <Flatpickr
-                    data-enable-time
-                    value={form.receivedAt}
-                    onChange={(date, dateStr) => {
-                      setForm(f => ({ ...f, receivedAt: dateStr }));
-                      if (errors.receivedAt) setErrors(e => ({ ...e, receivedAt: "" }));
-                    }}
-                    options={{ enableTime: true, dateFormat: "Y-m-d\\TH:i", time_24hr: true }}
-                    className={`${inputClass} ${errors.receivedAt ? 'border-[#e91e63] text-[#e91e63]' : ''}`}
-                    placeholder="DD/MM/YYYY"
-                  />
-                </Field>
-
-                {/* 3. CMS Next Ticket No */}
-                <Field label="CMS Next Ticket No *" error={errors.cmsNextTicketNo}>
-                  <input
-                    type="text"
-                    value={form.cmsNextTicketNo}
-                    onChange={setField("cmsNextTicketNo")}
-                    className={inputClass}
-                  />
-                </Field>
-
-                {/* 4. Site Name */}
-                <div className="md:col-span-2">
-                  <Field label="Site Name *" error={errors.siteName}>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={form.siteName}
-                        onChange={setField("siteName")}
-                        className={`${inputClass} flex-1`}
-                        disabled={loadingApis}
-                      >
-                        <option value="">
-                          {loadingApis ? "Loading Sites..." : "Search sites..."}
-                        </option>
-                        {apiData.siteNames.map((site) => (
-                          <option key={site} value={site}>{site}</option>
-                        ))}
-                      </select>
-                      {!isAdmin && (
-                        <button
-                          type="button"
-                          onClick={() => setIsSiteModalOpen(true)}
-                          className="p-1.5 px-3 bg-white border border-pink-400 text-pink-500 rounded-lg hover:bg-pink-50 transition-all dark:bg-slate-800"
-                          title="New Site"
-                        >
-                          <Plus size={16} />
-                        </button>
-                      )}
+              {/* Header */}
+              <div className="flex flex-col gap-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <div className="flex items-center justify-between px-8 py-6">
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">
+                        <span>AMS</span>
+                        <span className="text-slate-300 dark:text-slate-700">
+                          /
+                        </span>
+                        <span className="text-pink-600">Tickets</span>
+                      </nav>
+                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                        {isEdit ? "Update Ticket" : "New AMS Ticket"}
+                      </h2>
                     </div>
-                  </Field>
-                </div>
-
-                {/* 5. Customer */}
-                <div className="md:col-span-2">
-                  <Field label="Customer *" error={errors.customer}>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={form.customer}
-                        onChange={setField("customer")}
-                        className={`${inputClass} flex-1 ${!form.siteName ? 'opacity-50 bg-slate-100 cursor-not-allowed dark:opacity-70 dark:bg-slate-800' : ''}`}
-                        disabled={loadingApis || loadingCustomers || !form.siteName}
-                      >
-                        <option value="">
-                          {!form.siteName
-                            ? "Select Site Name first..."
-                            : loadingCustomers ? "Loading Customers..." : "Search customers..."}
-                        </option>
-                        {apiData.customers.map((c) => (
-                          <option key={c} value={c}>{c}</option>
-                        ))}
-                      </select>
-                      {!isAdmin && (
-                        <button
-                          type="button"
-                          onClick={() => setIsCustomerModalOpen(true)}
-                          className="p-1.5 px-3 bg-white border border-pink-400 text-pink-500 rounded-lg hover:bg-pink-50 transition-all dark:bg-slate-800"
-                          title="New Customer"
-                        >
-                          <Plus size={16} />
-                        </button>
-                      )}
-                    </div>
-                  </Field>
-                </div>
-
-                {/* 6. Ticket Assigned To */}
-                <Field label="Ticket Assigned To *" error={errors.ticketAssignedTo}>
-                  <select
-                    value={form.ticketAssignedTo}
-                    onChange={setField("ticketAssignedTo")}
-                    className={inputClass}
-                    disabled={loadingApis}
-                  >
-                    <option value="">
-                      {loadingApis ? "Loading Assignees..." : "Search users..."}
-                    </option>
-                    {apiData.assignees.map((a) => (
-                      <option key={a} value={a}>{a}</option>
-                    ))}
-                  </select>
-                </Field>
-
-                {/* 7. Ticket Type */}
-                <Field label="Ticket Type *" error={errors.ticketType}>
-                  <select
-                    value={form.ticketType}
-                    onChange={setField("ticketType")}
-                    className={inputClass}
-                    disabled={loadingApis}
-                  >
-                    <option value="">
-                      {loadingApis ? "Loading Types..." : "Select An Option"}
-                    </option>
-                    {apiData.ticketTypes.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </Field>
-
-                {/* 8 & 9. Ticket Incoming Channel AND Forward Toggle */}
-                <div className="flex gap-4 items-end">
-                  <div className="flex-1">
-                    <Field label="Ticket Incoming Channel *" error={errors.ticketIncomingChannel}>
-                      <select
-                        value={form.ticketIncomingChannel}
-                        onChange={setField("ticketIncomingChannel")}
-                        className={inputClass}
-                      >
-                        <option value="">Select An Option</option>
-                        <option value="Email">Email</option>
-                        <option value="Phone">Phone</option>
-                        <option value="Portal">Portal</option>
-                        <option value="Direct">Direct</option>
-                      </select>
-                    </Field>
                   </div>
-                  <label className="flex items-center gap-2 cursor-pointer w-max mb-1.5">
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={form.isTicketForwarded}
-                        onChange={handleToggleForwarded}
-                      />
-                      <div className={`block w-8 h-4 rounded-full transition-colors ${form.isTicketForwarded ? "bg-[#e91e63]" : "bg-slate-300 dark:bg-slate-600"}`}></div>
-                      <div className={`absolute left-0.5 top-0.5 bg-white w-3 h-3 rounded-full transition-transform ${form.isTicketForwarded ? "transform translate-x-4" : ""}`}></div>
-                    </div>
-                    <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">Ticket Forwarded</span>
-                  </label>
+
+                  <button
+                    onClick={() => setShowExitConfirm(true)}
+                    className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all border border-slate-200 dark:border-slate-700"
+                  >
+                    <X size={20} strokeWidth={2} />
+                  </button>
                 </div>
 
-                {/* Ticket Forwarded By (Input) */}
-                <Field label="Ticket Forwarded By" error={errors.ticketForwardedBy}>
-                  <input
-                    type="text"
-                    placeholder="Search users..."
-                    value={form.ticketForwardedBy}
-                    onChange={setField("ticketForwardedBy")}
-                    disabled={!form.isTicketForwarded}
-                    className={`${inputClass} ${!form.isTicketForwarded ? 'opacity-60 bg-slate-100' : ''}`}
-                  />
-                </Field>
-
-                {/* 10. CMS Ticket Added By */}
-                <Field label="CMS Ticket Added By" error={errors.cmsTicketAddedBy}>
-                  <input
-                    type="text"
-                    placeholder="Search users..."
-                    value={form.cmsTicketAddedBy}
-                    onChange={setField("cmsTicketAddedBy")}
-                    className={inputClass}
-                  />
-                </Field>
-
-                {/* 11. CMS Ticket Added On */}
-                <Field label="CMS Ticket Added On *" error={errors.cmsTicketAddedOn}>
-                  <Flatpickr
-                    data-enable-time
-                    value={form.cmsTicketAddedOn}
-                    onChange={(date, dateStr) => {
-                      setForm(f => ({ ...f, cmsTicketAddedOn: dateStr }));
-                      if (errors.cmsTicketAddedOn) setErrors(e => ({ ...e, cmsTicketAddedOn: "" }));
-                    }}
-                    options={{ enableTime: true, dateFormat: "Y-m-d\\TH:i", time_24hr: true }}
-                    className={inputClass}
-                    placeholder="DD/MM/YYYY"
-                  />
-                </Field>
-
-                {/* 12. Issue Description */}
-                <div className="md:col-span-1">
-                  <Field label="Issue Description *" error={errors.issueDescription}>
-                    <textarea
-                      value={form.issueDescription}
-                      onChange={setField("issueDescription")}
-                      rows={3}
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
-
-                {/* 13. Possible Root Cause */}
-                <div className="md:col-span-1">
-                  <Field label="Possible Root Cause" error={errors.possibleRootCause}>
-                    <textarea
-                      value={form.possibleRootCause}
-                      onChange={setField("possibleRootCause")}
-                      rows={3}
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
-
-                {/* 14. Notes */}
-                <div className="md:col-span-2">
-                  <Field label="Notes *" error={errors.notes}>
-                    <textarea
-                      value={form.notes}
-                      onChange={setField("notes")}
-                      rows={2}
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
-
-                {/* 15. Total Duration */}
-                <div className="md:col-span-2">
-                  <Field label="Total Duration (Hours)" error={errors.totalDuration}>
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="0"
-                      value={form.totalDuration}
-                      onChange={setField("totalDuration")}
-                      className={inputClass}
-                    />
-                  </Field>
-                </div>
-
-                {/* 16. PRE Toggle */}
-                <div className="md:col-span-2">
-                  <label className="flex items-center gap-2 cursor-pointer w-max">
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={form.pre}
-                        onChange={setField("pre")}
-                      />
-                      <div className={`block w-8 h-4 rounded-full transition-colors ${form.pre ? "bg-[#e91e63]" : "bg-slate-300 dark:bg-slate-600"}`}></div>
-                      <div className={`absolute left-0.5 top-0.5 bg-white w-3 h-3 rounded-full transition-transform ${form.pre ? "transform translate-x-4" : ""}`}></div>
-                    </div>
-                    <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">PRE</span>
-                  </label>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "Activities" && (
-              <div className="flex flex-col h-full space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-800 dark:text-white">Ticket Activities</h3>
-                  {!isAdmin && (
-                    <button
-                      type="button"
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-pink-500 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 transition shadow-sm border border-none"
-                      onClick={() => {
-                        if (!form.receivedAt) {
-                          setShowDateWarning(true);
-                          return;
-                        }
-                        setActivityToEdit(null);
-                        setIsActivityModalOpen(true);
-                      }}
-                    >
-                      <Plus size={14} /> Add Activity
-                    </button>
+                <div className="flex px-8 gap-10">
+                  {["Ticket", "Activities", "Ticket Verification"].map(
+                    (tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`relative py-4 text-[10px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-2 group ${
+                          activeTab === tab
+                            ? "text-pink-600"
+                            : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                        }`}
+                      >
+                        {tab}
+                        {activeTab === tab && (
+                          <motion.div
+                            layoutId="activeTab"
+                            className="absolute bottom-0 left-0 right-0 h-1 bg-pink-600 rounded-t-full shadow-[0_-4px_12px_rgba(236,72,153,0.2)]"
+                          />
+                        )}
+                      </button>
+                    ),
                   )}
                 </div>
+              </div>
 
-                <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800 flex-1">
-                  <div className="overflow-x-auto h-full">
-                    <table className="w-full text-left text-xs whitespace-nowrap">
-                      <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
-                        <tr>
-                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 w-20 text-center">Actions</th>
-                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Activity Type</th>
-                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Start Date</th>
-                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">End Date</th>
-                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300 text-center">Duration (Minutes)</th>
-                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Work Done Code</th>
-                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Likely Cause</th>
-                          <th className="px-4 py-3 font-semibold text-slate-600 dark:text-slate-300">Resolved By</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                        {(!form.activities || form.activities.length === 0) ? (
-                          <tr>
-                            <td colSpan="8" className="px-4 py-8 text-center text-slate-500 italic">No activities found.</td>
-                          </tr>
-                        ) : (
-                          form.activities.map((act, idx) => (
-                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                              <td className="px-4 py-3 text-center">
+              {/* Form Content */}
+              <div className="overflow-y-auto no-scrollbar px-8 py-8">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="max-w-5xl mx-auto"
+                  >
+                    {errors.server && (
+                      <PremiumErrorAlert
+                        open={!!errors.server}
+                        message={errors.server}
+                        onClose={() =>
+                          setErrors((prev) => ({ ...prev, server: null }))
+                        }
+                      />
+                    )}
+
+                    {activeTab === "Ticket" && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        {/* 1. Upload PDF */}
+                        <div className="md:col-span-2">
+                          <Field label="Upload PDF" error={errors.pdfFile}>
+                            <div className="relative group/file">
+                              <input
+                                type="file"
+                                accept=".pdf"
+                                onChange={setField("pdfFile")}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                              />
+                              <div className="w-full p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 flex flex-col items-center justify-center gap-2 transition-all group-hover/file:border-pink-500/50 group-hover/file:bg-pink-500/[0.02]">
+                                <div className="text-center">
+                                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                    {form.pdfFile
+                                      ? form.pdfFile.name
+                                      : "Select PDF Document"}
+                                  </p>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
+                                    {form.pdfFile
+                                      ? `${(form.pdfFile.size / 1024 / 1024).toFixed(2)} MB`
+                                      : "PDF format only (Max 10MB)"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </Field>
+                        </div>
+
+                        {/* 2. Ticket Received Date Time */}
+                        <Field
+                          label="Ticket Received Date Time *"
+                          error={errors.receivedAt}
+                        >
+                          <div className="relative group/input">
+                            <Flatpickr
+                              data-enable-time
+                              value={form.receivedAt}
+                              onChange={(date, dateStr) => {
+                                setForm((f) => ({ ...f, receivedAt: dateStr }));
+                                if (errors.receivedAt)
+                                  setErrors((e) => ({ ...e, receivedAt: "" }));
+                              }}
+                              options={{
+                                enableTime: true,
+                                dateFormat: "Y-m-d\\TH:i",
+                                time_24hr: true,
+                              }}
+                              className={`${inputClass} ${errors.receivedAt ? "border-rose-500 text-rose-600" : ""}`}
+                              placeholder="YYYY-MM-DD HH:MM"
+                            />
+                          </div>
+                        </Field>
+
+                        {/* 3. CMS Next Ticket No */}
+                        <Field
+                          label="CMS Next Ticket No *"
+                          error={errors.cmsNextTicketNo}
+                        >
+                          <input
+                            type="text"
+                            value={form.cmsNextTicketNo}
+                            onChange={setField("cmsNextTicketNo")}
+                            className={inputClass}
+                          />
+                        </Field>
+
+                        {/* 4. Site Name */}
+                        <div className="md:col-span-2">
+                          <Field label="Site Name *" error={errors.siteName}>
+                            <div className="flex items-center gap-3">
+                              <Combobox
+                                value={form.siteName}
+                                onChange={setField("siteName")}
+                                options={apiData.siteNames}
+                                placeholder={
+                                  loadingApis
+                                    ? "Loading Sites..."
+                                    : "Search sites..."
+                                }
+                                disabled={loadingApis}
+                                error={errors.siteName}
+                              />
+                              {!isAdmin && (
                                 <button
                                   type="button"
-                                  className="text-blue-500 hover:text-blue-700 px-1 font-medium"
-                                  onClick={() => {
-                                    setActivityToEdit(act);
-                                    setIsActivityModalOpen(true);
-                                  }}
+                                  onClick={() => setIsSiteModalOpen(true)}
+                                  className="px-4 h-10 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-pink-600 rounded-xl hover:border-pink-500 transition-all shadow-sm text-[10px] font-bold uppercase tracking-widest"
                                 >
-                                  Edit
+                                  New Site
                                 </button>
+                              )}
+                            </div>
+                          </Field>
+                        </div>
+
+                        {/* 5. Customer */}
+                        <div className="md:col-span-2">
+                          <Field label="Customer *" error={errors.customer}>
+                            <div className="flex items-center gap-3">
+                              <Combobox
+                                value={form.customer}
+                                onChange={setField("customer")}
+                                options={apiData.customers}
+                                placeholder={
+                                  !form.siteName
+                                    ? "Select Site Name first..."
+                                    : loadingCustomers
+                                      ? "Loading Customers..."
+                                      : "Search customers..."
+                                }
+                                disabled={
+                                  loadingApis ||
+                                  loadingCustomers ||
+                                  !form.siteName
+                                }
+                                error={errors.customer}
+                              />
+                              {!isAdmin && (
                                 <button
                                   type="button"
-                                  className="text-red-500 hover:text-red-700 px-1 font-medium ml-1"
-                                  onClick={() => {
-                                    setForm(f => ({
-                                      ...f,
-                                      activities: f.activities.filter(a => a !== act)
-                                    }));
-                                  }}
+                                  onClick={() => setIsCustomerModalOpen(true)}
+                                  className="px-4 h-10 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-pink-600 rounded-xl hover:border-pink-500 transition-all shadow-sm text-[10px] font-bold uppercase tracking-widest"
                                 >
-                                  Del
+                                  New Customer
                                 </button>
-                              </td>
-                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{act.activityType || '—'}</td>
-                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{act.startDate ? new Date(act.startDate).toLocaleString() : '—'}</td>
-                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{act.endDate ? new Date(act.endDate).toLocaleString() : '—'}</td>
-                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300 text-center">{act.durationMinutes || '—'}</td>
-                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{act.workDoneCode || '—'}</td>
-                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{act.likelyCause || '—'}</td>
-                              <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{act.resolvedBy || '—'}</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                              )}
+                            </div>
+                          </Field>
+                        </div>
 
+                        {/* 6. Ticket Assigned To */}
+                        <Field
+                          label="Ticket Assigned To *"
+                          error={errors.ticketAssignedTo}
+                        >
+                          <Combobox
+                            value={form.ticketAssignedTo}
+                            onChange={setField("ticketAssignedTo")}
+                            options={apiData.assignees}
+                            placeholder={
+                              loadingApis
+                                ? "Loading Assignees..."
+                                : "Search users..."
+                            }
+                            disabled={loadingApis}
+                            error={errors.ticketAssignedTo}
+                          />
+                        </Field>
+
+                        {/* 7. Ticket Type */}
+                        <Field label="Ticket Type *" error={errors.ticketType}>
+                          <Combobox
+                            value={form.ticketType}
+                            onChange={setField("ticketType")}
+                            options={apiData.ticketTypes}
+                            placeholder={
+                              loadingApis ? "Loading Types..." : "Select An Option"
+                            }
+                            disabled={loadingApis}
+                            error={errors.ticketType}
+                          />
+                        </Field>
+
+                        {/* 8 & 9. Ticket Incoming Channel AND Forward Toggle */}
+                        <div className="flex gap-6 items-end">
+                          <div className="flex-1">
+                            <Field
+                              label="Ticket Incoming Channel *"
+                              error={errors.ticketIncomingChannel}
+                            >
+                              <Combobox
+                                value={form.ticketIncomingChannel}
+                                onChange={setField("ticketIncomingChannel")}
+                                options={apiData.incomingChannels}
+                                placeholder="Select An Option"
+                                error={errors.ticketIncomingChannel}
+                              />
+                            </Field>
+                          </div>
+                          <label className="flex items-center gap-3 cursor-pointer w-max mb-2 p-1 px-3 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
+                            <div className="relative group/toggle">
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={form.isTicketForwarded}
+                                onChange={handleToggleForwarded}
+                              />
+                              <div
+                                className={`block w-10 h-6 rounded-full transition-all duration-300 ${form.isTicketForwarded ? "bg-pink-600 shadow-lg shadow-pink-500/20" : "bg-slate-300 dark:bg-slate-700"}`}
+                              ></div>
+                              <motion.div
+                                animate={{ x: form.isTicketForwarded ? 18 : 2 }}
+                                className={`absolute left-0 top-1 bg-white w-4 h-4 rounded-full shadow-md transition-all`}
+                              />
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                              Forwarded
+                            </span>
+                          </label>
+                        </div>
+
+                        {/* Ticket Forwarded By (Input) */}
+                        <Field
+                          label="Ticket Forwarded By"
+                          error={errors.ticketForwardedBy}
+                        >
+                          <Combobox
+                            value={form.ticketForwardedBy}
+                            onChange={setField("ticketForwardedBy")}
+                            options={apiData.assignees}
+                            placeholder="Search users..."
+                            disabled={!form.isTicketForwarded}
+                            error={errors.ticketForwardedBy}
+                          />
+                        </Field>
+
+                        {/* 10. CMS Ticket Added By */}
+                        <Field
+                          label="CMS Ticket Added By"
+                          error={errors.cmsTicketAddedBy}
+                        >
+                          <Combobox
+                            value={form.cmsTicketAddedBy}
+                            onChange={setField("cmsTicketAddedBy")}
+                            options={apiData.assignees}
+                            placeholder="Search users..."
+                            error={errors.cmsTicketAddedBy}
+                          />
+                        </Field>
+
+                        {/* 11. CMS Ticket Added On */}
+                        <Field
+                          label="CMS Ticket Added On *"
+                          error={errors.cmsTicketAddedOn}
+                        >
+                          <Flatpickr
+                            data-enable-time
+                            value={form.cmsTicketAddedOn}
+                            onChange={(date, dateStr) => {
+                              setForm((f) => ({
+                                ...f,
+                                cmsTicketAddedOn: dateStr,
+                              }));
+                              if (errors.cmsTicketAddedOn)
+                                setErrors((e) => ({
+                                  ...e,
+                                  cmsTicketAddedOn: "",
+                                }));
+                            }}
+                            options={{
+                              enableTime: true,
+                              dateFormat: "Y-m-d\\TH:i",
+                              time_24hr: true,
+                            }}
+                            className={inputClass}
+                            placeholder="YYYY-MM-DD"
+                          />
+                        </Field>
+
+                        {/* 12. Issue Description */}
+                        <div className="md:col-span-1">
+                          <Field
+                            label="Issue Description *"
+                            error={errors.issueDescription}
+                          >
+                            <textarea
+                              value={form.issueDescription}
+                              onChange={setField("issueDescription")}
+                              rows={3}
+                              className={inputClass}
+                            />
+                          </Field>
+                        </div>
+
+                        {/* 13. Possible Root Cause */}
+                        <div className="md:col-span-1">
+                          <Field
+                            label="Possible Root Cause"
+                            error={errors.possibleRootCause}
+                          >
+                            <textarea
+                              value={form.possibleRootCause}
+                              onChange={setField("possibleRootCause")}
+                              rows={3}
+                              className={inputClass}
+                            />
+                          </Field>
+                        </div>
+
+                        {/* 14. Notes */}
+                        <div className="md:col-span-2">
+                          <Field label="Notes *" error={errors.notes}>
+                            <textarea
+                              value={form.notes}
+                              onChange={setField("notes")}
+                              rows={2}
+                              className={inputClass}
+                            />
+                          </Field>
+                        </div>
+
+                        {/* 15. Total Duration */}
+                        <div className="md:col-span-2">
+                          <Field
+                            label="Total Duration (Hours)"
+                            error={errors.totalDuration}
+                          >
+                            <input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              value={form.totalDuration}
+                              onChange={setField("totalDuration")}
+                              className={inputClass}
+                            />
+                          </Field>
+                        </div>
+
+                        {/* 16. PRE Toggle */}
+                        <div className="md:col-span-2">
+                          <label className="flex items-center gap-3 cursor-pointer w-max p-1 px-4 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
+                            <div className="relative group/toggle">
+                              <input
+                                type="checkbox"
+                                className="sr-only"
+                                checked={form.pre}
+                                onChange={setField("pre")}
+                              />
+                              <div
+                                className={`block w-10 h-6 rounded-full transition-all duration-300 ${form.pre ? "bg-pink-600 shadow-lg shadow-pink-500/20" : "bg-slate-300 dark:bg-slate-700"}`}
+                              ></div>
+                              <motion.div
+                                animate={{ x: form.pre ? 18 : 2 }}
+                                className={`absolute left-0 top-1 bg-white w-4 h-4 rounded-full shadow-md transition-all`}
+                              />
+                            </div>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                              PRE (Public Record Entry)
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === "Activities" && (
+                      <div className="flex flex-col h-full space-y-6">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
+                              Ticket Activities
+                            </h3>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
+                              Manage chronological service records
+                            </p>
+                          </div>
+                          {!isAdmin && (
+                            <button
+                              type="button"
+                              className="px-6 py-2.5 bg-pink-600 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-pink-700 transition shadow-lg shadow-pink-500/20"
+                              onClick={() => {
+                                if (!form.receivedAt) {
+                                  setShowDateWarning(true);
+                                  return;
+                                }
+                                setActivityToEdit(null);
+                                setIsActivityModalOpen(true);
+                              }}
+                            >
+                              Add Activity
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm flex-1">
+                          <div className="overflow-x-auto no-scrollbar h-full">
+                            <table className="w-full text-left">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    Actions
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    Activity Type
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    Start Date
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    End Date
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 text-center">
+                                    Duration
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    Work Done Code
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    Likely Cause
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    Resolved By
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                {!form.activities ||
+                                form.activities.length === 0 ? (
+                                  <tr>
+                                    <td
+                                      colSpan="8"
+                                      className="px-6 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400"
+                                    >
+                                      No activities recorded
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  form.activities.map((act, idx) => (
+                                    <tr
+                                      key={idx}
+                                      className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
+                                    >
+                                      <td className="px-6 py-4">
+                                        <div className="flex items-center gap-4">
+                                          <button
+                                            type="button"
+                                            className="text-[10px] font-bold uppercase tracking-widest text-pink-600 hover:text-pink-700"
+                                            onClick={() => {
+                                              setActivityToEdit(act);
+                                              setIsActivityModalOpen(true);
+                                            }}
+                                          >
+                                            Edit
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="text-[10px] font-bold uppercase tracking-widest text-rose-600 hover:text-rose-700"
+                                            onClick={() => {
+                                              setForm((f) => ({
+                                                ...f,
+                                                activities: f.activities.filter(
+                                                  (a) => a !== act,
+                                                ),
+                                              }));
+                                            }}
+                                          >
+                                            Delete
+                                          </button>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-4 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                                        {act.activityType || "—"}
+                                      </td>
+                                      <td className="px-6 py-4 text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                                        {act.startDate
+                                          ? new Date(
+                                              act.startDate,
+                                            ).toLocaleString([], {
+                                              dateStyle: "short",
+                                              timeStyle: "short",
+                                            })
+                                          : "—"}
+                                      </td>
+                                      <td className="px-6 py-4 text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                                        {act.endDate
+                                          ? new Date(
+                                              act.endDate,
+                                            ).toLocaleString([], {
+                                              dateStyle: "short",
+                                              timeStyle: "short",
+                                            })
+                                          : "—"}
+                                      </td>
+                                      <td className="px-6 py-4 text-[11px] font-bold text-slate-900 dark:text-white text-center">
+                                        {act.durationMinutes || "0"}m
+                                      </td>
+                                      <td className="px-6 py-4 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                                        {act.workDoneCode || "—"}
+                                      </td>
+                                      <td className="px-6 py-4 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                                        {act.likelyCause ? "Yes" : "No"}
+                                      </td>
+                                      <td className="px-6 py-4 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                                        {act.resolvedBy || "—"}
+                                      </td>
+                                    </tr>
+                                  ))
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeTab === "Ticket Verification" && (
+                      <div className="flex flex-col space-y-6 max-w-full mx-auto pb-4">
+                        <Field
+                          label="Ticket Resolution Verified By"
+                          error={errors.ticketResolutionVerifiedBy}
+                        >
+                          <Combobox
+                            value={form.ticketResolutionVerifiedBy}
+                            onChange={setField("ticketResolutionVerifiedBy")}
+                            options={apiData.assignees}
+                            placeholder="Search users..."
+                            error={errors.ticketResolutionVerifiedBy}
+                          />
+                        </Field>
+
+                        <Field
+                          label="Ticket Resolution Verified On By Sureze *"
+                          error={errors.ticketResolutionVerifiedOn}
+                        >
+                          <div className="flex items-center w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all">
+                            <Flatpickr
+                              data-enable-time
+                              value={form.ticketResolutionVerifiedOn}
+                              onChange={(date, dateStr) => {
+                                setForm((f) => ({
+                                  ...f,
+                                  ticketResolutionVerifiedOn: dateStr,
+                                }));
+                                if (errors.ticketResolutionVerifiedOn)
+                                  setErrors((e) => ({
+                                    ...e,
+                                    ticketResolutionVerifiedOn: "",
+                                  }));
+                              }}
+                              options={{
+                                enableTime: true,
+                                dateFormat: "Y-m-d",
+                                time_24hr: true,
+                              }}
+                              className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
+                              placeholder="YYYY-MM-DD"
+                            />
+                          </div>
+                        </Field>
+
+                        <Field
+                          label="CMS Ticket Closed By"
+                          error={errors.cmsTicketClosedBy}
+                        >
+                          <Combobox
+                            value={form.cmsTicketClosedBy}
+                            onChange={setField("cmsTicketClosedBy")}
+                            options={apiData.assignees}
+                            placeholder="Search users..."
+                            error={errors.cmsTicketClosedBy}
+                          />
+                        </Field>
+
+                        <Field
+                          label="CMS Ticket Closed On *"
+                          error={errors.cmsTicketClosedOn}
+                        >
+                          <div className="flex items-center w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all">
+                            <Flatpickr
+                              data-enable-time
+                              value={form.cmsTicketClosedOn}
+                              onChange={(date, dateStr) => {
+                                setForm((f) => ({
+                                  ...f,
+                                  cmsTicketClosedOn: dateStr,
+                                }));
+                                if (errors.cmsTicketClosedOn)
+                                  setErrors((e) => ({
+                                    ...e,
+                                    cmsTicketClosedOn: "",
+                                  }));
+                              }}
+                              options={{
+                                enableTime: true,
+                                dateFormat: "Y-m-d",
+                                time_24hr: true,
+                              }}
+                              className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
+                              placeholder="YYYY-MM-DD"
+                            />
+                          </div>
+                        </Field>
+
+                        <Field
+                          label="Service Closed Date *"
+                          error={errors.serviceClosedDate}
+                        >
+                          <div className="flex items-center w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all">
+                            <Flatpickr
+                              data-enable-time
+                              value={form.serviceClosedDate}
+                              onChange={(date, dateStr) => {
+                                setForm((f) => ({
+                                  ...f,
+                                  serviceClosedDate: dateStr,
+                                }));
+                                if (errors.serviceClosedDate)
+                                  setErrors((e) => ({
+                                    ...e,
+                                    serviceClosedDate: "",
+                                  }));
+                              }}
+                              options={{
+                                enableTime: true,
+                                dateFormat: "Y-m-d",
+                                time_24hr: true,
+                              }}
+                              className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
+                              placeholder="YYYY-MM-DD"
+                            />
+                          </div>
+                        </Field>
+                      </div>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
               </div>
-            )}
 
-            {activeTab === "Ticket Verification" && (
-              <div className="flex flex-col space-y-6 max-w-full mx-auto pb-4">
-                <Field label="Ticket Resolution Verified By Sureze *" error={errors.ticketResolutionVerifiedBy}>
-                  <select
-                    value={form.ticketResolutionVerifiedBy}
-                    onChange={setField("ticketResolutionVerifiedBy")}
-                    className={inputClass}
-                    disabled={loadingApis}
-                  >
-                    <option value="" disabled selected>Search users...</option>
-                    {apiData.itsUsers.map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Ticket Resolution Verified On By Sureze *" error={errors.ticketResolutionVerifiedOn}>
-                  <div className={`flex items-center w-full rounded-lg border overflow-hidden focus-within:ring-2 focus-within:ring-pink-500/20 focus-within:border-pink-400 transition-all ${errors.ticketResolutionVerifiedOn
-                    ? 'border-[#e91e63] bg-[#fff0f4]'
-                    : form.ticketResolutionVerifiedOn
-                      ? 'border-[#e91e63] bg-[#fffbed]'
-                      : 'border-slate-200 bg-slate-50 dark:bg-slate-800 dark:border-slate-700'
-                    }`}>
-                    <div className="flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 w-10 border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white h-full py-2 shrink-0">
-                      <svg className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"></path></svg>
-                    </div>
-                    <Flatpickr
-                      data-enable-time
-                      value={form.ticketResolutionVerifiedOn}
-                      onChange={(date, dateStr) => {
-                        setForm(f => ({ ...f, ticketResolutionVerifiedOn: dateStr }));
-                        if (errors.ticketResolutionVerifiedOn) setErrors(e => ({ ...e, ticketResolutionVerifiedOn: "" }));
-                      }}
-                      options={{ enableTime: true, dateFormat: "d/m/Y", time_24hr: true }}
-                      className="w-full bg-transparent text-sm min-h-[38px] px-3 outline-none text-slate-700 dark:text-slate-200 border-none"
-                      placeholder="DD/MM/YYYY"
-                    />
-                  </div>
-                </Field>
-
-                <Field label="CMS Ticket Closed By *" error={errors.cmsTicketClosedBy}>
-                  <select
-                    value={form.cmsTicketClosedBy}
-                    onChange={setField("cmsTicketClosedBy")}
-                    className={inputClass}
-                    disabled={loadingApis}
-                  >
-                    <option value="" disabled selected>Search users...</option>
-                    {apiData.itsUsers.map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="CMS Ticket Closed On *" error={errors.cmsTicketClosedOn}>
-                  <div className="flex items-center w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all">
-                    <div className="flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 w-10 border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white h-full py-2 shrink-0">
-                      <svg className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"></path></svg>
-                    </div>
-                    <Flatpickr
-                      data-enable-time
-                      value={form.cmsTicketClosedOn}
-                      onChange={(date, dateStr) => {
-                        setForm(f => ({ ...f, cmsTicketClosedOn: dateStr }));
-                        if (errors.cmsTicketClosedOn) setErrors(e => ({ ...e, cmsTicketClosedOn: "" }));
-                      }}
-                      options={{ enableTime: true, dateFormat: "d/m/Y", time_24hr: true }}
-                      className="w-full bg-transparent text-sm min-h-[38px] px-3 outline-none text-slate-700 dark:text-slate-200 border-none"
-                      placeholder="DD/MM/YYYY"
-                    />
-                  </div>
-                </Field>
-
-                <Field label="Service Closed Date *" error={errors.serviceClosedDate}>
-                  <div className="flex items-center w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 overflow-hidden focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-400 transition-all">
-                    <div className="flex items-center justify-center bg-slate-100 dark:bg-slate-700/50 w-10 border-r border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white h-full py-2 shrink-0">
-                      <svg className="w-3.5 h-3.5 text-slate-700 dark:text-slate-300" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"></path></svg>
-                    </div>
-                    <Flatpickr
-                      data-enable-time
-                      value={form.serviceClosedDate}
-                      onChange={(date, dateStr) => {
-                        setForm(f => ({ ...f, serviceClosedDate: dateStr }));
-                        if (errors.serviceClosedDate) setErrors(e => ({ ...e, serviceClosedDate: "" }));
-                      }}
-                      options={{ enableTime: true, dateFormat: "d/m/Y", time_24hr: true }}
-                      className="w-full bg-transparent text-sm min-h-[38px] px-3 outline-none text-slate-700 dark:text-slate-200 border-none"
-                      placeholder="DD/MM/YYYY"
-                    />
-                  </div>
-                </Field>
+              <div className="flex items-center justify-end gap-4 px-8 py-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                <button
+                  type="button"
+                  onClick={() => setShowExitConfirm(true)}
+                  disabled={submitting}
+                  className="px-6 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting}
+                  className="px-8 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl bg-pink-600 text-white shadow-lg shadow-pink-500/20 transition-all disabled:opacity-50 flex items-center justify-center min-w-[140px]"
+                >
+                  {submitting
+                    ? "Saving..."
+                    : isEdit
+                      ? "Update Ticket"
+                      : "Create Ticket"}
+                </button>
               </div>
-            )}
-
+            </motion.div>
           </div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-            <button
-              type="button"
-              onClick={() => setShowExitConfirm(true)}
-              disabled={submitting}
-              className="px-5 py-2.5 text-sm font-medium rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={submitting}
-              className="px-5 py-2.5 text-sm font-medium rounded-xl bg-pink-600 text-white hover:bg-pink-700 transition-all disabled:opacity-50 flex items-center justify-center min-w-[100px]"
-            >
-              {submitting ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-              ) : isEdit ? "Save Changes" : "Create"}
-            </button>
-          </div>
-        </div>
-      </div>
+        )}
+      </AnimatePresence>
 
       {/* Activity Modal */}
       <ActivityModal
@@ -753,15 +1155,17 @@ export default function TicketModal({
         onSubmit={(data) => {
           if (activityToEdit) {
             // Update existing
-            setForm(f => ({
+            setForm((f) => ({
               ...f,
-              activities: (f.activities || []).map(a => a === activityToEdit ? data : a)
+              activities: (f.activities || []).map((a) =>
+                a === activityToEdit ? data : a,
+              ),
             }));
           } else {
             // Add new
-            setForm(f => ({
+            setForm((f) => ({
               ...f,
-              activities: [...(f.activities || []), data]
+              activities: [...(f.activities || []), data],
             }));
           }
           setIsActivityModalOpen(false);
@@ -783,8 +1187,12 @@ export default function TicketModal({
       {isCustomerModalOpen && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl w-[400px]">
-            <h3 className="text-lg font-semibold mb-4 dark:text-white">New Customer</h3>
-            <p className="text-sm text-slate-500 mb-6">Existing customer form goes here. Implementation pending.</p>
+            <h3 className="text-lg font-semibold mb-4 dark:text-white">
+              New Customer
+            </h3>
+            <p className="text-sm text-slate-500 mb-6">
+              Existing customer form goes here. Implementation pending.
+            </p>
             <div className="flex justify-end">
               <button
                 onClick={() => setIsCustomerModalOpen(false)}
@@ -798,41 +1206,64 @@ export default function TicketModal({
       )}
 
       {/* Exit Confirmation Modal */}
-      {showExitConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 text-center animate-fade-in">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">Warning</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-              Are you sure to exit without saving data?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowExitConfirm(false)}
-                className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowExitConfirm(false);
-                  onClose();
-                }}
-                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 font-medium"
-              >
-                Yes
-              </button>
-            </div>
+      <AnimatePresence>
+        {showExitConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-2xl p-8 text-center"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-500 mx-auto mb-6">
+                <AlertCircle size={32} strokeWidth={2.5} />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tighter uppercase tracking-widest">
+                Discard Changes?
+              </h3>
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-8 uppercase tracking-widest leading-relaxed">
+                You have unsaved changes. Are you sure you want to exit?
+              </p>
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowExitConfirm(false)}
+                  className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                >
+                  Stay
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setShowExitConfirm(false);
+                    onClose();
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:from-rose-600 hover:to-red-700 transition-all shadow-lg shadow-rose-500/20"
+                >
+                  Discard
+                </motion.button>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Date Warning Modal */}
       {showDateWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 text-center animate-fade-in">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">Warning</h3>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+              Warning
+            </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
               Enter Recevied Date before adding an activity
             </p>
@@ -850,5 +1281,3 @@ export default function TicketModal({
     </>
   );
 }
-
-

@@ -12,7 +12,7 @@ export const NAV_GROUPS = [
   {
     title: "Main Menu",
     links: [
-      // { id: "main-Home", name: "Home", href: "/", icon: Home },
+      { id: "main-dashboard", name: "Dashboard", href: "/", icon: Home },
       {
         id: "main-tickets",
         name: "AMS Tickets",

@@ -135,8 +135,8 @@ export function getSession() {
     const session = JSON.parse(raw);
     const ttl = session.expires_at - Date.now();
 
-    if (ttl < 30_000) {
-      logger.warn("getSession() → session expired or expiring soon", { ttl_ms: ttl });
+    if (ttl <= 0) {
+      logger.warn("getSession() → session expired", { ttl_ms: ttl });
       return null;
     }
 
@@ -151,6 +151,49 @@ export function getSession() {
 export function clearSession() {
   logger.info("clearSession() → session removed");
   localStorage.removeItem(STORAGE_KEY);
+}
+
+export async function refreshAccessToken() {
+  const session = JSON.parse(localStorage.getItem(STORAGE_KEY));
+  if (!session?.refresh_token) {
+    logger.warn("refreshAccessToken() → no refresh token available");
+    return null;
+  }
+
+  logger.info("refreshAccessToken() → attempting refresh");
+
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    client_id: CLIENT_ID,
+    refresh_token: session.refresh_token,
+    scope: SCOPE,
+  });
+
+  try {
+    const res = await fetch(TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+
+    if (!res.ok) throw new Error(`Refresh failed: ${res.status}`);
+
+    const data = await res.json();
+    const newSession = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token ?? session.refresh_token,
+      expires_at: Date.now() + (data.expires_in || 3600) * 1000,
+      token_type: data.token_type ?? "Bearer",
+    };
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+    logger.info("Refresh successful — new session stored");
+    return newSession;
+  } catch (err) {
+    logger.error("refreshAccessToken() → failed", String(err));
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
 }
 
 export function getAuthState() {

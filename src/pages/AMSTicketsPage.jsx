@@ -190,12 +190,12 @@ export default function AMSTicketsPage() {
 
   // --- Table Configuration ---
   const columns = [
-    { key: "siteName", label: "Site Name", width: 90 },
+    { key: "siteName", label: "Site Name", width: 80 },
     { key: "siteOCN", label: "Site OCN", width: 80, align: "center" },
     {
       key: "cmsNextTicketNo",
       label: "CMS Next Ticket No",
-      width: 100,
+      width: 90,
       align: "center",
     },
     { key: "ticketReceivedDate", label: "Received Date Time", width: 70 },
@@ -203,15 +203,15 @@ export default function AMSTicketsPage() {
     {
       key: "activityTotalDuration",
       label: "Total Duration (H)",
-      width: 60,
+      width: 40,
       align: "center",
     },
     { key: "cmsTicketClosedOn", label: "CMS Closed On", width: 70 },
     { key: "serviceClosedDate", label: "Service Closed", width: 70 },
-    { key: "status", label: "Status", width: 70, align: "center" },
-    { key: "isPRE", label: "PRE", width: 40, align: "center" },
+    { key: "status", label: "Status", width: 50, align: "center" },
+    { key: "isPRE", label: "PRE", width: 30, align: "center" },
     { key: "createdBy", label: "Created By", width: 70 },
-    { key: "actions", label: "Actions", width: 70, align: "right" },
+    { key: "actions", label: "Actions", width: 60, align: "right" },
   ];
 
   const totalPages = Math.ceil(totalCount / pageSize);
@@ -317,7 +317,7 @@ export default function AMSTicketsPage() {
         className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-hidden"
       >
         {/* ── Header Row ── */}
-        <div className="flex flex-col gap-6 py-6 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <motion.button
@@ -334,7 +334,7 @@ export default function AMSTicketsPage() {
                   <span className="text-slate-300 dark:text-slate-700">/</span>
                   <span className="text-pink-500">AMS Tickets</span>
                 </nav>
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 tracking-tighter">
+                <h1 className="text-4xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 tracking-tighter">
                   AMS Tickets
                 </h1>
               </div>

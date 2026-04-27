@@ -11,6 +11,7 @@ import ProtectedRoute from "./component/auth/ProtectedRoute";
 import PermissionGuard from "./component/auth/PermissionGuard";
 
 // Pages
+import Dashboard from "./pages/Dashboard";
 import AMSTicketsPage from "./pages/AMSTicketsPage";
 import SitesPage from "./pages/SitesPage";
 import CountriesPage from "./pages/CountriesPage";
@@ -39,18 +40,25 @@ function Layout({ collapsed, setCollapsed }) {
     <div className="flex h-screen w-screen dark:bg-slate-950 bg-slate-100 text-slate-900 dark:text-white transition-colors duration-300 relative">
       {/* Mobile Sidebar Overlay */}
       {mobileOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] lg:hidden animate-in fade-in duration-300"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Sidebar for Mobile */}
-      <div className={clsx(
-        "fixed inset-y-0 left-0 z-[70] transition-transform duration-300 lg:hidden",
-        mobileOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        <Sidebar collapsed={false} setCollapsed={() => {}} isMobile={true} closeMobile={() => setMobileOpen(false)} />
+      <div
+        className={clsx(
+          "fixed inset-y-0 left-0 z-[70] transition-transform duration-300 lg:hidden",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        <Sidebar
+          collapsed={false}
+          setCollapsed={() => {}}
+          isMobile={true}
+          closeMobile={() => setMobileOpen(false)}
+        />
       </div>
 
       {/* Sidebar for Desktop */}
@@ -60,10 +68,9 @@ function Layout({ collapsed, setCollapsed }) {
         <Navbar setCollapsed={setCollapsed} setMobileOpen={setMobileOpen} />
 
         <main className="flex-1 overflow-auto p-3 sm:p-6 bg-slate-100 dark:bg-slate-950 transition-colors duration-300">
-
           <Routes>
             {/* Dashboard / Home */}
-            <Route path="/" element={<AMSTicketsPage />} />
+            <Route path="/" element={<Dashboard />} />
 
             {/* Main Menu */}
             <Route
@@ -297,5 +304,3 @@ export default function App() {
     </Routes>
   );
 }
-
-
