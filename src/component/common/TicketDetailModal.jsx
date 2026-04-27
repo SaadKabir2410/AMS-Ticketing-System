@@ -125,7 +125,7 @@ export default function TicketDetailModal({ open, onClose, item, ticket }) {
       fullWidth
       PaperProps={{
         sx: { borderRadius: 3 },
-        className: "dark:bg-slate-900",
+        className: "dark:bg-slate-900 font-[Arial]",
       }}
     >
       {/* ── Header ─────────────────────────────────────────── */}
@@ -214,7 +214,7 @@ export default function TicketDetailModal({ open, onClose, item, ticket }) {
             </Box>
 
             <IconButton onClick={onClose} size="small" sx={{ mt: 0.5 }}>
-              
+
             </IconButton>
           </Stack>
         </Box>

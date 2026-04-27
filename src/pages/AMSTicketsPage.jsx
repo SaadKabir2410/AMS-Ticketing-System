@@ -131,17 +131,17 @@ export default function AMSTicketsPage() {
     try {
       const extraParams = isAdvancedSearch
         ? {
-            siteName: filters.siteName || undefined,
-            siteOcn: filters.siteOcn || undefined,
-            cmsNextTicketNo: filters.cmsNextTicketNo || undefined,
-            status: filters.status || undefined,
-            dateFrom: filters.dateFrom
-              ? new Date(filters.dateFrom).toISOString()
-              : undefined,
-            dateTo: filters.dateTo
-              ? new Date(filters.dateTo).toISOString()
-              : undefined,
-          }
+          siteName: filters.siteName || undefined,
+          siteOcn: filters.siteOcn || undefined,
+          cmsNextTicketNo: filters.cmsNextTicketNo || undefined,
+          status: filters.status || undefined,
+          dateFrom: filters.dateFrom
+            ? new Date(filters.dateFrom).toISOString()
+            : undefined,
+          dateTo: filters.dateTo
+            ? new Date(filters.dateTo).toISOString()
+            : undefined,
+        }
         : {};
 
       const response = await amsTicketApi.getAll({
@@ -303,7 +303,7 @@ export default function AMSTicketsPage() {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible"
+      className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]"
     >
       <style>{`
         *::-webkit-scrollbar { display: none !important; }
@@ -489,12 +489,11 @@ export default function AMSTicketsPage() {
                           backgroundColor: "rgba(244, 63, 94, 0.04)",
                         }}
                         className={`group transition-all duration-200 ${ROW_HEIGHT} border-b border-slate-50 dark:border-slate-800/30 
-                          ${
-                            row.status === 1
-                              ? "bg-[#fee2e2] dark:bg-red-950/60"
-                              : idx % 2 === 0
-                                ? "bg-white dark:bg-[#161920]/40"
-                                : "bg-gray-200/50 dark:bg-white/[0.03]"
+                          ${row.status === 1
+                            ? "bg-[#fee2e2] dark:bg-red-950/60"
+                            : idx % 2 === 0
+                              ? "bg-white dark:bg-[#161920]/40"
+                              : "bg-gray-200/50 dark:bg-white/[0.03]"
                           }`}
                       >
                         {columns.map((col, colIdx) => (
@@ -600,17 +599,17 @@ export default function AMSTicketsPage() {
                                   onEdit={
                                     !isAdmin && row.status === 1
                                       ? () => {
-                                          setActionItem(row);
-                                          setActionType("edit");
-                                        }
+                                        setActionItem(row);
+                                        setActionType("edit");
+                                      }
                                       : null
                                   }
                                   onDelete={
                                     !isAdmin && row.status === 1
                                       ? () => {
-                                          setActionItem(row);
-                                          setActionType("delete");
-                                        }
+                                        setActionItem(row);
+                                        setActionType("delete");
+                                      }
                                       : null
                                   }
                                   deleteButtonText="Void"

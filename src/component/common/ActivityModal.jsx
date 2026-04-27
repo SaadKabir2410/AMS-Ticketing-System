@@ -25,7 +25,7 @@ function Field({ label, error, children }) {
         {children}
       </div>
       {error && (
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-[10px] font-bold text-rose-600 flex items-center gap-1.5 mt-1.5 uppercase tracking-widest"
@@ -131,11 +131,10 @@ function Combobox({
                         setOpen(false);
                         setSearch("");
                       }}
-                      className={`w-full text-left px-4 py-2.5 rounded-xl text-sm transition-all flex items-center justify-between ${
-                        value === opt
-                          ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 font-bold"
-                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-black dark:hover:text-white"
-                      }`}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-sm transition-all flex items-center justify-between ${value === opt
+                        ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 font-bold"
+                        : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-black dark:hover:text-white"
+                        }`}
                     >
                       <span className="truncate">{opt}</span>
                       {value === opt && <Check size={14} />}
@@ -182,46 +181,46 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
 
     setErrors({});
     if (activity) {
-        setForm({
-          ...EMPTY,
-          ...activity,
-        });
-      } else {
-        setForm({ ...EMPTY });
-      }
-
-      setLoadingApis(true);
-      
-      Promise.all([
-        usersApi.getUsersList().catch(() => []),
-        codeDetailsApi.getListByLookupCodes({ 
-          lookupCodes: ["ActivityType"] 
-        }).catch(() => ({})),
-        workCodesApi.getAll().catch(() => [])
-      ]).then(([usersRes, lookupsRes, workCodesRes]) => {
-        const activityTypes = (lookupsRes["ActivityType"] || [])
-          .map(item => item.description || item.newCode)
-          .sort((a, b) => a.localeCompare(b));
-
-        const workDoneCodes = (workCodesRes || [])
-          .map(item => `${item.code} - ${item.description}`)
-          .sort((a, b) => a.localeCompare(b));
-
-        setApiData({
-          users: (usersRes || [])
-            .map((u) => u.name || u.userName)
-            .filter(Boolean)
-            .sort((a, b) => a.localeCompare(b)),
-          activityTypes: activityTypes.length > 0 
-            ? activityTypes 
-            : ["Maintenance", "Repair", "Installation", "Inspection"].sort((a, b) => a.localeCompare(b)),
-          workDoneCodes: workDoneCodes.length > 0
-            ? workDoneCodes
-            : ["W001 - Replaced Part", "W002 - Software Update", "W003 - Network Fix", "W004 - General Servicing"].sort((a, b) => a.localeCompare(b)),
-        });
-      }).finally(() => {
-        setLoadingApis(false);
+      setForm({
+        ...EMPTY,
+        ...activity,
       });
+    } else {
+      setForm({ ...EMPTY });
+    }
+
+    setLoadingApis(true);
+
+    Promise.all([
+      usersApi.getUsersList().catch(() => []),
+      codeDetailsApi.getListByLookupCodes({
+        lookupCodes: ["ActivityType"]
+      }).catch(() => ({})),
+      workCodesApi.getAll().catch(() => [])
+    ]).then(([usersRes, lookupsRes, workCodesRes]) => {
+      const activityTypes = (lookupsRes["ActivityType"] || [])
+        .map(item => item.description || item.newCode)
+        .sort((a, b) => a.localeCompare(b));
+
+      const workDoneCodes = (workCodesRes || [])
+        .map(item => `${item.code} - ${item.description}`)
+        .sort((a, b) => a.localeCompare(b));
+
+      setApiData({
+        users: (usersRes || [])
+          .map((u) => u.name || u.userName)
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b)),
+        activityTypes: activityTypes.length > 0
+          ? activityTypes
+          : ["Maintenance", "Repair", "Installation", "Inspection"].sort((a, b) => a.localeCompare(b)),
+        workDoneCodes: workDoneCodes.length > 0
+          ? workDoneCodes
+          : ["W001 - Replaced Part", "W002 - Software Update", "W003 - Network Fix", "W004 - General Servicing"].sort((a, b) => a.localeCompare(b)),
+      });
+    }).finally(() => {
+      setLoadingApis(false);
+    });
   }, [open, activity]);
 
   const setField = (key) => (e) => {
@@ -244,7 +243,7 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
     if (!form.endDate) newErrors.endDate = "End Date is required";
     if (!form.workDoneCode) newErrors.workDoneCode = "Work Done Code is required";
     if (!form.resolvedBy) newErrors.resolvedBy = "Resolved By is required";
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -256,7 +255,7 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
     // Convert durationHours back to expected durationMinutes if needed, or keep it.
     // Assuming you want it as presented in the UI:
     onSubmit({
-      ...form, 
+      ...form,
       durationMinutes: form.durationHours ? parseFloat(form.durationHours) * 60 : 0
     });
   };
@@ -274,15 +273,15 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-slate-900/60"
           />
-          
+
           <motion.div
             layout
             initial={{ opacity: 0, scale: 0.98, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.98, y: 10 }}
-            className="relative w-full max-w-2xl bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-auto max-h-[90vh] overflow-hidden"
+            className="relative w-full max-w-2xl bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-auto max-h-[90vh] overflow-hidden font-[Arial]"
           >
-            
+
             {/* Header */}
             <div className="flex items-center justify-between px-8 py-6 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
               <div className="flex items-center gap-4">
@@ -308,7 +307,7 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
 
             {/* Body */}
             <div className="px-8 py-8 space-y-6 overflow-y-auto no-scrollbar max-h-[75vh]">
-              
+
               {/* Activity Type */}
               <Field label="Activity Type *" error={errors.activityType}>
                 <div className="relative group/input">
@@ -408,7 +407,7 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
                       onChange={handleToggleLikelyCause}
                     />
                     <div className={`block w-10 h-6 rounded-full transition-all duration-300 ${form.likelyCause ? "bg-pink-600 shadow-lg shadow-pink-500/20" : "bg-slate-300 dark:bg-slate-700"}`}></div>
-                    <motion.div 
+                    <motion.div
                       animate={{ x: form.likelyCause ? 18 : 2 }}
                       className={`absolute left-0 top-1 bg-white w-4 h-4 rounded-full shadow-md transition-all`}
                     />
