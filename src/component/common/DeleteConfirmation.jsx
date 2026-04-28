@@ -15,14 +15,14 @@ export default function DeleteConfirmModal({
   if (!open || !activeItem) return null;
 
   const identifier =
-    activeItem.ticketNo || 
-    activeItem.siteName || 
-    activeItem.projectDescription || 
-    activeItem.description || 
-    activeItem.lookupCode || 
-    activeItem.code || 
-    activeItem.userName || 
-    activeItem.name || 
+    activeItem.ticketNo ||
+    activeItem.siteName ||
+    activeItem.projectDescription ||
+    activeItem.description ||
+    activeItem.lookupCode ||
+    activeItem.code ||
+    activeItem.userName ||
+    activeItem.name ||
     activeItem.id;
 
   return (
@@ -31,7 +31,7 @@ export default function DeleteConfirmModal({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl animate-fade-in p-8 pt-12 text-center">
+      <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl animate-fade-in p-8 pt-12 text-center font-[Arial]">
 
         <h3 className="text-lg text-slate-800 dark:text-white mb-2">
           {title}

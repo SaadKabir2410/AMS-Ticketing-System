@@ -251,7 +251,7 @@ export default function SiteModal({
       fullWidth
       PaperProps={{
         sx: { borderRadius: "16px", p: 1 },
-        className: "bg-white dark:bg-slate-900 dark:text-white",
+        className: "bg-white dark:bg-slate-900 dark:text-white font-[Arial]",
       }}
     >
       <div className="flex items-center justify-between px-6 pt-5 pb-3">
@@ -263,16 +263,16 @@ export default function SiteModal({
           size="small"
           className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
         >
-          
+
         </IconButton>
       </div>
 
       <div className="px-6 py-2 space-y-5">
         {submitError && (
-          <PremiumErrorAlert 
-            open={!!submitError} 
-            message={submitError} 
-            onClose={() => {}} // Usually submitError is handled by parent, but we can't easily clear it here without a prop
+          <PremiumErrorAlert
+            open={!!submitError}
+            message={submitError}
+            onClose={() => { }} // Usually submitError is handled by parent, but we can't easily clear it here without a prop
           />
         )}
 
@@ -334,11 +334,10 @@ export default function SiteModal({
           </div>
           {typeof errors.oCN === "string" && errors.oCN && (
             <p
-              className={`text-xs mt-1.5 flex items-center gap-1 ${
-                errors.oCN.includes("already exists")
+              className={`text-xs mt-1.5 flex items-center gap-1 ${errors.oCN.includes("already exists")
                   ? "text-amber-600 dark:text-amber-400"
                   : "text-red-500"
-              }`}
+                }`}
             >
               {errors.oCN.includes("already exists") && (
                 <AlertCircle size={11} />
@@ -377,13 +376,12 @@ export default function SiteModal({
                 },
               },
             }}
-            className={`w-full transition-all text-sm rounded-xl ${
-              errors.countryId
+            className={`w-full transition-all text-sm rounded-xl ${errors.countryId
                 ? "bg-red-50/50 text-red-900 placeholder:text-red-300 dark:bg-red-500/10 dark:text-red-200"
                 : form.countryId
                   ? "bg-green-50/50 text-green-900 border-green-500 dark:bg-green-500/10 dark:text-green-200"
                   : "bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-            }`}
+              }`}
             renderInput={(params) => (
               <TextField
                 {...params}

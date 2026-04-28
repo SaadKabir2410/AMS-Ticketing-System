@@ -1,9 +1,23 @@
-import { useState, useEffect, useRef } from "react";
-import { AlertCircle, X, Search, ChevronDown, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  AlertCircle,
+  X,
+  Plus,
+  ChevronLeft,
+  Calendar,
+  FileText,
+  Activity,
+  ShieldCheck,
+  Search,
+  ChevronDown,
+  Check,
+} from "lucide-react";
+import { useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import PremiumErrorAlert from "./PremiumErrorAlert";
 import SiteModal from "./SiteModal";
 import ActivityModal from "./ActivityModal";
+import { ActionsMenu } from "./ResourcePage";
 import { useToast } from "./ToastContext";
 import { useAuth } from "../../context/AuthContextHook";
 import { usersApi } from "../../services/api/users";
@@ -18,11 +32,11 @@ function Field({ label, error, children }) {
   return (
     <div className="space-y-1.5 flex flex-col group/field">
       {label && (
-        <label className="text-[10px] uppercase font-bold tracking-widest text-black dark:text-slate-400 mb-0.5 group-focus-within/field:text-pink-600 transition-colors flex items-center gap-2">
+        <label className="text-[12px] font-semibold text-slate-700 dark:text-slate-400 mb-1.5 group-focus-within/field:text-pink-600 transition-colors flex items-center gap-2">
           {label.includes("*") ? (
             <>
               {label.split("*")[0]}
-              <span className="text-rose-500">*</span>
+              <span className="text-rose-500 animate-pulse">*</span>
             </>
           ) : (
             label
@@ -34,7 +48,7 @@ function Field({ label, error, children }) {
         <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-[10px] font-bold text-rose-600 flex items-center gap-1.5 mt-1.5 uppercase tracking-widest"
+          className="text-[11px] font-semibold text-rose-600 flex items-center gap-1.5 mt-1.5"
         >
           <AlertCircle size={10} strokeWidth={2.5} /> {error}
         </motion.p>
@@ -44,7 +58,7 @@ function Field({ label, error, children }) {
 }
 
 const inputClass =
-  "w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm outline-none transition-all focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10 shadow-sm font-medium text-black dark:text-slate-200 placeholder:text-slate-400/60";
+  "w-full px-4 py-2.5 rounded-xl border border-transparent border-slate-500 bg-slate-100 dark:bg-slate-800/50 backdrop-blur-sm text-sm outline-none transition-all duration-300 focus:bg-white dark:focus:bg-slate-900 focus:border-pink-500/30 focus:ring-4 focus:ring-pink-500/10 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800/50 font-medium text-black dark:text-slate-200 placeholder:text-slate-500/80";
 
 // ─── Combobox — supports both plain strings and { label, value } objects ──────
 function Combobox({
@@ -64,58 +78,43 @@ function Combobox({
       if (containerRef.current && !containerRef.current.contains(e.target))
         setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Normalise every option to { label, value }
-  const normalised = options.map((o) =>
-    o !== null && typeof o === "object" ? o : { label: String(o), value: o },
+  const filteredOptions = (options || []).filter((opt) =>
+    String(opt).toLowerCase().includes(search.toLowerCase()),
   );
-
-  const filtered = normalised.filter((o) =>
-    String(o.label).toLowerCase().includes(search.toLowerCase()),
-  );
-
-  // Find display label for current value
-  const displayLabel = (() => {
-    if (value === "" || value === null || value === undefined) return null;
-    const match = normalised.find(
-      (o) => o.value === value || o.value === Number(value),
-    );
-    return match ? match.label : String(value);
-  })();
 
   return (
     <div className="relative w-full" ref={containerRef}>
       <div
-        onClick={() => !disabled && setOpen((o) => !o)}
-        className={`${inputClass} flex items-center justify-between cursor-pointer ${
-          disabled
-            ? "opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/30"
-            : ""
-        } ${error ? "border-rose-500" : ""}`}
+        onClick={() => !disabled && setOpen(!open)}
+        className={`${inputClass} flex items-center justify-between cursor-pointer ${disabled ? "opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/30" : ""} ${error ? "border-rose-500" : ""}`}
       >
         <span
-          className={`truncate ${!displayLabel ? "text-slate-400" : "text-black dark:text-white"}`}
+          className={`truncate ${!value ? "text-slate-400" : "text-black dark:text-white"}`}
         >
-          {displayLabel || placeholder}
+          {value || placeholder}
         </span>
         <ChevronDown
           size={16}
-          className={`transition-transform duration-200 ${open ? "rotate-180" : ""} text-slate-400 shrink-0 ml-2`}
+          className={`transition-transform duration-300 ${
+            open ? "rotate-180" : ""
+          } text-slate-400 shrink-0 ml-2`}
         />
       </div>
 
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 5 }}
-            className="absolute z-[100] mt-2 w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[300px]"
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute z-[100] mt-2 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[300px]"
           >
-            <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="p-3 border-b border-slate-100/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50">
               <div className="relative">
                 <Search
                   size={14}
@@ -127,41 +126,40 @@ function Combobox({
                   placeholder="Search..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none"
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-4 focus:ring-pink-500/10 transition-all"
                 />
               </div>
             </div>
+
             <div className="overflow-y-auto no-scrollbar flex-1">
-              {filtered.length === 0 ? (
+              {loading ? (
+                <div className="p-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  Loading...
+                </div>
+              ) : filteredOptions.length === 0 ? (
                 <div className="p-8 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">
                   No results found
                 </div>
               ) : (
                 <div className="p-2 space-y-1">
-                  {filtered.map((opt) => {
-                    const isSelected =
-                      value === opt.value ||
-                      value === String(opt.value) ||
-                      Number(value) === opt.value;
-                    return (
-                      <button
-                        key={String(opt.value)}
-                        onClick={() => {
-                          onChange(opt.value);
-                          setOpen(false);
-                          setSearch("");
-                        }}
-                        className={`w-full text-left px-4 py-2.5 rounded-xl text-sm transition-all flex items-center justify-between ${
-                          isSelected
-                            ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 font-bold"
-                            : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-black dark:hover:text-white"
-                        }`}
-                      >
-                        <span className="truncate">{String(opt.label)}</span>
-                        {isSelected && <Check size={14} />}
-                      </button>
-                    );
-                  })}
+                  {filteredOptions.map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => {
+                        onChange(opt);
+                        setOpen(false);
+                        setSearch("");
+                      }}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-sm transition-all flex items-center justify-between ${
+                        value === opt
+                          ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 font-bold"
+                          : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-black dark:hover:text-white"
+                      }`}
+                    >
+                      <span className="truncate">{opt}</span>
+                      {value === opt && <Check size={14} />}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -408,6 +406,7 @@ const EMPTY = {
   customer: "",
   ticketAssignedTo: "",
   ticketType: "",
+  servicePlannedType: "",
   ticketIncomingChannel: "",
   isTicketForwarded: false,
   ticketForwardedBy: "",
@@ -425,8 +424,6 @@ const EMPTY = {
   cmsTicketClosedBy: "",
   cmsTicketClosedOn: "",
   serviceClosedDate: "",
-
-  activities: [],
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -457,13 +454,15 @@ export default function TicketModal({
 
   // Dropdown options
   const [apiData, setApiData] = useState({
-    siteNames: [], // string[]
-    customers: [], // string[]
-    assignees: [], // string[]
-    ticketTypes: [], // { label, value }[]
-    incomingChannels: [], // { label, value }[]
-    servicePlannedTypes: [], // { label, value }[]
+    siteNames: [],
+    customers: [],
+    assignees: [],
+    itsUsers: [],
+    ticketTypes: [],
+    incomingChannels: [],
   });
+  const [rawSites, setRawSites] = useState([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
 
   const [isSiteModalOpen, setIsSiteModalOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -472,6 +471,7 @@ export default function TicketModal({
   const [activityEditIndex, setActivityEditIndex] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showDateWarning, setShowDateWarning] = useState(false);
+  const [showActivityWarning, setShowActivityWarning] = useState(false);
 
   // ── Open / close reset ────────────────────────────────────────────────────
   useEffect(() => {
@@ -481,32 +481,64 @@ export default function TicketModal({
       setActiveTab("Ticket");
       setShowExitConfirm(false);
       setShowDateWarning(false);
+      setShowActivityWarning(false);
       return;
     }
 
+    setShowExitConfirm(false);
+    setShowDateWarning(false);
     setErrors({});
     setActiveTab("Ticket");
-
-    // Seed form immediately from prop so the UI isn't blank while we fetch
     if (ticket) {
-      setForm(mapApiToForm(ticket));
+      setForm({
+        ...EMPTY,
+        ...ticket,
+        receivedAt: ticket.receivedAt ? ticket.receivedAt.slice(0, 16) : "",
+        cmsTicketAddedOn: ticket.cmsTicketAddedOn
+          ? ticket.cmsTicketAddedOn.slice(0, 16)
+          : "",
+        isTicketForwarded: !!ticket.ticketForwardedBy,
+      });
+
+      // Hydrate thoroughly from backend to guarantee perfectly fresh un-cached records
+      amsTicketApi
+        .getById(ticket.id)
+        .then((fullData) => {
+          setForm((prev) => ({
+            ...prev,
+            ...fullData,
+            receivedAt: fullData.receivedAt
+              ? fullData.receivedAt.slice(0, 16)
+              : prev.receivedAt,
+            cmsTicketAddedOn: fullData.cmsTicketAddedOn
+              ? fullData.cmsTicketAddedOn.slice(0, 16)
+              : prev.cmsTicketAddedOn,
+            isTicketForwarded: !!fullData.ticketForwardedBy,
+          }));
+        })
+        .catch((err) =>
+          console.error("Failed to fetch secure ticket record:", err),
+        );
     } else {
       setForm({ ...EMPTY });
     }
 
     setLoadingApis(true);
-
     Promise.all([
       sitesApi.getAll({ perPage: 1000 }).catch(() => ({ items: [] })),
       usersApi.getUsersList().catch(() => []),
-      // Fetch all three lookup groups in one call
+      usersApi
+        .getUsersList({
+          organizationTypes: [2, 3],
+          isITS: true,
+          onlyLoadCurrentUser: false,
+          mustCompleteJobsheet: undefined,
+        })
+        .catch(() => []),
+      // Fetch dynamic lookup codes
       codeDetailsApi
         .getListByLookupCodes({
-          lookupCodes: [
-            "TicketType",
-            "TicketIncomingChannel",
-            "ServicePlannedType",
-          ],
+          lookupCodes: ["TicketType", "TicketIncomingChannel"],
         })
         .catch(() => ({})),
     ])
@@ -515,95 +547,107 @@ export default function TicketModal({
         const fetchedUsers = usersRes || [];
 
         setRawSites(fetchedSites);
-        setRawUsers(fetchedUsers);
 
-        // Build { label, value } pairs from lookup codes
-        // The API returns items with `sequence` as the numeric enum value
-        // and `description` as the human-readable label
-        const buildEnumOptions = (key) =>
-          (lookupsRes[key] || []).map((item) => ({
-            label: item.description || item.newCode || String(item.sequence),
-            value: item.sequence ?? item.value ?? item.newCode,
-          }));
+        // Map lookup details to simple string arrays
+        const ticketTypes = (lookupsRes["TicketType"] || [])
+          .map((item) => item.description || item.newCode)
+          .sort((a, b) => a.localeCompare(b));
+
+        const incomingChannels = (lookupsRes["TicketIncomingChannel"] || [])
+          .map((item) => item.description || item.newCode)
+          .sort((a, b) => a.localeCompare(b));
 
         setApiData((prev) => ({
           ...prev,
+
           siteNames: fetchedSites
-            .map((s) => s.name || s.Name)
             .filter(Boolean)
             .sort((a, b) => a.localeCompare(b)),
-          assignees: fetchedUsers
+          assignees: (usersRes || [])
             .map((u) => u.name || u.userName)
             .filter(Boolean)
             .sort((a, b) => a.localeCompare(b)),
-          ticketTypes: buildEnumOptions("TicketType"),
-          incomingChannels: buildEnumOptions("TicketIncomingChannel"),
-          servicePlannedTypes: buildEnumOptions("ServicePlannedType"),
-        }));
-
-        // Deep hydration from getById for edit mode
-        if (ticket?.id) {
-          return amsTicketApi
-            .getById(ticket.id)
-            .then((fullData) => {
-              // Resolve ID → display name using the users we just fetched
-              const nameById = (id) => {
-                const u = fetchedUsers.find((u) => u.id === id);
-                return u?.name || u?.userName || "";
-              };
-
-              const enriched = {
-                ...fullData,
-                _customerName: ticket._customerName ?? "",
-                _ticketForwardedByName: nameById(fullData.ticketForwardedById),
-                _cmsTicketAddedByName: nameById(fullData.cmsTicketAddedById),
-                _ticketResolutionVerifiedByName: nameById(
-                  fullData.ticketResolutionVerifiedById,
+          itsUsers: (itsUsersRes || [])
+            .map((u) => u.name || u.userName)
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b)),
+          ticketTypes:
+            ticketTypes.length > 0
+              ? ticketTypes
+              : ["Hardware", "Software", "Network", "General Inquiry"].sort(
+                  (a, b) => a.localeCompare(b),
                 ),
-              };
-
-              setForm(mapApiToForm(enriched));
-            })
-            .catch((err) => console.error("Failed to hydrate ticket:", err));
-        }
+          incomingChannels:
+            incomingChannels.length > 0
+              ? incomingChannels
+              : ["Direct", "Email", "Phone", "Portal"].sort((a, b) =>
+                  a.localeCompare(b),
+                ),
+        }));
       })
       .finally(() => setLoadingApis(false));
   }, [open, ticket]);
 
-  // ── Fetch customers when site changes ─────────────────────────────────────
+  // Fetch customers when siteName changes
   useEffect(() => {
     if (!form.siteName) {
       setApiData((prev) => ({ ...prev, customers: [] }));
       return;
     }
-    const site = rawSites.find(
+
+    const selectedSite = rawSites.find(
       (s) => s.name === form.siteName || s.Name === form.siteName,
     );
-    if (!site?.id) return;
 
-    setLoadingCustomers(true);
-    usersApi
-      .getCustomerUsers(site.id)
-      .then((res) => {
-        const customers = (res?.items || res || [])
-          .map((c) => c.name || c.userName)
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b));
-        setApiData((prev) => ({ ...prev, customers }));
-      })
-      .catch(() => setApiData((prev) => ({ ...prev, customers: [] })))
-      .finally(() => setLoadingCustomers(false));
+    if (selectedSite && selectedSite.id) {
+      setLoadingCustomers(true);
+      usersApi
+        .getCustomerUsers(selectedSite.id)
+        .then((res) => {
+          const customers = (res?.items || res || [])
+            .map((c) => c.name || c.userName)
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b));
+          setApiData((prev) => ({ ...prev, customers }));
+        })
+        .catch(() => {
+          setApiData((prev) => ({ ...prev, customers: [] }));
+        })
+        .finally(() => {
+          setLoadingCustomers(false);
+        });
+    }
   }, [form.siteName, rawSites]);
 
   // ── Generic field setter ──────────────────────────────────────────────────
   const setField = (key) => (e) => {
-    let val;
-    if (e?.target?.type === "checkbox") val = e.target.checked;
-    else if (e?.target?.type === "file") val = e.target.files[0];
-    else if (e?.target) val = e.target.value;
-    else val = e; // Combobox / Flatpickr direct value
+    let val = e?.target ? e.target.value : e;
+    if (e?.target?.type === "checkbox") {
+      val = e.target.checked;
+    } else if (e?.target?.type === "file") {
+      val = e.target.files[0];
+    }
     setForm((f) => ({ ...f, [key]: val }));
-    if (errors[key]) setErrors((errs) => ({ ...errs, [key]: "" }));
+
+    if (errors[key]) {
+      setErrors((errs) => ({ ...errs, [key]: "" }));
+    }
+  };
+
+  const handleTicketTypeChange = (value) => {
+    setForm((f) => ({
+      ...f,
+      ticketType: value,
+      servicePlannedType:
+        value === "Service Planned" ? f.servicePlannedType : "",
+    }));
+
+    setErrors((errs) => ({
+      ...errs,
+      ticketType: "",
+      servicePlannedType:
+        value === "Service Planned" ? errs.servicePlannedType : "",
+    }));
   };
 
   const handleToggleForwarded = (e) => {
@@ -635,30 +679,20 @@ export default function TicketModal({
   // ── Submit ────────────────────────────────────────────────────────────────
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!validate()) {
-      // Auto-jump to first tab with an error
-      const ticketFields = [
-        "receivedAt",
-        "cmsNextTicketNo",
-        "siteName",
-        "customer",
-        "ticketAssignedTo",
-        "ticketType",
-        "ticketIncomingChannel",
-        "issueDescription",
-        "notes",
-        "cmsTicketAddedOn",
-      ];
-      if (ticketFields.some((f) => errors[f])) setActiveTab("Ticket");
-      return;
-    }
-    const payload = mapFormToApi(form, rawUsers, rawSites);
-    onSubmit(payload, form._id);
+    onSubmit({
+      ...form,
+      totalDuration: parseFloat(form.totalDuration) || 0,
+    });
   };
 
   if (!open) return null;
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  const tabIcons = {
+    Ticket: null,
+    Activities: null,
+    "Ticket Verification": null,
+  };
+
   return (
     <>
       <AnimatePresence>
@@ -676,24 +710,28 @@ export default function TicketModal({
               initial={{ opacity: 0, scale: 0.98, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 10 }}
-              className="relative w-full max-w-6xl bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-auto max-h-[95vh] overflow-hidden"
+              className="relative w-full max-w-6xl bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-auto max-h-[95vh] overflow-hidden font-[Arial]"
             >
-              {/* ── Header ── */}
-              <div className="flex flex-col border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              {/* Header */}
+              <div className="flex flex-col gap-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                 <div className="flex items-center justify-between px-8 py-6">
-                  <div>
-                    <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-0.5">
-                      <span>AMS</span>
-                      <span className="text-slate-300 dark:text-slate-700">
-                        /
-                      </span>
-                      <span className="text-pink-600">Tickets</span>
-                    </nav>
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-                      {isEdit ? "Update Ticket" : "New AMS Ticket"}
-                    </h2>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-500 mb-0.5">
+                        <span>AMS</span>
+                        <span className="text-slate-300 dark:text-slate-700">
+                          /
+                        </span>
+                        <span className="text-pink-600">Tickets</span>
+                      </nav>
+                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                        {isEdit ? "Update Ticket" : "New AMS Ticket"}
+                      </h2>
+                    </div>
                   </div>
+
                   <button
+                    type="button"
                     onClick={() => setShowExitConfirm(true)}
                     className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all border border-slate-200 dark:border-slate-700"
                   >
@@ -708,7 +746,7 @@ export default function TicketModal({
                       <button
                         key={tab}
                         onClick={() => setActiveTab(tab)}
-                        className={`relative py-4 text-[10px] font-bold uppercase tracking-[0.2em] transition-all ${
+                        className={`relative py-4 text-[10px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-2 group ${
                           activeTab === tab
                             ? "text-pink-600"
                             : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
@@ -718,7 +756,7 @@ export default function TicketModal({
                         {activeTab === tab && (
                           <motion.div
                             layoutId="activeTab"
-                            className="absolute bottom-0 left-0 right-0 h-1 bg-pink-600 rounded-t-full"
+                            className="absolute bottom-0 left-0 right-0 h-1 bg-pink-600 rounded-t-full shadow-[0_-4px_12px_rgba(236,72,153,0.2)]"
                           />
                         )}
                       </button>
@@ -727,7 +765,7 @@ export default function TicketModal({
                 </div>
               </div>
 
-              {/* ── Body ── */}
+              {/* Form Content */}
               <div className="overflow-y-auto no-scrollbar px-8 py-8">
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -751,7 +789,7 @@ export default function TicketModal({
                     {/* ══ TICKET TAB ══ */}
                     {activeTab === "Ticket" && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                        {/* Upload PDF */}
+                        {/* 1. Upload PDF */}
                         <div className="md:col-span-2">
                           <Field label="Upload PDF" error={errors.pdfFile}>
                             <div className="relative group/file">
@@ -761,46 +799,50 @@ export default function TicketModal({
                                 onChange={setField("pdfFile")}
                                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                               />
-                              <div className="w-full p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 flex flex-col items-center justify-center gap-2 transition-all group-hover/file:border-pink-500/50">
-                                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                                  {form.pdfFile
-                                    ? form.pdfFile.name
-                                    : "Select PDF Document"}
-                                </p>
-                                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
-                                  {form.pdfFile
-                                    ? `${(form.pdfFile.size / 1024 / 1024).toFixed(2)} MB`
-                                    : "PDF format only (Max 10MB)"}
-                                </p>
+                              <div className="w-full p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 flex flex-col items-center justify-center gap-2 transition-all group-hover/file:border-pink-500/50 group-hover/file:bg-pink-500/[0.02]">
+                                <div className="text-center">
+                                  <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                    {form.pdfFile
+                                      ? form.pdfFile.name
+                                      : "Select PDF Document"}
+                                  </p>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">
+                                    {form.pdfFile
+                                      ? `${(form.pdfFile.size / 1024 / 1024).toFixed(2)} MB`
+                                      : "PDF format only (Max 10MB)"}
+                                  </p>
+                                </div>
                               </div>
                             </div>
                           </Field>
                         </div>
 
-                        {/* Ticket Received Date Time */}
+                        {/* 2. Ticket Received Date Time */}
                         <Field
                           label="Ticket Received Date Time *"
                           error={errors.receivedAt}
                         >
-                          <Flatpickr
-                            data-enable-time
-                            value={form.receivedAt}
-                            onChange={(_, dateStr) => {
-                              setForm((f) => ({ ...f, receivedAt: dateStr }));
-                              if (errors.receivedAt)
-                                setErrors((e) => ({ ...e, receivedAt: "" }));
-                            }}
-                            options={{
-                              enableTime: true,
-                              dateFormat: "Y-m-d\\TH:i",
-                              time_24hr: true,
-                            }}
-                            className={`${inputClass} ${errors.receivedAt ? "border-rose-500" : ""}`}
-                            placeholder="YYYY-MM-DD HH:MM"
-                          />
+                          <div className="relative group/input">
+                            <Flatpickr
+                              data-enable-time
+                              value={form.receivedAt}
+                              onChange={(date, dateStr) => {
+                                setForm((f) => ({ ...f, receivedAt: dateStr }));
+                                if (errors.receivedAt)
+                                  setErrors((e) => ({ ...e, receivedAt: "" }));
+                              }}
+                              options={{
+                                enableTime: true,
+                                dateFormat: "Y-m-d\\TH:i",
+                                time_24hr: true,
+                              }}
+                              className={`${inputClass} ${errors.receivedAt ? "border-rose-500 text-rose-600" : ""}`}
+                              placeholder="YYYY-MM-DD HH:MM"
+                            />
+                          </div>
                         </Field>
 
-                        {/* CMS Next Ticket No */}
+                        {/* 3. CMS Next Ticket No */}
                         <Field
                           label="CMS Next Ticket No *"
                           error={errors.cmsNextTicketNo}
@@ -809,11 +851,11 @@ export default function TicketModal({
                             type="text"
                             value={form.cmsNextTicketNo}
                             onChange={setField("cmsNextTicketNo")}
-                            className={`${inputClass} ${errors.cmsNextTicketNo ? "border-rose-500" : ""}`}
+                            className={inputClass}
                           />
                         </Field>
 
-                        {/* Site Name */}
+                        {/* 4. Site Name */}
                         <div className="md:col-span-2">
                           <Field label="Site Name *" error={errors.siteName}>
                             <div className="flex items-center gap-3">
@@ -833,7 +875,7 @@ export default function TicketModal({
                                 <button
                                   type="button"
                                   onClick={() => setIsSiteModalOpen(true)}
-                                  className="px-4 h-10 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-pink-600 rounded-xl hover:border-pink-500 transition-all shadow-sm text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"
+                                  className="px-4 h-10 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-pink-600 rounded-xl hover:border-pink-500 transition-all shadow-sm text-[10px] font-bold uppercase tracking-widest"
                                 >
                                   New Site
                                 </button>
@@ -842,7 +884,7 @@ export default function TicketModal({
                           </Field>
                         </div>
 
-                        {/* Customer */}
+                        {/* 5. Customer */}
                         <div className="md:col-span-2">
                           <Field label="Customer *" error={errors.customer}>
                             <div className="flex items-center gap-3">
@@ -868,7 +910,7 @@ export default function TicketModal({
                                 <button
                                   type="button"
                                   onClick={() => setIsCustomerModalOpen(true)}
-                                  className="px-4 h-10 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-pink-600 rounded-xl hover:border-pink-500 transition-all shadow-sm text-[10px] font-bold uppercase tracking-widest whitespace-nowrap"
+                                  className="px-4 h-10 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-pink-600 rounded-xl hover:border-pink-500 transition-all shadow-sm text-[10px] font-bold uppercase tracking-widest"
                                 >
                                   New Customer
                                 </button>
@@ -877,7 +919,7 @@ export default function TicketModal({
                           </Field>
                         </div>
 
-                        {/* Ticket Assigned To */}
+                        {/* 6. Ticket Assigned To */}
                         <Field
                           label="Ticket Assigned To *"
                           error={errors.ticketAssignedTo}
@@ -887,28 +929,32 @@ export default function TicketModal({
                             onChange={setField("ticketAssignedTo")}
                             options={apiData.assignees}
                             placeholder={
-                              loadingApis ? "Loading..." : "Search users..."
+                              loadingApis
+                                ? "Loading Assignees..."
+                                : "Search users..."
                             }
                             disabled={loadingApis}
                             error={errors.ticketAssignedTo}
                           />
                         </Field>
 
-                        {/* Ticket Type — numeric value, label shown */}
+                        {/* 7. Ticket Type */}
                         <Field label="Ticket Type *" error={errors.ticketType}>
                           <Combobox
                             value={form.ticketType}
                             onChange={setField("ticketType")}
                             options={apiData.ticketTypes}
                             placeholder={
-                              loadingApis ? "Loading..." : "Select An Option"
+                              loadingApis
+                                ? "Loading Types..."
+                                : "Select An Option"
                             }
                             disabled={loadingApis}
                             error={errors.ticketType}
                           />
                         </Field>
 
-                        {/* Incoming Channel + Forwarded toggle */}
+                        {/* 8 & 9. Ticket Incoming Channel AND Forward Toggle */}
                         <div className="flex gap-6 items-end">
                           <div className="flex-1">
                             <Field
@@ -925,7 +971,7 @@ export default function TicketModal({
                             </Field>
                           </div>
                           <label className="flex items-center gap-3 cursor-pointer w-max mb-2 p-1 px-3 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
-                            <div className="relative">
+                            <div className="relative group/toggle">
                               <input
                                 type="checkbox"
                                 className="sr-only"
@@ -933,11 +979,11 @@ export default function TicketModal({
                                 onChange={handleToggleForwarded}
                               />
                               <div
-                                className={`block w-10 h-6 rounded-full transition-all duration-300 ${form.isTicketForwarded ? "bg-pink-600" : "bg-slate-300 dark:bg-slate-700"}`}
-                              />
+                                className={`block w-10 h-6 rounded-full transition-all duration-300 ${form.isTicketForwarded ? "bg-pink-600 shadow-lg shadow-pink-500/20" : "bg-slate-300 dark:bg-slate-700"}`}
+                              ></div>
                               <motion.div
                                 animate={{ x: form.isTicketForwarded ? 18 : 2 }}
-                                className="absolute left-0 top-1 bg-white w-4 h-4 rounded-full shadow-md"
+                                className={`absolute left-0 top-1 bg-white w-4 h-4 rounded-full shadow-md transition-all`}
                               />
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
@@ -946,7 +992,7 @@ export default function TicketModal({
                           </label>
                         </div>
 
-                        {/* Ticket Forwarded By */}
+                        {/* Ticket Forwarded By (Input) */}
                         <Field
                           label="Ticket Forwarded By"
                           error={errors.ticketForwardedBy}
@@ -957,10 +1003,11 @@ export default function TicketModal({
                             options={apiData.assignees}
                             placeholder="Search users..."
                             disabled={!form.isTicketForwarded}
+                            error={errors.ticketForwardedBy}
                           />
                         </Field>
 
-                        {/* CMS Ticket Added By */}
+                        {/* 10. CMS Ticket Added By */}
                         <Field
                           label="CMS Ticket Added By"
                           error={errors.cmsTicketAddedBy}
@@ -970,10 +1017,11 @@ export default function TicketModal({
                             onChange={setField("cmsTicketAddedBy")}
                             options={apiData.assignees}
                             placeholder="Search users..."
+                            error={errors.cmsTicketAddedBy}
                           />
                         </Field>
 
-                        {/* CMS Ticket Added On */}
+                        {/* 11. CMS Ticket Added On */}
                         <Field
                           label="CMS Ticket Added On *"
                           error={errors.cmsTicketAddedOn}
@@ -981,7 +1029,7 @@ export default function TicketModal({
                           <Flatpickr
                             data-enable-time
                             value={form.cmsTicketAddedOn}
-                            onChange={(_, dateStr) => {
+                            onChange={(date, dateStr) => {
                               setForm((f) => ({
                                 ...f,
                                 cmsTicketAddedOn: dateStr,
@@ -997,50 +1045,54 @@ export default function TicketModal({
                               dateFormat: "Y-m-d\\TH:i",
                               time_24hr: true,
                             }}
-                            className={`${inputClass} ${errors.cmsTicketAddedOn ? "border-rose-500" : ""}`}
-                            placeholder="YYYY-MM-DD HH:MM"
-                          />
-                        </Field>
-
-                        {/* Issue Description */}
-                        <Field
-                          label="Issue Description *"
-                          error={errors.issueDescription}
-                        >
-                          <textarea
-                            rows={3}
-                            value={form.issueDescription}
-                            onChange={setField("issueDescription")}
-                            className={`${inputClass} ${errors.issueDescription ? "border-rose-500" : ""}`}
-                          />
-                        </Field>
-
-                        {/* Possible Root Cause */}
-                        <Field
-                          label="Possible Root Cause"
-                          error={errors.possibleRootCause}
-                        >
-                          <textarea
-                            rows={3}
-                            value={form.possibleRootCause}
-                            onChange={setField("possibleRootCause")}
                             className={inputClass}
+                            placeholder="YYYY-MM-DD"
                           />
                         </Field>
 
-                        {/* Notes */}
-                        <div className="md:col-span-2">
-                          <Field label="Notes *" error={errors.notes}>
+                        {/* 12. Issue Description */}
+                        <div className="md:col-span-1">
+                          <Field
+                            label="Issue Description *"
+                            error={errors.issueDescription}
+                          >
                             <textarea
-                              rows={2}
-                              value={form.notes}
-                              onChange={setField("notes")}
-                              className={`${inputClass} ${errors.notes ? "border-rose-500" : ""}`}
+                              value={form.issueDescription}
+                              onChange={setField("issueDescription")}
+                              rows={3}
+                              className={inputClass}
                             />
                           </Field>
                         </div>
 
-                        {/* Total Duration */}
+                        {/* 13. Possible Root Cause */}
+                        <div className="md:col-span-1">
+                          <Field
+                            label="Possible Root Cause"
+                            error={errors.possibleRootCause}
+                          >
+                            <textarea
+                              value={form.possibleRootCause}
+                              onChange={setField("possibleRootCause")}
+                              rows={3}
+                              className={inputClass}
+                            />
+                          </Field>
+                        </div>
+
+                        {/* 14. Notes */}
+                        <div className="md:col-span-2">
+                          <Field label="Notes *" error={errors.notes}>
+                            <textarea
+                              value={form.notes}
+                              onChange={setField("notes")}
+                              rows={2}
+                              className={inputClass}
+                            />
+                          </Field>
+                        </div>
+
+                        {/* 15. Total Duration */}
                         <div className="md:col-span-2">
                           <Field
                             label="Total Duration (Hours)"
@@ -1057,26 +1109,10 @@ export default function TicketModal({
                           </Field>
                         </div>
 
-                        {/* Service Planned Type */}
-                        <div className="md:col-span-2">
-                          <Field
-                            label="Service Planned Type"
-                            error={errors.servicePlannedType}
-                          >
-                            <Combobox
-                              value={form.servicePlannedType}
-                              onChange={setField("servicePlannedType")}
-                              options={apiData.servicePlannedTypes}
-                              placeholder="Select An Option"
-                              disabled={loadingApis}
-                            />
-                          </Field>
-                        </div>
-
-                        {/* PRE Toggle */}
+                        {/* 16. PRE Toggle */}
                         <div className="md:col-span-2">
                           <label className="flex items-center gap-3 cursor-pointer w-max p-1 px-4 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
-                            <div className="relative">
+                            <div className="relative group/toggle">
                               <input
                                 type="checkbox"
                                 className="sr-only"
@@ -1084,11 +1120,11 @@ export default function TicketModal({
                                 onChange={setField("pre")}
                               />
                               <div
-                                className={`block w-10 h-6 rounded-full transition-all duration-300 ${form.pre ? "bg-pink-600" : "bg-slate-300 dark:bg-slate-700"}`}
-                              />
+                                className={`block w-10 h-6 rounded-full transition-all duration-300 ${form.pre ? "bg-pink-600 shadow-lg shadow-pink-500/20" : "bg-slate-300 dark:bg-slate-700"}`}
+                              ></div>
                               <motion.div
                                 animate={{ x: form.pre ? 18 : 2 }}
-                                className="absolute left-0 top-1 bg-white w-4 h-4 rounded-full shadow-md"
+                                className={`absolute left-0 top-1 bg-white w-4 h-4 rounded-full shadow-md transition-all`}
                               />
                             </div>
                             <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
@@ -1103,14 +1139,20 @@ export default function TicketModal({
                     {activeTab === "Activities" && (
                       <div className="flex flex-col space-y-6">
                         <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">
-                              Ticket Activities
-                            </h3>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
-                              Manage chronological service records
-                            </p>
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 shrink-0">
+                              <History size={20} />
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                                Ticket Activities
+                              </h3>
+                              <p className="text-[12px] font-medium text-slate-500 mt-0.5">
+                                Manage chronological service records
+                              </p>
+                            </div>
                           </div>
+
                           {!isAdmin && (
                             <button
                               type="button"
@@ -1135,30 +1177,38 @@ export default function TicketModal({
                             <table className="w-full text-left">
                               <thead>
                                 <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                                  {[
-                                    "Actions",
-                                    "Activity Type",
-                                    "Start Date",
-                                    "End Date",
-                                    "Duration",
-                                    "Work Done Code",
-                                    "Likely Cause",
-                                    "Resolved By",
-                                  ].map((h) => (
-                                    <th
-                                      key={h}
-                                      className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500"
-                                    >
-                                      {h}
-                                    </th>
-                                  ))}
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    Actions
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    Activity Type
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    Start Date
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    End Date
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500 text-center">
+                                    Duration
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    Work Done Code
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    Likely Cause
+                                  </th>
+                                  <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                                    Resolved By
+                                  </th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {!form.activities?.length ? (
+                                {!form.activities ||
+                                form.activities.length === 0 ? (
                                   <tr>
                                     <td
-                                      colSpan={8}
+                                      colSpan="8"
                                       className="px-6 py-12 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400"
                                     >
                                       No activities recorded
@@ -1177,7 +1227,6 @@ export default function TicketModal({
                                             className="text-[10px] font-bold uppercase tracking-widest text-pink-600 hover:text-pink-700"
                                             onClick={() => {
                                               setActivityToEdit(act);
-                                              setActivityEditIndex(idx);
                                               setIsActivityModalOpen(true);
                                             }}
                                           >
@@ -1186,14 +1235,14 @@ export default function TicketModal({
                                           <button
                                             type="button"
                                             className="text-[10px] font-bold uppercase tracking-widest text-rose-600 hover:text-rose-700"
-                                            onClick={() =>
+                                            onClick={() => {
                                               setForm((f) => ({
                                                 ...f,
                                                 activities: f.activities.filter(
-                                                  (_, i) => i !== idx,
+                                                  (a) => a !== act,
                                                 ),
-                                              }))
-                                            }
+                                              }));
+                                            }}
                                           >
                                             Delete
                                           </button>
@@ -1248,7 +1297,7 @@ export default function TicketModal({
 
                     {/* ══ TICKET VERIFICATION TAB ══ */}
                     {activeTab === "Ticket Verification" && (
-                      <div className="flex flex-col space-y-6 pb-4">
+                      <div className="flex flex-col space-y-6 max-w-full mx-auto pb-4">
                         <Field
                           label="Ticket Resolution Verified By"
                           error={errors.ticketResolutionVerifiedBy}
@@ -1256,8 +1305,9 @@ export default function TicketModal({
                           <Combobox
                             value={form.ticketResolutionVerifiedBy}
                             onChange={setField("ticketResolutionVerifiedBy")}
-                            options={apiData.assignees}
+                            options={apiData.itsUsers}
                             placeholder="Search users..."
+                            error={errors.ticketResolutionVerifiedBy}
                           />
                         </Field>
 
@@ -1265,28 +1315,30 @@ export default function TicketModal({
                           label="Ticket Resolution Verified On"
                           error={errors.ticketResolutionVerifiedOn}
                         >
-                          <Flatpickr
-                            data-enable-time
-                            value={form.ticketResolutionVerifiedOn}
-                            onChange={(_, dateStr) => {
-                              setForm((f) => ({
-                                ...f,
-                                ticketResolutionVerifiedOn: dateStr,
-                              }));
-                              if (errors.ticketResolutionVerifiedOn)
-                                setErrors((e) => ({
-                                  ...e,
-                                  ticketResolutionVerifiedOn: "",
+                          <div className="flex items-center w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all">
+                            <Flatpickr
+                              data-enable-time
+                              value={form.ticketResolutionVerifiedOn}
+                              onChange={(date, dateStr) => {
+                                setForm((f) => ({
+                                  ...f,
+                                  ticketResolutionVerifiedOn: dateStr,
                                 }));
-                            }}
-                            options={{
-                              enableTime: true,
-                              dateFormat: "Y-m-d\\TH:i",
-                              time_24hr: true,
-                            }}
-                            className={inputClass}
-                            placeholder="YYYY-MM-DD HH:MM"
-                          />
+                                if (errors.ticketResolutionVerifiedOn)
+                                  setErrors((e) => ({
+                                    ...e,
+                                    ticketResolutionVerifiedOn: "",
+                                  }));
+                              }}
+                              options={{
+                                enableTime: true,
+                                dateFormat: "Y-m-d",
+                                time_24hr: true,
+                              }}
+                              className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
+                              placeholder="YYYY-MM-DD"
+                            />
+                          </div>
                         </Field>
 
                         <Field
@@ -1296,8 +1348,9 @@ export default function TicketModal({
                           <Combobox
                             value={form.cmsTicketClosedBy}
                             onChange={setField("cmsTicketClosedBy")}
-                            options={apiData.assignees}
+                            options={apiData.itsUsers}
                             placeholder="Search users..."
+                            error={errors.cmsTicketClosedBy}
                           />
                         </Field>
 
@@ -1305,56 +1358,60 @@ export default function TicketModal({
                           label="CMS Ticket Closed On"
                           error={errors.cmsTicketClosedOn}
                         >
-                          <Flatpickr
-                            data-enable-time
-                            value={form.cmsTicketClosedOn}
-                            onChange={(_, dateStr) => {
-                              setForm((f) => ({
-                                ...f,
-                                cmsTicketClosedOn: dateStr,
-                              }));
-                              if (errors.cmsTicketClosedOn)
-                                setErrors((e) => ({
-                                  ...e,
-                                  cmsTicketClosedOn: "",
+                          <div className="flex items-center w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all">
+                            <Flatpickr
+                              data-enable-time
+                              value={form.cmsTicketClosedOn}
+                              onChange={(date, dateStr) => {
+                                setForm((f) => ({
+                                  ...f,
+                                  cmsTicketClosedOn: dateStr,
                                 }));
-                            }}
-                            options={{
-                              enableTime: true,
-                              dateFormat: "Y-m-d\\TH:i",
-                              time_24hr: true,
-                            }}
-                            className={inputClass}
-                            placeholder="YYYY-MM-DD HH:MM"
-                          />
+                                if (errors.cmsTicketClosedOn)
+                                  setErrors((e) => ({
+                                    ...e,
+                                    cmsTicketClosedOn: "",
+                                  }));
+                              }}
+                              options={{
+                                enableTime: true,
+                                dateFormat: "Y-m-d",
+                                time_24hr: true,
+                              }}
+                              className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
+                              placeholder="YYYY-MM-DD"
+                            />
+                          </div>
                         </Field>
 
                         <Field
                           label="Service Closed Date"
                           error={errors.serviceClosedDate}
                         >
-                          <Flatpickr
-                            data-enable-time
-                            value={form.serviceClosedDate}
-                            onChange={(_, dateStr) => {
-                              setForm((f) => ({
-                                ...f,
-                                serviceClosedDate: dateStr,
-                              }));
-                              if (errors.serviceClosedDate)
-                                setErrors((e) => ({
-                                  ...e,
-                                  serviceClosedDate: "",
+                          <div className="flex items-center w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all">
+                            <Flatpickr
+                              data-enable-time
+                              value={form.serviceClosedDate}
+                              onChange={(date, dateStr) => {
+                                setForm((f) => ({
+                                  ...f,
+                                  serviceClosedDate: dateStr,
                                 }));
-                            }}
-                            options={{
-                              enableTime: true,
-                              dateFormat: "Y-m-d\\TH:i",
-                              time_24hr: true,
-                            }}
-                            className={inputClass}
-                            placeholder="YYYY-MM-DD HH:MM"
-                          />
+                                if (errors.serviceClosedDate)
+                                  setErrors((e) => ({
+                                    ...e,
+                                    serviceClosedDate: "",
+                                  }));
+                              }}
+                              options={{
+                                enableTime: true,
+                                dateFormat: "Y-m-d",
+                                time_24hr: true,
+                              }}
+                              className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
+                              placeholder="YYYY-MM-DD"
+                            />
+                          </div>
                         </Field>
                       </div>
                     )}
@@ -1373,6 +1430,7 @@ export default function TicketModal({
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleSubmit}
                   disabled={submitting}
                   className="px-8 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl bg-pink-600 text-white shadow-lg shadow-pink-500/20 transition-all disabled:opacity-50 flex items-center justify-center min-w-[140px]"
@@ -1389,7 +1447,7 @@ export default function TicketModal({
         )}
       </AnimatePresence>
 
-      {/* ── Activity Modal ── */}
+      {/* Activity Modal */}
       <ActivityModal
         open={isActivityModalOpen}
         activity={activityToEdit}
@@ -1400,7 +1458,8 @@ export default function TicketModal({
           setActivityEditIndex(null);
         }}
         onSubmit={(data) => {
-          if (activityToEdit !== null && activityEditIndex !== null) {
+          if (activityToEdit) {
+            // Update existing
             setForm((f) => ({
               ...f,
               activities: f.activities.map((a, i) =>
@@ -1419,30 +1478,19 @@ export default function TicketModal({
         }}
       />
 
-      {/* ── Site Modal ── */}
+      {/* Trigger existing new site modal */}
       <SiteModal
         open={isSiteModalOpen}
         onClose={() => setIsSiteModalOpen(false)}
         onSubmit={(data) => {
           setIsSiteModalOpen(false);
-          sitesApi.getAll({ perPage: 1000 }).then((res) => {
-            const fetchedSites = res?.items || [];
-            setRawSites(fetchedSites);
-            setApiData((prev) => ({
-              ...prev,
-              siteNames: fetchedSites
-                .map((s) => s.name || s.Name)
-                .filter(Boolean)
-                .sort((a, b) => a.localeCompare(b)),
-            }));
-            if (data?.name) setForm((f) => ({ ...f, siteName: data.name }));
-          });
+          // In real implementation you would refresh sites list here
         }}
       />
 
-      {/* ── Customer Modal placeholder ── */}
+      {/* Placeholder for Customer Modal since it doesn't currently exist */}
       {isCustomerModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl w-[400px]">
             <h3 className="text-lg font-semibold mb-4 dark:text-white">
               New Customer
@@ -1452,6 +1500,7 @@ export default function TicketModal({
             </p>
             <div className="flex justify-end">
               <button
+                type="button"
                 onClick={() => setIsCustomerModalOpen(false)}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-sm transition-colors"
               >
@@ -1462,7 +1511,7 @@ export default function TicketModal({
         </div>
       )}
 
-      {/* ── Exit Confirm ── */}
+      {/* Exit Confirmation Modal */}
       <AnimatePresence>
         {showExitConfirm && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -1476,7 +1525,7 @@ export default function TicketModal({
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-2xl p-8 text-center"
+              className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-2xl p-8 text-center font-[Arial]"
             >
               <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-500 mx-auto mb-6">
                 <AlertCircle size={32} strokeWidth={2.5} />
@@ -1491,6 +1540,7 @@ export default function TicketModal({
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  type="button"
                   onClick={() => setShowExitConfirm(false)}
                   className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                 >
@@ -1499,6 +1549,7 @@ export default function TicketModal({
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
+                  type="button"
                   onClick={() => {
                     setShowExitConfirm(false);
                     onClose();
@@ -1513,23 +1564,48 @@ export default function TicketModal({
         )}
       </AnimatePresence>
 
-      {/* ── Date Warning ── */}
+      {/* Date Warning Modal */}
       {showDateWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 text-center">
+          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 text-center animate-fade-in">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
               Warning
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
               Enter Received Date before adding an activity.
             </p>
-            <button
-              onClick={() => setShowDateWarning(false)}
-              className="w-full py-2.5 rounded-xl bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all font-medium"
-            >
-              OK
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDateWarning(false)}
+                className="flex-1 py-2.5 rounded-xl bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
+              >
+                ok
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showActivityWarning && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 text-center animate-fade-in font-[Arial]">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+              Warning
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Please add at least one activity before saving
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowActivityWarning(false)}
+                className="flex-1 py-2.5 rounded-xl bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
+              >
+                ok
+              </button>
+            </div>
           </div>
         </div>
       )}

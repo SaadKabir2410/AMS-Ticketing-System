@@ -8,28 +8,28 @@ const columns = [
   { field: "siteName", headerName: "SITE NAME", flex: 1.5 },
   { field: "siteOCN", headerName: "SITE OCN", flex: 1 },
   { field: "cmsNextTicketNo", headerName: "CMS NEXT TICKET NO", flex: 1.2 },
-  { 
-    field: "ticketReceivedDate", 
-    headerName: "TICKET RECEIVED DATE TIME", 
-    flex: 1.5, 
+  {
+    field: "ticketReceivedDate",
+    headerName: "TICKET RECEIVED DATE TIME",
+    flex: 1.5,
     renderCell: (params) => params.value ? new Date(params.value).toLocaleString() : "—"
   },
-  { 
-    field: "status", 
-    headerName: "STATUS", 
-    flex: 0.8, 
+  {
+    field: "status",
+    headerName: "STATUS",
+    flex: 0.8,
     renderCell: (params) => params.value === 1 ? "Open" : params.value === 2 ? "Closed" : params.value === 3 ? "Voided" : "—"
   },
-  { 
-    field: "ticketAssignedToName", 
-    headerName: "TICKET ASSIGNED TO", 
-    flex: 1.2, 
-    renderCell: (params) => params.row?.ticketAssignedToName || params.row?.ticketAssignedToUsername || "—" 
+  {
+    field: "ticketAssignedToName",
+    headerName: "TICKET ASSIGNED TO",
+    flex: 1.2,
+    renderCell: (params) => params.row?.ticketAssignedToName || params.row?.ticketAssignedToUsername || "—"
   },
-  { 
-    field: "isPRE", 
-    headerName: "PRE", 
-    flex: 0.5, 
+  {
+    field: "isPRE",
+    headerName: "PRE",
+    flex: 0.5,
     minWidth: 40,
     renderCell: (params) => <div className="flex justify-center w-full"><input type="checkbox" checked={!!params.value} readOnly disabled className="cursor-default" /></div>
   },
@@ -84,13 +84,14 @@ export default function UnclosedTicketsModal({ open, onClose }) {
   const displayTotalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="lg" 
-      fullWidth 
-      PaperProps={{ 
-        style: { borderRadius: 12, overflow: 'hidden' } 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="lg"
+      fullWidth
+      PaperProps={{
+        style: { borderRadius: 12, overflow: 'hidden' },
+        className: "font-[Arial]"
       }}
     >
       <DialogTitle className="flex justify-between items-center m-0 px-6 py-4 border-b border-slate-100 bg-white">
@@ -139,20 +140,20 @@ export default function UnclosedTicketsModal({ open, onClose }) {
               '& .MuiDataGrid-virtualScroller': {
                 overflowX: 'auto !important',
                 scrollbarWidth: 'thin !important',
-                '&::-webkit-scrollbar': { 
-                  display: 'block !important', 
-                  width: '6px', 
-                  height: '8px' 
+                '&::-webkit-scrollbar': {
+                  display: 'block !important',
+                  width: '6px',
+                  height: '8px'
                 },
-                '&::-webkit-scrollbar-track': { 
-                  background: 'transparent' 
+                '&::-webkit-scrollbar-track': {
+                  background: 'transparent'
                 },
-                '&::-webkit-scrollbar-thumb': { 
-                  background: '#cbd5e1', 
-                  borderRadius: '10px' 
+                '&::-webkit-scrollbar-thumb': {
+                  background: '#cbd5e1',
+                  borderRadius: '10px'
                 },
-                '&::-webkit-scrollbar-thumb:hover': { 
-                  background: '#94a3b8' 
+                '&::-webkit-scrollbar-thumb:hover': {
+                  background: '#94a3b8'
                 }
               }
             }}
