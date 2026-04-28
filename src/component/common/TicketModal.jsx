@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import PremiumErrorAlert from "./PremiumErrorAlert";
 import SiteModal from "./SiteModal";
 import ActivityModal from "./ActivityModal";
+import { ActionsMenu } from "./ResourcePage";
 import { useToast } from "./ToastContext";
 import { useAuth } from "../../context/AuthContextHook";
 
@@ -260,6 +261,7 @@ export default function TicketModal({
 
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showDateWarning, setShowDateWarning] = useState(false);
+  const [showActivityWarning, setShowActivityWarning] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -268,11 +270,13 @@ export default function TicketModal({
       setActiveTab("Ticket");
       setShowExitConfirm(false);
       setShowDateWarning(false);
+      setShowActivityWarning(false);
       return;
     }
 
     setShowExitConfirm(false);
     setShowDateWarning(false);
+    setShowActivityWarning(false);
     setErrors({});
     setActiveTab("Ticket");
 
@@ -568,6 +572,11 @@ export default function TicketModal({
       const firstErrorField = Object.keys(newErrors)[0];
       // Optional: scroll to or focus first error, but for now just setting state is enough
       toast("Please fix the errors before submitting.", "error");
+      return;
+    }
+
+    if (!form.activities || form.activities.length === 0) {
+      setShowActivityWarning(true);
       return;
     }
 
@@ -1149,32 +1158,20 @@ export default function TicketModal({
                                       className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
                                     >
                                       <td className="px-6 py-4">
-                                        <div className="flex items-center gap-4">
-                                          <button
-                                            type="button"
-                                            className="text-[10px] font-bold uppercase tracking-widest text-pink-600 hover:text-pink-700"
-                                            onClick={() => {
-                                              setActivityToEdit(act);
-                                              setIsActivityModalOpen(true);
-                                            }}
-                                          >
-                                            Edit
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className="text-[10px] font-bold uppercase tracking-widest text-rose-600 hover:text-rose-700"
-                                            onClick={() => {
-                                              setForm((f) => ({
-                                                ...f,
-                                                activities: f.activities.filter(
-                                                  (a) => a !== act,
-                                                ),
-                                              }));
-                                            }}
-                                          >
-                                            Delete
-                                          </button>
-                                        </div>
+                                        <ActionsMenu
+                                          onEdit={() => {
+                                            setActivityToEdit(act);
+                                            setIsActivityModalOpen(true);
+                                          }}
+                                          onDelete={() => {
+                                            setForm((f) => ({
+                                              ...f,
+                                              activities: f.activities.filter(
+                                                (a) => a !== act,
+                                              ),
+                                            }));
+                                          }}
+                                        />
                                       </td>
                                       <td className="px-6 py-4 text-[11px] font-medium text-slate-700 dark:text-slate-300">
                                         {act.activityType || "—"}
@@ -1504,6 +1501,29 @@ export default function TicketModal({
               <button
                 type="button"
                 onClick={() => setShowDateWarning(false)}
+                className="flex-1 py-2.5 rounded-xl bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
+              >
+                ok
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showActivityWarning && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 text-center animate-fade-in font-[Arial]">
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+              Warning
+            </h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Please add at least one activity before saving
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowActivityWarning(false)}
                 className="flex-1 py-2.5 rounded-xl bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
               >
                 ok
