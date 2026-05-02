@@ -102,38 +102,42 @@ export default function TicketCommissionReportPage() {
   };
 
   const filterInputClass =
-    "pl-3 pr-3 py-2.5 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 shadow-sm w-full";
+    "pl-3 pr-3 py-2.5 text-[11px] bg-white dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-xl outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all placeholder:text-slate-400 shadow-sm w-full";
 
   return (
-    <div className="h-full flex flex-col overflow-auto animate-in fade-in duration-500 gap-4">
-      {/* Filter Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-auto flex flex-col">
+    <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
+      <style>{`
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+      `}</style>
+
+      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
         {/* Header */}
-        <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
-          <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3 ml-1">
+        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
             <span
               onClick={() => navigate("/")}
-              className="hover:text-blue-500 cursor-pointer transition-colors"
+              className="hover:text-pink-500 cursor-pointer transition-colors"
             >
               Home
             </span>
-            <span>/</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
             <span>Management</span>
-            <span>/</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
             <span>Reports</span>
-            <span>/</span>
-            <span className="text-blue-500">Ticket Commission Report</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="text-pink-500">Ticket Commission Report</span>
           </nav>
 
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate(-1)}
-                className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
+                className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-600 hover:text-pink-600 transition-all border border-slate-200/60 dark:border-slate-700/50 shadow-sm"
               >
-                <ArrowLeft size={18} />
+                <ArrowLeft size={20} strokeWidth={2.5} />
               </button>
-              <h1 className="text-3xl text-slate-800 dark:text-white leading-none">
+              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
                 Ticket Commission Report
               </h1>
             </div>
@@ -158,7 +162,7 @@ export default function TicketCommissionReportPage() {
         </div>
 
         {/* Filters */}
-        <div className="px-8 py-6 bg-white dark:bg-transparent">
+        <div className="px-4 md:px-8 py-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Performed By Users - Multi Select */}
             <div className="flex flex-col gap-1.5">

@@ -46,9 +46,24 @@ export default function MyAccountPage() {
   const tabs = ["Change password", "Personal info"];
 
   return (
-    <div className="w-full h-full flex flex-col p-2 animate-in fade-in duration-500 max-w-[1200px] mx-auto">
-      
-      <div className="flex flex-col md:flex-row gap-6 lg:gap-14 bg-white dark:bg-slate-900 p-8 lg:p-10 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex-1">
+    <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
+      <style>{`
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+      `}</style>
+
+      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
+        {/* Header */}
+        <div className="flex flex-col gap-2 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50">
+          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
+            <span>Home</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="text-pink-500">My Account</span>
+          </nav>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">My Account</h1>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-6 lg:gap-14 p-8 lg:p-10 flex-1">
         
         {/* Left Sidebar */}
         <div className="w-full md:w-64 shrink-0 flex flex-col gap-1">
@@ -131,6 +146,7 @@ export default function MyAccountPage() {
             </div>
           )}
 
+        </div>
         </div>
       </div>
     </div>

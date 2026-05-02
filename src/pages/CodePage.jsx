@@ -85,8 +85,8 @@ function SortableRow({ row, index, onEdit, onDisable, onEnable, isAdmin }) {
   const rowBgClass = isDragging
     ? "bg-indigo-50/80 dark:bg-indigo-900/20"
     : index % 2 === 0
-      ? "bg-white dark:bg-[#161920]/40"
-      : "bg-gray-200/50 dark:bg-white/[0.03]";
+      ? "bg-white dark:bg-[#161920]/40 group-hover:bg-pink-50/40 dark:group-hover:bg-pink-500/10"
+      : "bg-gray-200/50 dark:bg-white/[0.03] group-hover:bg-pink-50/40 dark:group-hover:bg-pink-500/10";
 
   return (
     <motion.tr
@@ -322,15 +322,20 @@ export default function CodePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="h-full bg-transparent dark:bg-[rgb(172,172,172)] p-1 pb-[10px] flex flex-col relative overflow-auto"
+      className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]"
     >
+      <style>{`
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+      `}</style>
 
       {/* ── Unified Full-Screen Card ── */}
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="flex-1 w-full bg-white dark:bg-[#161920] shadow-[0_8px_30px_rgba(0,0,0,0.06)] flex flex-col relative rounded-3xl overflow-hidden"      >
+        className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col relative rounded-3xl overflow-hidden"
+      >
         {/* ── Header ── */}
         <div className="flex flex-col gap-6 py-6 px-4 md:px-8 transition-colors">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -352,9 +357,9 @@ export default function CodePage() {
                   <span className="text-slate-300 dark:text-slate-700">/</span>
                   <span>Lookups</span>
                   <span className="text-slate-300 dark:text-slate-700">/</span>
-                  <span className="text-indigo-400 dark:text-indigo-500">Codes</span>
+                  <span className="text-pink-500">Codes</span>
                 </nav>
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 tracking-tighter">
+                <h1 className="text-4xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 tracking-tighter">
                   Codes
                   <AnimatePresence>
                     {updateLoading && (

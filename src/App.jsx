@@ -7,6 +7,7 @@ import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import Navbar from "./component/layout/Navbar";
 import Sidebar from "./component/layout/Sidebar";
 import LoginPage from "./pages/Auth/Login";
+import ForgotPasswordPage from "./pages/Auth/ForgotPassword";
 import ProtectedRoute from "./component/auth/ProtectedRoute";
 import PermissionGuard from "./component/auth/PermissionGuard";
 
@@ -64,10 +65,10 @@ function Layout({ collapsed, setCollapsed }) {
       {/* Sidebar for Desktop */}
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-      <div className="flex flex-col flex-1 h-screen overflow-hidden">
+      <div className="flex flex-col flex-1 h-screen overflow-y-auto overflow-x-hidden">
         <Navbar setCollapsed={setCollapsed} setMobileOpen={setMobileOpen} />
 
-        <main className="flex-1 overflow-auto p-3 sm:p-6 bg-slate-100 dark:bg-slate-950 transition-colors duration-300">
+        <main className="flex-1 p-3 sm:p-6 bg-slate-100 dark:bg-slate-950 transition-colors duration-300 min-h-full">
           <Routes>
             {/* Dashboard / Home */}
             <Route path="/" element={<Dashboard />} />
@@ -293,6 +294,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route
         path="/*"
         element={

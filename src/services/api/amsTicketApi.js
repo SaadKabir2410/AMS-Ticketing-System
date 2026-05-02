@@ -122,6 +122,14 @@ const resolveStringEnum = (map, value, fallback = 0) => {
     return normalizeEnum(value, fallback);
 };
 
+// Inverse resolver: integer to string
+const resolveIntegerToLabel = (map, value) => {
+    if (isNil(value)) return "";
+    const numValue = Number(value);
+    const match = Object.keys(map).find((k) => map[k] === numValue);
+    return match || String(value);
+};
+
 // Builds activity/detail row — form calls them "activities", API calls them "amsTicketDetails"
 const buildDetailPayload = (detail = {}) => ({
     id: pickId(detail.id) || "00000000-0000-0000-0000-000000000000",
@@ -140,7 +148,7 @@ const buildDetailPayload = (detail = {}) => ({
         detail.isLikelyCause ?? detail.likelyCauseOfIssue ?? detail.likelyCause
     ),
     isActive: toBoolean(detail.isActive ?? true),
-    isActivityDuringWorkingHours: toBoolean(detail.isActivityDuringWorkingHours),
+    isActivityDuringWorkingHours: toBoolean(detail.isActivityDuringWorkingHours ?? true),
     amsTicketDetailUserIds: Array.isArray(detail.amsTicketDetailUserIds)
         ? detail.amsTicketDetailUserIds.map(pickId).filter(Boolean)
         : Array.isArray(detail.users)
@@ -206,7 +214,7 @@ const buildTicketPayload = (data = {}) => {
         status: data.status ? normalizeEnum(data.status, 1) : 1,
         // form sends string labels → resolve to integers
         ticketType: resolveStringEnum(ticketTypeMap, data.ticketType, 0),
-        servicePlannedType: resolveStringEnum(servicePlannedTypeMap, data.servicePlannedType, 0),
+        servicePlannedType: resolveStringEnum(servicePlannedTypeMap, data.servicePlannedType, 1),
         ticketIncomingChannel: resolveStringEnum(ticketIncomingChannelMap, data.ticketIncomingChannel, 0),
 
         // ── Booleans ───────────────────────────────────────────────────────────
@@ -233,9 +241,9 @@ const buildTicketPayload = (data = {}) => {
         cmsTicketAddedOn:
             formatDate(data.cmsTicketAddedOn || data.cMSTicketAddedOn) ||
             formatDate(new Date().toISOString()),
-        cmsTicketClosedOn: formatDate(data.cmsTicketClosedOn || data.cMSTicketClosedOn),
-        serviceClosedDate: formatDate(data.serviceClosedDate),
-        ticketResolutionVerifiedOn: formatDate(data.ticketResolutionVerifiedOn),
+        cmsTicketClosedOn: formatDate(data.cmsTicketClosedOn || data.cMSTicketClosedOn) || undefined,
+        serviceClosedDate: formatDate(data.serviceClosedDate) || undefined,
+        ticketResolutionVerifiedOn: formatDate(data.ticketResolutionVerifiedOn) || undefined,
 
         // ── Numeric ────────────────────────────────────────────────────────────
         // form sends "totalDuration", API needs "activityTotalDuration"
@@ -365,6 +373,7 @@ export const amsTicketApi = {
             ...(servicePlannedType && { "AMSTicketSearch.ServicePlannedType": servicePlannedType }),
         };
 
+        console.log("[AMS API] getAll params:", JSON.stringify(params, null, 2));
         return apiClient.get(`${BASE}/paged-list`, { params }).then((r) => r.data);
     },
 
@@ -404,10 +413,16 @@ export const amsTicketApi = {
                     const value = completeTicket[key];
                     if (value !== null && value !== undefined) {
                         cleanPayload[key] = value;
-                    } else if (key === "servicePlannedType") {
-                        cleanPayload[key] = 0;
                     }
                 });
+
+                // Fallbacks to satisfy backend DTO validation
+                if (!cleanPayload.servicePlannedType) {
+                    cleanPayload.servicePlannedType = 1;
+                }
+                if (!cleanPayload.serviceClosedDate) {
+                    cleanPayload.serviceClosedDate = formatDate(completeTicket.ticketReceivedDate || new Date().toISOString());
+                }
                 return apiClient
                     .post(`${BASE}/${id}/void-aMSTicket`, cleanPayload, {
                         headers: { "Content-Type": "application/json" },
@@ -420,11 +435,39 @@ export const amsTicketApi = {
             });
     },
 
-    close: (id, data) =>
-        apiClient.post(`${BASE}/${id}/close-aMSTicket`, data).then((r) => r.data),
+    close: (id, data) => {
+        const payload = buildTicketPayload(data);
+        return apiClient.post(`${BASE}/${id}/close-aMSTicket`, payload).then((r) => r.data);
+    },
 
-    reOpen: (id, data) =>
-        apiClient.post(`${BASE}/${id}/re-open-aMSTicket`, data).then((r) => r.data),
+    reOpen: (ticketData) => {
+        const id = typeof ticketData === "string" ? ticketData : ticketData.id;
+        return apiClient
+            .get(`${BASE}/${id}/by-id`)
+            .then((response) => {
+                const completeTicket = response.data;
+                const cleanPayload = {};
+                Object.keys(completeTicket).forEach((key) => {
+                    const value = completeTicket[key];
+                    if (value !== null && value !== undefined) {
+                        cleanPayload[key] = value;
+                    }
+                });
+
+                // Fallbacks to satisfy backend DTO validation
+                if (!cleanPayload.servicePlannedType) {
+                    cleanPayload.servicePlannedType = 1;
+                }
+                if (!cleanPayload.serviceClosedDate) {
+                    cleanPayload.serviceClosedDate = formatDate(completeTicket.ticketReceivedDate || new Date().toISOString());
+                }
+                return apiClient
+                    .post(`${BASE}/${id}/re-open-aMSTicket`, cleanPayload, {
+                        headers: { "Content-Type": "application/json" },
+                    })
+                    .then((r) => r.data);
+            });
+    },
 
     isAnyOpen: (data) =>
         apiClient.post(`${BASE}/is-any-tickets-open`, data).then((r) => r.data),
@@ -452,6 +495,12 @@ export const amsTicketApi = {
 
     uploadViaPDF: (data, config = {}) =>
         apiClient.post(`${BASE}/ticket-via-pDF`, data, config).then((r) => r.data),
+
+    // Export mappers for components
+    resolveTicketTypeLabel: (val) => resolveIntegerToLabel(ticketTypeMap, val),
+    resolveServicePlannedTypeLabel: (val) => resolveIntegerToLabel(servicePlannedTypeMap, val),
+    resolveTicketIncomingChannelLabel: (val) => resolveIntegerToLabel(ticketIncomingChannelMap, val),
+    resolveActivityTypeLabel: (val) => resolveIntegerToLabel(activityTypeMap, val),
 };
 
 export default amsTicketApi;

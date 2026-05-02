@@ -598,7 +598,7 @@ export default function JobsheetsPage() {
 
 
   return (
-    <div className="h-full flex flex-col bg-[#f1f5f9] dark:bg-black transition-colors duration-500">
+    <>
       <ResourcePage
         ref={resourceRef}
         title="Jobsheets"
@@ -660,7 +660,7 @@ export default function JobsheetsPage() {
 
 
 
-    </div>
+    </>
   );
 }
 

@@ -46,14 +46,9 @@ export const PermissionProvider = ({ children }) => {
   const hasPermission = useCallback(
     (key) => {
       if (isLoading) return false;
-      
-      // Admin always has all permissions
-      const isAdmin = user?.role?.toLowerCase().includes("admin") || user?.roles?.includes("admin");
-      if (isAdmin) return true;
-
       return !!permissions[key];
     },
-    [permissions, isLoading, user]
+    [permissions, isLoading]
   );
 
   const value = {

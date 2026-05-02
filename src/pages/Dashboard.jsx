@@ -112,7 +112,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 function StatCard({ label, value, change, positive, color, sparkData }) {
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 hover:shadow-lg hover:shadow-slate-100/80 dark:hover:shadow-black/20 transition-all duration-200 flex flex-col justify-between">
+    <div className="bg-white dark:bg-[#161920] rounded-2xl border border-slate-200 dark:border-slate-800/50 p-6 hover:shadow-lg hover:shadow-slate-100/80 dark:hover:shadow-black/20 transition-all duration-200 flex flex-col justify-between shadow-sm">
       <div>
         <div className="flex items-start justify-between mb-4">
           <span
@@ -244,21 +244,25 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px] mx-auto animate-in fade-in duration-500">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-xs text-slate-400">
-        <Home size={12} />
-        <span>Home</span>
-        <span>/</span>
-        <span className="text-slate-600 dark:text-slate-300 ">Dashboard</span>
-      </div>
+    <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
+      <style>{`
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+      `}</style>
 
-      <div>
-        <h1 className="text-2xl text-slate-800 dark:text-white">Dashboard</h1>
-        <p className="text-sm text-slate-400 mt-1">
-          AMS Ticket overview and analytics
-        </p>
-      </div>
+      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
+        {/* Header */}
+        <div className="flex flex-col gap-2 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50">
+          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
+            <span>Home</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="text-pink-500">Dashboard</span>
+          </nav>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">Dashboard</h1>
+          <p className="text-xs text-slate-400 mt-0.5">AMS Ticket overview and analytics</p>
+        </div>
+
+        <div className="p-4 md:p-8 space-y-6">
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
@@ -270,7 +274,7 @@ export default function Dashboard() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Ticket Trend */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
+        <div className="bg-white dark:bg-[#161920] rounded-2xl border border-slate-200 dark:border-slate-800/50 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <div>
               <p className=" text-slate-800 dark:text-white">Ticket Trends</p>
@@ -344,7 +348,7 @@ export default function Dashboard() {
         </div>
 
         {/* Status Donut */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm flex flex-col">
+        <div className="bg-white dark:bg-[#161920] rounded-2xl border border-slate-200 dark:border-slate-800/50 p-5 shadow-sm flex flex-col">
           <p className=" text-slate-800 dark:text-white mb-1">Ticket Status</p>
           <p className="text-xs text-slate-400 mb-6">Current distribution</p>
           <div className="flex-1 flex flex-col justify-center">
@@ -397,7 +401,7 @@ export default function Dashboard() {
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Monthly Volume */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm">
+        <div className="bg-white dark:bg-[#161920] rounded-2xl border border-slate-200 dark:border-slate-800/50 p-5 shadow-sm">
           <p className=" text-slate-800 dark:text-white mb-1">Monthly Volume</p>
           <p className="text-xs text-slate-400 mb-6">Tickets per month</p>
           <ResponsiveContainer
@@ -437,7 +441,7 @@ export default function Dashboard() {
         </div>
 
         {/* Recent Tickets + Top Assignees */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm flex flex-col md:flex-row gap-8">
+        <div className="lg:col-span-2 bg-white dark:bg-[#161920] rounded-2xl border border-slate-200 dark:border-slate-800/50 p-5 shadow-sm flex flex-col md:flex-row gap-8">
           <div className="flex-1">
             <div className="flex items-center justify-between mb-5">
               <div>
@@ -532,6 +536,8 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+        </div>
+      </div>
       </div>
     </div>
   );

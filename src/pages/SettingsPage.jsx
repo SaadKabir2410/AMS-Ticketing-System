@@ -308,31 +308,38 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex flex-col max-w-6xl mx-auto w-full py-6">
+    <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
+      <style>{`
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+      `}</style>
 
       {/* Features Modal */}
       {showFeaturesModal && (
         <FeaturesModal onClose={() => setShowFeaturesModal(false)} />
       )}
 
-      {/* Breadcrumb & Title */}
-      <div className="mb-6">
-        <div className="flex items-center text-[12px] text-slate-500 dark:text-slate-400 gap-2 mb-3">
-          <Home size={14} className="text-slate-500" /> / <span>Settings</span>
+      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
+        {/* Header */}
+        <div className="flex flex-col gap-2 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50">
+          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
+            <span onClick={() => navigate("/")} className="hover:text-pink-500 cursor-pointer transition-colors">Home</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="text-pink-500">Settings</span>
+          </nav>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-600 hover:text-pink-600 transition-all border border-slate-200/60 dark:border-slate-700/50 shadow-sm"
+            >
+              <ArrowLeft size={20} strokeWidth={2.5} />
+            </button>
+            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">Settings</h1>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-700 dark:text-slate-200"
-          >
-            <ArrowLeft size={22} />
-          </button>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">Settings</h1>
-        </div>
-      </div>
 
-      {/* Main Card */}
-      <div className="flex flex-col md:flex-row bg-white dark:bg-slate-900 rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.02)] border border-slate-100 dark:border-slate-800/50 p-6 lg:p-8">
+        {/* Main Content */}
+        <div className="flex flex-col md:flex-row p-6 lg:p-8 flex-1">
 
         {/* Sidebar */}
         <div className="w-full md:w-64 flex flex-col gap-1 pr-6 shrink-0 border-r border-slate-100 dark:border-slate-800/50 mb-8 md:mb-0">
@@ -533,6 +540,7 @@ export default function SettingsPage() {
           )}
 
         </div>
+      </div>
       </div>
     </div>
   );

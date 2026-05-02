@@ -12,6 +12,7 @@ export const NAV_GROUPS = [
   {
     title: "Main Menu",
     links: [
+      // Dashboard — no permission required, visible to all authenticated users
       { id: "main-dashboard", name: "Dashboard", href: "/", icon: Home },
       {
         id: "main-tickets",
@@ -29,6 +30,8 @@ export const NAV_GROUPS = [
         id: "lookup-master",
         name: "Lookups",
         icon: Database,
+        // ✅ Parent permission — if user has ANY lookup permission the group shows
+        permission: "Billing.Lookups",
         subMenu: [
           {
             id: "lookup-hours",
@@ -98,11 +101,13 @@ export const NAV_GROUPS = [
             id: "sub-reports-general",
             name: "General Report",
             href: "/reports/general",
+            permission: "Billing.Reports", // ✅ was missing
           },
           {
             id: "sub-reports-user-yearly",
             name: "User Yearly Report",
             href: "/reports/user-yearly",
+            permission: "Billing.Reports", // ✅ was missing
           },
           {
             id: "sub-reports-afterhours",
@@ -114,6 +119,7 @@ export const NAV_GROUPS = [
             id: "sub-reports-commission",
             name: "Ticket Commission Report",
             href: "/reports/commission",
+            permission: "Billing.Reports", // ✅ was missing
           },
         ],
       },
@@ -128,12 +134,14 @@ export const NAV_GROUPS = [
   },
 
   {
-    title: " Administration",
+    title: "Administration",
     links: [
       {
         id: "set-identity",
         name: "Identity Management",
         icon: Shield,
+        // ✅ Parent permission — shows only if user can manage users or roles
+        permission: "AbpIdentity.Users",
         subMenu: [
           {
             id: "set-users",

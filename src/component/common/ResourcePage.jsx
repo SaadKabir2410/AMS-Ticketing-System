@@ -189,10 +189,10 @@ export default function ResourcePage({
   wideSearch = false,
   rowHeight = 44,
   headerHeight = 44,
-  containerClassName = "bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xl backdrop-blur-sm shadow-blue-500/5 dark:shadow-none overflow-hidden flex flex-col flex-1 transition-all duration-300",
+  containerClassName = "bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm overflow-hidden flex flex-col flex-1 transition-all duration-300 rounded-3xl",
   hideHeader = false,
   customActions = [],
-  wrapperClassName = "h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-auto flex flex-col no-scrollbar p-2 sm:p-6 transition-all duration-500 animate-in fade-in",
+  wrapperClassName = "min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]",
 
 }) {
 
@@ -620,22 +620,28 @@ export default function ResourcePage({
 
   return (
     <div className={wrapperClassName}>
+      <style>{`
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+      `}</style>
       {/* Breadcrumb - Moved outside the card to match reference */}
       {breadcrumb.length > 0 && !hideHeader && (
-        <nav className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-slate-400 dark:text-slate-500 mb-4 ml-1">
+        <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
           {breadcrumb.map((b, i) => (
-            <span key={i} className="flex items-center gap-2">
+            <span key={i} className="flex items-center gap-1.5">
               <span
                 onClick={() => b === "Home" && navigate("/")}
                 className={
-                  b === "Home"
+                  i === breadcrumb.length - 1
+                    ? "text-pink-500"
+                    : b === "Home"
                     ? "hover:text-pink-500 cursor-pointer transition-colors"
                     : ""
                 }
               >
                 {b}
               </span>
-              {i < breadcrumb.length - 1 && <span>/</span>}
+              {i < breadcrumb.length - 1 && <span className="text-slate-300 dark:text-slate-700">/</span>}
             </span>
           ))}
         </nav>
@@ -644,29 +650,47 @@ export default function ResourcePage({
       <div className={containerClassName}>
         {/* Header Section */}
         {!hideHeader && (
-          <div className="px-4 py-4 sm:px-6 sm:py-6 bg-slate-50/50 dark:bg-transparent shrink-0">
+          <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+            {breadcrumb.length > 0 && (
+              <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
+                {breadcrumb.map((b, i) => (
+                  <span key={i} className="flex items-center gap-1.5">
+                    <span
+                      onClick={() => b === "Home" && navigate("/")}
+                      className={
+                        i === breadcrumb.length - 1
+                          ? "text-pink-500"
+                          : b === "Home"
+                          ? "hover:text-pink-500 cursor-pointer transition-colors"
+                          : ""
+                      }
+                    >
+                      {b}
+                    </span>
+                    {i < breadcrumb.length - 1 && <span className="text-slate-300 dark:text-slate-700">/</span>}
+                  </span>
+                ))}
+              </nav>
+            )}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => navigate(-1)}
-                  className="p-1 hover:text-[#ec4899] dark:hover:text-[#ec4899] rounded-lg transition-colors text-slate-700 dark:text-slate-200"
+                  className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-600 hover:text-pink-600 transition-all border border-slate-200/60 dark:border-slate-700/50 shadow-sm"
                   title="Go Back"
                 >
-                  <ArrowLeft size={16} strokeWidth={2.5} />
+                  <ArrowLeft size={20} strokeWidth={2.5} />
                 </button>
-                <div>
-                  <h1 className="text-[26px] font-black text-slate-800 dark:text-white tracking-tighter leading-none uppercase">
-                    {title}
-                  </h1>
-                </div>
+                <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+                  {title}
+                </h1>
               </div>
               <div className="flex items-center gap-3">
                 {customHeaderActions}
                 {apiObject?.create && ModalComponent && createButtonText && (
                   <button
                     onClick={onAdd || (() => setModals((m) => ({ ...m, create: true })))}
-                    className="btn-flagship-solid"
+                    className="inline-flex items-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
                   >
                     {createButtonText}
                   </button>
@@ -688,7 +712,7 @@ export default function ResourcePage({
                     placeholder={searchPlaceholder}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-4 focus:ring-pink-500/20 focus:bg-white dark:focus:bg-slate-700 transition-all text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                    className="w-full pl-11 pr-10 py-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-sm outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
               )}

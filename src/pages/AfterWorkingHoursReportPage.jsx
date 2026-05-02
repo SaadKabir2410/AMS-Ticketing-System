@@ -188,32 +188,38 @@ export default function AfterWorkingHoursReportPage() {
   });
 
   const filterInputClass =
-    "px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all appearance-none cursor-pointer shadow-sm group-hover:border-pink-500/50";
+    "px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-xl outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all appearance-none cursor-pointer shadow-sm";
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 dark:bg-[#0b0f19] overflow-auto selection:bg-pink-500/20">
-      {/* Top Professional Header */}
-      <header className="shrink-0 px-6 py-3 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 z-30">
-        <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="group p-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-400 hover:text-pink-500 hover:bg-white dark:hover:bg-slate-750 transition-all active:scale-95 shadow-sm"
-            >
-              Back
-            </button>
-            <div>
-              <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400 mb-0.5">
-                <span onClick={() => navigate("/")} className="hover:text-pink-500 cursor-pointer transition-colors">Home</span>
-                <span className="text-slate-300 dark:text-slate-700">/</span>
-                <span className="text-pink-500/80">Management Reports</span>
+    <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
+      <style>{`
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+      `}</style>
+
+      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
+        {/* Header */}
+        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-600 hover:text-pink-600 transition-all border border-slate-200/60 dark:border-slate-700/50 shadow-sm"
+              >
+                Back
+              </button>
+              <div>
+                <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
+                  <span onClick={() => navigate("/")} className="hover:text-pink-500 cursor-pointer transition-colors">Home</span>
+                  <span className="text-slate-300 dark:text-slate-700">/</span>
+                  <span className="text-pink-500">Management Reports</span>
+                </nav>
+                <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter flex items-center gap-3">
+                  After Working Hours Report
+                  {loading && <span className="w-4 h-4 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></span>}
+                </h1>
               </div>
-              <h1 className="text-xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-                After Working Hours Report
-                {loading && <span className="w-4 h-4 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></span>}
-              </h1>
             </div>
-          </div>
 
           <div className="flex items-center gap-2">
             <button
@@ -241,10 +247,10 @@ export default function AfterWorkingHoursReportPage() {
             </button>
           </div>
         </div>
-      </header>
+        </div>
 
-      {/* Modern Filter Sub-header */}
-      <section className="shrink-0 px-6 py-3 bg-slate-50/50 dark:bg-[#0b0f19] border-b border-slate-200 dark:border-slate-800/50">
+        {/* Filter Section */}
+        <div className="px-4 md:px-8 py-4 border-b border-slate-100 dark:border-slate-800/50">
         <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row items-end justify-between gap-4">
           <div className="flex flex-wrap items-end gap-3 w-full">
             <div className="flex flex-col gap-1 w-full sm:w-40">
@@ -326,12 +332,12 @@ export default function AfterWorkingHoursReportPage() {
             )}
           </div>
         </div>
-      </section>
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto flex flex-col relative px-6 py-4">
+        <div className="flex-1 overflow-auto flex flex-col relative px-4 md:px-8 py-4">
         {formError && (
-          <div className="absolute top-4 left-6 right-6 z-40 max-w-[800px] mx-auto lg:left-1/2 lg:-translate-x-1/2 w-full px-6">
+          <div className="mb-4">
             <PremiumErrorAlert
               error={formError}
               onClose={() => setFormError("")}
@@ -340,8 +346,8 @@ export default function AfterWorkingHoursReportPage() {
         )}
 
         {reportData.length > 0 ? (
-          <div className="flex-1 flex flex-col max-w-[1600px] mx-auto w-full">
-            <div className="flex-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-auto flex flex-col">
+          <div className="flex-1 flex flex-col w-full">
+            <div className="flex-1 bg-white dark:bg-[#161920] rounded-2xl border border-slate-200 dark:border-slate-800/50 shadow-sm overflow-auto flex flex-col">
               <div className="flex-1 overflow-auto custom-scrollbar">
                 <table className="w-full text-left text-xs border-separate border-spacing-0">
                   <thead className="sticky top-0 z-20">
@@ -392,7 +398,8 @@ export default function AfterWorkingHoursReportPage() {
             </p>
           </div>
         )}
-      </main>
+      </div>
+      </div>
     </div>
   );
 }

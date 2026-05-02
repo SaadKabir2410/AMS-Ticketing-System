@@ -289,18 +289,23 @@ export default function TicketModal({
         ticketAssignedTo: ticket.ticketAssignedToId || ticket.ticketAssignedTo || "",
         ticketForwardedBy: ticket.ticketForwardedById || ticket.ticketForwardedBy || "",
         cmsTicketAddedBy: ticket.cmsTicketAddedById || ticket.cmsTicketAddedBy || "",
+        ticketResolutionVerifiedBy: ticket.ticketResolutionVerifiedById || ticket.ticketResolutionVerifiedBy || "",
+        cmsTicketClosedBy: ticket.cmsTicketClosedById || ticket.cmsTicketClosedBy || "",
+        ticketType: amsTicketApi.resolveTicketTypeLabel(ticket.ticketType) || "",
+        servicePlannedType: amsTicketApi.resolveServicePlannedTypeLabel(ticket.servicePlannedType) || "",
+        ticketIncomingChannel: amsTicketApi.resolveTicketIncomingChannelLabel(ticket.ticketIncomingChannel) || "",
         receivedAt: ticket.receivedAt ? ticket.receivedAt.slice(0, 16) : "",
         cmsTicketAddedOn: ticket.cmsTicketAddedOn
           ? ticket.cmsTicketAddedOn.slice(0, 16)
           : "",
         ticketResolutionVerifiedOn: ticket.ticketResolutionVerifiedOn
-          ? ticket.ticketResolutionVerifiedOn.slice(0, 10)
+          ? ticket.ticketResolutionVerifiedOn.slice(0, 16)
           : "",
         cmsTicketClosedOn: ticket.cmsTicketClosedOn
-          ? ticket.cmsTicketClosedOn.slice(0, 10)
+          ? ticket.cmsTicketClosedOn.slice(0, 16)
           : "",
         serviceClosedDate: ticket.serviceClosedDate
-          ? ticket.serviceClosedDate.slice(0, 10)
+          ? ticket.serviceClosedDate.slice(0, 16)
           : "",
         isTicketForwarded: !!(ticket.ticketForwardedById || ticket.ticketForwardedBy),
         activities: ticket.activities || [],
@@ -317,6 +322,11 @@ export default function TicketModal({
             ticketAssignedTo: fullData.ticketAssignedToId || prev.ticketAssignedTo,
             ticketForwardedBy: fullData.ticketForwardedById || prev.ticketForwardedBy,
             cmsTicketAddedBy: fullData.cmsTicketAddedById || prev.cmsTicketAddedBy,
+            ticketResolutionVerifiedBy: fullData.ticketResolutionVerifiedById || prev.ticketResolutionVerifiedBy,
+            cmsTicketClosedBy: fullData.cmsTicketClosedById || prev.cmsTicketClosedBy,
+            ticketType: amsTicketApi.resolveTicketTypeLabel(fullData.ticketType) || prev.ticketType,
+            servicePlannedType: amsTicketApi.resolveServicePlannedTypeLabel(fullData.servicePlannedType) || prev.servicePlannedType,
+            ticketIncomingChannel: amsTicketApi.resolveTicketIncomingChannelLabel(fullData.ticketIncomingChannel) || prev.ticketIncomingChannel,
             receivedAt: fullData.receivedAt
               ? fullData.receivedAt.slice(0, 16)
               : prev.receivedAt,
@@ -324,16 +334,23 @@ export default function TicketModal({
               ? fullData.cmsTicketAddedOn.slice(0, 16)
               : prev.cmsTicketAddedOn,
             ticketResolutionVerifiedOn: fullData.ticketResolutionVerifiedOn
-              ? fullData.ticketResolutionVerifiedOn.slice(0, 10)
+              ? fullData.ticketResolutionVerifiedOn.slice(0, 16)
               : prev.ticketResolutionVerifiedOn,
             cmsTicketClosedOn: fullData.cmsTicketClosedOn
-              ? fullData.cmsTicketClosedOn.slice(0, 10)
+              ? fullData.cmsTicketClosedOn.slice(0, 16)
               : prev.cmsTicketClosedOn,
             serviceClosedDate: fullData.serviceClosedDate
-              ? fullData.serviceClosedDate.slice(0, 10)
+              ? fullData.serviceClosedDate.slice(0, 16)
               : prev.serviceClosedDate,
             isTicketForwarded: !!(fullData.ticketForwardedById || fullData.ticketForwardedBy),
-            activities: fullData.activities || prev.activities || [],
+            activities: fullData.amsTicketDetails && fullData.amsTicketDetails.length > 0
+              ? fullData.amsTicketDetails.map((act) => ({
+                  ...act,
+                  activityType: amsTicketApi.resolveActivityTypeLabel ? amsTicketApi.resolveActivityTypeLabel(act.activityType) : act.activityType,
+                  isLikelyCause: !!act.isLikelyCause,
+                  isActivityDuringWorkingHours: !!act.isActivityDuringWorkingHours,
+                }))
+              : fullData.activities || prev.activities || [],
           }));
         })
         .catch((err) =>
@@ -350,9 +367,6 @@ export default function TicketModal({
     if (open && !isEdit && user) {
       setForm((prev) => ({
         ...prev,
-        cmsTicketAddedBy: user.id || "",
-        cmsTicketAddedOn: new Date().toISOString().slice(0, 16),
-        receivedAt: new Date().toISOString().slice(0, 16),
       }));
     }
   }, [open, isEdit, user]);
@@ -504,6 +518,32 @@ export default function TicketModal({
     }
   };
 
+  useEffect(() => {
+    if (!form.receivedAt || !form.cmsTicketAddedOn) {
+      setForm((prev) => ({
+        ...prev,
+        totalDuration: "",
+      }));
+      return;
+    }
+
+    const received = new Date(form.receivedAt);
+    const addedOn = new Date(form.cmsTicketAddedOn);
+
+    if (Number.isNaN(received.getTime()) || Number.isNaN(addedOn.getTime())) {
+      return;
+    }
+
+    const diffMs = addedOn.getTime() - received.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+
+    setForm((prev) => ({
+      ...prev,
+      totalDuration: diffHours >= 0 ? diffHours.toFixed(2) : "0.00",
+    }));
+  }, [form.receivedAt, form.cmsTicketAddedOn]);
+
+
   const handleTicketTypeChange = (value) => {
     setForm((f) => ({
       ...f,
@@ -556,16 +596,54 @@ export default function TicketModal({
       newErrors.ticketForwardedBy = "Ticket Forwarded By is required";
     }
 
+    // 4. Verification Dates validation against Ticket Received Date
+    if (form.receivedAt) {
+      const receivedDate = new Date(form.receivedAt);
+      
+      if (form.cmsTicketClosedOn) {
+        const cmsTicketClosedOnDate = new Date(form.cmsTicketClosedOn);
+        if (cmsTicketClosedOnDate < receivedDate) {
+          newErrors.cmsTicketClosedOn = "CMS Ticket Closed On can NOT be lesser than Ticket Received Date";
+        }
+      }
+
+      if (form.serviceClosedDate) {
+        const serviceClosedDateDate = new Date(form.serviceClosedDate);
+        if (serviceClosedDateDate < receivedDate) {
+          newErrors.serviceClosedDate = "Service Closed Date can NOT be lesser than Ticket Received Date";
+        }
+      }
+
+      if (form.ticketResolutionVerifiedOn) {
+        const ticketResolutionVerifiedOnDate = new Date(form.ticketResolutionVerifiedOn);
+        if (ticketResolutionVerifiedOnDate < receivedDate) {
+          newErrors.ticketResolutionVerifiedOn = "Ticket Resolution Verified On can NOT be lesser than Ticket Received Date";
+        }
+      }
+    }
+
     // Other required fields (optional, but good practice based on UI stars)
     if (!form.siteName) newErrors.siteName = "Site Name is required";
     if (!form.customer) newErrors.customer = "Customer is required";
     if (!form.ticketAssignedTo) newErrors.ticketAssignedTo = "Assigned To is required";
     if (!form.ticketType) newErrors.ticketType = "Ticket Type is required";
-    if (form.ticketType === "Service Planned" && !form.servicePlannedType) {
+    if (
+      (form.ticketType === "Service Planned" || form.ticketType === 2 || form.ticketType === "2") &&
+      !form.servicePlannedType
+    ) {
       newErrors.servicePlannedType = "Service Planned Type is required";
     }
     if (!form.issueDescription) newErrors.issueDescription = "Issue Description is required";
     if (!form.ticketIncomingChannel) newErrors.ticketIncomingChannel = "Channel is required";
+
+    if (activeTab === "Ticket Verification") {
+      if (!form.serviceClosedDate) {
+        newErrors.serviceClosedDate = "Service Closed Date is required";
+      }
+      if (!form.cmsTicketClosedOn) {
+        newErrors.cmsTicketClosedOn = "CMS Ticket Closed On is required";
+      }
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -583,10 +661,9 @@ export default function TicketModal({
     onSubmit({
       ...form,
       totalDuration: parseFloat(form.totalDuration) || 0,
+      activeTab,
     });
   };
-
-  if (!open) return null;
 
   return (
     <>
@@ -700,6 +777,7 @@ export default function TicketModal({
                             <Field label="Upload PDF" error={errors.pdfFile}>
                               <div className="relative group/file">
                                 <input
+                                  key={form.pdfFile ? form.pdfFile.name : 'empty'}
                                   type="file"
                                   accept=".pdf"
                                   onChange={setField("pdfFile")}
@@ -741,6 +819,7 @@ export default function TicketModal({
                                   enableTime: true,
                                   dateFormat: "Y-m-d\\TH:i",
                                   time_24hr: true,
+                                  allowInput: true,
                                 }}
                                 className={`${inputClass} !pr-10 ${errors.receivedAt
                                   ? "border-rose-500 text-rose-600"
@@ -976,6 +1055,7 @@ export default function TicketModal({
                                   enableTime: true,
                                   dateFormat: "Y-m-d\\TH:i",
                                   time_24hr: true,
+                                  allowInput: true,
                                 }}
                                 className={`${inputClass} !pr-10 ${errors.cmsTicketAddedOn
                                   ? "border-rose-500 text-rose-600"
@@ -1037,14 +1117,15 @@ export default function TicketModal({
                             >
                               <input
                                 type="number"
-                                step="0.1"
+                                step="0.01"
                                 min="0"
                                 value={form.totalDuration}
-                                onChange={setField("totalDuration")}
-                                className={inputClass}
+                                readOnly
+                                className={`${inputClass} bg-slate-100 dark:bg-slate-800/40 cursor-not-allowed`}
                               />
                             </Field>
                           </div>
+
 
                           <div className="md:col-span-2">
                             <label className="flex items-center gap-3 cursor-pointer w-max p-1 px-4 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
@@ -1236,7 +1317,7 @@ export default function TicketModal({
                           <Combobox
                             value={form.ticketResolutionVerifiedBy}
                             onChange={setField("ticketResolutionVerifiedBy")}
-                            options={apiData.itsUsers}
+                            options={apiData.itsUsers.filter(u => Number(u.raw?.organizationType) === 2 || Number(u.raw?.extraProperties?.organizationType) === 2)}
                             placeholder="Search users..."
                             disabled={loadingApis}
                             error={errors.ticketResolutionVerifiedBy}
@@ -1265,11 +1346,12 @@ export default function TicketModal({
                               }}
                               options={{
                                 enableTime: true,
-                                dateFormat: "Y-m-d",
+                                dateFormat: "Y-m-d\\TH:i",
                                 time_24hr: true,
+                                allowInput: true,
                               }}
                               className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
-                              placeholder="YYYY-MM-DD"
+                              placeholder="YYYY-MM-DDTHH:mm"
                             />
                           </div>
                         </Field>
@@ -1281,7 +1363,7 @@ export default function TicketModal({
                           <Combobox
                             value={form.cmsTicketClosedBy}
                             onChange={setField("cmsTicketClosedBy")}
-                            options={apiData.itsUsers}
+                            options={apiData.itsUsers.filter(u => Number(u.raw?.organizationType) === 2 || Number(u.raw?.extraProperties?.organizationType) === 2)}
                             placeholder="Search users..."
                             disabled={loadingApis}
                             error={errors.cmsTicketClosedBy}
@@ -1310,11 +1392,12 @@ export default function TicketModal({
                               }}
                               options={{
                                 enableTime: true,
-                                dateFormat: "Y-m-d",
+                                dateFormat: "Y-m-d\\TH:i",
                                 time_24hr: true,
+                                allowInput: true,
                               }}
                               className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
-                              placeholder="YYYY-MM-DD"
+                              placeholder="YYYY-MM-DDTHH:mm"
                             />
                           </div>
                         </Field>
@@ -1341,11 +1424,12 @@ export default function TicketModal({
                               }}
                               options={{
                                 enableTime: true,
-                                dateFormat: "Y-m-d",
+                                dateFormat: "Y-m-d\\TH:i",
                                 time_24hr: true,
+                                allowInput: true,
                               }}
                               className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
-                              placeholder="YYYY-MM-DD"
+                              placeholder="YYYY-MM-DDTHH:mm"
                             />
                           </div>
                         </Field>
@@ -1373,7 +1457,7 @@ export default function TicketModal({
                   {submitting
                     ? "Saving..."
                     : isEdit
-                      ? "Update Ticket"
+                      ? (activeTab === "Ticket Verification" ? "Close Ticket" : "Update Ticket")
                       : "Create Ticket"}
                 </button>
               </div>

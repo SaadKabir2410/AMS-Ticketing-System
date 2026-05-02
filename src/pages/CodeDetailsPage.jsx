@@ -523,7 +523,7 @@ export default function CodeDetailsPage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="min-h-full bg-transparent p-0 pb-12 relative overflow-visible"
+      className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]"
     >
 
       <style>{`
@@ -541,7 +541,7 @@ export default function CodeDetailsPage() {
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
-        className="w-full bg-white dark:bg-[#161920] shadow-[0_8px_30px_rgba(0,0,0,0.06)] flex flex-col relative rounded-3xl overflow-hidden mb-8"
+        className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col relative rounded-3xl overflow-hidden"
       >
         {/* ── Header ── */}
         <div className="flex flex-col gap-6 py-6 px-4 md:px-8 transition-colors">
@@ -563,11 +563,11 @@ export default function CodeDetailsPage() {
                   <span className="text-slate-300 dark:text-slate-700">/</span>
                   <span>Lookups</span>
                   <span className="text-slate-300 dark:text-slate-700">/</span>
-                  <span className="text-indigo-400 dark:text-indigo-500">
+                  <span className="text-pink-500">
                     Code Details
                   </span>
                 </nav>
-                <h1 className="text-3xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 tracking-tighter">
+                <h1 className="text-4xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 tracking-tighter">
                   Code Details
                   <AnimatePresence>
                     {(loadingParents || loadingDetails || actionLoading) && (
@@ -788,8 +788,8 @@ export default function CodeDetailsPage() {
                       {paginatedItems.map((row, idx) => {
                         const rowBgClass =
                           idx % 2 === 0
-                            ? "bg-white dark:bg-[#161920]/40"
-                            : "bg-gray-200/50 dark:bg-white/[0.03]";
+                            ? "bg-white dark:bg-[#161920]/40 group-hover:bg-pink-50/40 dark:group-hover:bg-pink-500/10"
+                            : "bg-gray-200/50 dark:bg-white/[0.03] group-hover:bg-pink-50/40 dark:group-hover:bg-pink-500/10";
 
                         return (
                           <motion.tr
@@ -801,7 +801,6 @@ export default function CodeDetailsPage() {
                             exit="exit"
                             whileHover={{
                               y: -3,
-                              backgroundColor: "rgba(236, 72, 153, 0.02)",
                               transition: { duration: 0.1 },
                             }}
                             style={{

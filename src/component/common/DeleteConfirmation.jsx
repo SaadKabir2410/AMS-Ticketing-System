@@ -3,12 +3,14 @@
 export default function DeleteConfirmModal({
   open,
   onClose,
+  onCancel,
   onConfirm,
   ticket,
   site,
   item,
   loading,
   title = "Confirm Delete",
+  message = "Are you sure you want to proceed with this action?",
   confirmText = "Delete Now",
 }) {
   const activeItem = item || ticket || site;
@@ -37,14 +39,14 @@ export default function DeleteConfirmModal({
           {title}
         </h3>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">
-          Are you sure you want to proceed with this action?
+          {message}
         </p>
         <p className="text-sm font-mono text-blue-500 mb-8">{identifier}</p>
 
 
         <div className="flex gap-3">
           <button
-            onClick={onClose}
+            onClick={onCancel || onClose}
             className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
           >
             Cancel

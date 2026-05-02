@@ -1,8 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
-import ResourcePage from "../component/common/ResourcePage";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useToast } from "../component/common/ToastContext";
-import CircularProgress from "@mui/material/CircularProgress";
 import { usersApi } from "../services/api/users";
+import { rolesApi } from "../services/api/roles";
 import {
   ORGANIZATION_TYPES,
   getOrganizationTypeName,
@@ -11,26 +10,120 @@ import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
-import Button from "@mui/material/Button";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Box from "@mui/material/Box";
-
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import apiClient from "../services/apiClient";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ArrowLeft,
+  Search,
+  RefreshCw,
+  X,
+  Sliders,
+  Loader2,
+  ChevronDown,
+  ShieldCheck,
 } from "lucide-react";
+import { useTheme } from "../context/ThemeContext";
+import { Menu, MenuItem, ListItemText } from "@mui/material";
+import { usePermission } from "../hooks/usePermission";
 
+const PermissionTree = ({
+  permissions,
+  parentName,
+  checkedPerms,
+  onToggle,
+}) => {
+  const children = permissions.filter((p) => p.parentName === parentName);
+  if (children.length === 0) return null;
 
+  return (
+    <div
+      className={`space-y-2 ${parentName ? "ml-6 mt-2 border-l-2 border-slate-200 dark:border-slate-700/50 pl-4" : "mt-2"}`}
+    >
+      {children.map((perm) => (
+        <div key={perm.name} className="flex flex-col">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id={perm.name}
+              checked={!!checkedPerms[perm.name]}
+              onChange={(e) => onToggle(perm, e.target.checked)}
+              className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500"
+            />
+            <label
+              htmlFor={perm.name}
+              className={`text-sm cursor-pointer ${parentName ? "text-slate-600 dark:text-slate-400" : "text-slate-800 dark:text-slate-200 font-bold"}`}
+            >
+              {perm.displayName || perm.name}
+            </label>
+          </div>
+          <PermissionTree
+            permissions={permissions}
+            parentName={perm.name}
+            checkedPerms={checkedPerms}
+            onToggle={onToggle}
+          />
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05 },
+  },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
+};
 
 export default function UsersPage() {
   const { toast } = useToast();
+  const { dark } = useTheme();
+  const isDark = dark === "dark";
+
+  // Data State
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+
+  // Pagination & Search State
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(14);
+  const [search, setSearch] = useState("");
+  const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
+
+  // Modals State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeItem, setActiveItem] = useState(null);
+  const [submitError, setSubmitError] = useState("");
+  const [modalLoading, setModalLoading] = useState(false);
+  const [deleteUser, setDeleteUser] = useState(null);
+
+  // Permissions Modal State
+  const [permissionUser, setPermissionUser] = useState(null);
+  const [permissionsData, setPermissionsData] = useState(null);
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
+  const [checkedPerms, setCheckedPerms] = useState({});
+  const [expandedGroups, setExpandedGroups] = useState({});
+
+  const canCreate = usePermission("AbpIdentity.Users.Create");
+
+  // Filter Toggles State
   const [filters, setFilters] = useState({
     isCustomer: false,
     notActive: false,
@@ -43,85 +136,202 @@ export default function UsersPage() {
   const toggleFilter = (key) =>
     setFilters((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const columns = useMemo(
-    () => [
-      {
-        key: "name",
-        label: "DISPLAY NAME",
-        bold: true,
-        flex: 1.5,
-      },
-      {
-        key: "userName",
-        label: "USERNAME",
-        flex: 1,
-      },
-      {
-        key: "email",
-        label: "EMAIL ADDRESS",
-        flex: 2,
-      },
-      {
-        key: "phoneNumber",
-        label: "PHONE NUMBER",
-        flex: 1.2,
-      },
-      {
-        key: "organizationType",
-        label: "USER TYPE",
-        sortable: false,
-        render: (val, row) => {
-          const actualVal = val ?? row?.extraProperties?.organizationType;
-          return (
-            <span className="text-sm text-slate-500 dark:text-slate-400">
-              {getOrganizationTypeName(actualVal)}
-            </span>
-          );
-        },
-      },
-      {
-        key: "siteName",
-        label: "SITE NAME",
-        sortable: false,
-        flex: 1.5,
-      },
-      {
-        key: "isPrimary",
-        label: "PRIMARY",
-        render: (val, row) => (
-          <div className="flex items-center justify-center">
-            <div
-              className={`w-3 h-3 rounded-full ${(val ?? row?.extraProperties?.isPrimary) ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-200 dark:bg-slate-700"}`}
-            />
-          </div>
-        ),
-      },
-    ],
-    [],
-  );
+  // Load Users from API
+  const fetchUsers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await usersApi.getAll({
+        page,
+        perPage: pageSize,
+        search,
+        isCustomer: filters.isCustomer || undefined,
+        notActive: filters.notActive || undefined,
+        mustCompleteJobsheet: filters.mustCompleteJobsheet || undefined,
+        isITS: filters.isITS || undefined,
+        onlyLoadCurrentUser: filters.onlyLoadCurrentUser || undefined,
+        organizationTypes: filters.organizationTypes
+          ? [parseInt(filters.organizationTypes, 10)]
+          : undefined,
+      });
 
-  const customFilterArea = (
-    <div className="flex flex-wrap items-center gap-3 bg-transparent px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 w-fit">
-      <div className="flex items-center gap-2">
-        <span className="text-[10px] text-slate-500 whitespace-nowrap hidden sm:inline">
-          Show Customer
-        </span>
-        <span className="text-[10px] text-slate-500 whitespace-nowrap sm:hidden">
-          Customer
-        </span>
-        <button
-          onClick={() => toggleFilter("isCustomer")}
-          className={`relative w-8 h-4 rounded-full transition-colors duration-200 focus:outline-none shrink-0 ${filters.isCustomer ? "btn-flagship h-4! px-0!" : "bg-slate-300 dark:bg-slate-700"}`}
-        >
-          <div
-            className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-200 ${filters.isCustomer ? "translate-x-4" : "translate-x-0"}`}
-          />
-        </button>
-      </div>
-    </div>
-  );
+      setUsers(res.items || res.data || []);
+      setTotalCount(res.totalCount || 0);
+    } catch (err) {
+      toast("Failed to load users", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, [page, pageSize, search, filters, toast]);
 
-  const [deleteUser, setDeleteUser] = useState(null);
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const handleClearFilters = () => {
+    setFilters({
+      isCustomer: false,
+      notActive: false,
+      mustCompleteJobsheet: false,
+      isITS: false,
+      onlyLoadCurrentUser: false,
+      organizationTypes: "",
+    });
+    setSearch("");
+  };
+
+  const toggleGroup = (groupName) => {
+    setExpandedGroups((prev) => ({
+      ...prev,
+      [groupName]: !prev[groupName],
+    }));
+  };
+
+  const handlePermissions = async (user) => {
+    setPermissionUser(user);
+    setLoadingPermissions(true);
+    try {
+      // Step 1 — get permission structure for display
+      const userPerms = await usersApi.getPermissions(user.id);
+      setPermissionsData(userPerms);
+
+      // Step 2 — get user's role
+      const userRolesObj = await usersApi.getUserRoles(user.id);
+      const userRoles = userRolesObj?.items || [];
+
+      // Store role name for saving later
+      const roleName = userRoles[0]?.name || null;
+      setPermissionUser(prev => ({ ...prev, roleName }));
+
+      // Step 3 — fetch role permissions and use them as checked state
+      const initial = {};
+
+      // First set all to false
+      userPerms.groups?.forEach((g) => {
+        g.permissions.forEach((p) => {
+          initial[p.name] = false;
+        });
+      });
+
+      // Then check what role has
+      if (roleName) {
+        try {
+          const rolePerms = await rolesApi.getPermissions("R", roleName);
+          rolePerms.groups?.forEach((g) => {
+            g.permissions.forEach((p) => {
+              if (p.isGranted) {
+                initial[p.name] = true; // ✅ show role permissions as checked
+              }
+            });
+          });
+        } catch (err) {
+          console.warn("Failed to fetch role permissions:", err);
+        }
+      }
+
+      setCheckedPerms(initial);
+    } catch (err) {
+      toast(`Failed to load permissions: ${err.message}`, "error");
+    } finally {
+      setLoadingPermissions(false);
+    }
+  };
+  const handleClosePermissions = () => {
+    setPermissionUser(null);
+    setPermissionsData(null);
+    setCheckedPerms({});
+    setExpandedGroups({});
+  };
+
+  const handleGrantAll = (isChecked) => {
+    if (!permissionsData || !permissionsData.groups) return;
+    const updated = { ...checkedPerms };
+    permissionsData.groups.forEach((g) => {
+      g.permissions.forEach((p) => {
+        updated[p.name] = isChecked;
+      });
+    });
+    setCheckedPerms(updated);
+  };
+
+  const handleSavePermissions = async () => {
+    setLoadingPermissions(true);
+    try {
+      const roleName = permissionUser?.roleName;
+
+      if (!roleName) {
+        toast("No role found for this user", "error");
+        setLoadingPermissions(false);
+        return;
+      }
+
+      // ✅ Save to ROLE, not user-level
+      const payload = {
+        permissions: Object.entries(checkedPerms).map(([name, isGranted]) => ({
+          name,
+          isGranted: !!isGranted,
+        })),
+      };
+
+      await rolesApi.updatePermissions("R", roleName, payload);
+      toast(`Permissions for role "${roleName}" updated successfully`);
+      handleClosePermissions();
+    } catch (err) {
+      toast(`Failed to save permissions: ${err.message}`, "error");
+    } finally {
+      setLoadingPermissions(false);
+    }
+  };
+
+  const handleSelectAllGroup = (groupName, isChecked) => {
+    const group = permissionsData.groups.find((g) => g.name === groupName);
+    if (!group) return;
+    const updated = { ...checkedPerms };
+    group.permissions.forEach((p) => {
+      updated[p.name] = isChecked;
+    });
+    setCheckedPerms(updated);
+  };
+
+  const handleTogglePerm = (perm, isChecked) => {
+    const updated = { ...checkedPerms };
+    updated[perm.name] = isChecked;
+
+    if (isChecked) {
+      // Auto-check parents
+      const allPerms = permissionsData.groups.flatMap((g) => g.permissions);
+      let currentParentName = perm.parentName;
+      while (currentParentName) {
+        updated[currentParentName] = true;
+        const parentObj = allPerms.find((p) => p.name === currentParentName);
+        currentParentName = parentObj ? parentObj.parentName : null;
+      }
+    } else {
+      // Auto-uncheck children
+      const allPerms = permissionsData.groups.flatMap((g) => g.permissions);
+      const uncheckChildren = (parentName) => {
+        const kids = allPerms.filter((p) => p.parentName === parentName);
+        kids.forEach((k) => {
+          updated[k.name] = false;
+          uncheckChildren(k.name);
+        });
+      };
+      uncheckChildren(perm.name);
+    }
+
+    setCheckedPerms(updated);
+  };
+
+  const handleCreateOpen = () => {
+    setActiveItem(null);
+    setSubmitError("");
+    setIsModalOpen(true);
+  };
+
+  const handleEditOpen = (row) => {
+    setActiveItem(row);
+    setSubmitError("");
+    setIsModalOpen(true);
+  };
 
   const handleDelete = (row) => {
     if (row.userName?.toLowerCase() === "admin") {
@@ -136,21 +346,37 @@ export default function UsersPage() {
     usersApi
       .delete(deleteUser.id)
       .then(() => {
-        toast(`${deleteUser.userName} deleted !successfully`);
-        window.location.reload();
+        toast(`${deleteUser.userName} deleted successfully`);
+        fetchUsers();
       })
       .catch((err) => toast(`Error: ${err.message}`, "error"))
       .finally(() => setDeleteUser(null));
   };
 
-  const UserModal = ({
-    open,
-    onClose,
-    item,
-    onSubmit,
-    loading,
-    submitError,
-  }) => {
+  const handleModalSubmit = async (payload) => {
+    try {
+      setModalLoading(true);
+      if (activeItem) {
+        await usersApi.update(activeItem.id, payload);
+        toast("User updated successfully");
+      } else {
+        await usersApi.create(payload);
+        toast("User created successfully");
+      }
+      setIsModalOpen(false);
+      fetchUsers();
+    } catch (err) {
+      const msg = err.response?.data?.error?.message || err.message || "Operation failed";
+      setSubmitError(msg);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  const totalPages = Math.ceil(totalCount / pageSize) || 1;
+
+  // Render modal component
+  const UserModal = ({ open, onClose, item, onSubmit, loading, submitError }) => {
     const [tabIndex, setTabIndex] = useState(0);
     const [selectedRoles, setSelectedRoles] = useState([]);
     const [availableRoles, setAvailableRoles] = useState([]);
@@ -205,9 +431,7 @@ export default function UsersPage() {
 
               const orgTypeVal = mergedUser?.organizationType;
               setOrgType(
-                orgTypeVal != null && orgTypeVal !== 0
-                  ? orgTypeVal.toString()
-                  : "",
+                orgTypeVal != null && orgTypeVal !== 0 ? orgTypeVal.toString() : ""
               );
 
               let rolesArray = [];
@@ -236,7 +460,6 @@ export default function UsersPage() {
       }
     }, [open, item]);
 
-    // Bind selected site once data + sites are loaded
     useEffect(() => {
       if (!userData?.siteId || sites.length === 0) {
         if (!userData?.siteId) setSelectedSite(null);
@@ -252,7 +475,7 @@ export default function UsersPage() {
           (r) =>
             typeof r === "string" &&
             typeof role === "string" &&
-            r.toLowerCase() === role.toLowerCase(),
+            r.toLowerCase() === role.toLowerCase()
         );
         return found ? prev.filter((r) => r !== found) : [...prev, role];
       });
@@ -265,7 +488,6 @@ export default function UsersPage() {
       const formData = new FormData(e.target);
       const data = Object.fromEntries(formData.entries());
 
-      // Validation
       const errors = {};
       if (!data.userName?.trim())
         errors.userName = "The User name field is required";
@@ -289,48 +511,33 @@ export default function UsersPage() {
 
       setValidationErrors({});
 
-      // Build clean payload matching API contract exactly
       const payload = {
         userName: data.userName?.trim(),
         name: data.name?.trim(),
         surname: data.surname?.trim() || "",
         email: data.email?.trim() || "",
         phoneNumber: data.phoneNumber?.trim(),
-
-        // FIX 1: Always use orgType (controlled state), not formData value
-        // formData.get("organizationType") can be stale; orgType is always current
         organizationType: Number(orgType),
-
-        // FIX 2: Only send siteId when orgType is Customer (1), otherwise null
         siteId: orgType === "1" && selectedSite ? selectedSite.id : null,
-
         isPrimary: formData.get("isPrimary") === "on",
         mustCompleteJobsheet: formData.get("mustCompleteJobsheet") === "on",
         isITS: formData.get("isITS") === "on",
         isActive: formData.get("isActive") === "on",
         lockoutEnabled: formData.get("lockoutEnabled") === "on",
-
         baseRateFirstHourAfterWorkingHours:
           parseFloat(data.baseRateFirstHourAfterWorkingHours) || 0,
         baseRateAfterFirstHourAfterWorkingHours:
           parseFloat(data.baseRateAfterFirstHourAfterWorkingHours) || 0,
-
         roleNames: selectedRoles,
       };
 
-      // FIX 3: Password — only include if provided
       if (data.password?.trim()) {
         payload.password = data.password.trim();
       }
 
-      // FIX 4: concurrencyStamp — MUST come from the GET response (userData),
-      // not the list item. Missing or wrong stamp = 400 Bad Request.
       if (item) {
-        payload.concurrencyStamp =
-          userData?.concurrencyStamp ?? item.concurrencyStamp;
+        payload.concurrencyStamp = userData?.concurrencyStamp ?? item.concurrencyStamp;
       }
-
-      console.log("[DEBUG] PUT payload:", JSON.stringify(payload, null, 2));
 
       onSubmit(payload);
     };
@@ -355,15 +562,15 @@ export default function UsersPage() {
         }}
       >
         <div className="bg-white dark:bg-slate-900 px-6 py-5 border-b border-slate-100 dark:border-slate-700 shrink-0 flex justify-between items-center">
-          <h2 className="text-base dark:text-white text-slate-800 flex items-center gap-2">
+          <h2 className="text-base font-bold dark:text-white text-slate-800 flex items-center gap-2">
             {item ? "Edit User" : "Create User"}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-[#ec4899] dark:hover:text-[#ec4899] transition-colors rounded-lg"
+            className="p-1.5 text-slate-400 hover:text-[#ec4899] dark:hover:text-[#ec4899] transition-colors rounded-lg bg-slate-50 dark:bg-slate-800"
           >
-
+            <X size={16} />
           </button>
         </div>
 
@@ -373,15 +580,10 @@ export default function UsersPage() {
           noValidate
           autoComplete="off"
         >
-          <DialogContent
-            dividers
-            sx={{ minHeight: "400px", p: 0, position: "relative" }}
-          >
+          <DialogContent dividers sx={{ minHeight: "400px", p: 0, position: "relative" }}>
             {isLoadingData && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80">
-                <p className="text-sm text-slate-500 animate-pulse">
-                  Loading user details...
-                </p>
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-slate-900/80">
+                <p className="text-sm text-slate-500 animate-pulse">Loading user details...</p>
               </div>
             )}
             <Box sx={{ borderBottom: 1, borderColor: "divider", px: 3, pt: 1 }}>
@@ -405,19 +607,21 @@ export default function UsersPage() {
                 />
               )}
 
-
               {/* TAB 1: USER INFORMATION */}
               <div style={{ display: tabIndex === 0 ? "block" : "none" }}>
                 <div className="flex flex-col gap-2 mb-4">
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1">
+                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       User name *
                     </label>
                     <input
                       name="userName"
                       autoComplete="new-password"
                       defaultValue={userData?.userName || ""}
-                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.userName ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200`}
+                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.userName
+                        ? "border-red-500 focus:ring-red-500/20"
+                        : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"
+                        } rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200 font-medium`}
                     />
                     {validationErrors.userName && (
                       <p className="text-red-500 text-[9px] mt-1 ml-1">
@@ -426,13 +630,16 @@ export default function UsersPage() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1">
+                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       Name *
                     </label>
                     <input
                       name="name"
                       defaultValue={userData?.name || ""}
-                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.name ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200`}
+                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.name
+                        ? "border-red-500 focus:ring-red-500/20"
+                        : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"
+                        } rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200 font-medium`}
                     />
                     {validationErrors.name && (
                       <p className="text-red-500 text-[9px] mt-1 ml-1">
@@ -441,17 +648,17 @@ export default function UsersPage() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1">
+                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       Surname
                     </label>
                     <input
                       name="surname"
                       defaultValue={userData?.surname || ""}
-                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
+                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1">
+                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       Password {item ? "(Leave blank to keep)" : "*"}
                     </label>
                     <div className="relative">
@@ -459,12 +666,15 @@ export default function UsersPage() {
                         name="password"
                         autoComplete="new-password"
                         type={showPassword ? "text" : "password"}
-                        className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.password ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm pr-12 transition-all duration-200`}
+                        className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.password
+                          ? "border-red-500 focus:ring-red-500/20"
+                          : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"
+                          } rounded-lg outline-none focus:ring-2 text-sm pr-12 transition-all duration-200 font-medium`}
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-500 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-500 transition-colors text-xs font-semibold"
                       >
                         {showPassword ? "Hide" : "Show"}
                       </button>
@@ -476,24 +686,27 @@ export default function UsersPage() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1">
+                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       Email Address
                     </label>
                     <input
                       name="email"
                       type="email"
                       defaultValue={userData?.email || ""}
-                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
+                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1">
+                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       Phone Number *
                     </label>
                     <input
                       name="phoneNumber"
                       defaultValue={userData?.phoneNumber || ""}
-                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.phoneNumber ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200`}
+                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.phoneNumber
+                        ? "border-red-500 focus:ring-red-500/20"
+                        : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"
+                        } rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200 font-medium`}
                     />
                     {validationErrors.phoneNumber && (
                       <p className="text-red-500 text-[9px] mt-1 ml-1">
@@ -504,7 +717,7 @@ export default function UsersPage() {
 
                   <div className="grid grid-cols-1 gap-2">
                     <div className="w-full">
-                      <label className="block text-[10px] text-slate-500 mb-1 ml-1">
+                      <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                         Organization Type *
                       </label>
                       <select
@@ -517,7 +730,10 @@ export default function UsersPage() {
                             setSelectedSite(null);
                           }
                         }}
-                        className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.organizationType ? "border-red-500 focus:ring-red-500/20" : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"} rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200`}
+                        className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.organizationType
+                          ? "border-red-500 focus:ring-red-500/20"
+                          : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"
+                          } rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200 font-bold`}
                       >
                         <option value="" disabled>
                           Select an option
@@ -537,22 +753,17 @@ export default function UsersPage() {
 
                     {orgType === "1" && (
                       <div className="w-full">
-                        <label className="block text-[10px] text-slate-500 mb-1 ml-1">
+                        <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                           Site *
                         </label>
                         <Autocomplete
                           size="small"
                           options={sites}
-                          // FIX 5: Use option.id as the key, not the name — prevents duplicate key warnings
                           getOptionKey={(option) => option.id}
                           getOptionLabel={(option) =>
-                            option.name ||
-                            option.Name ||
-                            String(option.id || "")
+                            option.name || option.Name || String(option.id || "")
                           }
-                          isOptionEqualToValue={(option, value) =>
-                            option.id === value?.id
-                          }
+                          isOptionEqualToValue={(option, value) => option.id === value?.id}
                           value={selectedSite}
                           onChange={(e, newValue) => {
                             setSelectedSite(newValue);
@@ -607,46 +818,14 @@ export default function UsersPage() {
                                   backgroundColor: "transparent",
                                   transition: "all 0.2s",
                                   "& fieldset": {
-                                    borderColor: validationErrors.siteId
-                                      ? "#ef4444"
-                                      : "#e2e8f0",
-                                    transition: "all 0.2s",
+                                    borderColor: validationErrors.siteId ? "#ef4444" : "#e2e8f0",
                                   },
                                   "&:hover fieldset": {
-                                    borderColor: validationErrors.siteId
-                                      ? "#ef4444"
-                                      : "#cbd5e1",
+                                    borderColor: validationErrors.siteId ? "#ef4444" : "#cbd5e1",
                                   },
                                   "&.Mui-focused fieldset": {
-                                    borderColor: validationErrors.siteId
-                                      ? "#ef4444"
-                                      : "#e2e8f0",
-                                    borderWidth: "1px !important",
-                                    boxShadow: validationErrors.siteId
-                                      ? "0 0 0 2px rgba(239, 68, 68, 0.2)"
-                                      : "0 0 0 2px rgba(59, 130, 246, 0.2)",
+                                    borderColor: validationErrors.siteId ? "#ef4444" : "#e2e8f0",
                                   },
-                                  ".dark & fieldset": {
-                                    borderColor: validationErrors.siteId
-                                      ? "#ef4444"
-                                      : "rgba(255, 255, 255, 0.1)",
-                                  },
-                                  ".dark &:hover fieldset": {
-                                    borderColor: validationErrors.siteId
-                                      ? "#ef4444"
-                                      : "rgba(255, 255, 255, 0.2)",
-                                  },
-                                  ".dark &.Mui-focused fieldset": {
-                                    borderColor: validationErrors.siteId
-                                      ? "#ef4444"
-                                      : "rgba(255, 255, 255, 0.1)",
-                                    borderWidth: "1px !important",
-                                  },
-                                },
-                                "& .MuiInputBase-input": {
-                                  padding: "6px 0px !important",
-                                  height: "auto",
-                                  color: "inherit",
                                 },
                               }}
                             />
@@ -662,31 +841,27 @@ export default function UsersPage() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1">
+                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       Rate First Hour After Working Hours
                     </label>
                     <input
                       name="baseRateFirstHourAfterWorkingHours"
                       type="number"
                       step="0.01"
-                      defaultValue={
-                        userData?.baseRateFirstHourAfterWorkingHours || ""
-                      }
-                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
+                      defaultValue={userData?.baseRateFirstHourAfterWorkingHours || ""}
+                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1">
+                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       Rate After First Hour (Each 15 Min) After Working Hours
                     </label>
                     <input
                       name="baseRateAfterFirstHourAfterWorkingHours"
                       type="number"
                       step="0.01"
-                      defaultValue={
-                        userData?.baseRateAfterFirstHourAfterWorkingHours || ""
-                      }
-                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200"
+                      defaultValue={userData?.baseRateAfterFirstHourAfterWorkingHours || ""}
+                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
                     />
                   </div>
                 </div>
@@ -700,7 +875,7 @@ export default function UsersPage() {
                       defaultChecked={userData?.isPrimary}
                       className="w-4 h-4 rounded text-blue-600 border-slate-300"
                     />
-                    <span className="text-sm text-slate-700">Primary</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">Primary</span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -709,7 +884,7 @@ export default function UsersPage() {
                       defaultChecked={userData?.isITS}
                       className="w-4 h-4 rounded text-blue-600 border-slate-300"
                     />
-                    <span className="text-sm text-slate-700">ITS</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">ITS</span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -718,18 +893,16 @@ export default function UsersPage() {
                       defaultChecked={userData ? userData.isActive : false}
                       className="w-4 h-4 rounded text-blue-600 border-slate-300"
                     />
-                    <span className="text-sm text-slate-700">Active</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">Active</span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
                       name="lockoutEnabled"
-                      defaultChecked={
-                        userData ? userData.lockoutEnabled : false
-                      }
+                      defaultChecked={userData ? userData.lockoutEnabled : false}
                       className="w-4 h-4 rounded text-blue-600 border-slate-300"
                     />
-                    <span className="text-sm text-slate-700">
+                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
                       Account lockout
                     </span>
                   </label>
@@ -740,7 +913,7 @@ export default function UsersPage() {
                       defaultChecked={userData?.mustCompleteJobsheet}
                       className="w-4 h-4 rounded text-blue-600 border-slate-300"
                     />
-                    <span className="text-sm text-slate-700">
+                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
                       Must Complete JobSheet
                     </span>
                   </label>
@@ -750,25 +923,20 @@ export default function UsersPage() {
               {/* TAB 2: ROLES */}
               <div style={{ display: tabIndex === 1 ? "block" : "none" }}>
                 <div className="flex flex-col gap-2 w-full p-4 py-6">
-                  <p className="text-[11px] text-slate-400 mb-6 text-center">
+                  <p className="text-[11px] text-slate-400 font-bold mb-6 text-center uppercase tracking-wider">
                     Assign Roles to User
                   </p>
                   {availableRoles
-                    .slice(
-                      (rolesPage - 1) * rolesPerPage,
-                      rolesPage * rolesPerPage,
-                    )
+                    .slice((rolesPage - 1) * rolesPerPage, rolesPage * rolesPerPage)
                     .map((roleObj) => {
-                      const roleName =
-                        typeof roleObj === "object" ? roleObj.name : roleObj;
+                      const roleName = typeof roleObj === "object" ? roleObj.name : roleObj;
                       if (!roleName) return null;
                       const isChecked = selectedRoles.some(
                         (r) =>
                           typeof r === "string" &&
-                          r.toLowerCase() === roleName.toLowerCase(),
+                          r.toLowerCase() === roleName.toLowerCase()
                       );
-                      const displayRole =
-                        roleName.charAt(0).toUpperCase() + roleName.slice(1);
+                      const displayRole = roleName.charAt(0).toUpperCase() + roleName.slice(1);
                       return (
                         <label
                           key={roleName}
@@ -778,16 +946,16 @@ export default function UsersPage() {
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => toggleRole(roleName)}
-                            className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer transition-transform"
+                            className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
                           />
-                          <span className="text-xs text-slate-700 dark:text-slate-300 group-hover:text-[#ec4899] transition-colors">
+                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-[#ec4899] transition-colors">
                             {displayRole}
                           </span>
                         </label>
                       );
                     })}
 
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100">
+                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm mx-auto">
                       <button
                         type="button"
@@ -822,7 +990,7 @@ export default function UsersPage() {
                             /
                           </span>
                           <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums leading-none">
-                            {Math.ceil(availableRoles.length / rolesPerPage)}
+                            {Math.ceil(availableRoles.length / rolesPerPage) || 1}
                           </span>
                         </div>
                       </div>
@@ -835,14 +1003,11 @@ export default function UsersPage() {
                           setRolesPage((prev) =>
                             Math.min(
                               Math.ceil(availableRoles.length / rolesPerPage),
-                              prev + 1,
-                            ),
+                              prev + 1
+                            )
                           )
                         }
-                        disabled={
-                          rolesPage ===
-                          Math.ceil(availableRoles.length / rolesPerPage)
-                        }
+                        disabled={rolesPage === Math.ceil(availableRoles.length / rolesPerPage)}
                         className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
                         title="Next Page"
                       >
@@ -851,14 +1016,9 @@ export default function UsersPage() {
                       <button
                         type="button"
                         onClick={() =>
-                          setRolesPage(
-                            Math.ceil(availableRoles.length / rolesPerPage),
-                          )
+                          setRolesPage(Math.ceil(availableRoles.length / rolesPerPage))
                         }
-                        disabled={
-                          rolesPage ===
-                          Math.ceil(availableRoles.length / rolesPerPage)
-                        }
+                        disabled={rolesPage === Math.ceil(availableRoles.length / rolesPerPage)}
                         className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
                         title="Last Page"
                       >
@@ -868,12 +1028,6 @@ export default function UsersPage() {
                   </div>
                 </div>
               </div>
-
-              {submitError && (
-                <div className="mt-6 p-4 bg-rose-50 border border-rose-200 rounded-xl">
-                  <p className="text-xs text-rose-500">Error: {submitError}</p>
-                </div>
-              )}
             </div>
           </DialogContent>
 
@@ -881,14 +1035,14 @@ export default function UsersPage() {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 btn-flagship !h-[38px] !text-[11px] !border-slate-200 dark:border-slate-700! !text-slate-500 hover:bg-slate-50! dark:hover:bg-white/5!"
+              className="flex-1 border border-slate-200 dark:border-slate-700 h-[38px] text-[11px] text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 font-bold rounded-xl transition-all duration-200"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 btn-flagship !h-[38px] !text-[11px]"
+              className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold h-[38px] text-[11px] rounded-xl transition-all duration-200 shadow-md shadow-pink-500/10 active:scale-95 disabled:opacity-60 disabled:pointer-events-none"
             >
               {loading ? "Wait..." : item ? "Save" : "Create"}
             </button>
@@ -898,43 +1052,381 @@ export default function UsersPage() {
     );
   };
 
+  const ActionsMenu = ({ row }) => {
+    const [anchorEl, setAnchorEl] = useState(null);
+    const open = Boolean(anchorEl);
+
+    const canUpdate = usePermission("AbpIdentity.Users.Update");
+    const canDelete = usePermission("AbpIdentity.Users.Delete");
+
+    // If the user has no rights to edit or delete, do not display the actions button
+    if (!canUpdate && !canDelete) {
+      return null;
+    }
+
+    return (
+      <div className="inline-block relative">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setAnchorEl(e.currentTarget);
+          }}
+          className="btn-flagship-solid h-[24px] px-2 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1 hover:bg-pink-600 transition-all rounded-lg"
+        >
+          Actions <ChevronRight size={10} strokeWidth={2.5} className="transition-transform group-hover:rotate-90" />
+        </button>
+        <Menu
+          anchorEl={anchorEl}
+          open={open}
+          onClose={(e) => {
+            if (e) e.stopPropagation();
+            setAnchorEl(null);
+          }}
+          PaperProps={{
+            elevation: 8,
+            sx: {
+              mt: 0.5,
+              borderRadius: "12px",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
+              bgcolor: isDark ? "#0f172a" : "#ffffff",
+              color: isDark ? "#f1f5f9" : "inherit",
+              minWidth: 140,
+            },
+          }}
+        >
+          {canUpdate && (
+            <MenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                setAnchorEl(null);
+                handleEditOpen(row);
+              }}
+              sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
+            >
+              <ListItemText primary="Edit" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+            </MenuItem>
+          )}
+          {canUpdate && (
+            <MenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                setAnchorEl(null);
+                handlePermissions(row);
+              }}
+              sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
+            >
+              <ListItemText primary="Permission" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+            </MenuItem>
+          )}
+          {canDelete && row.userName?.toLowerCase() !== "admin" && (
+            <MenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                setAnchorEl(null);
+                handleDelete(row);
+              }}
+              sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
+            >
+              <ListItemText
+                primary="Delete"
+                primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }}
+              />
+            </MenuItem>
+          )}
+        </Menu>
+      </div>
+    );
+  };
+
   return (
-    <>
-      <ResourcePage
-        title="Users"
-        apiObject={usersApi}
-        columns={columns}
-        ModalComponent={UserModal}
-        searchPlaceholder="Search users by name, email or phone..."
-        createButtonText="New User"
-        breadcrumb={["Home", "Administration", "Identity Management", "Users"]}
-        smallHeaderButton={true}
-        showPagination={true}
-        initialPageSize={14}
-        entityName="User"
-        customFilterArea={customFilterArea}
-        extraParams={{
-          isCustomer: filters.isCustomer ? true : undefined,
-          notActive: filters.notActive ? true : undefined,
-          mustCompleteJobsheet: filters.mustCompleteJobsheet ? true : undefined,
-          isITS: filters.isITS ? true : undefined,
-          onlyLoadCurrentUser: filters.onlyLoadCurrentUser ? true : undefined,
+    <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
+      <style>{`
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+      `}</style>
 
-          organizationTypes: filters.organizationTypes
-            ? [parseInt(filters.organizationTypes, 10)]
-            : undefined,
-        }}
-        showAuditLog={false}
-        onDelete={handleDelete}
-        onDeleteVisibilityCheck={(row) => {
-          if (row.userName?.toLowerCase() === "admin") return false;
-          if (filters.isCustomer) return false;
-          const orgType = row.organizationType ?? row.extraProperties?.organizationType;
-          if (orgType === 1) return false;
-          return true;
-        }}
+      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-hidden min-h-0">
+
+        {/* Header Section */}
+        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50 transition-colors">
+          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
+            <span>Home</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span>Administration</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span>Identity Management</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="text-pink-500">Users</span>
+          </nav>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => window.history.back()}
+                className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-600 hover:text-pink-600 transition-all border border-slate-200/60 dark:border-slate-700/50 shadow-sm"
+                title="Go Back"
+              >
+                <ArrowLeft size={20} strokeWidth={2.5} />
+              </button>
+              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+                Users
+              </h1>
+            </div>
+            <div className="flex items-center gap-3">
+              {canCreate && (
+                <button
+                  onClick={handleCreateOpen}
+                  className="inline-flex items-center px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white active:scale-95"
+                >
+                  New User
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Toolbar Section */}
+        <div className="relative z-20 px-4 py-4 sm:px-6 sm:py-6 flex items-center justify-between bg-transparent flex-wrap gap-4 sm:gap-6">
+          <div className="flex items-center gap-4 sm:gap-6 flex-1 min-w-[200px]">
+            {/* Search Box */}
+            <div className="relative w-full max-w-[400px] group">
+              <input
+                type="text"
+                placeholder="Search users by name, email or phone..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full pl-11 pr-10 py-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-sm outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            </div>
+
+            {/* Show Customer toggle directly in the toolbar */}
+            <div className="flex items-center gap-3 bg-white/80 dark:bg-slate-900/40 px-4 py-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800/50 shadow-sm">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider select-none">
+                Show Customer
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  toggleFilter("isCustomer");
+                  setPage(1);
+                }}
+                className={`relative w-8 h-4.5 rounded-full transition-colors duration-200 focus:outline-none shrink-0 border ${filters.isCustomer
+                  ? "bg-pink-500 border-pink-500"
+                  : "bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600"
+                  }`}
+              >
+                <div
+                  className={`absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full transition-transform duration-200 ${filters.isCustomer ? "translate-x-3.5" : "translate-x-0"
+                    }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={fetchUsers}
+            disabled={loading}
+            className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/50 flex items-center justify-center text-slate-500 hover:text-pink-600 hover:border-pink-500/40 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+            title="Refresh Users"
+          >
+            <RefreshCw size={16} className={`${loading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+
+
+        {/* Table Area */}
+        <div className="flex-1 flex flex-col min-h-0 relative px-6 pb-6 pt-2 overflow-hidden">
+          <div className="overflow-x-auto flex-1 no-scrollbar min-h-0">
+            <table className="w-full text-left border-separate border-spacing-y-1 min-w-max">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 h-[56px]">
+                  <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 pl-8">
+                    Display Name
+                  </th>
+                  <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                    Username
+                  </th>
+                  <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                    Email Address
+                  </th>
+                  <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                    Phone Number
+                  </th>
+                  <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                    User Type
+                  </th>
+                  <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                    Site Name
+                  </th>
+                  <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 text-center">
+                    Primary
+                  </th>
+                  <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 text-right pr-8">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+
+              <motion.tbody
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="relative min-h-0"
+              >
+                {loading && (
+                  <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center h-full">
+                    <Loader2 className="animate-spin text-pink-500" size={32} />
+                  </div>
+                )}
+
+                {users.length === 0 && !loading ? (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="py-32 text-center text-sm font-black text-slate-400 uppercase tracking-widest"
+                    >
+                      No users found
+                    </td>
+                  </tr>
+                ) : (
+                  users.map((row, idx) => {
+                    const orgTypeVal = row.organizationType ?? row.extraProperties?.organizationType;
+                    const isPrimaryVal = row.isPrimary ?? row.extraProperties?.isPrimary;
+                    return (
+                      <motion.tr
+                        key={row.id}
+                        variants={rowVariants}
+                        whileHover={{
+                          y: -2,
+                          backgroundColor: isDark ? "rgba(244, 63, 94, 0.04)" : "rgba(244, 63, 94, 0.02)",
+                        }}
+                        className={`group transition-all duration-200 border-b border-slate-50 dark:border-slate-800/30 ${idx % 2 === 0
+                          ? "bg-white dark:bg-[#161920]/40"
+                          : "bg-gray-200/50 dark:bg-white/[0.03]"
+                          }`}
+                      >
+                        <td className="px-5 py-3 text-[12px] pl-8 rounded-l-2xl text-slate-800 dark:text-slate-200 font-bold">
+                          {row.name}
+                        </td>
+                        <td className="px-5 py-3 text-[12px] font-medium text-slate-700 dark:text-slate-300">
+                          {row.userName}
+                        </td>
+                        <td className="px-5 py-3 text-[12px] font-medium text-slate-500 dark:text-slate-400">
+                          {row.email || "-"}
+                        </td>
+                        <td className="px-5 py-3 text-[12px] font-medium text-slate-500 dark:text-slate-400">
+                          {row.phoneNumber || "-"}
+                        </td>
+                        <td className="px-5 py-3 text-[12px] font-medium text-slate-500 dark:text-slate-400">
+                          {getOrganizationTypeName(orgTypeVal)}
+                        </td>
+                        <td className="px-5 py-3 text-[12px] font-medium text-slate-500 dark:text-slate-400">
+                          {row.siteName || "-"}
+                        </td>
+                        <td className="px-5 py-3 text-[12px] font-medium text-slate-500 dark:text-slate-400 text-center">
+                          <div className="flex items-center justify-center">
+                            <div
+                              className={`w-3 h-3 rounded-full ${isPrimaryVal
+                                ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                                : "bg-slate-200 dark:bg-slate-700"
+                                }`}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-5 py-3 text-[12px] font-medium text-slate-500 dark:text-slate-400 text-right pr-8 rounded-r-2xl">
+                          <ActionsMenu row={row} />
+                        </td>
+                      </motion.tr>
+                    );
+                  })
+                )}
+              </motion.tbody>
+            </table>
+          </div>
+
+          {/* Pagination Section */}
+          {totalPages > 0 && (
+            <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/50 mt-4 pt-4 shrink-0">
+              <div className="text-[11px] font-bold text-slate-400 tracking-wider">
+                Showing <span className="text-pink-500">{(page - 1) * pageSize + 1}</span> to{" "}
+                <span className="text-pink-500">{Math.min(page * pageSize, totalCount)}</span> of{" "}
+                <span className="text-pink-500">{totalCount}</span> users
+              </div>
+              <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setPage(1)}
+                  disabled={page === 1}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  title="First Page"
+                >
+                  <ChevronsLeft size={16} strokeWidth={2.5} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={page === 1}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  title="Previous Page"
+                >
+                  <ChevronLeft size={16} strokeWidth={2.5} />
+                </button>
+
+                <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+
+                <div className="px-3 flex items-center gap-2 py-1 select-none">
+                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                    Page
+                  </span>
+                  <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
+                    <span className="text-[12px] font-black text-pink-600 dark:text-pink-400 tabular-nums">
+                      {page}
+                    </span>
+                    <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">/</span>
+                    <span className="text-[11px] font-black text-slate-500 dark:text-slate-400 tabular-nums">
+                      {totalPages}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={page === totalPages}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  title="Next Page"
+                >
+                  <ChevronRight size={16} strokeWidth={2.5} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage(totalPages)}
+                  disabled={page === totalPages}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  title="Last Page"
+                >
+                  <ChevronsRight size={16} strokeWidth={2.5} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* User Edit / Create Modal */}
+      <UserModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        item={activeItem}
+        onSubmit={handleModalSubmit}
+        loading={modalLoading}
+        submitError={submitError}
       />
-
 
       {/* Material UI Delete Confirmation Dialog */}
       <Dialog
@@ -942,38 +1434,184 @@ export default function UsersPage() {
         onClose={() => setDeleteUser(null)}
         maxWidth="xs"
         PaperProps={{
-          sx: { borderRadius: "20px", padding: "4px", maxWidth: "320px", width: "100%" },
+          sx: { borderRadius: "24px", padding: "4px", maxWidth: "340px", width: "100%" },
         }}
       >
         <DialogTitle sx={{ fontWeight: 800, color: "#1e293b", fontSize: "16px" }}>
           Confirm Deletion
         </DialogTitle>
         <DialogContent sx={{ pb: 1 }}>
-          <div className="text-[13px] text-slate-600">
+          <div className="text-[13px] text-slate-600 dark:text-slate-400">
             Are you sure you want to delete the user{" "}
-            <strong className="text-rose-500">{deleteUser?.userName}</strong>?
-            This action cannot be undone.
+            <strong className="text-rose-500">{deleteUser?.userName}</strong>? This action cannot be undone.
           </div>
         </DialogContent>
         <DialogActions sx={{ p: 2, gap: 1.5 }}>
           <button
             onClick={() => setDeleteUser(null)}
-            className="flex-1 btn-flagship h-[34px]! border-slate-200! text-slate-500!"
+            className="flex-1 font-bold text-[11px] h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 rounded-xl transition-all"
           >
             Cancel
           </button>
           <button
             onClick={confirmDelete}
-            className="flex-1 btn-flagship h-[34px]! border-rose-500/50! text-rose-500! hover:border-rose-500! hover:bg-rose-500/5!"
+            className="flex-1 font-bold text-[11px] h-[36px] bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition-all shadow-md shadow-rose-500/10 active:scale-95"
           >
             Delete
           </button>
         </DialogActions>
       </Dialog>
-    </>
+
+      {/* Material UI Permissions Dialog */}
+      <Dialog
+        open={Boolean(permissionUser)}
+        onClose={handleClosePermissions}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "20px",
+            backgroundImage: "none",
+            backgroundColor: "#0f172a", // Dark Blue
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+          },
+        }}
+      >
+        <DialogTitle className="flex items-center justify-between px-6 pt-5 pb-2">
+          <span className="text-lg font-bold text-slate-200">
+            Permissions - {permissionUser?.userName}
+          </span>
+          <button
+            type="button"
+            onClick={handleClosePermissions}
+            className="p-1.5 text-slate-400 hover:text-[#ec4899] dark:hover:text-[#ec4899] transition-colors rounded-lg bg-slate-50 dark:bg-slate-800"
+          >
+            <X size={16} />
+          </button>
+        </DialogTitle>
+        <DialogContent sx={{ border: "none" }}>
+          {loadingPermissions ? (
+            <div className="flex justify-center items-center py-10">
+              <Loader2 className="animate-spin text-pink-500" size={32} />
+            </div>
+          ) : (
+            <div className="text-sm text-slate-400 space-y-3">
+              <div className="flex justify-between items-center mb-4 pb-2">
+                <p>
+                  Control what <strong className="text-slate-200">{permissionUser?.userName}</strong> can do.
+                </p>
+
+                {/* Grant All Checkbox */}
+                {permissionsData?.groups && (
+                  <div className="flex items-center gap-2 px-3 py-2">
+                    <input
+                      type="checkbox"
+                      id="grant-all-permissions"
+                      checked={
+                        permissionsData.groups.flatMap((g) => g.permissions)
+                          .length > 0 &&
+                        permissionsData.groups
+                          .flatMap((g) => g.permissions)
+                          .every((p) => checkedPerms[p.name])
+                      }
+                      onChange={(e) => handleGrantAll(e.target.checked)}
+                      className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-slate-950 border-slate-600 text-pink-500"
+                    />
+                    <label
+                      htmlFor="grant-all-permissions"
+                      className="text-sm text-slate-200 cursor-pointer font-medium"
+                    >
+                      Grant all permissions
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Render permissions if available */}
+              {permissionsData?.groups?.map((group, idx) => {
+                const groupPerms = group.permissions;
+                const isAllChecked =
+                  groupPerms.length > 0 &&
+                  groupPerms.every((p) => checkedPerms[p.name]);
+                const isExpanded = !!expandedGroups[group.name];
+
+                return (
+                  <div
+                    key={idx}
+                    className="mb-3"
+                  >
+                    {/* Collapsible Header */}
+                    <div
+                      onClick={() => toggleGroup(group.name)}
+                      className="flex items-center justify-between px-4 py-2.5 bg-slate-800/40 rounded-xl hover:bg-slate-800/80 cursor-pointer transition-all duration-200 group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
+                          <ChevronDown size={18} className="text-slate-500 group-hover:text-[#ec4899]" />
+                        </div>
+                        <h4 className="text-slate-200 text-[14px] font-bold uppercase tracking-wider">
+                          {group.displayName || group.name}
+                        </h4>
+                      </div>
+
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          id={`select-all-${group.name}`}
+                          checked={isAllChecked}
+                          onChange={(e) =>
+                            handleSelectAllGroup(group.name, e.target.checked)
+                          }
+                          className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-slate-950 border-slate-600 text-pink-500"
+                        />
+                        <label
+                          htmlFor={`select-all-${group.name}`}
+                          className="text-[10px] text-slate-500 uppercase font-black tracking-widest cursor-pointer hover:text-[#ec4899] transition-colors"
+                        >
+                          Select all
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Drop Down Menu (Content) */}
+                    {isExpanded && (
+                      <div className="mt-2 ml-2 p-3 bg-slate-800/20 rounded-xl animate-in slide-in-from-top-2 duration-200">
+                        <PermissionTree
+                          permissions={groupPerms}
+                          parentName={null}
+                          checkedPerms={checkedPerms}
+                          onToggle={handleTogglePerm}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {!permissionsData?.groups?.length && (
+                <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 text-center text-slate-400">
+                  No specific permissions defined.
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5, gap: 1.5, backgroundColor: "#0f172a", border: "none" }}>
+          <button
+            onClick={() => handleClosePermissions()}
+            className="flex-1 btn-flagship !h-[38px] !text-[11px] !border-slate-700 !text-slate-400 hover:bg-white/5!"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSavePermissions}
+            disabled={loadingPermissions}
+            className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold h-[38px] text-[11px] rounded-xl transition-all duration-200 shadow-md shadow-pink-500/10 active:scale-95"
+          >
+            {loadingPermissions ? "Wait..." : "Save Changes"}
+          </button>
+        </DialogActions>
+      </Dialog>
+    </div>
   );
 }
-
-
-
-
