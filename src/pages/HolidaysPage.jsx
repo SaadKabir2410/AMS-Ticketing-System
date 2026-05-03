@@ -258,7 +258,7 @@ export default function HolidaysPage() {
   }, [filters]);
 
   return (
-    <div className="h-full flex flex-col bg-[#f1f5f9] dark:bg-slate-950 transition-colors duration-300 overflow-auto no-scrollbar">
+    <>
       <ResourcePage
         title="Holidays"
         apiObject={holidaysApi}
@@ -347,7 +347,7 @@ export default function HolidaysPage() {
           background-color: rgba(236, 72, 153, 0.1) !important;
         }
       `}</style>
-    </div>
+    </>
   );
 }
 

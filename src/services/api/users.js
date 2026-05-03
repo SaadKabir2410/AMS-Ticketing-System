@@ -1,5 +1,12 @@
 import apiClient from "../apiClient";
 
+const getVerificationToken = () => {
+  const match = document.cookie
+    .split(";")
+    .find((c) => c.trim().startsWith("XSRF-TOKEN="));
+  return match ? decodeURIComponent(match.split("=")[1]) : "";
+};
+
 export const usersApi = {
   getAll: ({
     page = 1,
@@ -182,6 +189,11 @@ export const usersApi = {
     apiClient
       .put("/api/permission-management/permissions", data, {
         params: { providerName: "U", providerKey: userId },
+        headers: {
+          "Content-Type": "application/json",
+          "RequestVerificationToken": getVerificationToken(),
+        },
+        validateStatus: (status) => status === 204 || status === 200,
       })
       .then((r) => r.data),
 };

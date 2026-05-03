@@ -107,38 +107,45 @@ export default function TaskCategoryProjectsPage() {
   const breadcrumb = ["Home", "Management", "Lookups", "Task Category Projects"];
 
   return (
-    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-auto flex flex-col no-scrollbar p-6 transition-all duration-300">
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-slate-400 mb-4 ml-1">
-        {breadcrumb.map((b, i) => (
-          <span key={i} className="flex items-center gap-2">
-            <span
-              onClick={() => b === "Home" && navigate("/")}
-              className={b === "Home" ? "hover:text-blue-500 cursor-pointer transition-colors" : ""}
+    <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
+      <style>{`
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+      `}</style>
+
+      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
+        {/* Header */}
+        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
+            {breadcrumb.map((b, i) => (
+              <span key={i} className="flex items-center gap-1.5">
+                <span
+                  onClick={() => b === "Home" && navigate("/")}
+                  className={
+                    i === breadcrumb.length - 1
+                      ? "text-pink-500"
+                      : b === "Home"
+                      ? "hover:text-pink-500 cursor-pointer transition-colors"
+                      : ""
+                  }
+                >
+                  {b}
+                </span>
+                {i < breadcrumb.length - 1 && <span className="text-slate-300 dark:text-slate-700">/</span>}
+              </span>
+            ))}
+          </nav>
+          <div className="flex items-center justify-between">
+            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+              Task Category Projects
+            </h1>
+            <button
+              onClick={handleNew}
+              className="inline-flex items-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
             >
-              {b}
-            </span>
-            {i < breadcrumb.length - 1 && <span>/</span>}
-          </span>
-        ))}
-      </nav>
-
-      <div className="flex-1 w-full flex flex-col overflow-auto">
-        <div className="flex-1 bg-white dark:bg-slate-900 h-full w-full border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm overflow-auto flex flex-col transition-all duration-300">
-
-          {/* Header */}
-          <div className="px-6 py-6 flex flex-col gap-6 bg-slate-50/50 dark:bg-transparent shrink-0">
-            <div className="flex items-center justify-between">
-              <h1 className="text-[26px] font-black text-slate-800 dark:text-white tracking-tighter leading-none uppercase">
-                Task Category Projects
-              </h1>
-              <button
-                onClick={handleNew}
-                className="h-[26px] px-4 btn-flagship rounded-[6px] text-[9.5px] font-black  transition-all active:scale-95 shadow-sm uppercase shadow-blue-500/10"
-              >
-                New Task Category Project
-              </button>
-            </div>
+              New Task Category Project
+            </button>
+          </div>
 
             {/* Project Filter */}
             <div className="flex items-end gap-3 w-full max-w-lg">
@@ -220,7 +227,7 @@ export default function TaskCategoryProjectsPage() {
               )}
             </div>
           {/* Pagination Footer */}
-          <div className="px-6 py-4 bg-slate-50/80 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 transition-colors">
+          <div className="px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2.5">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Page Size:</span>
@@ -303,9 +310,7 @@ export default function TaskCategoryProjectsPage() {
               </div>
             </div>
           </div>
-        </div>
       </div>
-    </div>
 
       <TaskCategoryProjectModal
         open={modalOpen}
@@ -331,14 +336,7 @@ export default function TaskCategoryProjectsPage() {
           onConfirm={handleDelete}
         />
       )}
-
-      <style>{`
-        body { overflow: hidden !important; }
-        .no-scrollbar::-webkit-scrollbar { display: none !important; }
-        .no-scrollbar { -ms-overflow-style: none !important; scrollbar-width: none !important; }
-        ::-webkit-scrollbar { display: none !important; }
-        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
-      `}</style>
+      </div>
     </div>
   );
 }

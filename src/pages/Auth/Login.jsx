@@ -233,6 +233,16 @@ export default function LoginPage() {
                 {isLoggingIn ? "Verifying..." : "Login"}
               </span>
             </button>
+
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => navigate("/forgot-password")}
+                className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 hover:text-[#ec4899] transition-colors"
+              >
+                Forgot Password?
+              </button>
+            </div>
           </form>
         </div>
       </div>

@@ -106,8 +106,7 @@ export default function AMSTicketsPage() {
     siteOcn: "",
     cmsNextTicketNo: "",
     status: "",
-    dateFrom: null,
-    dateTo: null,
+    ticketReceivedDate: null,
   });
 
   // --- Initialization ---
@@ -129,20 +128,36 @@ export default function AMSTicketsPage() {
   const fetchTickets = async () => {
     setLoading(true);
     try {
+      let formattedTicketDate = undefined;
+      let dateFrom = undefined;
+      let dateTo = undefined;
+
+      if (isAdvancedSearch && filters.ticketReceivedDate) {
+        const d = new Date(filters.ticketReceivedDate);
+        formattedTicketDate = d.toISOString().replace(/\.\d{3}Z$/, ".0000000Z");
+
+        // The backend requires DateFrom and DateTo for date searches
+        const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
+        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
+        
+        dateFrom = firstDay.toISOString().replace(/\.\d{3}Z$/, ".0000000Z");
+        dateTo = lastDay.toISOString().replace(/\.\d{3}Z$/, ".0000000Z");
+      }
+
       const extraParams = isAdvancedSearch
         ? {
           siteName: filters.siteName || undefined,
           siteOcn: filters.siteOcn || undefined,
           cmsNextTicketNo: filters.cmsNextTicketNo || undefined,
           status: filters.status || undefined,
-          dateFrom: filters.dateFrom
-            ? new Date(filters.dateFrom).toISOString()
-            : undefined,
-          dateTo: filters.dateTo
-            ? new Date(filters.dateTo).toISOString()
-            : undefined,
+          ticketReceivedDate: formattedTicketDate,
+          dateFrom: dateFrom,
+          dateTo: dateTo,
+          userId: "00000000-0000-0000-0000-000000000000",
         }
         : {};
+
+      console.log("[AMS] fetchTickets extraParams:", JSON.stringify(extraParams));
 
       const response = await amsTicketApi.getAll({
         page: currentPage,
@@ -167,8 +182,7 @@ export default function AMSTicketsPage() {
       siteOcn: "",
       cmsNextTicketNo: "",
       status: "",
-      dateFrom: null,
-      dateTo: null,
+      ticketReceivedDate: null,
     });
     setSearch("");
   };
@@ -183,6 +197,21 @@ export default function AMSTicketsPage() {
       fetchTickets();
     } catch (err) {
       toast("Failed to void ticket", "error");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleReopen = async (row) => {
+    try {
+      setActionLoading(true);
+      await amsTicketApi.reOpen(row.id, {});
+      toast("Ticket reopened successfully");
+      setActionItem(null);
+      setActionType("");
+      fetchTickets();
+    } catch (err) {
+      toast("Failed to reopen ticket", "error");
     } finally {
       setActionLoading(false);
     }
@@ -217,21 +246,20 @@ export default function AMSTicketsPage() {
   const totalPages = Math.ceil(totalCount / pageSize);
 
   const filterRow = (
-    <div className="bg-slate-50/50 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800/60 transition-all overflow-x-auto no-scrollbar scroll-smooth">
-      <div className="flex flex-nowrap px-4 md:px-8 min-w-max relative group">
+    <div className="bg-slate-50/50 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800/60 transition-all">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 px-4 py-4 md:px-8">
         {[
-          { label: "Site Name", key: "siteName", w: 180, isCombo: true },
-          { label: "Site OCN", key: "siteOcn", w: 110, isCombo: true },
-          { label: "Ticket No", key: "cmsNextTicketNo", w: 130, isCombo: true },
-          { label: "Date Range", key: "dates", w: 240, isCombo: false },
-          { label: "Status", key: "status", w: 90, isCombo: false },
-          { label: "PRE", key: "isPRE", w: 60, isCombo: false },
-          { label: "Created By", key: "createdBy", w: 140, isCombo: false },
+          { label: "Site Name", key: "siteName", isCombo: true },
+          { label: "Site OCN", key: "siteOcn", isCombo: true },
+          { label: "Ticket No", key: "cmsNextTicketNo", isCombo: true },
+          { label: "Ticket Received Date Time", key: "ticketReceivedDate", isCombo: false, span: "sm:col-span-2 md:col-span-1 lg:col-span-2 xl:col-span-1" },
+          { label: "Status", key: "status", isCombo: false },
+          { label: "PRE", key: "isPRE", isCombo: false },
+          { label: "Created By", key: "createdBy", isCombo: false },
         ].map((f, i) => (
           <div
             key={f.key}
-            style={{ width: f.w }}
-            className={`px-2 py-3 flex flex-col gap-1.5 shrink-0 ${i === 0 ? "pl-4 md:pl-8" : ""}`}
+            className={`flex flex-col gap-1.5 w-full shrink-0 ${f.span || ""}`}
           >
             {f.isCombo ? (
               <div className="relative group/input">
@@ -268,27 +296,32 @@ export default function AMSTicketsPage() {
                 <option value="2">Closed</option>
                 <option value="3">Void</option>
               </select>
-            ) : f.key === "dates" ? (
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Flatpickr
-                    value={filters.dateFrom}
-                    onChange={([d]) =>
-                      setFilters((p) => ({ ...p, dateFrom: d }))
+            ) : f.key === "ticketReceivedDate" ? (
+              <div className="relative">
+                <Flatpickr
+                  value={filters.ticketReceivedDate || ""}
+                  onChange={(selectedDates) => {
+                    const d = selectedDates[0] || null;
+                    console.log("[AMS] Flatpickr onChange fired:", d);
+                    setFilters((p) => ({ ...p, ticketReceivedDate: d }));
+                  }}
+                  options={{
+                    dateFormat: "Y-m-d",
+                    allowInput: true,
+                  }}
+                  className="w-full px-2 py-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-lg text-[10px] font-bold outline-none placeholder:text-slate-400/50 focus:border-pink-500 transition-all"
+                  placeholder="Select Date"
+                />
+                {filters.ticketReceivedDate && (
+                  <button
+                    onClick={() =>
+                      setFilters((prev) => ({ ...prev, ticketReceivedDate: null }))
                     }
-                    className="w-full px-2 py-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-lg text-[10px] font-bold outline-none placeholder:text-slate-400/50"
-                    placeholder="From"
-                  />
-                </div>
-                <span className="text-slate-300 dark:text-slate-700">→</span>
-                <div className="relative flex-1">
-                  <Flatpickr
-                    value={filters.dateTo}
-                    onChange={([d]) => setFilters((p) => ({ ...p, dateTo: d }))}
-                    className="w-full px-2 py-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-lg text-[10px] font-bold outline-none placeholder:text-slate-400/50"
-                    placeholder="To"
-                  />
-                </div>
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-pink-500 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
               </div>
             ) : (
               <div className="h-[30px]" />
@@ -314,11 +347,11 @@ export default function AMSTicketsPage() {
       <motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-hidden"
+        className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl"
       >
         {/* ── Header Row ── */}
         <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <motion.button
                 whileHover={{ scale: 1.1, x: -2 }}
@@ -435,8 +468,8 @@ export default function AMSTicketsPage() {
         </AnimatePresence>
 
         {/* Table Area */}
-        <div className="flex-1 w-full overflow-auto no-scrollbar">
-          <div className="overflow-x-auto px-4 pb-4 pt-2">
+        <div className="w-full">
+          <div className="overflow-x-auto px-4 pb-4 pt-2 no-scrollbar">
             <table className="w-full text-left border-separate border-spacing-y-1 min-w-max">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">
@@ -489,11 +522,13 @@ export default function AMSTicketsPage() {
                           backgroundColor: "rgba(244, 63, 94, 0.04)",
                         }}
                         className={`group transition-all duration-200 ${ROW_HEIGHT} border-b border-slate-50 dark:border-slate-800/30 
-                          ${row.status === 1
-                            ? "bg-[#fee2e2] dark:bg-red-950/60"
-                            : idx % 2 === 0
-                              ? "bg-white dark:bg-[#161920]/40"
-                              : "bg-gray-200/50 dark:bg-white/[0.03]"
+                            ${row.status === 1 && row.isComingFromReOpenScreen
+                            ? "bg-orange-50 dark:bg-orange-900/10"
+                            : row.status === 1
+                              ? "bg-[#fee2e2] dark:bg-red-950/60"
+                              : idx % 2 === 0
+                                ? "bg-white dark:bg-[#161920]/40"
+                                : "bg-gray-200/50 dark:bg-white/[0.03]"
                           }`}
                       >
                         {columns.map((col, colIdx) => (
@@ -502,16 +537,20 @@ export default function AMSTicketsPage() {
                             className={`px-5 ${ROW_HEIGHT} text-${col.align || "left"} transition-colors
                               ${colIdx === 0 ? "pl-8 rounded-l-2xl" : ""} 
                               ${colIdx === columns.length - 1 ? "rounded-r-2xl" : ""}
-                              ${row.status === 1 ? "text-red-900 dark:text-red-100 font-semibold" : "text-slate-700 dark:text-slate-300"}`}
+                              ${row.status === 1 && row.isComingFromReOpenScreen
+                                ? "text-orange-900 dark:text-orange-100 font-semibold"
+                                : row.status === 1
+                                  ? "text-red-900 dark:text-red-100 font-semibold"
+                                  : "text-slate-700 dark:text-slate-300"}`}
                           >
                             <div className="text-[12px] font-medium leading-none">
                               {col.key === "siteName" ? (
-                                <span className="font-bold text-slate-800 dark:text-slate-100 uppercase tracking-tight">
+                                <div className="truncate max-w-[160px] font-bold text-slate-800 dark:text-slate-100 uppercase tracking-tight" title={row.siteName}>
                                   <HighlightText
                                     text={row.siteName}
                                     terms={[search, filters.siteName]}
                                   />
-                                </span>
+                                </div>
                               ) : col.key === "status" ? (
                                 (() => {
                                   const statusMap = {
@@ -532,9 +571,15 @@ export default function AMSTicketsPage() {
                                     label: "—",
                                     class: "",
                                   };
+
+                                  if (row.status === 1 && row.isComingFromReOpenScreen) {
+                                    config.label = "Reopened";
+                                    config.class = "bg-orange-100 text-orange-600";
+                                  }
+
                                   return (
                                     <span
-                                      className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${row.status === 1 ? "bg-white/80 text-red-600 shadow-sm" : config.class}`}
+                                      className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${(row.status === 1 && !row.isComingFromReOpenScreen) ? "bg-white/80 text-red-600 shadow-sm" : config.class}`}
                                     >
                                       {config.label}
                                     </span>
@@ -597,7 +642,7 @@ export default function AMSTicketsPage() {
                                     )
                                   }
                                   onEdit={
-                                    !isAdmin && row.status === 1
+                                    !isAdmin && (row.status === 1 || row.status === 2 || row.status === 3)
                                       ? () => {
                                         setActionItem(row);
                                         setActionType("edit");
@@ -613,6 +658,19 @@ export default function AMSTicketsPage() {
                                       : null
                                   }
                                   deleteButtonText="Void"
+                                  customActions={
+                                    !isAdmin && row.status === 2
+                                      ? [
+                                        {
+                                          label: "Reopen ticket",
+                                          onClick: () => {
+                                            setActionItem(row);
+                                            setActionType("reopen");
+                                          }
+                                        }
+                                      ]
+                                      : []
+                                  }
                                 />
                               ) : (
                                 <HighlightText
@@ -740,8 +798,14 @@ export default function AMSTicketsPage() {
             }}
             ticket={actionItem}
             onSave={async (payload) => {
-              await amsTicketApi.update(actionItem.id, payload);
-              toast("Ticket updated successfully");
+              const { activeTab, ...dataToSave } = payload;
+              if (activeTab === "Ticket Verification") {
+                await amsTicketApi.close(actionItem.id, dataToSave);
+                toast("Ticket closed successfully");
+              } else {
+                await amsTicketApi.update(actionItem.id, dataToSave);
+                toast("Ticket updated successfully");
+              }
               setActionType("");
               setActionItem(null);
               fetchTickets();
@@ -757,13 +821,27 @@ export default function AMSTicketsPage() {
           />
           <DeleteConfirmModal
             open={actionType === "delete"}
+            item={actionItem}
             onCancel={() => {
               setActionType("");
               setActionItem(null);
             }}
             onConfirm={() => handleDelete(actionItem)}
             title="Void Ticket"
-            message={`Are you sure you want to void ticket #${actionItem.cmsNextTicketNo}? This action cannot be undone.`}
+            message={`Are you sure you want to void ticket #${actionItem?.cmsNextTicketNo}? This action cannot be undone.`}
+            loading={actionLoading}
+          />
+          <DeleteConfirmModal
+            open={actionType === "reopen"}
+            item={actionItem}
+            onCancel={() => {
+              setActionType("");
+              setActionItem(null);
+            }}
+            onConfirm={() => handleReopen(actionItem)}
+            title="Reopen Ticket"
+            message={`Are you sure you want to ReOpen this ticket?`}
+            confirmText="Yes"
             loading={actionLoading}
           />
         </>

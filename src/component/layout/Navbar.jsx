@@ -32,7 +32,7 @@ export default function Navbar({ setMobileOpen }) {
   const navigate = useNavigate();
 
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between gap-4 px-8 py-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 mx-6 mt-6 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.06)]">
+    <header className="relative z-50 flex items-center justify-between gap-4 px-8 py-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 mx-6 mt-6 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.06)]">
       <div className="flex items-center gap-4">
         <IconBtn
           onClick={() => setMobileOpen(true)}

@@ -465,41 +465,43 @@ export default function AMSTicketsReportPage() {
   });
 
   const filterInputClass =
-    "px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-slate-400 w-full";
+    "px-3 py-2 text-xs bg-white dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-xl outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all placeholder:text-slate-400 w-full shadow-sm";
 
   return (
-    <div className="h-full flex flex-col overflow-auto animate-in fade-in duration-500">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-auto flex flex-col">
-        {/* Header Section */}
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
-          <nav className="flex items-center gap-2 text-[10px] text-slate-400 mb-3">
+    <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
+      <style>{`
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+      `}</style>
+
+      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-auto">
+        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50 shrink-0">
+          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
             <span
               onClick={() => navigate("/")}
-              className="hover:text-blue-500 cursor-pointer transition-colors"
+              className="hover:text-pink-500 cursor-pointer transition-colors"
             >
               Home
             </span>
-            <span>/</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
             <span>Management</span>
-            <span>/</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
             <span>Reports</span>
-            <span>/</span>
-            <span className="text-blue-500">AMS Tickets Report</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="text-pink-500">AMS Tickets Report</span>
           </nav>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => navigate(-1)}
-                className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
+                className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-600 hover:text-pink-600 transition-all border border-slate-200/60 dark:border-slate-700/50 shadow-sm"
               >
-                <ArrowLeft size={16} strokeWidth={2.5} />
+                <ArrowLeft size={20} strokeWidth={2.5} />
               </button>
-              <div>
-                <h1 className="text-2xl text-slate-800 dark:text-white leading-none">
-                  AMS Tickets Report
-                </h1>
-              </div>
+              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+                AMS Tickets Report
+              </h1>
             </div>
 
             <div className="flex items-center gap-2">
@@ -539,7 +541,7 @@ export default function AMSTicketsReportPage() {
         </div>
 
         {/* Filter Section */}
-        <div className="px-6 py-4 bg-white dark:bg-transparent space-y-4">
+        <div className="px-4 md:px-8 py-4 space-y-4">
           {formError && (
             <div className="p-3 bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 rounded-lg text-xs flex items-center gap-2">
               <span className="relative flex h-2 w-2">
@@ -767,7 +769,7 @@ export default function AMSTicketsReportPage() {
         </div>
 
         {/* Table */}
-        <div className="flex-1 min-h-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex flex-col relative overflow-hidden">
+        <div className="flex-1 min-h-0 border-t border-slate-100 dark:border-slate-800/50 flex flex-col relative overflow-hidden">
           <div className="flex-1 overflow-auto custom-scrollbar">
             <table className="w-full border-separate border-spacing-0">
               <thead className="sticky top-0 z-10">

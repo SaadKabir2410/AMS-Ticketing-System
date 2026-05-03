@@ -73,36 +73,41 @@ export default function UserWorkingHoursPage() {
   const breadcrumb = ["Home", "Management", "Users", "Working Hours"];
 
   return (
-    <div className="h-full bg-[#f1f5f9] dark:bg-slate-950 overflow-auto flex flex-col no-scrollbar p-6 transition-colors duration-300">
-      {/* Breadcrumb - Standardized Style */}
-      <nav className="flex items-center gap-2 text-[10px] uppercase font-black tracking-widest text-slate-400 dark:text-slate-500 mb-4 ml-1">
-        {breadcrumb.map((b, i) => (
-          <span key={i} className="flex items-center gap-2">
-            <span
-              onClick={() => b === "Home" && navigate("/")}
-              className={b === "Home" ? "hover:text-blue-500 cursor-pointer transition-colors" : ""}
-            >
-              {b}
-            </span>
-            {i < breadcrumb.length - 1 && <span>/</span>}
-          </span>
-        ))}
-      </nav>
+    <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
+      <style>{`
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+        td, tr { overflow: visible !important; }
+      `}</style>
 
-      <div className="w-full flex flex-col h-auto">
-        <div className="bg-white dark:bg-slate-900 w-full border border-slate-100 dark:border-slate-800 rounded-2xl shadow-xl backdrop-blur-sm overflow-visible flex flex-col transition-all duration-300">
-
-          {/* Header Section */}
-          <div className="px-6 py-6 flex flex-col gap-6 bg-slate-50/50 dark:bg-transparent shrink-0">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-[26px] font-black text-slate-800 dark:text-white tracking-tighter leading-none uppercase">
-                  User Working Hours
-                </h1>
-              </div>
-
-            </div>
+      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
+        {/* Header */}
+        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
+            {breadcrumb.map((b, i) => (
+              <span key={i} className="flex items-center gap-1.5">
+                <span
+                  onClick={() => b === "Home" && navigate("/")}
+                  className={
+                    i === breadcrumb.length - 1
+                      ? "text-pink-500"
+                      : b === "Home"
+                      ? "hover:text-pink-500 cursor-pointer transition-colors"
+                      : ""
+                  }
+                >
+                  {b}
+                </span>
+                {i < breadcrumb.length - 1 && <span className="text-slate-300 dark:text-slate-700">/</span>}
+              </span>
+            ))}
+          </nav>
+          <div className="flex items-center justify-between">
+            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+              User Working Hours
+            </h1>
           </div>
+        </div>
 
           {/* Table */}
           <div className="flex flex-col w-full h-auto relative">
@@ -184,7 +189,7 @@ export default function UserWorkingHoursPage() {
           </div>
 
           {/* Pagination Section */}
-          <div className="px-6 py-4 bg-slate-50/80 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 transition-colors">
+          <div className="px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2.5">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Page Size:</span>
@@ -267,7 +272,6 @@ export default function UserWorkingHoursPage() {
               </div>
             </div>
           </div>
-        </div>
       </div>
 
       <UserWorkingHourModal
@@ -276,12 +280,6 @@ export default function UserWorkingHoursPage() {
         onSave={() => { fetchData(); }}
         item={editItem}
       />
-
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none !important; }
-        .no-scrollbar { -ms-overflow-style: none !important; scrollbar-width: none !important; }
-        td, tr { overflow: visible !important; }
-      `}</style>
     </div>
   );
 }
