@@ -221,7 +221,7 @@ function Layout({ collapsed, setCollapsed }) {
             <Route
               path="/settings"
               element={
-                <PermissionGuard permission="AbpSettingManagement.Emailing">
+                <PermissionGuard permission={["SettingManagement.Emailing", "AbpSettingManagement.Emailing"]}>
                   <SettingsPage />
                 </PermissionGuard>
               }

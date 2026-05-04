@@ -30,8 +30,7 @@ export const NAV_GROUPS = [
         id: "lookup-master",
         name: "Lookups",
         icon: Database,
-        // ✅ Parent permission — if user has ANY lookup permission the group shows
-        permission: "Billing.Lookups",
+        // ✅ No parent permission — shows automatically if any child is visible
         subMenu: [
           {
             id: "lookup-hours",
@@ -101,13 +100,13 @@ export const NAV_GROUPS = [
             id: "sub-reports-general",
             name: "General Report",
             href: "/reports/general",
-            permission: "Billing.Reports", // ✅ was missing
+            permission: "Billing.Reports",
           },
           {
             id: "sub-reports-user-yearly",
             name: "User Yearly Report",
             href: "/reports/user-yearly",
-            permission: "Billing.Reports", // ✅ was missing
+            permission: "Billing.Reports",
           },
           {
             id: "sub-reports-afterhours",
@@ -119,7 +118,7 @@ export const NAV_GROUPS = [
             id: "sub-reports-commission",
             name: "Ticket Commission Report",
             href: "/reports/commission",
-            permission: "Billing.Reports", // ✅ was missing
+            permission: "Billing.Reports",
           },
         ],
       },
@@ -140,8 +139,7 @@ export const NAV_GROUPS = [
         id: "set-identity",
         name: "Identity Management",
         icon: Shield,
-        // ✅ Parent permission — shows only if user can manage users or roles
-        permission: "AbpIdentity.Users",
+        // ✅ No parent permission — shows automatically if any child is visible
         subMenu: [
           {
             id: "set-users",
@@ -162,7 +160,8 @@ export const NAV_GROUPS = [
         name: "Settings",
         icon: Settings,
         href: "/settings",
-        permission: "AbpSettingManagement.Emailing",
+        //  Support both permission key variants
+        permission: ["SettingManagement.Emailing", "AbpSettingManagement.Emailing"],
       },
     ],
   },

@@ -16,7 +16,12 @@ export default function PermissionGuard({ permission, children, redirectTo = "/"
   }
 
   // If no permission is required, or user has it, grant access
-  if (!permission || hasPermission(permission)) {
+  if (!permission) {
+    return <>{children}</>;
+  }
+
+  const perms = Array.isArray(permission) ? permission : [permission];
+  if (perms.some(p => hasPermission(p))) {
     return <>{children}</>;
   }
 

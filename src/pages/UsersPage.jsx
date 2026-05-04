@@ -33,8 +33,9 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
-import { Menu, MenuItem, ListItemText } from "@mui/material";
+import { Menu, MenuItem, ListItemText, Popper, Paper, ClickAwayListener, MenuList } from "@mui/material";
 import { usePermission } from "../hooks/usePermission";
+import { useAuth } from "../context/AuthContextHook";
 
 const PermissionTree = ({
   permissions,
@@ -42,7 +43,11 @@ const PermissionTree = ({
   checkedPerms,
   onToggle,
 }) => {
-  const children = permissions.filter((p) => p.parentName === parentName);
+  const children = permissions.filter((p) => {
+    if (p.parentName !== parentName) return false;
+    if (parentName !== null && !checkedPerms[p.name]) return false;
+    return true;
+  });
   if (children.length === 0) return null;
 
   return (
@@ -90,6 +95,8 @@ const rowVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 };
+
+const ROW_HEIGHT = "h-[60px]";
 
 export default function UsersPage() {
   const { toast } = useToast();
@@ -1056,8 +1063,12 @@ export default function UsersPage() {
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
 
+    const { user } = useAuth();
     const canUpdate = usePermission("AbpIdentity.Users.Update");
     const canDelete = usePermission("AbpIdentity.Users.Delete");
+    const canManagePermissions = usePermission("AbpIdentity.Users.ManagePermissions");
+    const isTicketing = user?.role?.toLowerCase().includes("ticketing");
+    const showPermissions = canUpdate && canManagePermissions && !isTicketing;
 
     // If the user has no rights to edit or delete, do not display the actions button
     if (!canUpdate && !canDelete) {
@@ -1069,71 +1080,75 @@ export default function UsersPage() {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            setAnchorEl(e.currentTarget);
+            setAnchorEl(open ? null : e.currentTarget);
           }}
-          className="btn-flagship-solid h-[24px] px-2 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1 hover:bg-pink-600 transition-all rounded-lg"
+          className={`text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider  shadow-sm ${open ? 'bg-pink-50 dark:bg-pink-950/30 border-pink-500' : 'bg-transparent border-pink-500/20'}`}
         >
-          Actions <ChevronRight size={10} strokeWidth={2.5} className="transition-transform group-hover:rotate-90" />
+          Actions <ChevronDown size={10} strokeWidth={2.5} className="transition-transform group-hover:rotate-90" />
         </button>
-        <Menu
-          anchorEl={anchorEl}
+        <Popper
           open={open}
-          onClose={(e) => {
-            if (e) e.stopPropagation();
-            setAnchorEl(null);
-          }}
-          PaperProps={{
-            elevation: 8,
-            sx: {
-              mt: 0.5,
-              borderRadius: "12px",
-              border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
-              bgcolor: isDark ? "#0f172a" : "#ffffff",
-              color: isDark ? "#f1f5f9" : "inherit",
-              minWidth: 140,
-            },
-          }}
+          anchorEl={anchorEl}
+          placement="bottom-end"
+          style={{ zIndex: 1300 }}
         >
-          {canUpdate && (
-            <MenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                setAnchorEl(null);
-                handleEditOpen(row);
+          <ClickAwayListener onClickAway={(e) => { if (e) e.stopPropagation(); setAnchorEl(null); }}>
+            <Paper
+              elevation={8}
+              sx={{
+                mt: 0.5,
+                borderRadius: "12px",
+                border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
+                bgcolor: isDark ? "#0f172a" : "#ffffff",
+                color: isDark ? "#f1f5f9" : "inherit",
+                minWidth: 140,
+                overflow: 'hidden'
               }}
-              sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
             >
-              <ListItemText primary="Edit" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-            </MenuItem>
-          )}
-          {canUpdate && (
-            <MenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                setAnchorEl(null);
-                handlePermissions(row);
-              }}
-              sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
-            >
-              <ListItemText primary="Permission" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-            </MenuItem>
-          )}
-          {canDelete && row.userName?.toLowerCase() !== "admin" && (
-            <MenuItem
-              onClick={(e) => {
-                e.stopPropagation();
-                setAnchorEl(null);
-                handleDelete(row);
-              }}
-              sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
-            >
-              <ListItemText
-                primary="Delete"
-                primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }}
-              />
-            </MenuItem>
-          )}
-        </Menu>
+              <MenuList>
+                {canUpdate && (
+                  <MenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAnchorEl(null);
+                      handleEditOpen(row);
+                    }}
+                    sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
+                  >
+                    <ListItemText primary="Edit" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                  </MenuItem>
+                )}
+                {showPermissions && (
+                  <MenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAnchorEl(null);
+                      handlePermissions(row);
+                    }}
+                    sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
+                  >
+                    <ListItemText primary="Permission" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                  </MenuItem>
+                )}
+                {canDelete && row.userName?.toLowerCase() !== "admin" && (
+                  <MenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAnchorEl(null);
+                      handleDelete(row);
+                    }}
+                    sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
+                  >
+                    <ListItemText
+                      primary="Delete"
+                      primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }}
+                    />
+                  </MenuItem>
+                )}
+              </MenuList>
+            </Paper>
+          </ClickAwayListener>
+        </Popper>
       </div>
     );
   };
@@ -1145,7 +1160,7 @@ export default function UsersPage() {
         * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
       `}</style>
 
-      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-hidden min-h-0">
+      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-visible min-h-0">
 
         {/* Header Section */}
         <div className="flex flex-col gap-6 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50 transition-colors">
@@ -1238,7 +1253,8 @@ export default function UsersPage() {
 
 
         {/* Table Area */}
-        <div className="flex-1 flex flex-col min-h-0 relative px-6 pb-6 pt-2 overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-0 relative px-6 pb-6 pt-2 overflow-visible">
+
           <div className="overflow-x-auto flex-1 no-scrollbar min-h-0">
             <table className="w-full text-left border-separate border-spacing-y-1 min-w-max">
               <thead>
@@ -1303,30 +1319,30 @@ export default function UsersPage() {
                           y: -2,
                           backgroundColor: isDark ? "rgba(244, 63, 94, 0.04)" : "rgba(244, 63, 94, 0.02)",
                         }}
-                        className={`group transition-all duration-200 border-b border-slate-50 dark:border-slate-800/30 ${idx % 2 === 0
+                        className={`group transition-all duration-200 border-b border-slate-50 dark:border-slate-800/30 ${ROW_HEIGHT} ${idx % 2 === 0
                           ? "bg-white dark:bg-[#161920]/40"
                           : "bg-gray-200/50 dark:bg-white/[0.03]"
                           }`}
                       >
-                        <td className="px-5 py-3 text-[12px] pl-8 rounded-l-2xl text-slate-800 dark:text-slate-200 font-bold">
+                        <td className={`px-5 ${ROW_HEIGHT} text-[12px] pl-8 rounded-l-2xl text-slate-800 dark:text-slate-200 font-bold`}>
                           {row.name}
                         </td>
-                        <td className="px-5 py-3 text-[12px] font-medium text-slate-700 dark:text-slate-300">
+                        <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-700 dark:text-slate-300`}>
                           {row.userName}
                         </td>
-                        <td className="px-5 py-3 text-[12px] font-medium text-slate-500 dark:text-slate-400">
+                        <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-500 dark:text-slate-400`}>
                           {row.email || "-"}
                         </td>
-                        <td className="px-5 py-3 text-[12px] font-medium text-slate-500 dark:text-slate-400">
+                        <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-500 dark:text-slate-400`}>
                           {row.phoneNumber || "-"}
                         </td>
-                        <td className="px-5 py-3 text-[12px] font-medium text-slate-500 dark:text-slate-400">
+                        <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-500 dark:text-slate-400`}>
                           {getOrganizationTypeName(orgTypeVal)}
                         </td>
-                        <td className="px-5 py-3 text-[12px] font-medium text-slate-500 dark:text-slate-400">
+                        <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-500 dark:text-slate-400`}>
                           {row.siteName || "-"}
                         </td>
-                        <td className="px-5 py-3 text-[12px] font-medium text-slate-500 dark:text-slate-400 text-center">
+                        <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-500 dark:text-slate-400 text-center`}>
                           <div className="flex items-center justify-center">
                             <div
                               className={`w-3 h-3 rounded-full ${isPrimaryVal
@@ -1336,7 +1352,7 @@ export default function UsersPage() {
                             />
                           </div>
                         </td>
-                        <td className="px-5 py-3 text-[12px] font-medium text-slate-500 dark:text-slate-400 text-right pr-8 rounded-r-2xl">
+                        <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-500 dark:text-slate-400 text-right pr-8 rounded-r-2xl`}>
                           <ActionsMenu row={row} />
                         </td>
                       </motion.tr>
@@ -1468,6 +1484,7 @@ export default function UsersPage() {
         onClose={handleClosePermissions}
         maxWidth="sm"
         fullWidth
+        disableScrollLock={true}
         PaperProps={{
           sx: {
             borderRadius: "20px",

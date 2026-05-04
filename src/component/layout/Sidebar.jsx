@@ -24,37 +24,56 @@ export default function Sidebar({
   const filteredGroups = useMemo(() => {
     if (isLoading) return [];
 
+    // ✅ Helper: check string or array permission
+    const checkPerm = (permission) => {
+      if (!permission) return true;
+      const perms = Array.isArray(permission) ? permission : [permission];
+      return perms.some((p) => hasPermission(p));
+    };
+
     return NAV_GROUPS.map((group) => {
       const validLinks = group.links
-        .filter((link) => {
-          // ✅ Check parent item permission first
-          if (link.permission && !hasPermission(link.permission)) return false;
-
-          // Search filter
-          if (searchQuery) {
-            const nameMatch = link.name.toLowerCase().includes(searchQuery.toLowerCase());
-            const subMatch = link.subMenu?.some(sub =>
-              sub.name.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-            if (!nameMatch && !subMatch) return false;
-          }
-
-          return true;
-        })
         .map((link) => {
+          // ✅ Filter submenu children first
           if (link.subMenu) {
-            // ✅ Filter submenu items by their own permission
             const validSubMenu = link.subMenu.filter((sub) => {
-              if (sub.permission && !hasPermission(sub.permission)) return false;
-              if (searchQuery && !sub.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+              if (!checkPerm(sub.permission)) return false;
+              if (
+                searchQuery &&
+                !sub.name.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+                return false;
               return true;
             });
             return { ...link, subMenu: validSubMenu };
           }
           return link;
         })
-        // ✅ Hide parent if it has a submenu but all children were filtered out
-        .filter((link) => !(link.subMenu && link.subMenu.length === 0));
+        .filter((link) => {
+          // ✅ Parent with submenu — show only if at least one child is visible
+          if (link.subMenu !== undefined) {
+            if (link.subMenu.length === 0) return false;
+            if (searchQuery) {
+              const nameMatch = link.name
+                .toLowerCase()
+                .includes(searchQuery.toLowerCase());
+              const subMatch = link.subMenu.some((sub) =>
+                sub.name.toLowerCase().includes(searchQuery.toLowerCase())
+              );
+              if (!nameMatch && !subMatch) return false;
+            }
+            return true;
+          }
+
+          // ✅ Leaf item — check its own permission
+          if (!checkPerm(link.permission)) return false;
+          if (
+            searchQuery &&
+            !link.name.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+            return false;
+          return true;
+        });
 
       return { ...group, links: validLinks };
     }).filter((group) => group.links.length > 0);
@@ -81,24 +100,43 @@ export default function Sidebar({
       )}
 
       {/* Header */}
-      <div className={clsx("flex flex-col pt-8 pb-4 gap-6", collapsed ? "items-center" : "px-4")}>
-        <div className={clsx("flex items-center w-full", collapsed ? "justify-center" : "justify-between gap-3")}>
+      <div
+        className={clsx(
+          "flex flex-col pt-8 pb-4 gap-6",
+          collapsed ? "items-center" : "px-4",
+        )}
+      >
+        <div
+          className={clsx(
+            "flex items-center w-full",
+            collapsed ? "justify-center" : "justify-between gap-3",
+          )}
+        >
           {!collapsed && (
             <div className="flex items-center gap-2 overflow-hidden">
-              <span className="text-xl font-bold text-white tracking-tight truncate">Sureze</span>
+              <span className="text-xl font-bold text-white tracking-tight truncate">
+                Sureze
+              </span>
             </div>
           )}
           <button
             onClick={() => setCollapsed(!collapsed)}
             className="text-slate-300 hover:text-white transition-colors p-2 shrink-0"
           >
-            {collapsed ? <ChevronRight size={18} strokeWidth={2.5} /> : <ChevronLeft size={18} strokeWidth={2.5} />}
+            {collapsed ? (
+              <ChevronRight size={18} strokeWidth={2.5} />
+            ) : (
+              <ChevronLeft size={18} strokeWidth={2.5} />
+            )}
           </button>
         </div>
 
         {!collapsed && (
           <div className="relative group px-1 flex-shrink-0">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors" size={14} />
+            <Search
+              className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors"
+              size={14}
+            />
             <input
               type="text"
               placeholder="Search Menu..."
@@ -119,12 +157,21 @@ export default function Sidebar({
                 <span className="text-[9px] font-bold tracking-[2.5px] text-pink-400 uppercase whitespace-nowrap opacity-90 truncate">
                   {group.title}
                 </span>
-                <Settings size={12} className="text-slate-400 hover:text-white cursor-pointer transition-colors shrink-0" />
+                <Settings
+                  size={12}
+                  className="text-slate-400 hover:text-white cursor-pointer transition-colors shrink-0"
+                />
               </div>
             )}
             <ul className="space-y-1">
               {group.links.map((item) => (
-                <NavItem key={item.id} item={item} collapsed={collapsed} closeMobile={closeMobile} isMobile={isMobile} />
+                <NavItem
+                  key={item.id}
+                  item={item}
+                  collapsed={collapsed}
+                  closeMobile={closeMobile}
+                  isMobile={isMobile}
+                />
               ))}
             </ul>
           </div>
@@ -136,7 +183,9 @@ export default function Sidebar({
 
 function NavItem({ item, collapsed, closeMobile, isMobile }) {
   const hasSubMenu = item.subMenu && item.subMenu.length > 0;
-  const isChildActive = hasSubMenu && item.subMenu.some((sub) => window.location.pathname === sub.href);
+  const isChildActive =
+    hasSubMenu &&
+    item.subMenu.some((sub) => window.location.pathname === sub.href);
   const active = window.location.pathname === item.href || isChildActive;
   const [isOpen, setIsOpen] = useState(isChildActive);
   const Icon = item.icon;
@@ -185,13 +234,23 @@ function NavItem({ item, collapsed, closeMobile, isMobile }) {
         )}
 
         {!collapsed && (
-          <span className={clsx("text-[13px] truncate flex-1 font-bold tracking-wide transition-colors duration-200", active ? "text-white" : "text-inherit")}>
+          <span
+            className={clsx(
+              "text-[13px] truncate flex-1 font-bold tracking-wide transition-colors duration-200",
+              active ? "text-white" : "text-inherit",
+            )}
+          >
             {item.name}
           </span>
         )}
 
         {!collapsed && item.badge && (
-          <div className={clsx("px-3 py-0.5 rounded-lg text-[10px] font-black text-white ml-2 shadow-sm", item.badgeColor || "bg-blue-600")}>
+          <div
+            className={clsx(
+              "px-3 py-0.5 rounded-lg text-[10px] font-black text-white ml-2 shadow-sm",
+              item.badgeColor || "bg-blue-600",
+            )}
+          >
             {item.badge}
           </div>
         )}
@@ -199,7 +258,10 @@ function NavItem({ item, collapsed, closeMobile, isMobile }) {
         {!collapsed && hasSubMenu && (
           <ChevronDown
             size={16}
-            className={clsx("text-slate-400 transition-all duration-300 ml-auto", isOpen ? "rotate-0" : "-rotate-90")}
+            className={clsx(
+              "text-slate-400 transition-all duration-300 ml-auto",
+              isOpen ? "rotate-0" : "-rotate-90",
+            )}
           />
         )}
       </a>
@@ -223,11 +285,20 @@ function NavItem({ item, collapsed, closeMobile, isMobile }) {
                   onClick={() => isMobile && closeMobile && closeMobile()}
                   className={clsx(
                     "flex items-center gap-3 px-4 py-2 text-[11.5px] font-semibold transition-all duration-200 rounded-xl relative group/sub",
-                    subActive ? "text-white bg-white/10" : "text-slate-400 hover:text-white hover:bg-white/5",
+                    subActive
+                      ? "text-white bg-white/10"
+                      : "text-slate-400 hover:text-white hover:bg-white/5",
                   )}
                 >
-                  {subActive && <div className="w-1 h-1 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)]" />}
-                  <span className={clsx(!subActive && "ml-4 transition-all duration-200 group-hover/sub:ml-0")}>
+                  {subActive && (
+                    <div className="w-1 h-1 rounded-full bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.8)]" />
+                  )}
+                  <span
+                    className={clsx(
+                      !subActive &&
+                      "ml-4 transition-all duration-200 group-hover/sub:ml-0",
+                    )}
+                  >
                     {sub.name}
                   </span>
                 </a>

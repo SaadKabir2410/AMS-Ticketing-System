@@ -47,6 +47,10 @@ body {
   font-family: "Inter", sans-serif;
 }
 
+.MuiModal-root {
+  overflow: scroll !important;
+}
+
 /* Global Dark Mode Checkbox Fix */
 @layer base {
   .dark input[type="checkbox"] {

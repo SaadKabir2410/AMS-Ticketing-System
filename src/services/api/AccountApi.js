@@ -70,7 +70,7 @@ export const accountApi = {
         publicPost("/api/account/send-password-reset-code", {
             email: email.trim(),
             appName: "MVC",
-            returnUrl: "http://localhost:5173/reset-password",
+            returnUrl: "https://sureze.ddns.net:3001/reset-password",
             returnUrlHash: "",
         }),
 

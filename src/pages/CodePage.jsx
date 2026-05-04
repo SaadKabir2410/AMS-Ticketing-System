@@ -161,7 +161,7 @@ function SortableRow({ row, index, onEdit, onDisable, onEnable, isAdmin }) {
               onEdit={() => onEdit(row)}
               onDisable={row.isActive ? () => onDisable(row) : null}
               onEnable={!row.isActive ? () => onEnable(row) : null}
-              className="border border-pink-500 text-pink-500 bg-transparent hover:bg-pink-50 dark:hover:bg-pink-500/10 rounded-xl px-4 py-1.5 text-[11px] font-bold flex items-center transition-all"
+              className="text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider bg-transparent border-pink-500/20 hover:border-pink-500 shadow-sm"
             />
           </div>
         )}

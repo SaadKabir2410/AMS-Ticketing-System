@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContextHook";
+import { usePermissionContext } from "../../context/PermissionContext";
 import { useTheme } from "../../context/ThemeContext";
 import { DataGrid, getGridStringOperators } from "@mui/x-data-grid";
 import { useResource } from "../hooks/useResource";
@@ -19,24 +20,27 @@ export function ActionsMenu({
   customActions = [],
   deleteButtonText = "Delete",
   actionButtonText = "Actions",
-  className = "btn-flagship-solid h-[22px]! px-2! text-[9px]!",
+  className = "text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider bg-transparent hover:border-pink-500 shadow-sm",
 }) {
 
   const { dark } = useTheme();
   const isDark = dark === "dark";
+  const { user } = useAuth();
+  const isTicketing = user?.role?.toLowerCase().includes("ticketing");
+  const showPermissions = onPermissions && !isTicketing;
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
   const handleClick = (event) => {
     event.stopPropagation();
-    setAnchorEl(event.currentTarget);
+    setAnchorEl(open ? null : event.currentTarget);
   };
   const handleClose = (e) => {
     if (e) e.stopPropagation();
     setAnchorEl(null);
   };
 
-  const hasActions = onAuditLog || onEdit || onDetail || onPermissions || onDelete || onDisable || onEnable || (customActions && customActions.length > 0);
+  const hasActions = onAuditLog || onEdit || onDetail || showPermissions || onDelete || onDisable || onEnable || (customActions && customActions.length > 0);
 
   if (!hasActions) return null;
 
@@ -47,90 +51,92 @@ export function ActionsMenu({
     <div className="inline-block relative">
       <button
         onClick={handleClick}
-        className={className}
+        className={`${className} ${open ? 'bg-pink-50 dark:bg-pink-950/30 border-pink-500' : 'bg-transparent border-pink-500/20'}`}
       >
         {actionButtonText} <ChevronDown size={className.includes('h-[22px]') ? 9 : 10} strokeWidth={2.5} className="ml-1" />
       </button>
 
-      <Menu
-        anchorEl={anchorEl}
+      <Popper
         open={open}
-        onClose={handleClose}
-        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-        PaperProps={{
-          elevation: 8,
-          sx: {
-            mt: 0.5,
-            borderRadius: "12px",
-            border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
-            bgcolor: isDark ? "#0f172a" : "#ffffff",
-            color: isDark ? "#f1f5f9" : "inherit",
-            boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1)",
-            minWidth: 160,
-            overflow: 'hidden'
-          }
-        }}
+        anchorEl={anchorEl}
+        placement="bottom-end"
+        style={{ zIndex: 1300 }}
       >
-        <Box sx={{ py: 0.5 }}>
-          {onDetail && (
-            <MenuItem onClick={() => { onDetail(); handleClose(); }} sx={menuItemHover}>
-              <ListItemText primary="View" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-            </MenuItem>
-          )}
+        <ClickAwayListener onClickAway={(e) => { if (e) e.stopPropagation(); handleClose(); }}>
+          <Paper
+            elevation={8}
+            sx={{
+              mt: 0.5,
+              borderRadius: "12px",
+              border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.05)",
+              bgcolor: isDark ? "#0f172a" : "#ffffff",
+              color: isDark ? "#f1f5f9" : "inherit",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1)",
+              minWidth: 160,
+              overflow: 'hidden'
+            }}
+          >
+            <Box sx={{ py: 0.5 }}>
+              {onDetail && (
+                <MenuItem onClick={() => { onDetail(); handleClose(); }} sx={menuItemHover}>
+                  <ListItemText primary="View" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                </MenuItem>
+              )}
 
-          {onAuditLog && (
-            <MenuItem onClick={() => { onAuditLog(); handleClose(); }} sx={menuItemHover}>
-              <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-            </MenuItem>
-          )}
-          {onPermissions && (
-            <MenuItem onClick={() => { onPermissions(); handleClose(); }} sx={menuItemHover}>
-              <ListItemText primary="Permissions" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-            </MenuItem>
-          )}
-          {onEdit && (
-            <MenuItem onClick={() => { onEdit(); handleClose(); }} sx={menuItemHover}>
-              <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-            </MenuItem>
-          )}
-          {onDisable && (
-            <MenuItem onClick={() => { onDisable(); handleClose(); }} sx={menuItemHover}>
-              <ListItemText primary="Disable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "warning.main" }} />
-            </MenuItem>
-          )}
-          {onEnable && (
-            <MenuItem onClick={() => { onEnable(); handleClose(); }} sx={menuItemHover}>
-              <ListItemText primary="Enable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "success.main" }} />
-            </MenuItem>
-          )}
-          {onDelete && (
-            <MenuItem onClick={() => { onDelete(); handleClose(); }} sx={menuItemHover}>
-              <ListItemText primary={deleteButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }} />
-            </MenuItem>
-          )}
-          {customActions?.map((action, idx) => (
-            <MenuItem
-              key={action.key || idx}
-              onClick={() => {
-                if (action.onClick) action.onClick();
-                handleClose();
-              }}
-              sx={menuItemHover}
-            >
-              {action.icon && <ListItemIcon sx={{ minWidth: "32px !important", color: "inherit" }}>{action.icon}</ListItemIcon>}
-              <ListItemText
-                primary={action.label}
-                primaryTypographyProps={{
-                  fontSize: "12px",
-                  fontWeight: 600,
-                  className: action.className || ""
-                }}
-              />
-            </MenuItem>
-          ))}
-        </Box>
-      </Menu>
+              {onAuditLog && (
+                <MenuItem onClick={() => { onAuditLog(); handleClose(); }} sx={menuItemHover}>
+                  <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                </MenuItem>
+              )}
+              {showPermissions && (
+                <MenuItem onClick={() => { onPermissions(); handleClose(); }} sx={menuItemHover}>
+                  <ListItemText primary="Permissions" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                </MenuItem>
+              )}
+              {onEdit && (
+                <MenuItem onClick={() => { onEdit(); handleClose(); }} sx={menuItemHover}>
+                  <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                </MenuItem>
+              )}
+              {onDisable && (
+                <MenuItem onClick={() => { onDisable(); handleClose(); }} sx={menuItemHover}>
+                  <ListItemText primary="Disable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "warning.main" }} />
+                </MenuItem>
+              )}
+              {onEnable && (
+                <MenuItem onClick={() => { onEnable(); handleClose(); }} sx={menuItemHover}>
+                  <ListItemText primary="Enable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "success.main" }} />
+                </MenuItem>
+              )}
+              {onDelete && (
+                <MenuItem onClick={() => { onDelete(); handleClose(); }} sx={menuItemHover}>
+                  <ListItemText primary={deleteButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }} />
+                </MenuItem>
+              )}
+              {customActions?.map((action, idx) => (
+                <MenuItem
+                  key={action.key || idx}
+                  onClick={() => {
+                    if (action.onClick) action.onClick();
+                    handleClose();
+                  }}
+                  sx={menuItemHover}
+                >
+                  {action.icon && <ListItemIcon sx={{ minWidth: "32px !important", color: "inherit" }}>{action.icon}</ListItemIcon>}
+                  <ListItemText
+                    primary={action.label}
+                    primaryTypographyProps={{
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      className: action.className || ""
+                    }}
+                  />
+                </MenuItem>
+              ))}
+            </Box>
+          </Paper>
+        </ClickAwayListener>
+      </Popper>
     </div>
   );
 }
@@ -534,7 +540,7 @@ export default function ResourcePage({
           return (
             <ActionsMenu
               actionButtonText={actionButtonText}
-              className={actionButtonClassName || "btn-flagship-solid h-[22px]! px-2! text-[9px]!"}
+              className={actionButtonClassName || "text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl font-bold uppercase tracking-widest shadow-sm border-pink-500/20 bg-transparent hover:border-pink-500"}
               onDetail={
                 (onDetail || apiObject.id === "auditLogs")
                   ? () => {
@@ -635,8 +641,8 @@ export default function ResourcePage({
                   i === breadcrumb.length - 1
                     ? "text-pink-500"
                     : b === "Home"
-                    ? "hover:text-pink-500 cursor-pointer transition-colors"
-                    : ""
+                      ? "hover:text-pink-500 cursor-pointer transition-colors"
+                      : ""
                 }
               >
                 {b}
@@ -661,8 +667,8 @@ export default function ResourcePage({
                         i === breadcrumb.length - 1
                           ? "text-pink-500"
                           : b === "Home"
-                          ? "hover:text-pink-500 cursor-pointer transition-colors"
-                          : ""
+                            ? "hover:text-pink-500 cursor-pointer transition-colors"
+                            : ""
                       }
                     >
                       {b}

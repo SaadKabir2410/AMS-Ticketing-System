@@ -834,6 +834,7 @@ export default function AMSTicketsReportPage() {
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleActionClose}
+        disableScrollLock={true}
         PaperProps={{
           sx: {
             borderRadius: "0.75rem",

@@ -111,10 +111,6 @@ export default function AMSTicketsPage() {
 
   // --- Initialization ---
   useEffect(() => {
-    if (!sessionStorage.getItem("hasSeenUnclosedTicketsModal")) {
-      setIsUnclosedModalOpen(true);
-      sessionStorage.setItem("hasSeenUnclosedTicketsModal", "true");
-    }
     fetchTickets();
   }, []);
 
@@ -139,7 +135,7 @@ export default function AMSTicketsPage() {
         // The backend requires DateFrom and DateTo for date searches
         const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
         const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-        
+
         dateFrom = firstDay.toISOString().replace(/\.\d{3}Z$/, ".0000000Z");
         dateTo = lastDay.toISOString().replace(/\.\d{3}Z$/, ".0000000Z");
       }
@@ -671,6 +667,7 @@ export default function AMSTicketsPage() {
                                       ]
                                       : []
                                   }
+                                  className="text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 h-7.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider bg-transparent border-pink-500/20 hover:border-pink-500 shadow-sm"
                                 />
                               ) : (
                                 <HighlightText
@@ -847,10 +844,6 @@ export default function AMSTicketsPage() {
         </>
       )}
 
-      <UnclosedTicketsModal
-        open={isUnclosedModalOpen}
-        onClose={() => setIsUnclosedModalOpen(false)}
-      />
     </motion.div>
   );
 }

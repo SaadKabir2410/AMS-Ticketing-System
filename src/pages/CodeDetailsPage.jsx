@@ -413,9 +413,9 @@ export default function CodeDetailsPage() {
               onEdit={
                 row.isActive && !row.isDeleted
                   ? () => {
-                      setActionItem(row);
-                      setActionType("edit");
-                    }
+                    setActionItem(row);
+                    setActionType("edit");
+                  }
                   : null
               }
               onAuditLog={() =>
@@ -426,20 +426,20 @@ export default function CodeDetailsPage() {
               onDisable={
                 row.isActive && !row.isDeleted
                   ? () => {
-                      setActionItem(row);
-                      setActionType("disable");
-                    }
+                    setActionItem(row);
+                    setActionType("disable");
+                  }
                   : null
               }
               onEnable={
                 !row.isActive || row.isDeleted
                   ? () => {
-                      setActionItem(row);
-                      setActionType("enable");
-                    }
+                    setActionItem(row);
+                    setActionType("enable");
+                  }
                   : null
               }
-              className="border border-pink-500 text-pink-500 bg-transparent hover:bg-pink-50 dark:hover:bg-pink-500/10 rounded-xl px-4 py-1.5 text-[11px] font-bold flex items-center transition-all"
+              className={`text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl h-7.5 font-bold tracking-wider  shadow-sm ${open ? 'bg-pink-50 dark:bg-pink-950/30 border-pink-500' : 'bg-transparent border-pink-500/20'}`}
             />
           </div>
         );

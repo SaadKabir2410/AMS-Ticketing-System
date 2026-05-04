@@ -341,206 +341,206 @@ export default function SettingsPage() {
         {/* Main Content */}
         <div className="flex flex-col md:flex-row p-6 lg:p-8 flex-1">
 
-        {/* Sidebar */}
-        <div className="w-full md:w-64 flex flex-col gap-1 pr-6 shrink-0 border-r border-slate-100 dark:border-slate-800/50 mb-8 md:mb-0">
-          {["Emailing", "Feature management", "System Settings"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`w-full text-left px-5 py-2.5 rounded-lg text-sm transition-all ${activeTab === tab
-                ? "bg-[#ffebf3] text-[#ec4899] font-semibold dark:bg-pink-500/10 dark:text-pink-400"
-                : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium"
-                }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+          {/* Sidebar */}
+          <div className="w-full md:w-64 flex flex-col gap-1 pr-6 shrink-0 border-r border-slate-100 dark:border-slate-800/50 mb-8 md:mb-0">
+            {["Emailing", "Feature management", "System Settings"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`w-full text-left px-5 py-2.5 rounded-lg text-sm transition-all ${activeTab === tab
+                  ? "bg-[#ffebf3] text-[#ec4899] font-semibold dark:bg-pink-500/10 dark:text-pink-400"
+                  : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium"
+                  }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
 
-        {/* Content */}
-        <div className="flex-1 md:pl-10">
+          {/* Content */}
+          <div className="flex-1 md:pl-10">
 
-          {/* Emailing Tab */}
-          {activeTab === "Emailing" && (
-            <div className="animate-in fade-in duration-300">
-              <InputField
-                label="Default from display name"
-                required
-                name="defaultFromDisplayName"
-                value={emailSettings.defaultFromDisplayName}
-                onChange={handleEmailChange}
-              />
-              <InputField
-                label="Default from address"
-                required
-                name="defaultFromAddress"
-                value={emailSettings.defaultFromAddress}
-                onChange={handleEmailChange}
-              />
-              <InputField
-                label="Host"
-                name="host"
-                value={emailSettings.host}
-                onChange={handleEmailChange}
-              />
-              <InputField
-                label="Port"
-                type="number"
-                name="port"
-                value={emailSettings.port}
-                onChange={handleEmailChange}
-              />
-
-              <div className="flex items-center gap-3 mt-5 mb-3 cursor-pointer group w-max">
-                <input
-                  type="checkbox"
-                  name="enableSsl"
-                  checked={emailSettings.enableSsl}
+            {/* Emailing Tab */}
+            {activeTab === "Emailing" && (
+              <div className="animate-in fade-in duration-300">
+                <InputField
+                  label="Default from display name"
+                  required
+                  name="defaultFromDisplayName"
+                  value={emailSettings.defaultFromDisplayName}
                   onChange={handleEmailChange}
-                  className="w-4 h-4 rounded border-slate-300 accent-pink-500 cursor-pointer"
                 />
-                <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-slate-900 transition-colors">
-                  Enable ssl
-                </span>
-              </div>
-              <div className="flex items-center gap-3 mb-8 cursor-pointer group w-max">
-                <input
-                  type="checkbox"
-                  name="useDefaultCredentials"
-                  checked={emailSettings.useDefaultCredentials}
+                <InputField
+                  label="Default from address"
+                  required
+                  name="defaultFromAddress"
+                  value={emailSettings.defaultFromAddress}
                   onChange={handleEmailChange}
-                  className="w-4 h-4 rounded border-pink-500 text-pink-500 accent-pink-500 cursor-pointer"
                 />
-                <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-slate-900 transition-colors">
-                  Use default credentials
-                </span>
-              </div>
+                <InputField
+                  label="Host"
+                  name="host"
+                  value={emailSettings.host}
+                  onChange={handleEmailChange}
+                />
+                <InputField
+                  label="Port"
+                  type="number"
+                  name="port"
+                  value={emailSettings.port}
+                  onChange={handleEmailChange}
+                />
 
-              <div className={`overflow-hidden transition-all duration-500 ease-in-out ${!emailSettings.useDefaultCredentials ? "max-h-[500px] opacity-100 mt-4" : "max-h-0 opacity-0 pointer-events-none"}`}>
-                <div className="space-y-1">
-                  <InputField
-                    label="Domain"
-                    name="domain"
-                    value={emailSettings.domain}
+                <div className="flex items-center gap-3 mt-5 mb-3 cursor-pointer group w-max">
+                  <input
+                    type="checkbox"
+                    name="enableSsl"
+                    checked={emailSettings.enableSsl}
                     onChange={handleEmailChange}
+                    className="w-4 h-4 rounded border-slate-300 accent-pink-500 cursor-pointer"
                   />
-                  <InputField
-                    label="User name"
-                    name="username"
-                    value={emailSettings.username}
+                  <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-slate-900 transition-colors">
+                    Enable ssl
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 mb-8 cursor-pointer group w-max">
+                  <input
+                    type="checkbox"
+                    name="useDefaultCredentials"
+                    checked={emailSettings.useDefaultCredentials}
                     onChange={handleEmailChange}
+                    className="w-4 h-4 rounded border-pink-500 text-pink-500 accent-pink-500 cursor-pointer"
                   />
-                  <InputField
-                    label="Password"
-                    type="password"
-                    name="password"
-                    value={emailSettings.password}
-                    onChange={handleEmailChange}
-                  />
+                  <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-slate-900 transition-colors">
+                    Use default credentials
+                  </span>
+                </div>
+
+                <div className={`overflow-hidden transition-all duration-500 ease-in-out ${!emailSettings.useDefaultCredentials ? "max-h-[500px] opacity-100 mt-4" : "max-h-0 opacity-0 pointer-events-none"}`}>
+                  <div className="space-y-1">
+                    <InputField
+                      label="Domain"
+                      name="domain"
+                      value={emailSettings.domain}
+                      onChange={handleEmailChange}
+                    />
+                    <InputField
+                      label="User name"
+                      name="username"
+                      value={emailSettings.username}
+                      onChange={handleEmailChange}
+                    />
+                    <InputField
+                      label="Password"
+                      type="password"
+                      name="password"
+                      value={emailSettings.password}
+                      onChange={handleEmailChange}
+                    />
+                  </div>
+                </div>
+
+
+                <div className="flex gap-4 pt-6 border-t border-slate-100 dark:border-slate-800 pb-2">
+                  <button
+                    onClick={handleSendTestEmail}
+                    disabled={testEmailLoading || loading}
+                    className="btn-flagship border-pink-500/50! text-pink-500! hover:bg-pink-500/5!"
+                  >
+                    {testEmailLoading ? "Sending..." : "Send test email"}
+                  </button>
+                  <button
+                    onClick={handleSaveEmailSettings}
+                    disabled={loading}
+                    className="btn-flagship"
+                  >
+                    {loading ? "Saving..." : "Save"}
+                  </button>
                 </div>
               </div>
+            )}
 
-
-              <div className="flex gap-4 pt-6 border-t border-slate-100 dark:border-slate-800 pb-2">
+            {/* Feature Management Tab */}
+            {activeTab === "Feature management" && (
+              <div className="animate-in fade-in duration-300 pt-2">
+                <p className="text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-6">
+                  You can manage the host side features by clicking the following button.
+                </p>
                 <button
-                  onClick={handleSendTestEmail}
-                  disabled={testEmailLoading || loading}
-                  className="btn-flagship border-pink-500/50! text-pink-500! hover:bg-pink-500/5!"
-                >
-                  {testEmailLoading ? "Sending..." : "Send test email"}
-                </button>
-                <button
-                  onClick={handleSaveEmailSettings}
-                  disabled={loading}
+                  onClick={() => setShowFeaturesModal(true)}
                   className="btn-flagship"
                 >
-                  {loading ? "Saving..." : "Save"}
+                  <SettingsIcon size={14} strokeWidth={2.5} />
+                  Manage host features
                 </button>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Feature Management Tab */}
-          {activeTab === "Feature management" && (
-            <div className="animate-in fade-in duration-300 pt-2">
-              <p className="text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-6">
-                You can manage the host side features by clicking the following button.
-              </p>
-              <button
-                onClick={() => setShowFeaturesModal(true)}
-                className="btn-flagship"
-              >
-                <SettingsIcon size={14} strokeWidth={2.5} />
-                Manage host features
-              </button>
-            </div>
-          )}
-
-          {/* System Settings Tab */}
-          {activeTab === "System Settings" && (
-            <div className="animate-in fade-in duration-300">
-              {systemLoading ? (
-                <div className="flex items-center justify-center h-40 text-slate-400 text-sm">
-                  Loading system settings...
-                </div>
-              ) : (
-                <>
-                  <InputField
-                    label="Base Number Of Tickets For After Office Hours"
-                    required
-                    type="number"
-                    name="baseNumberOfTicketsForAfterOfficeHours"
-                    value={systemSettings.baseNumberOfTicketsForAfterOfficeHours}
-                    onChange={handleSystemChange}
-                  />
-                  <InputField
-                    label="Jobsheet can be modified up to (days)"
-                    required
-                    type="number"
-                    name="jobsheetCanBeModifiedUpToDays"
-                    value={systemSettings.jobsheetCanBeModifiedUpToDays}
-                    onChange={handleSystemChange}
-                  />
-                  <InputField
-                    label="Working Hours From"
-                    required
-                    type="number"
-                    name="workingHoursFrom"
-                    value={systemSettings.workingHoursFrom}
-                    onChange={handleSystemChange}
-                  />
-                  <InputField
-                    label="Working Hours To"
-                    required
-                    type="number"
-                    name="workingHoursTo"
-                    value={systemSettings.workingHoursTo}
-                    onChange={handleSystemChange}
-                  />
-                  <InputField
-                    label="Specific Tickets Commission Percentage (%)"
-                    required
-                    type="number"
-                    name="specificTicketsCommissionPercentage"
-                    value={systemSettings.specificTicketsCommissionPercentage}
-                    onChange={handleSystemChange}
-                  />
-                  <div className="pt-3">
-                    <button
-                      onClick={handleSaveSystemSettings}
-                      disabled={systemLoading}
-                      className="btn-flagship"
-                    >
-                      {systemLoading ? "Saving..." : "Save"}
-                    </button>
+            {/* System Settings Tab */}
+            {activeTab === "System Settings" && (
+              <div className="animate-in fade-in duration-300">
+                {systemLoading ? (
+                  <div className="flex items-center justify-center h-40 text-slate-400 text-sm">
+                    Loading system settings...
                   </div>
-                </>
-              )}
-            </div>
-          )}
+                ) : (
+                  <>
+                    <InputField
+                      label="Base Number Of Tickets For After Office Hours"
+                      required
+                      type="number"
+                      name="baseNumberOfTicketsForAfterOfficeHours"
+                      value={systemSettings.baseNumberOfTicketsForAfterOfficeHours}
+                      onChange={handleSystemChange}
+                    />
+                    <InputField
+                      label="Jobsheet can be modified up to (days)"
+                      required
+                      type="number"
+                      name="jobsheetCanBeModifiedUpToDays"
+                      value={systemSettings.jobsheetCanBeModifiedUpToDays}
+                      onChange={handleSystemChange}
+                    />
+                    <InputField
+                      label="Working Hours From"
+                      required
+                      type="number"
+                      name="workingHoursFrom"
+                      value={systemSettings.workingHoursFrom}
+                      onChange={handleSystemChange}
+                    />
+                    <InputField
+                      label="Working Hours To"
+                      required
+                      type="number"
+                      name="workingHoursTo"
+                      value={systemSettings.workingHoursTo}
+                      onChange={handleSystemChange}
+                    />
+                    <InputField
+                      label="Specific Tickets Commission Percentage (%)"
+                      required
+                      type="number"
+                      name="specificTicketsCommissionPercentage"
+                      value={systemSettings.specificTicketsCommissionPercentage}
+                      onChange={handleSystemChange}
+                    />
+                    <div className="pt-3">
+                      <button
+                        onClick={handleSaveSystemSettings}
+                        disabled={systemLoading}
+                        className="btn-flagship"
+                      >
+                        {systemLoading ? "Saving..." : "Save"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
 
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );
