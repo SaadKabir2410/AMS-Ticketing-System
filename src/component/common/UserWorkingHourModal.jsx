@@ -181,16 +181,16 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
     >
       <div className="bg-white dark:bg-[#020617] px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
         <div>
-          <h2 className="text-[18px] font-black text-slate-800 dark:text-white uppercase tracking-tight">
+          <h2 className="text-[18px] font-black text-black uppercase tracking-tight">
             {item ? "Edit Working Hour" : "New Working Hour"}
           </h2>
-          <p className="text-[10px] text-slate-400 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+          <p className="text-[10px] text-black font-bold uppercase tracking-widest mt-0.5">
             {item ? "Update existing schedule" : "Set up user schedule"}
           </p>
         </div>
         <button
           onClick={onClose}
-          className="p-2 text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-white/5"
+          className="p-2 text-black hover:text-black transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-white/5"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M18 6L6 18M6 6l12 12" />
@@ -209,8 +209,8 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
           )}
 
           {/* User Selection */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest px-1">
+          <div className="flex flex-col gap-1 text-black">
+            <label className="text-[10px] font-black text-black uppercase tracking-widest px-1">
               User Name*
             </label>
             {isAdmin ? (
@@ -250,15 +250,15 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
                 )}
               />
             ) : (
-              <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-500 dark:text-slate-400 text-[12px] font-bold">
+              <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-black text-[12px] font-bold">
                 {user?.name || "Loading..."}
               </div>
             )}
           </div>
 
           {/* Week Day */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest px-1">
+          <div className="flex flex-col gap-1 text-black">
+            <label className="text-[10px] font-black text-black uppercase tracking-widest px-1">
               Week Day *
             </label>
             <div className="relative">
@@ -267,7 +267,7 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
                 value={formData.weekDay}
                 onChange={handleInputChange}
                 className={`w-full appearance-none bg-slate-50 dark:bg-slate-800 border ${validationErrors.weekDay ? "border-red-500" : "border-slate-200 dark:border-slate-700"
-                  } text-slate-700 dark:text-white text-[12px] font-semibold rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500/20 transition-all cursor-pointer`}
+                  } text-black text-[12px] font-semibold rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500/20 transition-all cursor-pointer`}
               >
                 <option value="" className="bg-white dark:bg-[#020617]">Select Day</option>
                 {WEEK_DAYS.map((day) => (
@@ -276,7 +276,7 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
                   </option>
                 ))}
               </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-black">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="m6 9 6 6 6-6" />
                 </svg>
@@ -285,8 +285,8 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
           </div>
 
           {/* Start Time */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest px-1">
+          <div className="flex flex-col gap-1 text-black">
+            <label className="text-[10px] font-black text-black uppercase tracking-widest px-1">
               Start Time *
             </label>
             <Flatpickr
@@ -304,13 +304,13 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
                 dateFormat: "H:i",
                 time_24hr: true,
               }}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white text-[12px] font-mono rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500/20 transition-all"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-black text-[12px] font-mono rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500/20 transition-all"
             />
           </div>
 
           {/* End Time */}
-          <div className="flex flex-col gap-1">
-            <label className="text-[10px] font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest px-1">
+          <div className="flex flex-col gap-1 text-black">
+            <label className="text-[10px] font-black text-black uppercase tracking-widest px-1">
               End Time *
             </label>
             <Flatpickr
@@ -328,7 +328,7 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
                 dateFormat: "H:i",
                 time_24hr: true,
               }}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-white text-[12px] font-mono rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500/20 transition-all"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-black text-[12px] font-mono rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500/20 transition-all"
             />
           </div>
 
@@ -336,7 +336,7 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-600 dark:hover:text-white transition-all"
+              className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-black text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-white/5 hover:text-black transition-all"
             >
               Cancel
             </button>

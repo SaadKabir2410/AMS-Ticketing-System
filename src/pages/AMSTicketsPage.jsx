@@ -149,7 +149,6 @@ export default function AMSTicketsPage() {
           ticketReceivedDate: formattedTicketDate,
           dateFrom: dateFrom,
           dateTo: dateTo,
-          userId: "00000000-0000-0000-0000-000000000000",
         }
         : {};
 
@@ -163,7 +162,17 @@ export default function AMSTicketsPage() {
         sortDir: "asc",
         ...extraParams,
       });
-      setTickets(response.items || []);
+
+      let items = response.items || [];
+      // Always enforce Open tickets (status === 1) to come first locally 
+      // just in case the backend query ignores the sortKey when advanced filters are applied.
+      items.sort((a, b) => {
+        if (a.status === 1 && b.status !== 1) return -1;
+        if (a.status !== 1 && b.status === 1) return 1;
+        return 0;
+      });
+
+      setTickets(items);
       setTotalCount(response.totalCount || 0);
     } catch (err) {
       toast("Failed to fetch tickets", "error");
@@ -337,6 +346,13 @@ export default function AMSTicketsPage() {
       <style>{`
         *::-webkit-scrollbar { display: none !important; }
         * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+        
+        .custom-scrollbar::-webkit-scrollbar:horizontal { height: 8px; display: block !important; }
+        .custom-scrollbar::-webkit-scrollbar:vertical { display: none !important; width: 0 !important; }
+        .custom-scrollbar { scrollbar-width: thin !important; }
+        .custom-scrollbar::-webkit-scrollbar-track:horizontal { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #cbd5e1; border-radius: 20px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #475569; }
       `}</style>
 
       {/* ── Main Unified Card ── */}
@@ -349,14 +365,6 @@ export default function AMSTicketsPage() {
         <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <motion.button
-                whileHover={{ scale: 1.1, x: -2 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => navigate(-1)}
-                className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-600 hover:text-pink-600 transition-all border border-slate-200/60 dark:border-slate-700/50 shadow-sm"
-              >
-                <ChevronLeft size={20} strokeWidth={2.5} />
-              </motion.button>
               <div>
                 <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
                   <span>Home</span>
@@ -465,7 +473,7 @@ export default function AMSTicketsPage() {
 
         {/* Table Area */}
         <div className="w-full">
-          <div className="overflow-x-auto px-4 pb-4 pt-2 no-scrollbar">
+          <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar">
             <table className="w-full text-left border-separate border-spacing-y-1 min-w-max">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">

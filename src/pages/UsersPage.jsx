@@ -1175,13 +1175,7 @@ export default function UsersPage() {
           </nav>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => window.history.back()}
-                className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-600 hover:text-pink-600 transition-all border border-slate-200/60 dark:border-slate-700/50 shadow-sm"
-                title="Go Back"
-              >
-                <ArrowLeft size={20} strokeWidth={2.5} />
-              </button>
+
               <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
                 Users
               </h1>
@@ -1315,10 +1309,6 @@ export default function UsersPage() {
                       <motion.tr
                         key={row.id}
                         variants={rowVariants}
-                        whileHover={{
-                          y: -2,
-                          backgroundColor: isDark ? "rgba(244, 63, 94, 0.04)" : "rgba(244, 63, 94, 0.02)",
-                        }}
                         className={`group transition-all duration-200 border-b border-slate-50 dark:border-slate-800/30 ${ROW_HEIGHT} ${idx % 2 === 0
                           ? "bg-white dark:bg-[#161920]/40"
                           : "bg-gray-200/50 dark:bg-white/[0.03]"

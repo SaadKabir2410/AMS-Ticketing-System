@@ -72,6 +72,7 @@ export default function LoginPage() {
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [localError, setLocalError] = useState("");
   const [showLoggedOutMessage, setShowLoggedOutMessage] = useState(false);
@@ -99,7 +100,7 @@ export default function LoginPage() {
     setIsLoggingIn(true);
     setShouldShake(false);
 
-    const success = await login({ email: username, password });
+    const success = await login({ email: username, password, rememberMe });
     if (success) {
       // Ensure the unclosed tickets modal will show after this fresh login
       sessionStorage.removeItem("hasSeenUnclosedTicketsModal");
@@ -222,6 +223,19 @@ export default function LoginPage() {
               }}
               placeholder="Enter your password"
             />
+
+            <div className="flex items-center gap-2 mt-2 ml-1">
+              <input
+                type="checkbox"
+                id="rememberMe"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 text-[#ec4899] bg-white border-slate-300 rounded focus:ring-[#ec4899] dark:focus:ring-[#ec4899]/50 focus:ring-2 dark:bg-slate-800 dark:border-slate-700 transition-all cursor-pointer"
+              />
+              <label htmlFor="rememberMe" className="text-sm font-medium text-slate-600 dark:text-slate-400 cursor-pointer select-none">
+                Remember me
+              </label>
+            </div>
 
             <button
               type="submit"

@@ -527,10 +527,6 @@ export default function RolesPage() {
                       <motion.tr
                         key={row.id}
                         variants={rowVariants}
-                        whileHover={{
-                          y: -2,
-                          backgroundColor: isDark ? "rgba(244, 63, 94, 0.04)" : "rgba(244, 63, 94, 0.02)",
-                        }}
                         className={`group transition-all duration-200 border-b border-slate-50 dark:border-slate-800/30 ${ROW_HEIGHT} ${idx % 2 === 0
                           ? "bg-white dark:bg-[#161920]/40"
                           : "bg-gray-200/50 dark:bg-white/[0.03]"

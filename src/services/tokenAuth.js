@@ -50,7 +50,7 @@ const logger = {
 };
 // ──────────────────────────────────────────────────────────────────────────────
 
-export async function loginWithPassword(username, password) {
+export async function loginWithPassword(username, password, rememberMe = false) {
   logger.info("loginWithPassword() → attempting login", { username });
 
   const body = new URLSearchParams({
@@ -114,7 +114,8 @@ export async function loginWithPassword(username, password) {
     token_type: data.token_type ?? "Bearer",
   };
 
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  const storage = rememberMe ? localStorage : sessionStorage;
+  storage.setItem(STORAGE_KEY, JSON.stringify(session));
   logger.info("Login successful — session stored", {
     token_type: session.token_type,
     expires_in: data.expires_in,
@@ -126,7 +127,7 @@ export async function loginWithPassword(username, password) {
 
 export function getSession() {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY) || localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       logger.debug("getSession() → no session in storage");
       return null;
@@ -151,10 +152,16 @@ export function getSession() {
 export function clearSession() {
   logger.info("clearSession() → session removed");
   sessionStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(STORAGE_KEY);
 }
 
 export async function refreshAccessToken() {
-  const session = JSON.parse(sessionStorage.getItem(STORAGE_KEY));
+  const inSession = sessionStorage.getItem(STORAGE_KEY);
+  const raw = inSession || localStorage.getItem(STORAGE_KEY);
+  if (!raw) return null;
+  const session = JSON.parse(raw);
+  const storage = inSession ? sessionStorage : localStorage;
+
   if (!session?.refresh_token) {
     logger.warn("refreshAccessToken() → no refresh token available");
     return null;
@@ -186,12 +193,13 @@ export async function refreshAccessToken() {
       token_type: data.token_type ?? "Bearer",
     };
 
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(newSession));
+    storage.setItem(STORAGE_KEY, JSON.stringify(newSession));
     logger.info("Refresh successful — new session stored");
     return newSession;
   } catch (err) {
     logger.error("refreshAccessToken() → failed", String(err));
     sessionStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY);
     return null;
   }
 }

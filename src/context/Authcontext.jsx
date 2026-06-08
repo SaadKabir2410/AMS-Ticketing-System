@@ -48,15 +48,32 @@ function saveUsers(users) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
-      const stored = sessionStorage.getItem(SESSION_KEY);
+      const stored = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
       if (!stored) return null;
       const parsed = JSON.parse(stored);
       // Basic validation: must be an object with an id
-      return parsed && parsed.id ? parsed : null;
+      if (parsed && parsed.id) {
+        parsed.customAvatar = localStorage.getItem(`profile_pic_${parsed.id}`) || null;
+        return parsed;
+      }
+      return null;
     } catch {
       return null;
     }
   });
+
+  const updateUser = (updates) => {
+    if (user) {
+      const newUser = { ...user, ...updates };
+      setUser(newUser);
+      const isLocal = !!localStorage.getItem(SESSION_KEY);
+      if (isLocal) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(newUser));
+      } else {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(newUser));
+      }
+    }
+  };
 
   useEffect(() => {
     // Sync with manual login session if available
@@ -114,12 +131,12 @@ export function AuthProvider({ children }) {
   };
 
   // Login — trades username/password for a real JWT from port 3333
-  const login = async ({ email, password }) => {
+  const login = async ({ email, password, rememberMe }) => {
     setLoading(true);
     setError("");
 
     try {
-      const session = await loginWithPassword(email, password);
+      const session = await loginWithPassword(email, password, rememberMe);
 
       let userId = email; 
       let actualRoles = [];
@@ -182,7 +199,8 @@ export function AuthProvider({ children }) {
         permissions: permissionsMap,
       };
 
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
+      const storage = rememberMe ? localStorage : sessionStorage;
+      storage.setItem(SESSION_KEY, JSON.stringify(userProfile));
       setUser(userProfile);
       setLoading(false);
       return true;
@@ -201,9 +219,11 @@ export function AuthProvider({ children }) {
 
       // 1. Clear ALL storage keys related to auth
       sessionStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(SESSION_KEY);
       sessionStorage.removeItem("auth_token");
+      localStorage.removeItem("auth_token");
       sessionStorage.removeItem("spike_session");
-      // localStorage.removeItem("spike_users"); // Keep simulated DB persisted
+      localStorage.removeItem("spike_session");
 
       // 2. Clear manual password-token session (from tokenAuth.js)
       clearSession();
@@ -231,6 +251,7 @@ export function AuthProvider({ children }) {
         register,
         login,
         logout,
+        updateUser,
         signinRedirect: () => (window.location.href = "/login"),
       }}
     >

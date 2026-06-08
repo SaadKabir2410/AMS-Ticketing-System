@@ -1,23 +1,5 @@
 import apiClient from "../apiClient";
 
-/**
- * Lookup Detail API
- * Strictly matches confirmed endpoints:
- *
- *  POST   /api/app/lookup-detail
- *  GET    /api/app/lookup-detail/{id}/by-id
- *  PUT    /api/app/lookup-detail/{id}
- *  DELETE /api/app/lookup-detail/{id}
- *  GET    /api/app/lookup-detail/by-lookup-codes
- *  GET    /api/app/lookup-detail/by-code/{lookupId}
- *  GET    /get-list-by-lookup-code
- *  GET    /get-list-by-lookup-codes
- *  POST   /api/app/lookup-detail/{id}/enable
- *  POST   /api/app/lookup-detail/{id}/has-sub-task-category
- *  GET    /api/app/lookup-detail/{id}/by-group-code
- *  POST   /api/app/lookup-detail/{id}/is-required-field
- */
-
 // Shared payload builder — used by create & update
 const buildPayload = (data, includeStamp = false) => ({
   lookupId: data.lookupId || "",
@@ -40,7 +22,6 @@ const buildPayload = (data, includeStamp = false) => ({
 });
 
 export const codeDetailsApi = {
-
   // ── READ ───────────────────────────────────────────────────────────────────
 
   // GET /api/app/lookup-detail/{id}/by-id
@@ -73,25 +54,33 @@ export const codeDetailsApi = {
 
   // GET /api/app/lookup-detail/by-code/{lookupId}
   getByCode: async (lookupId) => {
-    const response = await apiClient.get(`/api/app/lookup-detail/by-code/${lookupId}`);
+    const response = await apiClient.get(
+      `/api/app/lookup-detail/by-code/${lookupId}`,
+    );
     return response.data;
   },
 
   // GET /get-list-by-lookup-code
   getListByLookupCode: async (params) => {
-    const response = await apiClient.get(`/get-list-by-lookup-code`, { params });
+    const response = await apiClient.get(`/get-list-by-lookup-code`, {
+      params,
+    });
     return response.data;
   },
 
   // GET /get-list-by-lookup-codes
   getListByLookupCodes: async (params) => {
-    const response = await apiClient.get(`/get-list-by-lookup-codes`, { params });
+    const response = await apiClient.get(`/get-list-by-lookup-codes`, {
+      params,
+    });
     return response.data;
   },
 
   // GET /api/app/lookup-detail/{id}/by-group-code
   getByGroupCode: async (id) => {
-    const response = await apiClient.get(`/api/app/lookup-detail/${id}/by-group-code`);
+    const response = await apiClient.get(
+      `/api/app/lookup-detail/${id}/by-group-code`,
+    );
     return response.data;
   },
 
@@ -99,13 +88,19 @@ export const codeDetailsApi = {
 
   // POST /api/app/lookup-detail
   create: async (data) => {
-    const response = await apiClient.post(`/api/app/lookup-detail`, buildPayload(data));
+    const response = await apiClient.post(
+      `/api/app/lookup-detail`,
+      buildPayload(data),
+    );
     return response.data;
   },
 
   // PUT /api/app/lookup-detail/{id}
   update: async (id, data) => {
-    const response = await apiClient.put(`/api/app/lookup-detail/${id}`, buildPayload(data, true));
+    const response = await apiClient.put(
+      `/api/app/lookup-detail/${id}`,
+      buildPayload(data, true),
+    );
     return response.data;
   },
 
@@ -117,7 +112,9 @@ export const codeDetailsApi = {
 
   // ENABLE — POST /api/app/lookup-detail/{id}/enable
   enable: async (id) => {
-    const response = await apiClient.post(`/api/app/lookup-detail/${id}/enable`);
+    const response = await apiClient.post(
+      `/api/app/lookup-detail/${id}/enable`,
+    );
     return response.data;
   },
 
@@ -128,7 +125,7 @@ export const codeDetailsApi = {
     const response = await apiClient.post(
       `/api/app/lookup-detail/${id}/has-sub-task-category`,
       null,
-      { params: { hasSub } }
+      { params: { hasSub } },
     );
     return response.data;
   },
@@ -138,7 +135,7 @@ export const codeDetailsApi = {
     const response = await apiClient.post(
       `/api/app/lookup-detail/${id}/is-required-field`,
       null,
-      { params: { isRequired } }
+      { params: { isRequired } },
     );
     return response.data;
   },

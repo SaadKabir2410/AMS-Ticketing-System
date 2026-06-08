@@ -416,7 +416,7 @@ export default function CodeDetailsPage() {
                     setActionItem(row);
                     setActionType("edit");
                   }
-                  : null
+                  : undefined
               }
               onAuditLog={() =>
                 navigate(
@@ -429,7 +429,7 @@ export default function CodeDetailsPage() {
                     setActionItem(row);
                     setActionType("disable");
                   }
-                  : null
+                  : undefined
               }
               onEnable={
                 !row.isActive || row.isDeleted
@@ -437,9 +437,8 @@ export default function CodeDetailsPage() {
                     setActionItem(row);
                     setActionType("enable");
                   }
-                  : null
+                  : undefined
               }
-              className={`text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl h-7.5 font-bold tracking-wider  shadow-sm ${open ? 'bg-pink-50 dark:bg-pink-950/30 border-pink-500' : 'bg-transparent border-pink-500/20'}`}
             />
           </div>
         );
@@ -527,13 +526,16 @@ export default function CodeDetailsPage() {
     >
 
       <style>{`
-        *::-webkit-scrollbar {
-          display: none !important;
-        }
-        * {
-          -ms-overflow-style: none !important;
-          scrollbar-width: none !important;
-        }
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+        td, tr { overflow: visible !important; }
+
+        .custom-scrollbar::-webkit-scrollbar:horizontal { height: 8px; display: block !important; }
+        .custom-scrollbar::-webkit-scrollbar:vertical { display: none !important; width: 0 !important; }
+        .custom-scrollbar { scrollbar-width: thin !important; }
+        .custom-scrollbar::-webkit-scrollbar-track:horizontal { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #cbd5e1; border-radius: 20px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #475569; }
       `}</style>
 
       {/* ── Unified Full-Screen Card ── */}
@@ -547,14 +549,6 @@ export default function CodeDetailsPage() {
         <div className="flex flex-col gap-6 py-6 px-4 md:px-8 transition-colors">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <motion.button
-                whileHover={{ scale: 1.1, x: -2 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => navigate(-1)}
-                className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-600 hover:text-pink-600 transition-all border border-slate-200/60 dark:border-slate-700/50 shadow-sm"
-              >
-                <ChevronLeft size={20} strokeWidth={2.5} />
-              </motion.button>
               <div>
                 <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
                   <span>Home</span>
@@ -699,7 +693,7 @@ export default function CodeDetailsPage() {
         <div className="w-full flex flex-col">
           {filterRow}
 
-          <div className="w-full overflow-x-auto no-scrollbar px-4 pb-4">
+          <div className="w-full overflow-x-auto custom-scrollbar px-4 pb-4">
             <div className="min-w-max">
               <table className="w-full text-left border-separate border-spacing-y-0">
                 <thead>
@@ -788,8 +782,8 @@ export default function CodeDetailsPage() {
                       {paginatedItems.map((row, idx) => {
                         const rowBgClass =
                           idx % 2 === 0
-                            ? "bg-white dark:bg-[#161920]/40 group-hover:bg-pink-50/40 dark:group-hover:bg-pink-500/10"
-                            : "bg-gray-200/50 dark:bg-white/[0.03] group-hover:bg-pink-50/40 dark:group-hover:bg-pink-500/10";
+                            ? "bg-white dark:bg-[#161920]/40"
+                            : "bg-gray-200/50 dark:bg-white/[0.03]";
 
                         return (
                           <motion.tr
@@ -799,15 +793,7 @@ export default function CodeDetailsPage() {
                             initial="hidden"
                             animate="visible"
                             exit="exit"
-                            whileHover={{
-                              y: -3,
-                              transition: { duration: 0.1 },
-                            }}
-                            style={{
-                              backfaceVisibility: "hidden",
-                              transform: "translateZ(0)",
-                            }}
-                            className={`group transition-all duration-200 ${ROW_HEIGHT} relative z-0 hover:z-10`}
+                            className={`group transition-all duration-200 ${ROW_HEIGHT} relative z-0 hover:z-10 ${rowBgClass}`}
                           >
                             {columns.map((col, colIdx) => (
                               <td

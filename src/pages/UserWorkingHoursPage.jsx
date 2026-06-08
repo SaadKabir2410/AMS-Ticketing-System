@@ -4,7 +4,7 @@ import { workingHoursApi } from "../services/api/workingHours";
 import { useToast } from "../component/common/ToastContext";
 import { Select, MenuItem } from "@mui/material";
 import { ActionsMenu } from "../component/common/ResourcePage";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus } from "lucide-react";
 import UserWorkingHourModal from "../component/common/UserWorkingHourModal";
 import { useAuth } from "../context/AuthContextHook";
 import { usePermission } from "../hooks/usePermission";
@@ -78,6 +78,13 @@ export default function UserWorkingHoursPage() {
         *::-webkit-scrollbar { display: none !important; }
         * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
         td, tr { overflow: visible !important; }
+
+        .custom-scrollbar::-webkit-scrollbar:horizontal { height: 8px; display: block !important; }
+        .custom-scrollbar::-webkit-scrollbar:vertical { display: none !important; width: 0 !important; }
+        .custom-scrollbar { scrollbar-width: thin !important; }
+        .custom-scrollbar::-webkit-scrollbar-track:horizontal { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #cbd5e1; border-radius: 20px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #475569; }
       `}</style>
 
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
@@ -103,50 +110,58 @@ export default function UserWorkingHoursPage() {
             ))}
           </nav>
           <div className="flex items-center justify-between">
-            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+            <h1 className="text-4xl font-black text-black tracking-tighter">
               User Working Hours
             </h1>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleNew}
+                className="inline-flex items-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
+              >
+                <Plus size={16} className="mr-2" strokeWidth={3} />
+                New Working Hour
+              </button>
+            </div>
           </div>
         </div>
 
           {/* Table */}
-          <div className="flex flex-col w-full h-auto relative">
+          <div className="flex flex-col w-full h-auto relative text-black">
             {loading ? (
-              <div className="flex-1 flex items-center justify-center text-slate-300 dark:text-slate-300 text-[11px] font-black uppercase tracking-[0.2em] animate-pulse">
+              <div className="flex-1 flex items-center justify-center text-black text-[11px] font-black uppercase tracking-[0.2em] animate-pulse">
                 Refreshing data...
               </div>
             ) : data.length === 0 ? (
-              <div className="flex-1 flex items-center justify-center text-slate-300 dark:text-slate-300 text-[11px] font-black uppercase tracking-[0.2em]">
+              <div className="flex-1 flex items-center justify-center text-black text-[11px] font-black uppercase tracking-[0.2em]">
                 No working hours found
               </div>
             ) : (
-              <div className="h-auto">
-                <table className="w-full text-[11px] text-slate-800 dark:text-slate-200 border-collapse">
-                  <thead className="sticky top-0 bg-slate-50 dark:bg-slate-800 backdrop-blur-md z-10">
-                    <tr>
-                      <th className="px-6 py-4 text-center font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">User Name</th>
-                      <th className="px-6 py-4 text-center font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">Week Day</th>
-                      <th className=" px-6 py-4 text-center font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">Start Time</th>
-                      <th className="px-6 py-4 text-center font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">End Time</th>
-                      <th className="px-6 py-4 text-center font-black text-slate-400 dark:text-slate-400 uppercase tracking-widest text-[9px]">Actions</th>
+              <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar text-black">
+                <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px]">
+                  <thead className="sticky top-0 z-10">
+                    <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">
+                      <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-left">User Name</th>
+                      <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">Week Day</th>
+                      <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">Start Time</th>
+                      <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">End Time</th>
+                      <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.map((row, i) => (
+                    {data.map((row, idx) => {
+                      const isEven = idx % 2 === 0;
+                      return (
                       <tr
-                        key={row.id || i}
-                        className="group transition-colors hover:bg-pink-50 dark:hover:bg-[#ec4899]/5"
+                        key={row.id || idx}
+                        className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
                       >
-                        <td className="px-6 py-4 text-center font-bold text-slate-800 dark:text-slate-200 text-[12px]">
-                          <div className="flex items-center gap-3 justify-center">
-                            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-[10px]">
-                              {(row.userName || 'U').charAt(0).toUpperCase()}
-                            </div>
+                        <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors text-black font-bold text-[12px]">
+                          <div className="flex items-center gap-3">
                             {row.userName || "—"}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                        <td className="px-5 h-[60px] text-center transition-colors text-black">
+                          <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-bold uppercase tracking-wider text-[10px] text-black">
                             {(() => {
                               const val = row.weekDay;
                               if (val === null || val === undefined) return "—";
@@ -155,23 +170,23 @@ export default function UserWorkingHoursPage() {
                             })()}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-mono font-bold text-[12px] justify-center">
+                        <td className="px-5 h-[60px] text-center transition-colors text-black">
+                          <div className="flex items-center gap-2 font-mono font-bold text-[12px] justify-center text-black">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
                             </svg>
                             {row.startTime || "—"}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-mono font-bold text-[12px] justify-center">
+                        <td className="px-5 h-[60px] text-center transition-colors text-black">
+                          <div className="flex items-center gap-2 font-mono font-bold text-[12px] justify-center text-black">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
                             </svg>
                             {row.endTime || "—"}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center">
+                        <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors text-black">
                           <ActionsMenu
                             onEdit={canEdit ? () => handleEdit(row) : undefined}
                             onAuditLog={canViewAuditLog ? () =>
@@ -181,7 +196,7 @@ export default function UserWorkingHoursPage() {
                           />
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>
@@ -192,7 +207,7 @@ export default function UserWorkingHoursPage() {
           <div className="px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Page Size:</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-black">Page Size:</span>
                 <select
                   value={pageSize}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
@@ -205,16 +220,16 @@ export default function UserWorkingHoursPage() {
               </div>
 
               <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                  <span className="text-slate-900 dark:text-white tabular-nums">
+                <p className="text-[10px] font-black uppercase tracking-widest text-black">
+                  <span className="text-black tabular-nums">
                     {totalCount > 0 ? (page - 1) * pageSize + 1 : 0}
                   </span>
-                  <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
-                  <span className="text-slate-900 dark:text-white tabular-nums">
+                  <span className="text-black mx-1.5">—</span>
+                  <span className="text-black tabular-nums">
                     {Math.min(page * pageSize, totalCount)}
                   </span>
-                  <span className="text-slate-400 dark:text-slate-600 mx-2 lowercase font-bold tracking-normal italic">of</span>
-                  <span className="text-slate-900 dark:text-white tabular-nums font-black">
+                  <span className="text-black mx-2 lowercase font-bold tracking-normal italic">of</span>
+                  <span className="text-black tabular-nums font-black">
                     {totalCount}
                   </span>
                 </p>
@@ -243,11 +258,11 @@ export default function UserWorkingHoursPage() {
                 <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
 
                 <div className="px-3 flex items-center gap-2 py-1">
-                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Page</span>
+                  <span className="text-[10px] font-black text-black uppercase tracking-widest">Page</span>
                   <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
                     <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{page}</span>
-                    <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">/</span>
-                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums leading-none">{Math.ceil(totalCount / pageSize) || 1}</span>
+                    <span className="text-[10px] font-black text-black">/</span>
+                    <span className="text-[10px] font-black text-black tabular-nums leading-none">{Math.ceil(totalCount / pageSize) || 1}</span>
                   </div>
                 </div>
 

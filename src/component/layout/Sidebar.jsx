@@ -81,13 +81,15 @@ export default function Sidebar({
 
   return (
     <aside
+      onMouseEnter={() => !isMobile && setCollapsed(false)}
+      onMouseLeave={() => !isMobile && setCollapsed(true)}
       className={clsx(
         "flex flex-col transition-all duration-300 z-50",
-        "bg-gradient-to-b from-[#111827] via-[#0a0f1c] to-black shrink-0",
+        "bg-black shrink-0",
         !isMobile
           ? "hidden lg:flex ml-1.5 mt-6 mb-1 h-[calc(100vh-2.5rem)] sticky top-5 rounded-4xl"
-          : "w-[200px] h-full",
-        !isMobile && (collapsed ? "w-[85px]" : "w-[200px]"),
+          : "w-[160px] h-full",
+        !isMobile && (collapsed ? "w-[70px]" : "w-[170px]"),
       )}
     >
       {isMobile && (
@@ -218,7 +220,7 @@ function NavItem({ item, collapsed, closeMobile, isMobile }) {
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-pink-500 rounded-r-full shadow-[0_0_10px_rgba(236,72,153,0.5)]" />
         )}
 
-        {Icon && (
+        {Icon && collapsed && (
           <div className="flex items-center justify-center shrink-0 w-6 h-6">
             <Icon
               size={20}
@@ -236,7 +238,7 @@ function NavItem({ item, collapsed, closeMobile, isMobile }) {
         {!collapsed && (
           <span
             className={clsx(
-              "text-[13px] truncate flex-1 font-bold tracking-wide transition-colors duration-200",
+              "text-[11px] truncate flex-1 font-bold tracking-wide transition-colors duration-200",
               active ? "text-white" : "text-inherit",
             )}
           >
@@ -268,7 +270,7 @@ function NavItem({ item, collapsed, closeMobile, isMobile }) {
 
       {/* Tooltip for collapsed */}
       {collapsed && (
-        <div className="absolute left-full ml-4 px-4 py-2.5 bg-slate-900 text-white text-[11px] font-black rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 transform translate-x-[-10px] group-hover:translate-x-0 whitespace-nowrap z-50 shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-white/20">
+        <div className="absolute left-full ml-4 px-4 py-2.5 bg-slate-900 text-white text-[10px] font-black rounded-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 transform translate-x-[-10px] group-hover:translate-x-0 whitespace-nowrap z-50 shadow-[0_10px_30px_rgba(0,0,0,0.5)] border border-white/20">
           {item.name}
         </div>
       )}
@@ -284,7 +286,7 @@ function NavItem({ item, collapsed, closeMobile, isMobile }) {
                   href={sub.href}
                   onClick={() => isMobile && closeMobile && closeMobile()}
                   className={clsx(
-                    "flex items-center gap-3 px-4 py-2 text-[11.5px] font-semibold transition-all duration-200 rounded-xl relative group/sub",
+                    "flex items-center gap-3 px-4 py-2 text-[10px] font-semibold transition-all duration-200 rounded-xl relative group/sub",
                     subActive
                       ? "text-white bg-white/10"
                       : "text-slate-400 hover:text-white hover:bg-white/5",

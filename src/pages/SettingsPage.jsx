@@ -328,12 +328,7 @@ export default function SettingsPage() {
             <span className="text-pink-500">Settings</span>
           </nav>
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-600 hover:text-pink-600 transition-all border border-slate-200/60 dark:border-slate-700/50 shadow-sm"
-            >
-              <ArrowLeft size={20} strokeWidth={2.5} />
-            </button>
+
             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">Settings</h1>
           </div>
         </div>

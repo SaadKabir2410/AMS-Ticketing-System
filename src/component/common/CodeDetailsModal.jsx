@@ -351,7 +351,7 @@ export default function CodeDetailsModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-y-3 pt-3 border-t border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-black/50 p-3 rounded-lg">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 pt-3 border-t border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-black/50 p-3 rounded-lg">
             {[
               { label: "Default Indicator", name: "isDefaultIndicator" },
               { label: "Extra Description", name: "hasExtraDescription" },

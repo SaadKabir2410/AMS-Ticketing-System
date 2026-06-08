@@ -27,38 +27,19 @@ import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import { useToast } from "../component/common/ToastContext";
 import { useResource } from "../component/hooks/useResource";
 
-// ── Animation variants ────────────────────────────────────────────
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.045 } },
-};
-
-const rowVariants = {
-  hidden: { opacity: 0, y: 14 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.28, ease: "easeOut" } },
-  exit: { opacity: 0, scale: 0.97, transition: { duration: 0.18 } },
-};
-
-const ROW_HEIGHT = "h-[56px]";
-
 // ── Skeleton row ──────────────────────────────────────────────────
-function SkeletonRow({ delay = 0 }) {
+function SkeletonRow() {
   return (
-    <motion.tr
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay }}
-      className={`border-b border-slate-100 dark:border-slate-800/60 ${ROW_HEIGHT}`}
-    >
-      {[8, 22, 38, 8, 8, 12, 8].map((w, i) => (
-        <td key={i} className={`px-5 ${ROW_HEIGHT}`}>
+    <tr className="border-b border-slate-100 dark:border-slate-800/60 h-[60px] text-black">
+      {[15, 30, 10, 10, 15, 10].map((w, i) => (
+        <td key={i} className="px-5 h-[60px]">
           <div
-            className="h-3 rounded-full bg-slate-100 dark:bg-slate-800 animate-pulse"
+            className="h-3 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse"
             style={{ width: `${w}%`, minWidth: 20 }}
           />
         </td>
       ))}
-    </motion.tr>
+    </tr>
   );
 }
 
@@ -74,99 +55,48 @@ function SortableRow({ row, index, onEdit, onDisable, onEnable, isAdmin }) {
     isDragging,
   } = useSortable({ id: row.id });
 
-  const hideManagement = row.isSystemIndicator || isAdmin;
-
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 50 : "auto",
   };
 
-  const rowBgClass = isDragging
-    ? "bg-indigo-50/80 dark:bg-indigo-900/20"
-    : index % 2 === 0
-      ? "bg-white dark:bg-[#161920]/40 group-hover:bg-pink-50/40 dark:group-hover:bg-pink-500/10"
-      : "bg-gray-200/50 dark:bg-white/[0.03] group-hover:bg-pink-50/40 dark:group-hover:bg-pink-500/10";
+  const isEven = index % 2 === 0;
 
   return (
-    <motion.tr
-      layout
-      whileHover={{ scale: 1.006, y: -2 }}
-      variants={rowVariants}
+    <tr
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className={`group transition-all duration-200 ${ROW_HEIGHT} ${isDragging ? "shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/40 z-50 relative pointer-events-none" : "cursor-grab active:cursor-grabbing"}`}
+      className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 text-black ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"} ${isDragging ? "shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/40 z-50 relative pointer-events-none" : "cursor-grab active:cursor-grabbing"}`}
     >
-
-
-      {/* Lookup Code */}
-      <td className={`pl-8 pr-5 ${ROW_HEIGHT} rounded-l-2xl ${rowBgClass}`}>
-        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 tracking-tight leading-none">
-          {row.lookupCode}
-        </span>
+      <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors text-black font-bold text-[12px]">
+        {row.lookupCode}
       </td>
-
-      {/* Description */}
-      <td className={`px-5 ${ROW_HEIGHT} ${rowBgClass}`}>
-        <span className="text-sm text-slate-500 dark:text-slate-400 leading-none line-clamp-1">
-          {row.description || (
-            <span className="italic text-slate-300 dark:text-slate-700">No description</span>
-          )}
-        </span>
+      <td className="px-5 h-[60px] text-left transition-colors text-black">
+        {row.description || "—"}
       </td>
-
-      {/* Sequence */}
-      <td className={`px-5 ${ROW_HEIGHT} text-center ${rowBgClass}`}>
-        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-md bg-slate-100/50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-mono text-xs font-medium">
-          {row.sequence}
-        </span>
+      <td className="px-5 h-[60px] text-center transition-colors text-black">
+        {row.sequence}
       </td>
-
-      {/* System indicator */}
-      <td className={`px-5 ${ROW_HEIGHT} text-center ${rowBgClass}`}>
-        <span
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${row.isSystemIndicator
-            ? "bg-slate-100 dark:bg-slate-500/15 text-slate-600 dark:text-slate-400"
-            : "bg-slate-100/50 dark:bg-slate-800/80 text-slate-300 dark:text-slate-700"
-            }`}
-        >
-          {row.isSystemIndicator ? "✓" : "–"}
-        </span>
+      <td className="px-5 h-[60px] text-center transition-colors text-black">
+        {row.isSystemIndicator ? "✓" : "–"}
       </td>
-
-      {/* Status */}
-      <td className={`px-5 ${ROW_HEIGHT} text-center ${rowBgClass}`}>
-        <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${row.isActive
-            ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-            : "bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500"
-            }`}
-        >
-          <span
-            className={`w-1 h-1 rounded-full ${row.isActive ? "bg-emerald-500" : "bg-slate-400 dark:bg-slate-600"
-              }`}
-          />
-          {row.isActive ? "Active" : "Inactive"}
-        </span>
+      <td className="px-5 h-[60px] text-center transition-colors text-black">
+        {row.isActive ? "Active" : "Inactive"}
       </td>
-
-      {/* Actions */}
-      <td className={`px-5 ${ROW_HEIGHT} text-right rounded-r-2xl ${rowBgClass}`}>
+      <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors text-black">
         {!row.isSystemIndicator && (
-          <div className="flex justify-end items-center h-full">
-            <ActionsMenu
-              onAuditLog={isAdmin ? () => navigate(`/audit-logs?primaryKey=${row.id}&entityName=Lookup`) : null}
-              onEdit={() => onEdit(row)}
-              onDisable={row.isActive ? () => onDisable(row) : null}
-              onEnable={!row.isActive ? () => onEnable(row) : null}
-              className="text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider bg-transparent border-pink-500/20 hover:border-pink-500 shadow-sm"
-            />
-          </div>
+          <ActionsMenu
+            onAuditLog={isAdmin ? () => navigate(`/audit-logs?primaryKey=${row.id}&entityName=Lookup`) : null}
+            onEdit={() => onEdit(row)}
+            onDisable={row.isActive ? () => onDisable(row) : null}
+            onEnable={!row.isActive ? () => onEnable(row) : null}
+          />
         )}
       </td>
-    </motion.tr>
+    </tr>
   );
 }
 
@@ -322,7 +252,7 @@ export default function CodePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]"
+      className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial] text-black"
     >
       <style>{`
         *::-webkit-scrollbar { display: none !important; }
@@ -341,14 +271,7 @@ export default function CodePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 
             <div className="flex items-center gap-4">
-              <motion.button
-                whileHover={{ scale: 1.1, x: -2 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => navigate(-1)}
-                className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-600 hover:text-pink-600 transition-all border border-slate-200/60 dark:border-slate-700/50 shadow-sm"
-              >
-                <ChevronLeft size={20} strokeWidth={2.5} />
-              </motion.button>
+
               <div>
                 <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
                   <span>Home</span>
@@ -424,74 +347,29 @@ export default function CodePage() {
         </div>
 
         {/* ── Table Area ── */}
-        <div className="flex-1 w-full overflow-auto no-scrollbar">
-          <div className="overflow-x-auto px-4 pb-4">
-            <table className="w-full text-left border-separate border-spacing-y-0">
-              <thead>
-                <tr className={`bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 ${ROW_HEIGHT}`}>
-                  {[
-                    { label: "Lookup Code", align: "left" },
-                    { label: "Description", align: "left" },
-                    { label: "Sequence", align: "center" },
-                    { label: "System", align: "center" },
-                    { label: "Status", align: "center" },
-                    { label: "Actions", align: "right" },
-                  ].map(({ label, align }, i) => (
-                    <th
-                      key={label}
-                      className={`px-5 ${ROW_HEIGHT} text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 text-${align} ${i === 0 ? "pl-8" : ""
-                        }`}
-                    >
-                      {label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              <tbody>
-                {/* Skeleton */}
-                {resourceLoading && filteredItems.length === 0 &&
-                  [0, 0.05, 0.1, 0.15, 0.2].map((d, i) => <SkeletonRow key={i} delay={d} />)
-                }
-
-                {/* Empty state */}
-                {(!resourceLoading && filteredItems.length === 0) && (
-                  <tr>
-                    <td colSpan={7} className="py-24 text-center">
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex flex-col items-center gap-3"
-                      >
-                        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                          <Code2 size={20} className="text-slate-300 dark:text-slate-600" />
-                        </div>
-                        <p className="text-sm text-slate-400 dark:text-slate-600">
-                          {searchTerm ? (
-                            <>No records match "<span className="text-slate-800 dark:text-slate-200 font-medium">{searchTerm}</span>"</>
-                          ) : (
-                            "No codes yet."
-                          )}{" "}
-                          {(!isAdmin && !searchTerm) && (
-                            <button
-                              onClick={() => {
-                                setActionItem(null);
-                                setActionType("create");
-                                setModalOpen(true);
-                              }}
-                              className="text-indigo-500 hover:underline font-medium"
-                            >
-                              Create one
-                            </button>
-                          )}
-                        </p>
-                      </motion.div>
-                    </td>
+        <div className="flex flex-col w-full h-auto relative text-black">
+          {resourceLoading && filteredItems.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-black text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-20 w-full">
+              Refreshing data...
+            </div>
+          ) : !resourceLoading && filteredItems.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center text-black text-[11px] font-black uppercase tracking-[0.2em] py-20 w-full">
+              No codes found
+            </div>
+          ) : (
+            <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar text-black">
+              <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px] text-black">
+                <thead className="sticky top-0 z-10 text-black">
+                  <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-black">
+                    <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-left">Lookup Code</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-left">Description</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">Sequence</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">System</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">Status</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">Actions</th>
                   </tr>
-                )}
-
-                {/* Data rows with DnD */}
-                {!resourceLoading && paginatedItems.length > 0 && (
+                </thead>
+                <tbody className="text-black">
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -526,90 +404,89 @@ export default function CodePage() {
                       </AnimatePresence>
                     </SortableContext>
                   </DndContext>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        {/* Footer & Standard Pagination - INSIDE CARD */}
-        <AnimatePresence>
-          {items.length > 0 && (
-            <div className="w-full px-6 py-4 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/60 flex flex-col md:flex-row items-center justify-between gap-4 transition-colors shrink-0">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Page Size:</span>
-                  <select
-                    value={pageSize}
-                    onChange={(e) => {
-                      setPageSize(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="px-3 h-7 text-[10px] font-black bg-slate-50 dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none cursor-pointer hover:border-pink-500/50 uppercase tracking-widest"
-                  >
-                    {[10, 25, 50, 100].map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="hidden sm:flex items-center gap-2 border-l border-slate-200 dark:border-slate-800 pl-4">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                    <span className="text-slate-900 dark:text-white">{filteredItems.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span>
-                    <span className="mx-1.5 text-slate-400">—</span>
-                    <span className="text-slate-900 dark:text-white">{Math.min(currentPage * pageSize, filteredItems.length)}</span>
-                    <span className="mx-2 lowercase font-bold italic tracking-normal">of</span>
-                    <span className="text-slate-900 dark:text-white">{filteredItems.length}</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 transition-all"
-                >
-                  <ChevronsLeft size={16} strokeWidth={2.5} />
-                </button>
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 transition-all"
-                >
-                  <ChevronLeft size={16} strokeWidth={2.5} />
-                </button>
-
-                <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1" />
-
-                <div className="px-3 flex items-center gap-2">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Page</span>
-                  <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
-                    <span className="text-[12px] font-black text-pink-600 leading-none">{currentPage}</span>
-                    <span className="text-[10px] font-black text-slate-300">/</span>
-                    <span className="text-[10px] font-black text-slate-500 leading-none">{totalPages || 1}</span>
-                  </div>
-                </div>
-
-                <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1" />
-
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage >= totalPages}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 transition-all"
-                >
-                  <ChevronRight size={16} strokeWidth={2.5} />
-                </button>
-                <button
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage >= totalPages}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 transition-all"
-                >
-                  <ChevronsRight size={16} strokeWidth={2.5} />
-                </button>
-              </div>
+                </tbody>
+              </table>
             </div>
           )}
-        </AnimatePresence>
+        </div>
+
+        {/* Footer & Standard Pagination - INSIDE CARD */}
+        {items.length > 0 && (
+          <div className="w-full px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 transition-colors shrink-0 text-black">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2.5">
+                <span className="text-[10px] font-black uppercase tracking-widest text-black">Page Size:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 h-7 text-[10px] font-black bg-slate-50 dark:bg-slate-800 text-black border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none cursor-pointer uppercase tracking-widest"
+                >
+                  {[10, 25, 50, 100].map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-2 border-l border-slate-200 dark:border-slate-800 pl-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-black">
+                  <span className="text-black">{filteredItems.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span>
+                  <span className="mx-1.5 text-black">—</span>
+                  <span className="text-black">{Math.min(currentPage * pageSize, filteredItems.length)}</span>
+                  <span className="mx-2 lowercase font-bold italic tracking-normal text-black">of</span>
+                  <span className="text-black">{filteredItems.length}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-black hover:bg-white disabled:opacity-30 transition-all bg-transparent hover:bg-transparent"
+              >
+                <ChevronsLeft size={16} strokeWidth={2.5} />
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-black hover:bg-white disabled:opacity-30 transition-all bg-transparent hover:bg-transparent"
+              >
+                <ChevronLeft size={16} strokeWidth={2.5} />
+              </button>
+
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+
+              <div className="px-3 flex items-center gap-2 text-black">
+                <span className="text-[10px] font-black uppercase tracking-widest">Page</span>
+                <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
+                  <span className="text-[12px] font-black leading-none">{currentPage}</span>
+                  <span className="text-[10px] font-black">/</span>
+                  <span className="text-[10px] font-black leading-none">{totalPages || 1}</span>
+                </div>
+              </div>
+
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-black hover:bg-white disabled:opacity-30 transition-all bg-transparent hover:bg-transparent"
+              >
+                <ChevronRight size={16} strokeWidth={2.5} />
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage >= totalPages}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-black hover:bg-white disabled:opacity-30 transition-all bg-transparent hover:bg-transparent"
+              >
+                <ChevronsRight size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+          </div>
+        )}
       </motion.div>
 
 
