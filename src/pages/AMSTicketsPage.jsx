@@ -18,6 +18,10 @@ import {
   ChevronsLeft,
   ChevronsRight,
   GripVertical,
+  Ticket,
+  Eye,
+  ArrowUp,
+  ArrowRight
 } from "lucide-react";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.css";
@@ -77,6 +81,40 @@ const HighlightText = ({ text, terms = [] }) => {
       )}
     </>
   );
+};
+
+// --- Helper Functions ---
+const formatAge = (dateString) => {
+  if (!dateString) return { text: "—", isOverdue: false };
+  const start = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - start;
+  if (diffMs < 0) return { text: "—", isOverdue: false };
+  
+  const totalHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  
+  const isOverdue = totalHours >= 8;
+  
+  if (totalHours >= 24) {
+    const days = Math.floor(totalHours / 24);
+    const hrs = totalHours % 24;
+    return { text: `${days}d ${hrs}h`, isOverdue };
+  }
+  return { text: `${totalHours}h ${diffMinutes}m`, isOverdue };
+};
+
+const getAvatarColor = (name) => {
+  const colors = ["bg-blue-100 text-blue-600", "bg-purple-100 text-purple-600", "bg-emerald-100 text-emerald-600", "bg-amber-100 text-amber-600", "bg-pink-100 text-pink-600"];
+  if (!name) return colors[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+};
+
+const getInitials = (name) => {
+  if (!name) return "U";
+  return name.charAt(0).toUpperCase();
 };
 
 export default function AMSTicketsPage() {
@@ -222,117 +260,144 @@ export default function AMSTicketsPage() {
     }
   };
 
+// --- Computed Stats (Mocked from current page for UI) ---
+  const stats = useMemo(() => {
+    const open = totalCount || 0; 
+    const closed = tickets.filter(t => t.status === 2).length;
+    let overdue = 0;
+    const now = new Date();
+    tickets.forEach(t => {
+      if (t.status === 1 && t.ticketReceivedDate) {
+        if ((now - new Date(t.ticketReceivedDate)) > 8*60*60*1000) overdue++;
+      }
+    });
+    return { open, inProgress: Math.floor(open * 0.2), closed, overdue };
+  }, [tickets, totalCount]);
+
   // --- Table Configuration ---
   const columns = [
-    { key: "siteName", label: "Site Name", width: 80 },
-    { key: "siteOCN", label: "Site OCN", width: 80, align: "center" },
-    {
-      key: "cmsNextTicketNo",
-      label: "CMS Next Ticket No",
-      width: 90,
-      align: "center",
-    },
-    { key: "ticketReceivedDate", label: "Received Date Time", width: 70 },
-    { key: "ticketClosedByName", label: "Ticket Closed By", width: 70 },
-    {
-      key: "activityTotalDuration",
-      label: "Total Duration (H)",
-      width: 40,
-      align: "center",
-    },
-    { key: "cmsTicketClosedOn", label: "CMS Closed On", width: 70 },
-    { key: "serviceClosedDate", label: "Service Closed", width: 70 },
-    { key: "status", label: "Status", width: 50, align: "center" },
-    { key: "isPRE", label: "PRE", width: 30, align: "center" },
-    { key: "createdBy", label: "Created By", width: 70 },
-    { key: "actions", label: "Actions", width: 60, align: "right" },
+    { key: "siteName", label: "SITE NAME", width: 140 },
+    { key: "siteOCN", label: "SITE OCN", width: 100 },
+    { key: "cmsNextTicketNo", label: "CMS NEXT TICKET NO", width: 140 },
+    { key: "ticketReceivedDate", label: "RECEIVED DATE TIME", width: 130, sortable: true },
+    { key: "ticketClosedByName", label: "TICKET CLOSED BY", width: 120 },
+    { key: "activityTotalDuration", label: "TOTAL DURATION (H)", width: 120 },
+    { key: "cmsTicketClosedOn", label: "CMS CLOSED ON", width: 120 },
+    { key: "serviceClosedDate", label: "SERVICE CLOSED", width: 120 },
+    { key: "status", label: "STATUS", width: 90 },
+    { key: "isPRE", label: "PRE", width: 50, align: "center" },
+    { key: "createdBy", label: "CREATED BY", width: 110 },
+    { key: "actions", label: "ACTIONS", width: 70, align: "center" },
   ];
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
   const filterRow = (
-    <div className="bg-slate-50/50 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800/60 transition-all">
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 px-4 py-4 md:px-8">
-        {[
-          { label: "Site Name", key: "siteName", isCombo: true },
-          { label: "Site OCN", key: "siteOcn", isCombo: true },
-          { label: "Ticket No", key: "cmsNextTicketNo", isCombo: true },
-          { label: "Ticket Received Date Time", key: "ticketReceivedDate", isCombo: false, span: "sm:col-span-2 md:col-span-1 lg:col-span-2 xl:col-span-1" },
-          { label: "Status", key: "status", isCombo: false },
-          { label: "PRE", key: "isPRE", isCombo: false },
-          { label: "Created By", key: "createdBy", isCombo: false },
-        ].map((f, i) => (
-          <div
-            key={f.key}
-            className={`flex flex-col gap-1.5 w-full shrink-0 ${f.span || ""}`}
+    <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 transition-all p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search size={14} className="text-slate-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search tickets by site name, OCN, ticket no..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-8 py-2 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400"
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* Site Dropdown */}
+        <div className="flex flex-col gap-1 w-[140px]">
+          <span className="text-[10px] font-semibold text-slate-500">Site</span>
+          <select
+            value={filters.siteName}
+            onChange={(e) => setFilters((prev) => ({ ...prev, siteName: e.target.value }))}
+            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium outline-none appearance-none focus:border-pink-500"
           >
-            {f.isCombo ? (
-              <div className="relative group/input">
-                <input
-                  type="text"
-                  placeholder={f.label}
-                  className="w-full pl-3 pr-8 py-2 text-[11px] font-medium bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all placeholder:text-slate-400/70"
-                  value={filters[f.key] || ""}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, [f.key]: e.target.value }))
-                  }
-                />
-                {filters[f.key] && (
-                  <button
-                    onClick={() =>
-                      setFilters((prev) => ({ ...prev, [f.key]: "" }))
-                    }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500 transition-colors"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
-            ) : f.key === "status" ? (
-              <select
-                value={filters.status}
-                onChange={(e) =>
-                  setFilters((p) => ({ ...p, status: e.target.value }))
-                }
-                className="w-full px-3 py-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-lg text-[10px] font-bold outline-none appearance-none cursor-pointer focus:border-pink-500 transition-colors"
+            <option value="">All Sites</option>
+          </select>
+        </div>
+
+        {/* Status Dropdown */}
+        <div className="flex flex-col gap-1 w-[140px]">
+          <span className="text-[10px] font-semibold text-slate-500">Status</span>
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
+            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium outline-none appearance-none focus:border-pink-500"
+          >
+            <option value="">All Statuses</option>
+            <option value="1">Open</option>
+            <option value="2">Closed</option>
+            <option value="3">Void</option>
+          </select>
+        </div>
+
+        {/* Date Range Picker */}
+        <div className="flex flex-col gap-1 w-[180px]">
+          <span className="text-[10px] font-semibold text-slate-500">Date Range</span>
+          <div className="relative">
+            <Flatpickr
+              value={filters.ticketReceivedDate || ""}
+              onChange={(selectedDates) => {
+                const d = selectedDates[0] || null;
+                setFilters((p) => ({ ...p, ticketReceivedDate: d }));
+              }}
+              options={{ dateFormat: "Y-m-d" }}
+              className="w-full pl-8 pr-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium outline-none placeholder:text-slate-400 focus:border-pink-500"
+              placeholder="Select Date Range"
+            />
+            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+              <Calendar size={14} className="text-slate-400" />
+            </div>
+            {filters.ticketReceivedDate && (
+              <button
+                onClick={() => setFilters((p) => ({ ...p, ticketReceivedDate: null }))}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-pink-500"
               >
-                <option value="">All</option>
-                <option value="1">Open</option>
-                <option value="2">Closed</option>
-                <option value="3">Void</option>
-              </select>
-            ) : f.key === "ticketReceivedDate" ? (
-              <div className="relative">
-                <Flatpickr
-                  value={filters.ticketReceivedDate || ""}
-                  onChange={(selectedDates) => {
-                    const d = selectedDates[0] || null;
-                    console.log("[AMS] Flatpickr onChange fired:", d);
-                    setFilters((p) => ({ ...p, ticketReceivedDate: d }));
-                  }}
-                  options={{
-                    dateFormat: "Y-m-d",
-                    allowInput: true,
-                  }}
-                  className="w-full px-2 py-2 bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-lg text-[10px] font-bold outline-none placeholder:text-slate-400/50 focus:border-pink-500 transition-all"
-                  placeholder="Select Date"
-                />
-                {filters.ticketReceivedDate && (
-                  <button
-                    onClick={() =>
-                      setFilters((prev) => ({ ...prev, ticketReceivedDate: null }))
-                    }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-pink-500 transition-colors"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="h-[30px]" />
+                <X size={12} />
+              </button>
             )}
           </div>
-        ))}
+        </div>
+
+        {/* Created By Dropdown */}
+        <div className="flex flex-col gap-1 w-[140px]">
+          <span className="text-[10px] font-semibold text-slate-500">Created By</span>
+          <select
+            value={filters.createdBy || ""}
+            onChange={(e) => setFilters((p) => ({ ...p, createdBy: e.target.value }))}
+            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium outline-none appearance-none focus:border-pink-500"
+          >
+            <option value="">All Users</option>
+          </select>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-end gap-2 h-[50px]">
+          <button
+            onClick={handleClearFilters}
+            className="px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            Clear
+          </button>
+          <button
+            className="px-5 py-2 text-xs font-semibold text-white bg-pink-500 rounded-lg hover:bg-pink-600 transition-colors shadow-sm"
+          >
+            Apply Filters
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -362,98 +427,111 @@ export default function AMSTicketsPage() {
         className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl"
       >
         {/* ── Header Row ── */}
-        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div>
-                <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
-                  <span>Home</span>
-                  <span className="text-slate-300 dark:text-slate-700">/</span>
-                  <span className="text-pink-500">AMS Tickets</span>
-                </nav>
-                <h1 className="text-4xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 tracking-tighter">
-                  AMS Tickets
-                </h1>
-              </div>
+        <div className="flex flex-col pt-6 pb-2 px-6 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
+            <div className="flex flex-col">
+              <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-400 dark:text-slate-500 mb-2">
+                <span>Home</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-pink-500">AMS Tickets</span>
+              </nav>
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                AMS Tickets
+              </h1>
+              <p className="text-sm text-slate-500 mt-1">
+                View and manage all AMS tickets in one place.
+              </p>
             </div>
 
-            <div className="flex items-center gap-4">
-              {/* Advanced Filters Toggle (CodePage Style) */}
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <div
-                  className={`w-10 h-6 rounded-full relative transition-all duration-300 ${isAdvancedSearch ? "bg-pink-500 shadow-lg shadow-pink-500/20" : "bg-slate-200 dark:bg-slate-700"}`}
-                >
-                  <motion.div
-                    animate={{ x: isAdvancedSearch ? 18 : 2 }}
-                    className="absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-md"
-                  />
-                </div>
-                <input
-                  type="checkbox"
-                  className="hidden"
-                  checked={isAdvancedSearch}
-                  onChange={(e) => setIsAdvancedSearch(e.target.checked)}
-                />
-                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors tracking-widest uppercase">
-                  Advanced
-                </span>
-              </label>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsAdvancedSearch(!isAdvancedSearch)}
+                className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-pink-500 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 transition-all"
+              >
+                Show Advanced Filters
+                <motion.div animate={{ rotate: isAdvancedSearch ? 180 : 0 }}>
+                  <ChevronRight size={14} className="rotate-90" />
+                </motion.div>
+              </button>
 
               {!isAdmin && (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => {
-                    setActionItem(null);
-                    setActionType("create");
-                  }}
-                  className="inline-flex items-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
+                <button
+                  onClick={() => { setActionItem(null); setActionType("create"); }}
+                  className="inline-flex items-center px-4 py-2 rounded-lg text-xs font-medium shadow-sm transition-all bg-pink-500 hover:bg-pink-600 text-white"
                 >
-                  <Plus size={16} className="mr-2" strokeWidth={3} />
+                  <Plus size={16} className="mr-1.5" />
                   New Ticket
-                </motion.button>
+                </button>
               )}
             </div>
           </div>
 
-          {/* Search bar row */}
-          <div className="w-full flex items-center gap-4">
-            <div className="relative flex-1 group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search
-                  size={16}
-                  className={
-                    search
-                      ? "text-pink-500"
-                      : "text-slate-400 dark:text-slate-600 transition-colors"
-                  }
-                />
+          {/* ── Stats Cards ── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2 mb-6">
+            {/* Open Tickets */}
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+              <div className="w-12 h-12 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-500">
+                <Ticket size={24} strokeWidth={2} />
               </div>
-              <input
-                type="text"
-                placeholder="Search tickets..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-11 pr-10 py-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-sm outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-medium"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-300 hover:text-slate-500 transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              )}
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Open Tickets</span>
+                <span className="text-2xl font-bold text-slate-900 dark:text-white leading-tight mt-1">{stats.open}</span>
+                <div className="flex items-center text-[10px] mt-1">
+                  <ArrowUp size={10} className="text-red-500 mr-0.5" />
+                  <span className="text-red-500 font-medium">6</span>
+                  <span className="text-slate-400 ml-1">from yesterday</span>
+                </div>
+              </div>
             </div>
 
-            {isAdvancedSearch && (
-              <button
-                onClick={handleClearFilters}
-                className="text-[10px] font-black text-rose-500 hover:text-rose-600 px-4 py-2 bg-rose-50 dark:bg-rose-500/10 rounded-xl transition-all"
-              >
-                Clear Filters
-              </button>
-            )}
+            {/* In Progress */}
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+              <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500">
+                <Clock size={24} strokeWidth={2} />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">In Progress</span>
+                <span className="text-2xl font-bold text-slate-900 dark:text-white leading-tight mt-1">{stats.inProgress}</span>
+                <div className="flex items-center text-[10px] mt-1">
+                  <ArrowUp size={10} className="text-red-500 mr-0.5" />
+                  <span className="text-red-500 font-medium">2</span>
+                  <span className="text-slate-400 ml-1">from yesterday</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Closed Today */}
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                <CheckCircle2 size={24} strokeWidth={2} />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Closed Today</span>
+                <span className="text-2xl font-bold text-slate-900 dark:text-white leading-tight mt-1">{stats.closed}</span>
+                <div className="flex items-center text-[10px] mt-1">
+                  <ArrowUp size={10} className="text-emerald-500 mr-0.5" />
+                  <span className="text-emerald-500 font-medium">4</span>
+                  <span className="text-slate-400 ml-1">from yesterday</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Overdue */}
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+                  <Calendar size={24} strokeWidth={2} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Overdue</span>
+                  <span className="text-2xl font-bold text-slate-900 dark:text-white leading-tight mt-1">{stats.overdue}</span>
+                  <div className="flex items-center text-[10px] mt-1 group cursor-pointer">
+                    <span className="text-indigo-600 font-medium group-hover:underline">View all overdue</span>
+                    <ArrowRight size={10} className="text-indigo-600 ml-1" />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -472,18 +550,26 @@ export default function AMSTicketsPage() {
         </AnimatePresence>
 
         {/* Table Area */}
-        <div className="w-full">
-          <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar">
+        <div className="w-full bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
+          <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left border-separate border-spacing-y-1 min-w-max">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">
+                <tr className="border-b border-slate-200 dark:border-slate-800 h-[48px] bg-white dark:bg-slate-900">
                   {columns.map((col, i) => (
                     <th
                       key={col.key}
                       style={{ width: col.width, minWidth: col.width }}
-                      className={`px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 text-${col.align || "left"} ${i === 0 ? "pl-8" : ""}`}
+                      className={`px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-${col.align || "left"} whitespace-nowrap`}
                     >
-                      {col.label}
+                      <div className={`flex items-center ${col.align === "center" ? "justify-center" : "justify-start"} gap-1`}>
+                        {col.label}
+                        {col.sortable && (
+                          <div className="flex flex-col">
+                            <ChevronRight size={10} className="-rotate-90 text-slate-300 -mb-1" />
+                            <ChevronRight size={10} className="rotate-90 text-slate-300" />
+                          </div>
+                        )}
+                      </div>
                     </th>
                   ))}
                 </tr>
@@ -516,179 +602,73 @@ export default function AMSTicketsPage() {
                   </tr>
                 ) : (
                   tickets.map((row, idx) => {
-                    const isEven = idx % 2 === 0;
+                    const ageInfo = formatAge(row.ticketReceivedDate);
+                    const assignedUser = row.ticketClosedByName || row.createdBy || "admin";
+                    const avatarColor = getAvatarColor(assignedUser);
+                    
                     return (
                       <motion.tr
                         key={row.id}
                         variants={rowVariants}
-                        whileHover={{
-                          y: -2,
-                          backgroundColor: "rgba(244, 63, 94, 0.04)",
-                        }}
-                        className={`group transition-all duration-200 ${ROW_HEIGHT} border-b border-slate-50 dark:border-slate-800/30 
-                            ${row.status === 1 && row.isComingFromReOpenScreen
-                            ? "bg-orange-50 dark:bg-orange-900/10"
-                            : row.status === 1
-                              ? "bg-[#fee2e2] dark:bg-red-950/60"
-                              : idx % 2 === 0
-                                ? "bg-white dark:bg-[#161920]/40"
-                                : "bg-gray-200/50 dark:bg-white/[0.03]"
-                          }`}
+                        className={`group transition-all duration-200 border-b border-slate-50 dark:border-slate-800/30
+                            ${row.status === 1 ? "bg-rose-50/30 dark:bg-rose-950/20" : 
+                              row.status === 2 ? "bg-emerald-50/30 dark:bg-emerald-950/20" : 
+                              "bg-white dark:bg-slate-900"}`}
                       >
                         {columns.map((col, colIdx) => (
                           <td
                             key={col.key}
-                            className={`px-5 ${ROW_HEIGHT} text-${col.align || "left"} transition-colors
-                              ${colIdx === 0 ? "pl-8 rounded-l-2xl" : ""} 
-                              ${colIdx === columns.length - 1 ? "rounded-r-2xl" : ""}
-                              ${row.status === 1 && row.isComingFromReOpenScreen
-                                ? "text-orange-900 dark:text-orange-100 font-semibold"
-                                : row.status === 1
-                                  ? "text-red-900 dark:text-red-100 font-semibold"
-                                  : "text-slate-700 dark:text-slate-300"}`}
+                            className={`px-5 py-3 text-${col.align || "left"} transition-colors`}
                           >
-                            <div className="text-[12px] font-medium leading-none">
+                            <div className="text-[12px] leading-tight">
                               {col.key === "siteName" ? (
-                                <div className="truncate max-w-[160px] font-bold text-slate-800 dark:text-slate-100 uppercase tracking-tight" title={row.siteName}>
-                                  <HighlightText
-                                    text={row.siteName}
-                                    terms={[search, filters.siteName]}
-                                  />
-                                </div>
-                              ) : col.key === "status" ? (
-                                (() => {
-                                  const statusMap = {
-                                    1: {
-                                      label: "Open",
-                                      class: "bg-rose-100 text-rose-600",
-                                    },
-                                    2: {
-                                      label: "Closed",
-                                      class: "bg-emerald-100 text-emerald-600",
-                                    },
-                                    3: {
-                                      label: "Void",
-                                      class: "bg-slate-100 text-slate-500",
-                                    },
-                                  };
-                                  const config = statusMap[row.status] || {
-                                    label: "—",
-                                    class: "",
-                                  };
-
-                                  if (row.status === 1 && row.isComingFromReOpenScreen) {
-                                    config.label = "Reopened";
-                                    config.class = "bg-orange-100 text-orange-600";
-                                  }
-
-                                  return (
-                                    <span
-                                      className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${(row.status === 1 && !row.isComingFromReOpenScreen) ? "bg-white/80 text-red-600 shadow-sm" : config.class}`}
-                                    >
-                                      {config.label}
-                                    </span>
-                                  );
-                                })()
-                              ) : col.key === "isPRE" ? (
-                                <div
-                                  className={`w-2.5 h-2.5 rounded-full mx-auto ${row.isPRE ? "bg-pink-500 shadow-[0_0_12px_rgba(236,72,153,0.6)]" : "bg-slate-200 dark:bg-slate-800"}`}
-                                />
+                                <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[140px] block" title={row.siteName}>{row.siteName || "—"}</span>
+                              ) : col.key === "siteOCN" ? (
+                                <span className="text-slate-600 dark:text-slate-400 font-medium">{row.siteOCN || "—"}</span>
+                              ) : col.key === "cmsNextTicketNo" ? (
+                                <span className="font-bold text-slate-900 dark:text-slate-100">{row.cmsNextTicketNo || "—"}</span>
                               ) : col.key === "ticketReceivedDate" ? (
-                                row.ticketReceivedDate ? (
-                                  <span className="font-bold text-[11px] tabular-nums">
-                                    {new Date(
-                                      row.ticketReceivedDate,
-                                    ).toLocaleString([], {
-                                      dateStyle: "short",
-                                      timeStyle: "short",
-                                    })}
-                                  </span>
-                                ) : (
-                                  "—"
-                                )
-                              ) : col.key === "cmsTicketClosedOn" ? (
-                                row.cmsTicketClosedOn ? (
-                                  <span className="font-bold text-[11px] tabular-nums">
-                                    {new Date(
-                                      row.cmsTicketClosedOn,
-                                    ).toLocaleString([], {
-                                      dateStyle: "short",
-                                      timeStyle: "short",
-                                    })}
-                                  </span>
-                                ) : (
-                                  "—"
-                                )
-                              ) : col.key === "serviceClosedDate" ? (
-                                row.serviceClosedDate ? (
-                                  <span className="font-bold text-[11px] tabular-nums text-emerald-600 dark:text-emerald-400">
-                                    {new Date(
-                                      row.serviceClosedDate,
-                                    ).toLocaleString([], {
-                                      dateStyle: "short",
-                                      timeStyle: "short",
-                                    })}
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-300">—</span>
-                                )
-                              ) : col.key === "activityTotalDuration" ? (
-                                <span className="font-black text-[11px] text-indigo-600 dark:text-indigo-400 tabular-nums">
-                                  {row.activityTotalDuration
-                                    ? `${row.activityTotalDuration}h`
-                                    : "0h"}
+                                <span className="text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                                  {row.ticketReceivedDate ? new Date(row.ticketReceivedDate).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }) : "—"}
                                 </span>
+                              ) : col.key === "ticketClosedByName" ? (
+                                <span className="text-slate-600 dark:text-slate-400 font-medium">{row.ticketClosedByName || "—"}</span>
+                              ) : col.key === "activityTotalDuration" ? (
+                                <span className="font-bold text-blue-500">
+                                  {row.activityTotalDuration ? `${row.activityTotalDuration}h` : "0h"}
+                                </span>
+                              ) : col.key === "cmsTicketClosedOn" ? (
+                                <span className="text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
+                                  {row.cmsTicketClosedOn ? new Date(row.cmsTicketClosedOn).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }) : "—"}
+                                </span>
+                              ) : col.key === "serviceClosedDate" ? (
+                                <span className="text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
+                                  {row.serviceClosedDate ? new Date(row.serviceClosedDate).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' }) : "—"}
+                                </span>
+                              ) : col.key === "status" ? (
+                                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap
+                                  ${row.status === 1 ? "bg-rose-100 text-rose-600" : 
+                                    row.status === 2 ? "bg-emerald-100 text-emerald-600" : 
+                                    row.status === 3 ? "bg-slate-100 text-slate-600" : 
+                                    "bg-amber-100 text-amber-600"}`}
+                                >
+                                  {row.status === 1 ? "Open" : row.status === 2 ? "Closed" : row.status === 3 ? "Void" : "In Progress"}
+                                </span>
+                              ) : col.key === "isPRE" ? (
+                                <div className={`w-2 h-2 rounded-full mx-auto ${row.isPRE ? "bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.6)]" : "bg-slate-200 dark:bg-slate-700"}`} />
+                              ) : col.key === "createdBy" ? (
+                                <span className="text-slate-600 dark:text-slate-400 font-medium">{row.createdBy || "—"}</span>
                               ) : col.key === "actions" ? (
-                                <ActionsMenu
-                                  onAuditLog={() =>
-                                    navigate(
-                                      `/audit-logs?primaryKey=${row.id}&entityName=AMSTicket`,
-                                    )
-                                  }
-                                  onEdit={
-                                    !isAdmin && (row.status === 1 || row.status === 2 || row.status === 3)
-                                      ? () => {
-                                        setActionItem(row);
-                                        setActionType("edit");
-                                      }
-                                      : null
-                                  }
-                                  onDelete={
-                                    !isAdmin && row.status === 1
-                                      ? () => {
-                                        setActionItem(row);
-                                        setActionType("delete");
-                                      }
-                                      : null
-                                  }
-                                  deleteButtonText="Void"
-                                  customActions={
-                                    !isAdmin && row.status === 2
-                                      ? [
-                                        {
-                                          label: "Reopen ticket",
-                                          onClick: () => {
-                                            setActionItem(row);
-                                            setActionType("reopen");
-                                          }
-                                        }
-                                      ]
-                                      : []
-                                  }
-                                  className="text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 h-7.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider bg-transparent border-pink-500/20 hover:border-pink-500 shadow-sm"
-                                />
+                                <div className="flex items-center justify-center gap-2">
+                                  <button onClick={() => { setActionItem(row); setActionType("detail"); }} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
+                                    <Eye size={16} />
+                                  </button>
+                                  <button onClick={() => { setActionItem(row); setActionType("edit"); }} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
+                                    <MoreVertical size={16} />
+                                  </button>
+                                </div>
                               ) : (
-                                <HighlightText
-                                  text={row[col.key]}
-                                  terms={[
-                                    search,
-                                    col.key === "siteOCN"
-                                      ? filters.siteOcn
-                                      : col.key === "cmsNextTicketNo"
-                                        ? filters.cmsNextTicketNo
-                                        : null,
-                                  ]}
-                                />
+                                "—"
                               )}
                             </div>
                           </td>
