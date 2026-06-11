@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  MoreVertical,
+  Edit,
   ChevronRight,
   ChevronLeft as ChevronLeftIcon,
   ChevronsLeft,
@@ -262,7 +262,7 @@ export default function AMSTicketsPage() {
 
 // --- Computed Stats (Mocked from current page for UI) ---
   const stats = useMemo(() => {
-    const open = totalCount || 0; 
+    const open = tickets.filter(t => t.status === 1).length;
     const closed = tickets.filter(t => t.status === 2).length;
     let overdue = 0;
     const now = new Date();
@@ -664,7 +664,7 @@ export default function AMSTicketsPage() {
                                     <Eye size={16} />
                                   </button>
                                   <button onClick={() => { setActionItem(row); setActionType("edit"); }} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
-                                    <MoreVertical size={16} />
+                                    <Edit size={16} />
                                   </button>
                                 </div>
                               ) : (
