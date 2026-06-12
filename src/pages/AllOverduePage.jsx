@@ -147,31 +147,8 @@ export default function AMSTicketsPage() {
     ticketReceivedDate: null,
   });
 
-  const [globalStats, setGlobalStats] = useState({ open: 0, closed: 0, inProgress: 0, overdue: 0 });
-
-  const fetchGlobalStats = async () => {
-    try {
-      const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, ".0000000Z");
-      const [openRes, closedRes, overdueRes] = await Promise.all([
-        amsTicketApi.getAll({ status: 1, page: 1, perPage: 1 }),
-        amsTicketApi.getAll({ status: 2, page: 1, perPage: 1 }),
-        amsTicketApi.getAll({ status: 1, dateTo: eightHoursAgo, page: 1, perPage: 1 })
-      ]);
-      const openCount = openRes.totalCount || 0;
-      setGlobalStats({
-        open: openCount,
-        closed: closedRes.totalCount || 0,
-        inProgress: Math.floor(openCount * 0.2),
-        overdue: overdueRes.totalCount || 0,
-      });
-    } catch (e) {
-      console.error("Failed to fetch global stats", e);
-    }
-  };
-
   // --- Initialization ---
   useEffect(() => {
-    fetchGlobalStats();
     fetchTickets();
   }, []);
 
@@ -213,15 +190,17 @@ export default function AMSTicketsPage() {
         }
         : {};
 
-      console.log("[AMS] fetchTickets extraParams:", JSON.stringify(extraParams));
+      const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, ".0000000Z");
 
       const response = await amsTicketApi.getAll({
         page: currentPage,
         perPage: pageSize,
         search: search,
-        sortKey: "status",
+        sortKey: "ticketReceivedDate",
         sortDir: "asc",
         ...extraParams,
+        status: 1,
+        dateTo: eightHoursAgo,
       });
 
       let items = response.items || [];
@@ -260,7 +239,6 @@ export default function AMSTicketsPage() {
       toast("Ticket voided successfully");
       setActionItem(null);
       setActionType("");
-      fetchGlobalStats();
       fetchTickets();
     } catch (err) {
       toast("Failed to void ticket", "error");
@@ -276,7 +254,6 @@ export default function AMSTicketsPage() {
       toast("Ticket reopened successfully");
       setActionItem(null);
       setActionType("");
-      fetchGlobalStats();
       fetchTickets();
     } catch (err) {
       toast("Failed to reopen ticket", "error");
@@ -285,8 +262,6 @@ export default function AMSTicketsPage() {
     }
   };
 
-  // --- Computed Stats ---
-  const stats = globalStats;
 
   // --- Table Configuration ---
   const columns = [
@@ -431,12 +406,16 @@ export default function AMSTicketsPage() {
                 <span className="text-slate-300">/</span>
                 <span className="text-pink-500">AMS Tickets</span>
               </nav>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                AMS Tickets
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                <button
+                  onClick={() => navigate(-1)}
+                  className="p-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-pink-500 hover:text-white rounded-lg transition-colors"
+                  title="Go Back"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                Overdue Tickets
               </h1>
-              <p className="text-sm text-slate-500 mt-1">
-                View and manage all AMS tickets in one place.
-              </p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -462,76 +441,7 @@ export default function AMSTicketsPage() {
             </div>
           </div>
 
-          {/* ── Stats Cards ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2 mb-6">
-            {/* Open Tickets */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-              <div className="w-12 h-12 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-500">
-                <Ticket size={24} strokeWidth={2} />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Open Tickets</span>
-                <span className="text-2xl font-bold text-slate-900 dark:text-white leading-tight mt-1">{stats.open}</span>
-                <div className="flex items-center text-[10px] mt-1">
-                  <ArrowUp size={10} className="text-red-500 mr-0.5" />
-                  <span className="text-red-500 font-medium">6</span>
-                  <span className="text-slate-400 ml-1">from yesterday</span>
-                </div>
-              </div>
-            </div>
 
-            {/* In Progress */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500">
-                <Clock size={24} strokeWidth={2} />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">In Progress</span>
-                <span className="text-2xl font-bold text-slate-900 dark:text-white leading-tight mt-1">{stats.inProgress}</span>
-                <div className="flex items-center text-[10px] mt-1">
-                  <ArrowUp size={10} className="text-red-500 mr-0.5" />
-                  <span className="text-red-500 font-medium">2</span>
-                  <span className="text-slate-400 ml-1">from yesterday</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Closed Today */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                <CheckCircle2 size={24} strokeWidth={2} />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Closed</span>
-                <span className="text-2xl font-bold text-slate-900 dark:text-white leading-tight mt-1">{stats.closed}</span>
-                <div className="flex items-center text-[10px] mt-1">
-                  <ArrowUp size={10} className="text-emerald-500 mr-0.5" />
-                  <span className="text-emerald-500 font-medium">4</span>
-                  <span className="text-slate-400 ml-1">from yesterday</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Overdue */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                  <Calendar size={24} strokeWidth={2} />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Overdue</span>
-                  <span className="text-2xl font-bold text-slate-900 dark:text-white leading-tight mt-1">{stats.overdue}</span>
-                  <div 
-                    onClick={() => navigate("/overdue-tickets")}
-                    className="flex items-center text-[10px] mt-1 group cursor-pointer"
-                  >
-                    <span className="text-indigo-600 font-medium group-hover:underline">View all overdue</span>
-                    <ArrowRight size={10} className="text-indigo-600 ml-1" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Advanced Filter Row (Visible only if toggled) */}
@@ -768,7 +678,6 @@ export default function AMSTicketsPage() {
           await amsTicketApi.create(payload);
           toast("Ticket created successfully");
           setActionType("");
-          fetchGlobalStats();
           fetchTickets();
         }}
       />
@@ -794,7 +703,6 @@ export default function AMSTicketsPage() {
               }
               setActionType("");
               setActionItem(null);
-              fetchGlobalStats();
               fetchTickets();
             }}
           />

@@ -70,9 +70,9 @@ export default function LoginPage() {
   const location = useLocation();
   const from = location.state?.from?.pathname || "/";
 
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(() => localStorage.getItem("remembered_username") || "");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem("remembered_username"));
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [localError, setLocalError] = useState("");
   const [showLoggedOutMessage, setShowLoggedOutMessage] = useState(false);
@@ -102,6 +102,11 @@ export default function LoginPage() {
 
     const success = await login({ email: username, password, rememberMe });
     if (success) {
+      if (rememberMe) {
+        localStorage.setItem("remembered_username", username);
+      } else {
+        localStorage.removeItem("remembered_username");
+      }
       // Ensure the unclosed tickets modal will show after this fresh login
       sessionStorage.removeItem("hasSeenUnclosedTicketsModal");
       navigate(from, { replace: true });

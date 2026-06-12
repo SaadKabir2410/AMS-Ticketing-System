@@ -114,8 +114,13 @@ export async function loginWithPassword(username, password, rememberMe = false) 
     token_type: data.token_type ?? "Bearer",
   };
 
-  const storage = rememberMe ? localStorage : sessionStorage;
-  storage.setItem(STORAGE_KEY, JSON.stringify(session));
+  if (rememberMe) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    sessionStorage.removeItem(STORAGE_KEY);
+  } else {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    localStorage.removeItem(STORAGE_KEY);
+  }
   logger.info("Login successful — session stored", {
     token_type: session.token_type,
     expires_in: data.expires_in,

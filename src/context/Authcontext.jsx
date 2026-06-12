@@ -199,8 +199,13 @@ export function AuthProvider({ children }) {
         permissions: permissionsMap,
       };
 
-      const storage = rememberMe ? localStorage : sessionStorage;
-      storage.setItem(SESSION_KEY, JSON.stringify(userProfile));
+      if (rememberMe) {
+        localStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
+        sessionStorage.removeItem(SESSION_KEY);
+      } else {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
+        localStorage.removeItem(SESSION_KEY);
+      }
       setUser(userProfile);
       setLoading(false);
       return true;
