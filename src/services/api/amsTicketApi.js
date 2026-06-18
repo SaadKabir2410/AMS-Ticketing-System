@@ -81,10 +81,14 @@ const ticketTypeMap = {
     "Corrective": 1,
     "Service Planned": 2,
     "Project": 3,
+    "Service Demand": 4,
+    "Inquiry": 5,
+    "Complaint": 6,
 };
 
 const ticketIncomingChannelMap = {
     "Phone": 1,
+    "Phone Call": 1,
     "Email": 2,
     "Walk In": 3,
     "WhatsApp": 4,
@@ -92,6 +96,7 @@ const ticketIncomingChannelMap = {
     "Whatsapp/viber": 4,
     "Whatsapp/Viber": 4,
     "Viber": 4,
+    "Teams": 5,
 };
 
 const servicePlannedTypeMap = {
@@ -99,6 +104,10 @@ const servicePlannedTypeMap = {
     "Upgrade": 2,
     "Installation": 3,
     "Report": 4,
+    "Rule": 5,
+    "Configuration": 6,
+    "TSB": 7,
+    "Others": 8,
 };
 
 const activityTypeMap = {

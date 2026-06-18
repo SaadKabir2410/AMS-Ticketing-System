@@ -67,6 +67,13 @@ function Combobox({
   loading,
   error,
 }) {
+  const isEqual = (v1, v2) => {
+    if (typeof v1 === "string" && typeof v2 === "string") {
+      return v1.toLowerCase() === v2.toLowerCase();
+    }
+    return v1 === v2;
+  };
+
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef(null);
@@ -90,6 +97,37 @@ function Combobox({
     return label.toLowerCase().includes(search.toLowerCase());
   });
 
+  // ─── FIX: resolve the display label safely ───────────────────────────────
+  // Handles three cases:
+  // 1. value is a GUID  → match by opt.value
+  // 2. value is a name string → match by opt.label (API returned name not id)
+  // 3. options not loaded yet → show placeholder, never show raw GUID
+  const resolveDisplayLabel = () => {
+    if (!value) return placeholder;
+
+    const opts = options || [];
+
+    // Case 1: match by value (GUID / id)
+    const matchById = opts.find((opt) => isEqual(opt.value ?? opt, value));
+    if (matchById) return matchById.label || String(matchById.value ?? matchById);
+
+    // Case 2: match by label (value IS the display name string)
+    const matchByLabel = opts.find((opt) =>
+      isEqual(opt.label || String(opt), value)
+    );
+    if (matchByLabel) return matchByLabel.label || String(matchByLabel.value ?? matchByLabel);
+
+    // Options still loading — don't render the raw value
+    if (loading || opts.length === 0) return placeholder;
+
+    // Options loaded but nothing matched — still hide the raw value
+    return placeholder;
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const displayLabel = resolveDisplayLabel();
+  const hasResolvedValue = value && displayLabel !== placeholder;
+
   return (
     <div className="relative w-full" ref={containerRef}>
       <div
@@ -100,12 +138,18 @@ function Combobox({
           } ${error ? "border-rose-500" : ""}`}
       >
         <div className="flex items-center gap-3 truncate">
-          <Search size={14} className={`text-slate-400 group-focus-within:text-pink-500 transition-colors ${!value ? "opacity-50" : "opacity-100"}`} />
+          <Search
+            size={14}
+            className={`text-slate-400 group-focus-within:text-pink-500 transition-colors ${!hasResolvedValue ? "opacity-50" : "opacity-100"
+              }`}
+          />
           <span
-            className={`truncate ${!value ? "text-slate-600/80" : "text-black dark:text-white"
+            className={`truncate ${!hasResolvedValue
+              ? "text-slate-600/80"
+              : "text-black dark:text-white"
               }`}
           >
-            {options?.find(opt => (opt.value || opt) === value)?.label || value || placeholder}
+            {displayLabel}
           </span>
         </div>
         <ChevronDown
@@ -145,18 +189,22 @@ function Combobox({
               {loading ? (
                 <div className="p-8 text-center flex flex-col items-center gap-2">
                   <div className="w-4 h-4 border-2 border-pink-500/20 border-t-pink-500 rounded-full animate-spin" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Loading...</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    Loading...
+                  </span>
                 </div>
               ) : filteredOptions.length === 0 ? (
                 <div className="p-10 text-center flex flex-col items-center gap-1.5">
                   <AlertCircle size={20} className="text-slate-300" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">No results found</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    No results found
+                  </span>
                 </div>
               ) : (
                 <div className="px-2 space-y-0.5">
                   {filteredOptions.map((opt, idx) => {
                     const label = opt.label || String(opt);
-                    const val = opt.value || opt;
+                    const val = opt.value ?? opt;
                     return (
                       <button
                         key={idx}
@@ -166,13 +214,13 @@ function Combobox({
                           setOpen(false);
                           setSearch("");
                         }}
-                        className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs transition-all flex items-center justify-between group/opt ${value === val
+                        className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs transition-all flex items-center justify-between group/opt ${isEqual(value, val)
                           ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 font-bold"
                           : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/80 hover:text-black dark:hover:text-white"
                           }`}
                       >
                         <span className="truncate">{label}</span>
-                        {value === val && (
+                        {isEqual(value, val) && (
                           <motion.div
                             layoutId="active-check"
                             initial={{ scale: 0 }}
@@ -228,6 +276,7 @@ export default function TicketModal({
   onSubmit: onSubmitProp,
   ticket = null,
   submitting = false,
+  viewMode = false,
 }) {
   const onSubmit = onSave || onSubmitProp;
   const isEdit = !!ticket;
@@ -240,6 +289,7 @@ export default function TicketModal({
   const [errors, setErrors] = useState({});
 
   const [loadingApis, setLoadingApis] = useState(false);
+  const [optionsError, setOptionsError] = useState(null);
   const [apiData, setApiData] = useState({
     siteNames: [],
     customers: [],
@@ -286,29 +336,58 @@ export default function TicketModal({
         ...ticket,
         siteName: ticket.siteId || ticket.siteName || "",
         customer: ticket.customerUserId || ticket.customer || "",
-        ticketAssignedTo: ticket.ticketAssignedToId || ticket.ticketAssignedTo || "",
-        ticketForwardedBy: ticket.ticketForwardedById || ticket.ticketForwardedBy || "",
-        cmsTicketAddedBy: ticket.cmsTicketAddedById || ticket.cmsTicketAddedBy || "",
-        ticketResolutionVerifiedBy: ticket.ticketResolutionVerifiedById || ticket.ticketResolutionVerifiedBy || "",
-        cmsTicketClosedBy: ticket.cmsTicketClosedById || ticket.cmsTicketClosedBy || "",
-        ticketType: amsTicketApi.resolveTicketTypeLabel(ticket.ticketType) || "",
-        servicePlannedType: amsTicketApi.resolveServicePlannedTypeLabel(ticket.servicePlannedType) || "",
-        ticketIncomingChannel: amsTicketApi.resolveTicketIncomingChannelLabel(ticket.ticketIncomingChannel) || "",
-        receivedAt: ticket.receivedAt ? ticket.receivedAt.slice(0, 16) : "",
+        ticketAssignedTo:
+          ticket.ticketAssignedToId || ticket.ticketAssignedTo || "",
+        ticketForwardedBy:
+          ticket.ticketForwardedById || ticket.ticketForwardedBy || "",
+        cmsTicketAddedBy:
+          ticket.cmsTicketAddedById || ticket.cmsTicketAddedBy || "",
+        ticketResolutionVerifiedBy:
+          ticket.ticketResolutionVerifiedById ||
+          ticket.ticketResolutionVerifiedBy ||
+          "",
+        cmsTicketClosedBy:
+          ticket.cmsTicketClosedById || ticket.cmsTicketClosedBy || "",
+        ticketType: amsTicketApi.resolveTicketTypeLabel
+          ? amsTicketApi.resolveTicketTypeLabel(ticket.ticketType)
+          : ticket.ticketType || "",
+        servicePlannedType: amsTicketApi.resolveServicePlannedTypeLabel
+          ? amsTicketApi.resolveServicePlannedTypeLabel(
+            ticket.servicePlannedType
+          )
+          : ticket.servicePlannedType || "",
+        ticketIncomingChannel: amsTicketApi.resolveTicketIncomingChannelLabel
+          ? amsTicketApi.resolveTicketIncomingChannelLabel(
+            ticket.ticketIncomingChannel
+          )
+          : ticket.ticketIncomingChannel || "",
+        receivedAt: ticket.ticketReceivedDate
+          ? ticket.ticketReceivedDate.slice(0, 16)
+          : ticket.receivedAt
+            ? ticket.receivedAt.slice(0, 16)
+            : "",
         cmsTicketAddedOn: ticket.cmsTicketAddedOn
           ? ticket.cmsTicketAddedOn.slice(0, 16)
-          : "",
+          : ticket.cMSTicketAddedOn
+            ? ticket.cMSTicketAddedOn.slice(0, 16)
+            : "",
         ticketResolutionVerifiedOn: ticket.ticketResolutionVerifiedOn
           ? ticket.ticketResolutionVerifiedOn.slice(0, 16)
           : "",
         cmsTicketClosedOn: ticket.cmsTicketClosedOn
           ? ticket.cmsTicketClosedOn.slice(0, 16)
-          : "",
+          : ticket.cMSTicketClosedOn
+            ? ticket.cMSTicketClosedOn.slice(0, 16)
+            : "",
         serviceClosedDate: ticket.serviceClosedDate
           ? ticket.serviceClosedDate.slice(0, 16)
           : "",
-        isTicketForwarded: !!(ticket.ticketForwardedById || ticket.ticketForwardedBy),
-        activities: ticket.activities || [],
+        isTicketForwarded: !!(
+          ticket.ticketForwardedById ||
+          ticket.ticketForwardedBy ||
+          ticket.isTicketForwarded
+        ),
+        activities: ticket.activities || ticket.amsTicketDetails || [],
       });
 
       amsTicketApi
@@ -317,44 +396,85 @@ export default function TicketModal({
           setForm((prev) => ({
             ...prev,
             ...fullData,
-            siteName: fullData.siteId || prev.siteName,
-            customer: fullData.customerUserId || prev.customer,
-            ticketAssignedTo: fullData.ticketAssignedToId || prev.ticketAssignedTo,
-            ticketForwardedBy: fullData.ticketForwardedById || prev.ticketForwardedBy,
-            cmsTicketAddedBy: fullData.cmsTicketAddedById || prev.cmsTicketAddedBy,
-            ticketResolutionVerifiedBy: fullData.ticketResolutionVerifiedById || prev.ticketResolutionVerifiedBy,
-            cmsTicketClosedBy: fullData.cmsTicketClosedById || prev.cmsTicketClosedBy,
-            ticketType: amsTicketApi.resolveTicketTypeLabel(fullData.ticketType) || prev.ticketType,
-            servicePlannedType: amsTicketApi.resolveServicePlannedTypeLabel(fullData.servicePlannedType) || prev.servicePlannedType,
-            ticketIncomingChannel: amsTicketApi.resolveTicketIncomingChannelLabel(fullData.ticketIncomingChannel) || prev.ticketIncomingChannel,
-            receivedAt: fullData.receivedAt
-              ? fullData.receivedAt.slice(0, 16)
-              : prev.receivedAt,
+            siteName: fullData.siteId || fullData.siteName || prev.siteName,
+            customer:
+              fullData.customerUserId || fullData.customer || prev.customer,
+            ticketAssignedTo:
+              fullData.ticketAssignedToId ||
+              fullData.ticketAssignedTo ||
+              prev.ticketAssignedTo,
+            ticketForwardedBy:
+              fullData.ticketForwardedById ||
+              fullData.ticketForwardedBy ||
+              prev.ticketForwardedBy,
+            cmsTicketAddedBy:
+              fullData.cmsTicketAddedById ||
+              fullData.cmsTicketAddedBy ||
+              prev.cmsTicketAddedBy,
+            ticketResolutionVerifiedBy:
+              fullData.ticketResolutionVerifiedById ||
+              fullData.ticketResolutionVerifiedBy ||
+              prev.ticketResolutionVerifiedBy,
+            cmsTicketClosedBy:
+              fullData.cmsTicketClosedById ||
+              fullData.cmsTicketClosedBy ||
+              prev.cmsTicketClosedBy,
+            ticketType: amsTicketApi.resolveTicketTypeLabel
+              ? amsTicketApi.resolveTicketTypeLabel(fullData.ticketType)
+              : fullData.ticketType || prev.ticketType,
+            servicePlannedType: amsTicketApi.resolveServicePlannedTypeLabel
+              ? amsTicketApi.resolveServicePlannedTypeLabel(
+                fullData.servicePlannedType
+              )
+              : fullData.servicePlannedType || prev.servicePlannedType,
+            ticketIncomingChannel:
+              amsTicketApi.resolveTicketIncomingChannelLabel
+                ? amsTicketApi.resolveTicketIncomingChannelLabel(
+                  fullData.ticketIncomingChannel
+                )
+                : fullData.ticketIncomingChannel || prev.ticketIncomingChannel,
+            receivedAt: fullData.ticketReceivedDate
+              ? fullData.ticketReceivedDate.slice(0, 16)
+              : fullData.receivedAt
+                ? fullData.receivedAt.slice(0, 16)
+                : prev.receivedAt,
             cmsTicketAddedOn: fullData.cmsTicketAddedOn
               ? fullData.cmsTicketAddedOn.slice(0, 16)
-              : prev.cmsTicketAddedOn,
+              : fullData.cMSTicketAddedOn
+                ? fullData.cMSTicketAddedOn.slice(0, 16)
+                : prev.cmsTicketAddedOn,
             ticketResolutionVerifiedOn: fullData.ticketResolutionVerifiedOn
               ? fullData.ticketResolutionVerifiedOn.slice(0, 16)
               : prev.ticketResolutionVerifiedOn,
             cmsTicketClosedOn: fullData.cmsTicketClosedOn
               ? fullData.cmsTicketClosedOn.slice(0, 16)
-              : prev.cmsTicketClosedOn,
+              : fullData.cMSTicketClosedOn
+                ? fullData.cMSTicketClosedOn.slice(0, 16)
+                : prev.cmsTicketClosedOn,
             serviceClosedDate: fullData.serviceClosedDate
               ? fullData.serviceClosedDate.slice(0, 16)
               : prev.serviceClosedDate,
-            isTicketForwarded: !!(fullData.ticketForwardedById || fullData.ticketForwardedBy),
-            activities: fullData.amsTicketDetails && fullData.amsTicketDetails.length > 0
-              ? fullData.amsTicketDetails.map((act) => ({
+            isTicketForwarded: !!(
+              fullData.ticketForwardedById ||
+              fullData.ticketForwardedBy ||
+              fullData.isTicketForwarded
+            ),
+            activities:
+              fullData.amsTicketDetails && fullData.amsTicketDetails.length > 0
+                ? fullData.amsTicketDetails.map((act) => ({
                   ...act,
-                  activityType: amsTicketApi.resolveActivityTypeLabel ? amsTicketApi.resolveActivityTypeLabel(act.activityType) : act.activityType,
+                  activityType: amsTicketApi.resolveActivityTypeLabel
+                    ? amsTicketApi.resolveActivityTypeLabel(act.activityType)
+                    : act.activityType,
                   isLikelyCause: !!act.isLikelyCause,
-                  isActivityDuringWorkingHours: !!act.isActivityDuringWorkingHours,
+                  isActivityDuringWorkingHours:
+                    !!act.isActivityDuringWorkingHours,
                 }))
-              : fullData.activities || prev.activities || [],
+                : fullData.activities || prev.activities || [],
           }));
         })
         .catch((err) =>
-          console.error("Failed to fetch secure ticket record:", err),
+          console.error("Failed to fetch secure ticket record:", err)
         );
     } else {
       setForm({
@@ -363,36 +483,60 @@ export default function TicketModal({
     }
   }, [open, isEdit, user]);
 
+  // Pre-fill ticketAssignedTo with current user when creating a new ticket
   useEffect(() => {
-    if (open && !isEdit && user) {
+    if (open && !isEdit && user?.id) {
       setForm((prev) => ({
         ...prev,
+        ticketAssignedTo: user.id,
       }));
     }
   }, [open, isEdit, user]);
 
   useEffect(() => {
+    if (!open) return;
+
+    setLoadingApis(true);
+    setOptionsError(null);
+
     Promise.all([
-      sitesApi.getAll({ perPage: 1000 }).catch(() => ({ items: [] })),
-      usersApi.getUsersList().catch(() => []),
+      sitesApi.getAll({ perPage: 100, page: 1 }).catch((err) => {
+        console.error(
+          "[TicketModal] Failed to fetch sites:",
+          err?.response?.data || err.message
+        );
+        setOptionsError("Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in.");
+        return { items: [] };
+      }),
       usersApi
         .getUsersList({
           organizationTypes: [2, 3],
           onlyLoadCurrentUser: false,
         })
-        .catch(() => []),
+        .catch((err) => {
+          console.error("[TicketModal] Failed to fetch users:", err);
+          setOptionsError("Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in.");
+          return [];
+        }),
+      usersApi
+        .getUsersList({ onlyLoadCurrentUser: true })
+        .catch((err) => {
+          console.error("[TicketModal] Failed to fetch current user:", err);
+          setOptionsError("Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in.");
+          return [];
+        }),
       codeDetailsApi
         .getListByLookupCodes({
-          lookupCodes: [
-            "TicketType",
-            "TicketIncomingChannel",
-            "ServicePlannedType",
-          ],
+          lookupCodes: ["TicketType", "TicketIncomingChannel", "ServicePlannedType"],
         })
-        .catch(() => ({})),
+        .catch((err) => {
+          console.error("[TicketModal] Failed to fetch lookups:", err);
+          setOptionsError("Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in.");
+          return {};
+        }),
     ])
-      .then(([sitesRes, usersRes, itsUsersRes, lookupsRes]) => {
-        const fetchedSites = sitesRes?.items || [];
+      .then(([sitesRes, itsUsersRes, currentUserRes, lookupsRes]) => {
+        const fetchedSites = sitesRes?.items || sitesRes?.data || (Array.isArray(sitesRes) ? sitesRes : []);
         setRawSites(fetchedSites);
 
         const ticketTypes = (lookupsRes["TicketType"] || [])
@@ -410,34 +554,67 @@ export default function TicketModal({
           .filter(Boolean)
           .sort((a, b) => a.localeCompare(b));
 
+        const itsUsersArr = Array.isArray(itsUsersRes) ? itsUsersRes : (itsUsersRes?.items || itsUsersRes?.data || []);
+        const currentUsersArr = Array.isArray(currentUserRes) ? currentUserRes : (currentUserRes?.items || currentUserRes?.data || []);
+
+        const mergedUsersMap = new Map();
+        [...itsUsersArr, ...currentUsersArr].forEach((u) => {
+          if (u?.id) mergedUsersMap.set(u.id, u);
+        });
+        if (user?.id && !mergedUsersMap.has(user.id)) {
+          mergedUsersMap.set(user.id, {
+            id: user.id,
+            name: user.name || user.userName,
+          });
+        }
+
+        const itsUsersList = Array.from(mergedUsersMap.values())
+          .filter(Boolean)
+          .map((u) => ({
+            label: u.name || u.userName || "",
+            value: u.id,
+            raw: u,
+          }))
+          .filter((u) => u.label)
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        const siteNameOptions = fetchedSites
+          .filter(Boolean)
+          .map((s) => ({
+            label: s.name || s.Name || "",
+            value: s.id,
+            raw: s,
+          }))
+          .sort((a, b) => a.label.localeCompare(b.label));
+
+        // Normalize form fields: if a stored value is a name string instead of
+        // a GUID, resolve it to the correct ID now that options are loaded.
+        const normalizeToId = (val, optList) => {
+          if (!val) return val;
+          const lower = val.toString().toLowerCase();
+          const byId = optList.find((o) => (o.value ?? o).toString().toLowerCase() === lower);
+          if (byId) return byId.value ?? byId;
+          const byLabel = optList.find((o) => (o.label || "").toLowerCase() === lower);
+          return byLabel ? (byLabel.value ?? byLabel) : val;
+        };
+
+        setForm((prev) => ({
+          ...prev,
+          siteName: normalizeToId(prev.siteName, siteNameOptions),
+          ticketAssignedTo: normalizeToId(prev.ticketAssignedTo, itsUsersList),
+          ticketForwardedBy: normalizeToId(prev.ticketForwardedBy, itsUsersList),
+          cmsTicketAddedBy: normalizeToId(prev.cmsTicketAddedBy, itsUsersList),
+          ticketResolutionVerifiedBy: normalizeToId(prev.ticketResolutionVerifiedBy, itsUsersList),
+          cmsTicketClosedBy: normalizeToId(prev.cmsTicketClosedBy, itsUsersList),
+        }));
+
         setApiData((prev) => ({
           ...prev,
 
-          siteNames: fetchedSites
-            .filter(Boolean)
-            .map((s) => ({
-              label: s.name || s.Name || "",
-              value: s.id,
-              raw: s,
-            }))
-            .sort((a, b) => a.label.localeCompare(b.label)),
+          siteNames: siteNameOptions,
 
-          assignees: (usersRes || [])
-            .map((u) => ({
-              label: u.name || u.userName || "",
-              value: u.id,
-            }))
-            .filter((u) => u.label)
-            .sort((a, b) => a.label.localeCompare(b.label)),
+          itsUsers: itsUsersList,
 
-          itsUsers: (itsUsersRes || [])
-            .filter(Boolean)
-            .map((u) => ({
-              label: u.name || u.userName || "",
-              value: u.id,
-              raw: u,
-            }))
-            .sort((a, b) => a.label.localeCompare(b.label)),
           ticketTypes:
             ticketTypes.length > 0
               ? ticketTypes
@@ -456,15 +633,16 @@ export default function TicketModal({
           incomingChannels:
             incomingChannels.length > 0
               ? incomingChannels
-              : [
-                "Whatsapp/viber",
-                "Phone Call",
-                "Email",
-                "Teams"
-              ].sort((a, b) =>
-                a.localeCompare(b),
+              : ["Whatsapp/viber", "Phone Call", "Email", "Teams"].sort((a, b) =>
+                a.localeCompare(b)
               ),
         }));
+      })
+      .catch((err) => {
+        console.error(
+          "[TicketModal] Unexpected error fetching modal data:",
+          err
+        );
       })
       .finally(() => {
         setLoadingApis(false);
@@ -492,6 +670,15 @@ export default function TicketModal({
             .filter((c) => c.label)
             .sort((a, b) => a.label.localeCompare(b.label));
           setApiData((prev) => ({ ...prev, customers }));
+          // Normalize form.customer: resolve name string → ID if needed
+          setForm((prev) => {
+            if (!prev.customer) return prev;
+            const lower = prev.customer.toString().toLowerCase();
+            const byId = customers.find((c) => c.value.toString().toLowerCase() === lower);
+            if (byId) return prev; // already an ID, no change
+            const byLabel = customers.find((c) => (c.label || "").toLowerCase() === lower);
+            return byLabel ? { ...prev, customer: byLabel.value } : prev;
+          });
         })
         .catch(() => {
           setApiData((prev) => ({ ...prev, customers: [] }));
@@ -543,18 +730,19 @@ export default function TicketModal({
     }));
   }, [form.receivedAt, form.cmsTicketAddedOn]);
 
-
   const handleTicketTypeChange = (value) => {
     setForm((f) => ({
       ...f,
       ticketType: value,
-      servicePlannedType: value === "Service Planned" ? f.servicePlannedType : "",
+      servicePlannedType:
+        value === "Service Planned" ? f.servicePlannedType : "",
     }));
 
     setErrors((errs) => ({
       ...errs,
       ticketType: "",
-      servicePlannedType: value === "Service Planned" ? errs.servicePlannedType : "",
+      servicePlannedType:
+        value === "Service Planned" ? errs.servicePlannedType : "",
     }));
   };
 
@@ -573,68 +761,75 @@ export default function TicketModal({
     const newErrors = {};
     const now = new Date();
 
-    // 1. Ticket Received Date validation
     if (!form.receivedAt) {
       newErrors.receivedAt = "Ticket Received Date is required";
     } else {
       const receivedDate = new Date(form.receivedAt);
       if (receivedDate > now) {
-        newErrors.receivedAt = "Ticket Received Date can not be more than today's date";
+        newErrors.receivedAt =
+          "Ticket Received Date can not be more than today's date";
       }
     }
 
-    // 2. CMS Ticket Added On validation
     if (form.cmsTicketAddedOn) {
       const addedOnDate = new Date(form.cmsTicketAddedOn);
       if (addedOnDate > now) {
-        newErrors.cmsTicketAddedOn = "CMS Ticket Added On can not be more than today's date";
+        newErrors.cmsTicketAddedOn =
+          "CMS Ticket Added On can not be more than today's date";
       }
     }
 
-    // 3. Ticket Forwarded By validation
     if (form.isTicketForwarded && !form.ticketForwardedBy) {
       newErrors.ticketForwardedBy = "Ticket Forwarded By is required";
     }
 
-    // 4. Verification Dates validation against Ticket Received Date
     if (form.receivedAt) {
       const receivedDate = new Date(form.receivedAt);
-      
+
       if (form.cmsTicketClosedOn) {
         const cmsTicketClosedOnDate = new Date(form.cmsTicketClosedOn);
         if (cmsTicketClosedOnDate < receivedDate) {
-          newErrors.cmsTicketClosedOn = "CMS Ticket Closed On can NOT be lesser than Ticket Received Date";
+          newErrors.cmsTicketClosedOn =
+            "CMS Ticket Closed On can NOT be lesser than Ticket Received Date";
         }
       }
 
       if (form.serviceClosedDate) {
         const serviceClosedDateDate = new Date(form.serviceClosedDate);
         if (serviceClosedDateDate < receivedDate) {
-          newErrors.serviceClosedDate = "Service Closed Date can NOT be lesser than Ticket Received Date";
+          newErrors.serviceClosedDate =
+            "Service Closed Date can NOT be lesser than Ticket Received Date";
         }
       }
 
       if (form.ticketResolutionVerifiedOn) {
-        const ticketResolutionVerifiedOnDate = new Date(form.ticketResolutionVerifiedOn);
+        const ticketResolutionVerifiedOnDate = new Date(
+          form.ticketResolutionVerifiedOn
+        );
         if (ticketResolutionVerifiedOnDate < receivedDate) {
-          newErrors.ticketResolutionVerifiedOn = "Ticket Resolution Verified On can NOT be lesser than Ticket Received Date";
+          newErrors.ticketResolutionVerifiedOn =
+            "Ticket Resolution Verified On can NOT be lesser than Ticket Received Date";
         }
       }
     }
 
-    // Other required fields (optional, but good practice based on UI stars)
     if (!form.siteName) newErrors.siteName = "Site Name is required";
     if (!form.customer) newErrors.customer = "Customer is required";
-    if (!form.ticketAssignedTo) newErrors.ticketAssignedTo = "Assigned To is required";
+    if (!form.ticketAssignedTo)
+      newErrors.ticketAssignedTo = "Assigned To is required";
     if (!form.ticketType) newErrors.ticketType = "Ticket Type is required";
     if (
-      (form.ticketType === "Service Planned" || form.ticketType === 2 || form.ticketType === "2") &&
+      (form.ticketType === "Service Planned" ||
+        form.ticketType === 2 ||
+        form.ticketType === "2") &&
       !form.servicePlannedType
     ) {
       newErrors.servicePlannedType = "Service Planned Type is required";
     }
-    if (!form.issueDescription) newErrors.issueDescription = "Issue Description is required";
-    if (!form.ticketIncomingChannel) newErrors.ticketIncomingChannel = "Channel is required";
+    if (!form.issueDescription)
+      newErrors.issueDescription = "Issue Description is required";
+    if (!form.ticketIncomingChannel)
+      newErrors.ticketIncomingChannel = "Channel is required";
 
     if (activeTab === "Ticket Verification") {
       if (!form.serviceClosedDate) {
@@ -647,8 +842,6 @@ export default function TicketModal({
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      const firstErrorField = Object.keys(newErrors)[0];
-      // Optional: scroll to or focus first error, but for now just setting state is enough
       toast("Please fix the errors before submitting.", "error");
       return;
     }
@@ -714,29 +907,39 @@ export default function TicketModal({
                 </div>
 
                 <div className="flex px-8 gap-10">
-                  {["Ticket", "Activities", "Ticket Verification"].map((tab) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => setActiveTab(tab)}
-                      className={`relative py-4 text-[12px] font-semibold transition-all flex items-center gap-2 group ${activeTab === tab
-                        ? "text-pink-600"
-                        : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
-                        }`}
-                    >
-                      {tab}
-                      {activeTab === tab && (
-                        <motion.div
-                          layoutId="activeTab"
-                          className="absolute bottom-0 left-0 right-0 h-1 bg-pink-600 rounded-t-full shadow-[0_-4px_12px_rgba(236,72,153,0.2)]"
-                        />
-                      )}
-                    </button>
-                  ))}
+                  {["Ticket", "Activities", "Ticket Verification"].map(
+                    (tab) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => setActiveTab(tab)}
+                        className={`relative py-4 text-[12px] font-semibold transition-all flex items-center gap-2 group ${activeTab === tab
+                          ? "text-pink-600"
+                          : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                          }`}
+                      >
+                        {tab}
+                        {activeTab === tab && (
+                          <motion.div
+                            layoutId="activeTab"
+                            className="absolute bottom-0 left-0 right-0 h-1 bg-pink-600 rounded-t-full shadow-[0_-4px_12px_rgba(236,72,153,0.2)]"
+                          />
+                        )}
+                      </button>
+                    )
+                  )}
                 </div>
               </div>
 
               <div className="overflow-y-auto no-scrollbar px-8 py-8">
+                {optionsError && (
+                  <div className="max-w-5xl mx-auto mb-6 flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs animate-in fade-in slide-in-from-top-4 duration-500">
+                    <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                    <div className="whitespace-pre-line leading-relaxed font-semibold">
+                      {optionsError}
+                    </div>
+                  </div>
+                )}
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={activeTab}
@@ -744,7 +947,8 @@ export default function TicketModal({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
                     transition={{ duration: 0.2 }}
-                    className="max-w-5xl mx-auto"
+                    className={`max-w-5xl mx-auto ${viewMode ? "pointer-events-none opacity-90" : ""
+                      }`}
                   >
                     {errors.server && (
                       <PremiumErrorAlert
@@ -777,7 +981,9 @@ export default function TicketModal({
                             <Field label="Upload PDF" error={errors.pdfFile}>
                               <div className="relative group/file">
                                 <input
-                                  key={form.pdfFile ? form.pdfFile.name : 'empty'}
+                                  key={
+                                    form.pdfFile ? form.pdfFile.name : "empty"
+                                  }
                                   type="file"
                                   accept=".pdf"
                                   onChange={setField("pdfFile")}
@@ -792,7 +998,11 @@ export default function TicketModal({
                                     </p>
                                     <p className="text-[11px] font-semibold text-slate-400 mt-1">
                                       {form.pdfFile
-                                        ? `${(form.pdfFile.size / 1024 / 1024).toFixed(2)} MB`
+                                        ? `${(
+                                          form.pdfFile.size /
+                                          1024 /
+                                          1024
+                                        ).toFixed(2)} MB`
                                         : "PDF format only (Max 10MB)"}
                                     </p>
                                   </div>
@@ -810,9 +1020,15 @@ export default function TicketModal({
                                 data-enable-time
                                 value={form.receivedAt}
                                 onChange={(date, dateStr) => {
-                                  setForm((f) => ({ ...f, receivedAt: dateStr }));
+                                  setForm((f) => ({
+                                    ...f,
+                                    receivedAt: dateStr,
+                                  }));
                                   if (errors.receivedAt) {
-                                    setErrors((e) => ({ ...e, receivedAt: "" }));
+                                    setErrors((e) => ({
+                                      ...e,
+                                      receivedAt: "",
+                                    }));
                                   }
                                 }}
                                 options={{
@@ -828,8 +1044,18 @@ export default function TicketModal({
                                 placeholder="YYYY-MM-DD HH:MM"
                               />
                               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-pink-500 transition-colors pointer-events-none">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                  />
                                 </svg>
                               </div>
                             </div>
@@ -848,7 +1074,10 @@ export default function TicketModal({
                           </Field>
 
                           <div className="md:col-span-2">
-                            <Field label="Site Name *" error={errors.siteName}>
+                            <Field
+                              label="Site Name *"
+                              error={errors.siteName}
+                            >
                               <div className="flex items-center gap-3">
                                 <Combobox
                                   value={form.siteName}
@@ -859,6 +1088,7 @@ export default function TicketModal({
                                       ? "Loading Sites..."
                                       : "Search sites..."
                                   }
+                                  loading={loadingApis}
                                   disabled={loadingApis}
                                   error={errors.siteName}
                                 />
@@ -890,6 +1120,7 @@ export default function TicketModal({
                                         ? "Loading Customers..."
                                         : "Search customers..."
                                   }
+                                  loading={loadingCustomers}
                                   disabled={
                                     loadingApis ||
                                     loadingCustomers ||
@@ -924,12 +1155,16 @@ export default function TicketModal({
                                   ? "Loading Users..."
                                   : "Search users..."
                               }
+                              loading={loadingApis}
                               disabled={loadingApis}
                               error={errors.ticketAssignedTo}
                             />
                           </Field>
 
-                          <Field label="Ticket Type *" error={errors.ticketType}>
+                          <Field
+                            label="Ticket Type *"
+                            error={errors.ticketType}
+                          >
                             <Combobox
                               value={form.ticketType}
                               onChange={handleTicketTypeChange}
@@ -939,6 +1174,7 @@ export default function TicketModal({
                                   ? "Loading Types..."
                                   : "Select An Option"
                               }
+                              loading={loadingApis}
                               disabled={loadingApis}
                               error={errors.ticketType}
                             />
@@ -955,6 +1191,7 @@ export default function TicketModal({
                                   onChange={setField("servicePlannedType")}
                                   options={apiData.servicePlannedTypes}
                                   placeholder="Select An Option"
+                                  loading={loadingApis}
                                   disabled={loadingApis}
                                   error={errors.servicePlannedType}
                                 />
@@ -973,6 +1210,7 @@ export default function TicketModal({
                                   onChange={setField("ticketIncomingChannel")}
                                   options={apiData.incomingChannels}
                                   placeholder="Select An Option"
+                                  loading={loadingApis}
                                   error={errors.ticketIncomingChannel}
                                 />
                               </Field>
@@ -993,7 +1231,9 @@ export default function TicketModal({
                                     }`}
                                 />
                                 <motion.div
-                                  animate={{ x: form.isTicketForwarded ? 18 : 2 }}
+                                  animate={{
+                                    x: form.isTicketForwarded ? 18 : 2,
+                                  }}
                                   className="absolute left-0 top-1 bg-white w-4 h-4 rounded-full shadow-md transition-all"
                                 />
                               </div>
@@ -1012,7 +1252,10 @@ export default function TicketModal({
                               onChange={setField("ticketForwardedBy")}
                               options={apiData.itsUsers}
                               placeholder="Search users..."
-                              disabled={!form.isTicketForwarded || loadingApis}
+                              loading={loadingApis}
+                              disabled={
+                                !form.isTicketForwarded || loadingApis
+                              }
                               error={errors.ticketForwardedBy}
                             />
                           </Field>
@@ -1026,6 +1269,7 @@ export default function TicketModal({
                               onChange={setField("cmsTicketAddedBy")}
                               options={apiData.itsUsers}
                               placeholder="Search users..."
+                              loading={loadingApis}
                               disabled={loadingApis}
                               error={errors.cmsTicketAddedBy}
                             />
@@ -1064,8 +1308,18 @@ export default function TicketModal({
                                 placeholder="YYYY-MM-DD HH:MM"
                               />
                               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-pink-500 transition-colors pointer-events-none">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                  />
                                 </svg>
                               </div>
                             </div>
@@ -1125,7 +1379,6 @@ export default function TicketModal({
                               />
                             </Field>
                           </div>
-
 
                           <div className="md:col-span-2">
                             <label className="flex items-center gap-3 cursor-pointer w-max p-1 px-4 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
@@ -1223,7 +1476,8 @@ export default function TicketModal({
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {!form.activities || form.activities.length === 0 ? (
+                                {!form.activities ||
+                                  form.activities.length === 0 ? (
                                   <tr>
                                     <td
                                       colSpan="8"
@@ -1248,7 +1502,7 @@ export default function TicketModal({
                                             setForm((f) => ({
                                               ...f,
                                               activities: f.activities.filter(
-                                                (a) => a !== act,
+                                                (a) => a !== act
                                               ),
                                             }));
                                           }}
@@ -1259,7 +1513,9 @@ export default function TicketModal({
                                       </td>
                                       <td className="px-6 py-4 text-[11px] font-medium text-slate-600 dark:text-slate-400">
                                         {act.startDate
-                                          ? new Date(act.startDate).toLocaleString([], {
+                                          ? new Date(
+                                            act.startDate
+                                          ).toLocaleString([], {
                                             dateStyle: "short",
                                             timeStyle: "short",
                                           })
@@ -1267,7 +1523,9 @@ export default function TicketModal({
                                       </td>
                                       <td className="px-6 py-4 text-[11px] font-medium text-slate-600 dark:text-slate-400">
                                         {act.endDate
-                                          ? new Date(act.endDate).toLocaleString([], {
+                                          ? new Date(
+                                            act.endDate
+                                          ).toLocaleString([], {
                                             dateStyle: "short",
                                             timeStyle: "short",
                                           })
@@ -1317,8 +1575,15 @@ export default function TicketModal({
                           <Combobox
                             value={form.ticketResolutionVerifiedBy}
                             onChange={setField("ticketResolutionVerifiedBy")}
-                            options={apiData.itsUsers.filter(u => Number(u.raw?.organizationType) === 2 || Number(u.raw?.extraProperties?.organizationType) === 2)}
+                            options={apiData.itsUsers.filter(
+                              (u) =>
+                                Number(u.raw?.organizationType) === 2 ||
+                                Number(
+                                  u.raw?.extraProperties?.organizationType
+                                ) === 2
+                            )}
                             placeholder="Search users..."
+                            loading={loadingApis}
                             disabled={loadingApis}
                             error={errors.ticketResolutionVerifiedBy}
                           />
@@ -1363,8 +1628,15 @@ export default function TicketModal({
                           <Combobox
                             value={form.cmsTicketClosedBy}
                             onChange={setField("cmsTicketClosedBy")}
-                            options={apiData.itsUsers.filter(u => Number(u.raw?.organizationType) === 2 || Number(u.raw?.extraProperties?.organizationType) === 2)}
+                            options={apiData.itsUsers.filter(
+                              (u) =>
+                                Number(u.raw?.organizationType) === 2 ||
+                                Number(
+                                  u.raw?.extraProperties?.organizationType
+                                ) === 2
+                            )}
                             placeholder="Search users..."
+                            loading={loadingApis}
                             disabled={loadingApis}
                             error={errors.cmsTicketClosedBy}
                           />
@@ -1442,24 +1714,30 @@ export default function TicketModal({
               <div className="flex items-center justify-end gap-4 px-8 py-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                 <button
                   type="button"
-                  onClick={() => setShowExitConfirm(true)}
+                  onClick={
+                    viewMode ? onClose : () => setShowExitConfirm(true)
+                  }
                   disabled={submitting}
-                  className="px-6 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all disabled:opacity-50"
+                  className="px-6 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all disabled:opacity-50 pointer-events-auto"
                 >
-                  Cancel
+                  {viewMode ? "Close" : "Cancel"}
                 </button>
-                <button
-                  type="button"
-                  onClick={handleSubmit}
-                  disabled={submitting}
-                  className="px-8 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl bg-pink-600 text-white shadow-lg shadow-pink-500/20 transition-all disabled:opacity-50 flex items-center justify-center min-w-[140px]"
-                >
-                  {submitting
-                    ? "Saving..."
-                    : isEdit
-                      ? (activeTab === "Ticket Verification" ? "Close Ticket" : "Update Ticket")
-                      : "Create Ticket"}
-                </button>
+                {!viewMode && (
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={submitting}
+                    className="px-8 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl bg-pink-600 text-white shadow-lg shadow-pink-500/20 transition-all disabled:opacity-50 flex items-center justify-center min-w-[140px] pointer-events-auto"
+                  >
+                    {submitting
+                      ? "Saving..."
+                      : isEdit
+                        ? activeTab === "Ticket Verification"
+                          ? "Close Ticket"
+                          : "Update Ticket"
+                        : "Create Ticket"}
+                  </button>
+                )}
               </div>
             </motion.div>
           </div>
@@ -1475,7 +1753,7 @@ export default function TicketModal({
             setForm((f) => ({
               ...f,
               activities: (f.activities || []).map((a) =>
-                a === activityToEdit ? data : a,
+                a === activityToEdit ? data : a
               ),
             }));
           } else {
@@ -1579,7 +1857,7 @@ export default function TicketModal({
               Warning
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-              Enter Recevied Date before adding an activity
+              Enter Received Date before adding an activity
             </p>
             <div className="flex gap-3">
               <button
@@ -1587,7 +1865,7 @@ export default function TicketModal({
                 onClick={() => setShowDateWarning(false)}
                 className="flex-1 py-2.5 rounded-xl bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
               >
-                ok
+                OK
               </button>
             </div>
           </div>
@@ -1610,7 +1888,7 @@ export default function TicketModal({
                 onClick={() => setShowActivityWarning(false)}
                 className="flex-1 py-2.5 rounded-xl bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
               >
-                ok
+                OK
               </button>
             </div>
           </div>

@@ -21,15 +21,16 @@ import {
   Ticket,
   Eye,
   ArrowUp,
-  ArrowRight
+  ArrowRight,
+  MoreVertical
 } from "lucide-react";
+import { Popper, ClickAwayListener, Paper, Box, MenuItem, ListItemText } from "@mui/material";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.css";
 import { useAuth } from "../context/AuthContextHook";
 import amsTicketApi from "../services/api/amsTicketApi";
 import { useToast } from "../component/common/ToastContext";
 import TicketModal from "../component/common/TicketModal";
-import TicketDetailModal from "../component/common/TicketDetailModal";
 import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import UnclosedTicketsModal from "../component/common/UnclosedTicketsModal";
 import { ActionsMenu } from "../component/common/ResourcePage";
@@ -117,6 +118,56 @@ const getInitials = (name) => {
   return name.charAt(0).toUpperCase();
 };
 
+const RowActions = ({ row, onEdit, onAuditLog }) => {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+  const handleClick = (e) => {
+    e.stopPropagation();
+    setAnchorEl(e.currentTarget);
+  };
+  const handleClose = (e) => {
+    if (e) e.stopPropagation();
+    setAnchorEl(null);
+  };
+
+  return (
+    <div className="flex items-center justify-center gap-1">
+      {onEdit && (
+        <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-1 text-slate-400 hover:text-slate-600 transition-colors" title="Edit">
+          <Edit size={16} />
+        </button>
+      )}
+      <button onClick={handleClick} className="p-1 text-slate-400 hover:text-slate-600 transition-colors" title="More Actions">
+        <MoreVertical size={16} />
+      </button>
+      <Popper
+        open={open}
+        anchorEl={anchorEl}
+        placement="bottom-end"
+        style={{ zIndex: 1300 }}
+      >
+        <ClickAwayListener onClickAway={(e) => { if (e) e.stopPropagation(); handleClose(); }}>
+          <Paper
+            elevation={8}
+            sx={{
+              mt: 0.5,
+              borderRadius: "12px",
+              minWidth: 120,
+              overflow: 'hidden'
+            }}
+          >
+            <Box sx={{ py: 0.5 }}>
+              <MenuItem onClick={(e) => { handleClose(e); onAuditLog(); }}>
+                <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+              </MenuItem>
+            </Box>
+          </Paper>
+        </ClickAwayListener>
+      </Popper>
+    </div>
+  );
+};
+
 export default function AMSTicketsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -131,6 +182,8 @@ export default function AMSTicketsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
   const [isUnclosedModalOpen, setIsUnclosedModalOpen] = useState(false);
+  const [sortKey, setSortKey] = useState("ticketReceivedDate");
+  const [sortDir, setSortDir] = useState("desc");
 
   // Modals
   const [actionItem, setActionItem] = useState(null);
@@ -157,7 +210,7 @@ export default function AMSTicketsPage() {
       fetchTickets();
     }, 400);
     return () => clearTimeout(timer);
-  }, [search, filters, currentPage, pageSize, isAdvancedSearch]);
+  }, [search, filters, currentPage, pageSize, isAdvancedSearch, sortKey, sortDir]);
 
   const fetchTickets = async () => {
     setLoading(true);
@@ -196,21 +249,14 @@ export default function AMSTicketsPage() {
         page: currentPage,
         perPage: pageSize,
         search: search,
-        sortKey: "ticketReceivedDate",
-        sortDir: "asc",
+        sortKey,
+        sortDir,
         ...extraParams,
         status: 1,
         dateTo: eightHoursAgo,
       });
 
       let items = response.items || [];
-      // Always enforce Open tickets (status === 1) to come first locally 
-      // just in case the backend query ignores the sortKey when advanced filters are applied.
-      items.sort((a, b) => {
-        if (a.status === 1 && b.status !== 1) return -1;
-        if (a.status !== 1 && b.status === 1) return 1;
-        return 0;
-      });
 
       setTickets(items);
       setTotalCount(response.totalCount || 0);
@@ -262,6 +308,15 @@ export default function AMSTicketsPage() {
     }
   };
 
+  const handleSort = (key) => {
+    if (key === "actions") return;
+    if (sortKey === key) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
 
   // --- Table Configuration ---
   const columns = [
@@ -398,8 +453,8 @@ export default function AMSTicketsPage() {
         className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl"
       >
         {/* ── Header Row ── */}
-        <div className="flex flex-col pt-6 pb-2 px-6 transition-colors border-b border-slate-100 dark:border-slate-800/50">
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
+        <div className="flex flex-col pt-3 pb-1 px-6 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-0">
             <div className="flex flex-col">
               <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-400 dark:text-slate-500 mb-2">
                 <span>Home</span>
@@ -474,15 +529,16 @@ export default function AMSTicketsPage() {
                   {columns.map((col, i) => (
                     <th
                       key={col.key}
+                      onClick={() => handleSort(col.key)}
                       style={{ width: col.width, minWidth: col.width }}
-                      className={`px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-${col.align || "left"} whitespace-nowrap`}
+                      className={`px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-${col.align || "left"} whitespace-nowrap ${col.key !== "actions" ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" : ""}`}
                     >
                       <div className={`flex items-center ${col.align === "center" ? "justify-center" : "justify-start"} gap-1`}>
                         {col.label}
-                        {col.sortable && (
+                        {col.key !== "actions" && (
                           <div className="flex flex-col">
-                            <ChevronRight size={10} className="-rotate-90 text-slate-300 -mb-1" />
-                            <ChevronRight size={10} className="rotate-90 text-slate-300" />
+                            <ChevronRight size={10} className={`-rotate-90 -mb-1 ${sortKey === col.key && sortDir === "asc" ? "text-pink-500" : "text-slate-300 dark:text-slate-600"}`} />
+                            <ChevronRight size={10} className={`rotate-90 ${sortKey === col.key && sortDir === "desc" ? "text-pink-500" : "text-slate-300 dark:text-slate-600"}`} />
                           </div>
                         )}
                       </div>
@@ -569,14 +625,11 @@ export default function AMSTicketsPage() {
                               ) : col.key === "createdBy" ? (
                                 <span className="text-slate-600 dark:text-slate-400 font-medium">{row.createdBy || "—"}</span>
                               ) : col.key === "actions" ? (
-                                <div className="flex items-center justify-center gap-2">
-                                  <button onClick={() => { setActionItem(row); setActionType("detail"); }} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
-                                    <Eye size={16} />
-                                  </button>
-                                  <button onClick={() => { setActionItem(row); setActionType("edit"); }} className="p-1 text-slate-400 hover:text-slate-600 transition-colors">
-                                    <Edit size={16} />
-                                  </button>
-                                </div>
+                                <RowActions 
+                                  row={row}
+                                  onEdit={!isAdmin ? () => { setActionItem(row); setActionType("edit"); } : null}
+                                  onAuditLog={() => navigate(`/audit-logs?primaryKey=${row.id}&entityName=AMSTicket`)}
+                                />
                               ) : (
                                 "—"
                               )}
@@ -686,7 +739,8 @@ export default function AMSTicketsPage() {
       {actionItem && (
         <>
           <TicketModal
-            open={actionType === "edit"}
+            open={actionType === "edit" || actionType === "detail"}
+            viewMode={actionType === "detail"}
             onClose={() => {
               setActionType("");
               setActionItem(null);
@@ -705,14 +759,6 @@ export default function AMSTicketsPage() {
               setActionItem(null);
               fetchTickets();
             }}
-          />
-          <TicketDetailModal
-            open={actionType === "detail"}
-            onClose={() => {
-              setActionType("");
-              setActionItem(null);
-            }}
-            ticket={actionItem}
           />
           <DeleteConfirmModal
             open={actionType === "delete"}

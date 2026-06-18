@@ -1,6 +1,5 @@
 import apiClient from "../apiClient";
 
-// Shared payload builder — used by create & update
 const buildPayload = (data, includeStamp = false) => ({
   lookupId: data.lookupId || "",
   newCode: data.newCode || "",
@@ -21,21 +20,18 @@ const buildPayload = (data, includeStamp = false) => ({
   ...(includeStamp && { concurrencyStamp: data.concurrencyStamp || "" }),
 });
 
-export const codeDetailsApi = {
-  // ── READ ───────────────────────────────────────────────────────────────────
+const BASE = "/api/app/lookup-detail";
 
-  // GET /api/app/lookup-detail/{id}/by-id
+export const codeDetailsApi = {
   getById: async (id) => {
-    const response = await apiClient.get(`/api/app/lookup-detail/${id}/by-id`);
+    const response = await apiClient.get(`${BASE}/${id}/by-id`);
     return response.data;
   },
 
-  // GET /api/app/lookup-detail/by-lookup-codes
-  // Do NOT send SkipCount/Sorting — ABP returns [] if it cannot parse them
   getAll: async (params) => {
     if (!params?.lookupId) return [];
     try {
-      const response = await apiClient.get(`/get-list-by-lookup-code`, {
+      const response = await apiClient.get(`${BASE}/get-list-by-lookup-code`, {
         params: {
           lookupId: params.lookupId,
           isDeleted: "True",
@@ -52,95 +48,64 @@ export const codeDetailsApi = {
     }
   },
 
-  // GET /api/app/lookup-detail/by-code/{lookupId}
   getByCode: async (lookupId) => {
-    const response = await apiClient.get(
-      `/api/app/lookup-detail/by-code/${lookupId}`,
-    );
+    const response = await apiClient.get(`${BASE}/by-code/${lookupId}`);
     return response.data;
   },
 
-  // GET /get-list-by-lookup-code
   getListByLookupCode: async (params) => {
-    const response = await apiClient.get(`/get-list-by-lookup-code`, {
-      params,
-    });
+    const response = await apiClient.get(`/get-list-by-lookup-code`, { params });
     return response.data;
   },
 
-  // GET /get-list-by-lookup-codes
   getListByLookupCodes: async (params) => {
-    const response = await apiClient.get(`/get-list-by-lookup-codes`, {
-      params,
-    });
+    const response = await apiClient.get(`/get-list-by-lookup-codes`, { params });
     return response.data;
   },
 
-  // GET /api/app/lookup-detail/{id}/by-group-code
   getByGroupCode: async (id) => {
-    const response = await apiClient.get(
-      `/api/app/lookup-detail/${id}/by-group-code`,
-    );
+    const response = await apiClient.get(`${BASE}/${id}/by-group-code`);
     return response.data;
   },
 
-  // ── WRITE ──────────────────────────────────────────────────────────────────
-
-  // POST /api/app/lookup-detail
   create: async (data) => {
-    const response = await apiClient.post(
-      `/api/app/lookup-detail`,
-      buildPayload(data),
-    );
+    const response = await apiClient.post(BASE, buildPayload(data));
     return response.data;
   },
 
-  // PUT /api/app/lookup-detail/{id}
   update: async (id, data) => {
-    const response = await apiClient.put(
-      `/api/app/lookup-detail/${id}`,
-      buildPayload(data, true),
-    );
+    const response = await apiClient.put(`${BASE}/${id}`, buildPayload(data, true));
     return response.data;
   },
 
-  // DISABLE — soft delete via DELETE (same pattern as Code.js — ABP sets isActive+isDeleted automatically)
   disable: async (id) => {
-    const response = await apiClient.delete(`/api/app/lookup-detail/${id}`);
+    const response = await apiClient.delete(`${BASE}/${id}`);
     return response.data;
   },
 
-  // ENABLE — POST /api/app/lookup-detail/{id}/enable
   enable: async (id) => {
-    const response = await apiClient.post(
-      `/api/app/lookup-detail/${id}/enable`,
-    );
+    const response = await apiClient.post(`${BASE}/${id}/enable`);
     return response.data;
   },
 
-  // ── TOGGLES ────────────────────────────────────────────────────────────────
-
-  // POST /api/app/lookup-detail/{id}/has-sub-task-category
   toggleHasSubTaskCategory: async (id, hasSub) => {
     const response = await apiClient.post(
-      `/api/app/lookup-detail/${id}/has-sub-task-category`,
+      `${BASE}/${id}/has-sub-task-category`,
       null,
-      { params: { hasSub } },
+      { params: { hasSub } }
     );
     return response.data;
   },
 
-  // POST /api/app/lookup-detail/{id}/is-required-field
   toggleRequiredField: async (id, isRequired) => {
     const response = await apiClient.post(
-      `/api/app/lookup-detail/${id}/is-required-field`,
+      `${BASE}/${id}/is-required-field`,
       null,
-      { params: { isRequired } },
+      { params: { isRequired } }
     );
     return response.data;
   },
 
-  // ── METADATA ───────────────────────────────────────────────────────────────
   id: "lookupDetail",
   entityName: "LookupDetail",
 };
