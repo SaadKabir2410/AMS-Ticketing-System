@@ -202,10 +202,11 @@ export default function AMSTicketsPage() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterIsPRE, setFilterIsPRE] = useState("");
   const [filterIsVerified, setFilterIsVerified] = useState("");
+  const [filterCreatedBy, setFilterCreatedBy] = useState("");
 
-  const activeFilterCount = [filterStatus, filterIsPRE, filterIsVerified].filter(v => v !== "").length;
+  const activeFilterCount = [filterStatus, filterIsPRE, filterIsVerified, filterCreatedBy].filter(v => v !== "").length;
 
-  const [globalStats, setGlobalStats] = useState({ open: 0, closed: 0, inProgress: 0, verified: 0, nonVerified: 0 });
+  const [globalStats, setGlobalStats] = useState({ open: 0, closed: 0, voided: 0, inProgress: 0, verified: 0, nonVerified: 0 });
 
   // Carousel ref
   const kpiScrollRef = useRef(null);
@@ -225,14 +226,16 @@ export default function AMSTicketsPage() {
 
       const safeFetch = (params) => amsTicketApi.getAll(params).catch(() => ({ totalCount: 0, items: [] }));
 
-      const [openRes, closedRes, initialAllRes] = await Promise.all([
+      const [openRes, closedRes, voidRes, initialAllRes] = await Promise.all([
         safeFetch({ ...baseParams, status: 1, page: 1, perPage: 1 }),
         safeFetch({ ...baseParams, status: 2, page: 1, perPage: 1 }),
+        safeFetch({ ...baseParams, status: 3, page: 1, perPage: 1 }),
         safeFetch({ ...baseParams, page: 1, perPage: 1000 }) // Fetch first page safely (max 1000)
       ]);
 
       const openCount = openRes.totalCount || 0;
       const closedCount = closedRes.totalCount || 0;
+      const voidCount = voidRes.totalCount || 0;
       const totalCount = initialAllRes.totalCount || 0;
 
       let allItems = initialAllRes.items || [];
@@ -261,6 +264,7 @@ export default function AMSTicketsPage() {
       setGlobalStats({
         open: openCount,
         closed: closedCount,
+        voided: voidCount,
         inProgress: Math.floor(openCount * 0.2),
         verified: verifiedCount,
         nonVerified: nonVerifiedCount,
@@ -282,7 +286,7 @@ export default function AMSTicketsPage() {
       fetchTickets();
     }, 400);
     return () => clearTimeout(timer);
-  }, [search, currentPage, pageSize, sortKey, sortDir, filterStatus, filterIsPRE, filterIsVerified]);
+  }, [search, currentPage, pageSize, sortKey, sortDir, filterStatus, filterIsPRE, filterIsVerified, filterCreatedBy]);
 
   const fetchTickets = async () => {
     setLoading(true);
@@ -321,6 +325,10 @@ export default function AMSTicketsPage() {
           const isVer = !!(r.ticketResolutionVerifiedBy || r.ticketResolutionVerifiedById);
           return isVer === verified;
         });
+      }
+      if (filterCreatedBy !== "") {
+        const lowerSearch = filterCreatedBy.toLowerCase();
+        items = items.filter(r => r.createdBy && r.createdBy.toLowerCase().includes(lowerSearch));
       }
       setTickets(items);
       setTotalCount(data.totalCount || 0);
@@ -533,10 +541,29 @@ export default function AMSTicketsPage() {
                     <option value="false">Non-Verified</option>
                   </select>
 
+                  {/* Created By */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Created By..."
+                      value={filterCreatedBy}
+                      onChange={(e) => { setFilterCreatedBy(e.target.value); setCurrentPage(1); }}
+                      className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400 min-w-[150px] text-slate-700 dark:text-slate-200"
+                    />
+                    {filterCreatedBy && (
+                      <button
+                        onClick={() => { setFilterCreatedBy(""); setCurrentPage(1); }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500"
+                      >
+                        <X size={11} />
+                      </button>
+                    )}
+                  </div>
+
                   {/* Clear Filters */}
                   {(activeFilterCount > 0 || search) && (
                     <button
-                      onClick={() => { setFilterStatus(""); setFilterIsPRE(""); setFilterIsVerified(""); setSearch(""); setCurrentPage(1); }}
+                      onClick={() => { setFilterStatus(""); setFilterIsPRE(""); setFilterIsVerified(""); setFilterCreatedBy(""); setSearch(""); setCurrentPage(1); }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-rose-200 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
                     >
                       <X size={11} />
@@ -607,6 +634,17 @@ export default function AMSTicketsPage() {
                 <div className="flex flex-col min-w-0">
                   <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Closed  </span>
                   <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.closed}</span>
+                </div>
+              </div>
+
+              {/* Void Tickets */}
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-2 shadow-sm snap-start">
+                <div className="w-10 h-10 rounded-lg bg-slate-50 dark:bg-slate-500/10 flex items-center justify-center text-slate-500 shrink-0">
+                  <X size={18} strokeWidth={2} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Void</span>
+                  <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.voided}</span>
                 </div>
               </div>
 
@@ -700,7 +738,9 @@ export default function AMSTicketsPage() {
                                   {row.ticketReceivedDate ? new Date(row.ticketReceivedDate).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "—"}
                                 </span>
                               ) : col.key === "ticketClosedByName" ? (
-                                <span className="text-slate-600 dark:text-slate-400 font-medium">{row.ticketClosedByName || "—"}</span>
+                                <span className="text-slate-600 dark:text-slate-400 font-medium">
+                                  {row.ticketClosedByName ? <HighlightText text={row.ticketClosedByName} terms={[search]} /> : "—"}
+                                </span>
                               ) : col.key === "activityTotalDuration" ? (
                                 <span className="font-bold text-blue-500">
                                   {row.activityTotalDuration ? `${row.activityTotalDuration}h` : "0h"}
@@ -731,7 +771,9 @@ export default function AMSTicketsPage() {
                                   </span>
                                 </div>
                               ) : col.key === "createdBy" ? (
-                                <span className="text-slate-600 dark:text-slate-400 font-medium">{row.createdBy || "—"}</span>
+                                <span className="text-slate-600 dark:text-slate-400 font-medium">
+                                  {row.createdBy ? <HighlightText text={row.createdBy} terms={[search, filterCreatedBy]} /> : "—"}
+                                </span>
                               ) : col.key === "actions" ? (
                                 <RowActions
                                   row={row}

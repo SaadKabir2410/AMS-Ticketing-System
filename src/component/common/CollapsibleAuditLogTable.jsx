@@ -1,24 +1,23 @@
 import { useState } from "react";
-import { Activity, Database, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  IconButton,
-  Collapse,
-  Box,
-  Typography,
-  Badge,
-  Chip,
-  Pagination,
-  Skeleton,
-} from "@mui/material";
+import { Activity, Database, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { AuditLogDetailsContent } from "./AuditLogDetailModal";
+
+const containerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.015 } },
+};
+
+const rowVariants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.2, ease: "easeOut" },
+  },
+  exit: { opacity: 0, transition: { duration: 0.1 } },
+};
 
 const OPERATION_COLORS = {
   1: {
@@ -41,79 +40,70 @@ function CollapsibleRow({ row }) {
   const [open, setOpen] = useState(false);
   const op = OPERATION_COLORS[row.operationType] || {
     label: "NONE",
-    bg: "bg-slate-50",
-    text: "text-slate-400",
-    border: "border-slate-200",
+    bg: "bg-slate-50 dark:bg-slate-800",
+    text: "text-slate-400 dark:text-slate-500",
+    border: "border-slate-200 dark:border-slate-700",
   };
   const date = new Date(row.dateTime);
 
   return (
     <>
-      <TableRow
+      <motion.tr
+        variants={rowVariants}
         onClick={() => setOpen(!open)}
-        sx={{
-          cursor: "pointer",
-          "& > *": { borderBottom: "unset !important" },
-          transition: "background-color 0.2s",
-          "&:hover": { bgcolor: "rgba(59, 130, 246, 0.04)" },
-          bgcolor: open ? "rgba(59, 130, 246, 0.02)" : "transparent",
-        }}
+        className={`group transition-all duration-200 border-b border-slate-50 dark:border-slate-800/30 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/20 ${open ? "bg-slate-50 dark:bg-slate-800/30" : "bg-white dark:bg-slate-900"}`}
       >
-        <TableCell width={50}>
-          <IconButton size="small">
+        <td className="px-5 py-3 text-left w-[50px]">
+          <button className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors">
             {open ? "-" : "+"}
-          </IconButton>
-        </TableCell>
-        <TableCell>
+          </button>
+        </td>
+        <td className="px-5 py-3 text-left">
           <div className="flex items-center gap-3">
-            <div
-              className={`p-2 rounded-lg ${op.bg} ${op.text} border ${op.border}`}
-            >
+            <div className={`p-2 rounded-lg ${op.bg} ${op.text} border ${op.border}`}>
               <Activity size={16} />
             </div>
-            <span
-              className={`text-[10px] px-2.5 py-1 rounded-full border ${op.bg} ${op.text} ${op.border}`}
-            >
+            <span className={`text-[10px] px-2.5 py-1 font-semibold rounded-full border ${op.bg} ${op.text} ${op.border}`}>
               {op.label}
             </span>
           </div>
-        </TableCell>
-        <TableCell>
-          <Typography variant="caption" className="font-mono text-slate-400 ">
+        </td>
+        <td className="px-5 py-3 text-left">
+          <span className="font-mono text-xs text-slate-400">
             {row.primaryKey || "—"}
-          </Typography>
-        </TableCell>
-        <TableCell>
+          </span>
+        </td>
+        <td className="px-5 py-3 text-left">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-blue-50 text-blue-500 rounded-md border border-blue-100">
+            <div className="p-1.5 bg-blue-50 text-blue-500 rounded-md border border-blue-100 dark:bg-blue-500/10 dark:border-blue-500/20">
               <Database size={12} />
             </div>
-            <span className="text-xs text-slate-700 dark:text-slate-200 ">
+            <span className="text-xs text-slate-700 dark:text-slate-200 font-medium">
               {row.entityName}
             </span>
           </div>
-        </TableCell>
-        <TableCell>
-          <span className="text-[11px] text-slate-400 ">
+        </td>
+        <td className="px-5 py-3 text-left">
+          <span className="text-[11px] text-slate-400 font-medium">
             {row.schemaName || "public"}
           </span>
-        </TableCell>
-        <TableCell>
+        </td>
+        <td className="px-5 py-3 text-left">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 border border-slate-200">
-              {row.userName?.[0] || "U"}
+            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] text-slate-500 border border-slate-200 dark:border-slate-700">
+              {row.userName?.[0]?.toUpperCase() || "U"}
             </div>
-            <span className="text-xs text-slate-600 dark:text-slate-300">
+            <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
               {row.userName || "System"}
             </span>
           </div>
-        </TableCell>
-        <TableCell align="right">
+        </td>
+        <td className="px-5 py-3 text-right">
           <div className="flex flex-col items-end leading-tight">
-            <span className="text-[10px] text-slate-800 dark:text-white">
+            <span className="text-[10px] font-bold text-slate-800 dark:text-white">
               {date.toLocaleDateString("en-GB")}
             </span>
-            <span className="text-[9px] text-slate-400 ">
+            <span className="text-[9px] text-slate-400 font-medium mt-0.5">
               {date.toLocaleTimeString("en-GB", {
                 hour: "2-digit",
                 minute: "2-digit",
@@ -121,42 +111,33 @@ function CollapsibleRow({ row }) {
               })}
             </span>
           </div>
-        </TableCell>
-      </TableRow>
-      <TableRow>
-        <TableCell
-          style={{
-            paddingBottom: 0,
-            paddingTop: 0,
-            paddingLeft: 0,
-            paddingRight: 0,
-          }}
-          colSpan={7}
-        >
-          <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box
-              sx={{
-                p: 4,
-                bgcolor: "rgba(248, 250, 252, 0.5)",
-                border: "none",
-                ".dark &": {
-                  bgcolor: "rgba(15, 23, 42, 0.4)",
-                  borderColor: "transparent",
-                }
-              }}
-            >
-              <div className="flex items-center gap-2 mb-6">
-                <Typography variant="subtitle2" className=" text-slate-800 dark:text-slate-200 ">
-                  Detailed Audit Information
-                </Typography>
-              </div>
+        </td>
+      </motion.tr>
 
-              {/* This is the Detail Panel Content without internal scroll */}
-              <AuditLogDetailsContent item={row} hideHeader isCollapsible />
-            </Box>
-          </Collapse>
-        </TableCell>
-      </TableRow>
+      <AnimatePresence>
+        {open && (
+          <tr>
+            <td colSpan={7} className="p-0 border-b border-slate-100 dark:border-slate-800/50">
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden bg-slate-50/50 dark:bg-slate-900/40"
+              >
+                <div className="p-6 border-l-4 border-l-blue-500/30">
+                  <div className="flex items-center gap-2 mb-6">
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                      Detailed Audit Information
+                    </h3>
+                  </div>
+                  <AuditLogDetailsContent item={row} hideHeader isCollapsible />
+                </div>
+              </motion.div>
+            </td>
+          </tr>
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -178,62 +159,51 @@ export default function CollapsibleAuditLogTable({
   const handleLastPage = () => onPageChange(totalPages);
   if (loading && !data.length) {
     return (
-      <div className="space-y-4 p-8">
-        {[...Array(5)].map((_, i) => (
-          <Skeleton
-            key={i}
-            variant="rectangular"
-            height={60}
-            className="rounded-2xl"
-          />
-        ))}
+      <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="animate-spin text-pink-500" size={32} />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-transparent">
-      <TableContainer className="flex-1 overflow-auto">
-        <Table stickyHeader sx={{ minWidth: 800 }}>
-          <TableHead>
-            <TableRow sx={{ 
-              "& th": { 
-                bgcolor: "rgba(248, 250, 252, 0.9)", 
-                borderBottom: "none !important",
-                ".dark &": {
-                  bgcolor: "#0f172a",
-                  borderColor: "transparent",
-                  color: "#94a3b8"
-                }
-              } 
-            }}>
-              <TableCell width={50} />
-              <TableCell className="text-xs text-slate-500 tracking-wider">OPERATION</TableCell>
-              <TableCell className="text-xs text-slate-500 tracking-wider">RECORD KEY</TableCell>
-              <TableCell className="text-xs text-slate-500 tracking-wider">TYPE</TableCell>
-              <TableCell className="text-xs text-slate-500 tracking-wider">NAMESPACE</TableCell>
-              <TableCell className="text-xs text-slate-500 tracking-wider">ACTOR</TableCell>
-              <TableCell align="right" className="text-xs text-slate-500 tracking-wider">TIMESTAMP</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
+    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-transparent relative">
+      <div className="flex-1 overflow-auto custom-scrollbar">
+        <table className="w-full text-left border-separate border-spacing-y-1 min-w-max">
+          <thead>
+            <tr className="border-b border-slate-200 dark:border-slate-800 h-[48px] bg-white dark:bg-slate-900">
+              <th className="px-5 w-[50px]"></th>
+              <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">OPERATION</th>
+              <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">RECORD KEY</th>
+              <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">ENTITY NAME</th>
+              <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">SCHEMA NAME</th>
+              <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">USER NAME</th>
+              <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap text-right">DATE TIME</th>
+            </tr>
+          </thead>
+          <motion.tbody
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+          >
             {(!data || data.length === 0) && !loading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-20 text-slate-400">
+              <tr>
+                <td colSpan={7} className="py-32 text-center text-sm font-medium text-slate-400 uppercase tracking-widest">
                   No audit logs found.
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ) : (
               data.map((row, index) => (
                 <CollapsibleRow key={row.id || index} row={row} />
               ))
             )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          </motion.tbody>
+        </table>
+      </div>
 
       {/* Standard Pagination Footer (Site Style) */}
-      <div className="px-8 py-4 bg-slate-50/80 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 transition-colors">
+      <div className="px-8 py-4 bg-slate-50/80 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl mt-auto">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2.5">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Page Size:</span>
@@ -249,7 +219,7 @@ export default function CollapsibleAuditLogTable({
               ))}
             </select>
           </div>
-          
+
           <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
               <span className="text-slate-900 dark:text-white tabular-nums">
@@ -285,9 +255,9 @@ export default function CollapsibleAuditLogTable({
             >
               <ChevronLeft size={14} strokeWidth={2.5} />
             </button>
-            
+
             <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-            
+
             <div className="px-3 flex items-center gap-2 py-1">
               <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Page</span>
               <div className="flex items-center gap-1.5 min-w-[40px] justify-center">

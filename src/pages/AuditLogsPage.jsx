@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Filter, Search, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { auditLogsApi } from "../services/api/auditLogs";
 import CollapsibleAuditLogTable from "../component/common/CollapsibleAuditLogTable";
 import { useResource } from "../component/hooks/useResource";
@@ -129,134 +130,166 @@ export default function AuditLogsPage() {
 
   const { data, total, loading } = useResource(auditLogsApi, apiParams);
 
-  const customFilterArea = (
-    <div className="flex items-center gap-4 flex-wrap">
-      <div className="relative min-w-[150px]">
-        
-        <select
-          value={operationType}
-          onChange={(e) => {
-            setOperationType(e.target.value);
-            setPage(1);
-          }}
-          className="w-full pl-9 pr-8 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer placeholder:text-slate-400"
-        >
-          <option value="all">ALL TYPE</option>
-          <option value="1" className="dark:bg-slate-900">CREATE</option>
-          <option value="2" className="dark:bg-slate-900">UPDATE</option>
-        </select>
-      </div>
-
-      <div className="relative min-w-[180px]">
-        {/* User Icon or similar if needed */}
-        <input
-          type="text"
-          placeholder="USERNAME..."
-          value={userNameSearch}
-          onChange={(e) => {
-            setUserNameSearch(e.target.value);
-            setPage(1);
-          }}
-          className="w-full pl-9 pr-4 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-400"
-        />
-      </div>
-
-      <div className="flex items-center gap-2">
-        <div className="relative min-w-[160px]">
-          {/* Time Icon or similar if needed */}
-          <select
-            value={datePreset}
-            onChange={(e) => {
-              setDatePreset(e.target.value);
-              setPage(1);
-            }}
-            className="w-full pl-9 pr-8 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all appearance-none cursor-pointer placeholder:text-slate-400"
-          >
-            <option value="all">ALL TIME</option>
-            <option value="today" className="dark:bg-slate-900">TODAY</option>
-            <option value="week" className="dark:bg-slate-900">THIS WEEK</option>
-            <option value="month" className="dark:bg-slate-900">THIS MONTH</option>
-            <option value="year" className="dark:bg-slate-900">THIS YEAR</option>
-            <option value="custom" className="dark:bg-slate-900">CUSTOM</option>
-          </select>
-        </div>
-
-        {datePreset === "custom" && (
-          <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
-            <input
-              type="date"
-              value={customFromDate}
-              onChange={(e) => {
-                setCustomFromDate(e.target.value);
-                setPage(1);
-              }}
-              className="px-3 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all scheme-light dark:scheme-dark"
-            />
-            <span className="text-slate-400 text-[10px] ">TO</span>
-            <input
-              type="date"
-              value={customToDate}
-              onChange={(e) => {
-                setCustomToDate(e.target.value);
-                setPage(1);
-              }}
-              className="px-3 py-2 text-[10px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 dark:text-white rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all scheme-light dark:scheme-dark"
-            />
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  const [showFilters, setShowFilters] = useState(false);
+  const activeFilterCount = [
+    operationType !== "all" ? operationType : "",
+    userNameSearch !== "" ? userNameSearch : "",
+    datePreset !== "all" ? datePreset : ""
+  ].filter(v => v !== "").length;
 
   return (
-    <div className="h-full flex flex-col overflow-auto animate-in fade-in duration-500">
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xl overflow-auto flex flex-col flex-1">
-        {/* Header Section */}
-        <div className="px-8 py-6 bg-slate-50/50 dark:bg-slate-800/50 shrink-0">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate(-1)}
-                className="p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 hover:text-blue-500 hover:border-blue-500/30 transition-all active:scale-95 shadow-sm"
-              >
-                <ArrowLeft size={18} />
-              </button>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  {[
-                    "Home",
-                    "Administration",
-                    "Audit Logs",
-                    entityType === "all" ? "All" : entityType,
-                  ].map((b, i) => (
-                    <span key={b} className="flex items-center gap-2">
-                      <span
-                        className={`text-[9px] ${i === 3 ? "text-blue-500" : "text-slate-400"}`}
-                      >
-                        {b}
-                      </span>
-                      {i < 3 && <span className="text-slate-300">/</span>}
-                    </span>
-                  ))}
-                </div>
-                <h1 className="text-3xl text-slate-800 dark:text-white leading-none ">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]"
+    >
+      <style>{`
+        *::-webkit-scrollbar { display: none !important; }
+        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+        
+        .custom-scrollbar::-webkit-scrollbar:horizontal { height: 8px; display: block !important; }
+        .custom-scrollbar::-webkit-scrollbar:vertical { display: none !important; width: 0 !important; }
+        .custom-scrollbar { scrollbar-width: thin !important; }
+        .custom-scrollbar::-webkit-scrollbar-track:horizontal { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #cbd5e1; border-radius: 20px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #475569; }
+      `}</style>
+
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl"
+      >
+        <div className="flex flex-col pt-3 pb-1 px-6 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-0">
+            <div className="flex flex-col">
+              <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-400 dark:text-slate-500 mb-2">
+                <span>Home</span>
+                <span className="text-slate-300">/</span>
+                <span>{entityType === "AMSTicket" ? "AMS Tickets" : entityType === "all" ? "Administration" : entityType}</span>
+                <span className="text-slate-300">/</span>
+                <span className="text-pink-500">Audit Logs</span>
+              </nav>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => navigate(-1)}
+                  className="p-1.5 -ml-1.5 text-slate-400 hover:text-pink-500 hover:bg-pink-50 dark:hover:bg-pink-500/10 rounded-lg transition-all"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   Audit Logs
                 </h1>
               </div>
             </div>
-            <div className="w-12 h-12 bg-pink-50 dark:bg-[#ec4899]/10 text-pink-500 rounded-2xl flex items-center justify-center border border-pink-100 dark:border-[#ec4899]/20 shadow-inner">
-              
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowFilters(v => !v)}
+                className={`relative inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${showFilters || activeFilterCount > 0
+                  ? "bg-pink-50 border-pink-300 text-pink-600 dark:bg-pink-500/10 dark:border-pink-500/40 dark:text-pink-400"
+                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-pink-500 hover:border-pink-300"
+                  }`}
+              >
+                <Filter size={13} />
+                Advanced Filter
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-pink-500 text-white text-[9px] font-black flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
 
-          {/* Filter Toolbar Section */}
-          <div className="mt-6 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between shadow-sm">
-            {customFilterArea}
-          </div>
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="flex flex-wrap items-center gap-3 py-3 border-t border-slate-100 dark:border-slate-800/50 mt-2">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search size={13} className="text-slate-400" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Username..."
+                      value={userNameSearch}
+                      onChange={(e) => { setUserNameSearch(e.target.value); setPage(1); }}
+                      className="pl-8 pr-7 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400 min-w-[200px]"
+                    />
+                    {userNameSearch && (
+                      <button
+                        onClick={() => { setUserNameSearch(""); setPage(1); }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500"
+                      >
+                        <X size={11} />
+                      </button>
+                    )}
+                  </div>
+
+                  <select
+                    value={operationType}
+                    onChange={(e) => { setOperationType(e.target.value); setPage(1); }}
+                    className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="1">CREATE</option>
+                    <option value="2">UPDATE</option>
+                  </select>
+
+                  <select
+                    value={datePreset}
+                    onChange={(e) => { setDatePreset(e.target.value); setPage(1); }}
+                    className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                    <option value="year">This Year</option>
+                    <option value="custom">Custom</option>
+                  </select>
+
+                  {datePreset === "custom" && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        value={customFromDate}
+                        onChange={(e) => { setCustomFromDate(e.target.value); setPage(1); }}
+                        className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 transition-all text-slate-700 dark:text-slate-200 scheme-light dark:scheme-dark"
+                      />
+                      <span className="text-xs text-slate-400">to</span>
+                      <input
+                        type="date"
+                        value={customToDate}
+                        onChange={(e) => { setCustomToDate(e.target.value); setPage(1); }}
+                        className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 transition-all text-slate-700 dark:text-slate-200 scheme-light dark:scheme-dark"
+                      />
+                    </div>
+                  )}
+
+                  {(activeFilterCount > 0) && (
+                    <button
+                      onClick={() => { setOperationType("all"); setUserNameSearch(""); setDatePreset("all"); setPage(1); }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-rose-200 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
+                    >
+                      <X size={11} />
+                      Clear All
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Table Area (Flush to the card) */}
-        <div className="flex-1 overflow-auto min-h-0 relative">
+        <div className="w-full bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 relative min-h-[300px] flex-1 flex flex-col rounded-b-3xl overflow-hidden">
           <CollapsibleAuditLogTable
             data={data}
             loading={loading}
@@ -270,8 +303,8 @@ export default function AuditLogsPage() {
             }}
           />
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
