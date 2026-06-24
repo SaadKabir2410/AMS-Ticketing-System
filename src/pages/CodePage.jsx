@@ -271,7 +271,6 @@ export default function CodePage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 
             <div className="flex items-center gap-4">
-
               <div>
                 <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
                   <span>Home</span>

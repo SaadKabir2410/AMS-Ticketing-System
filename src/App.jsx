@@ -14,7 +14,6 @@ import PermissionGuard from "./component/auth/PermissionGuard";
 // Pages
 import Dashboard from "./pages/Dashboard";
 import AMSTicketsPage from "./pages/AMSTicketsPage";
-import AllOverduePage from "./pages/AllOverduePage";
 import SitesPage from "./pages/SitesPage";
 import CountriesPage from "./pages/CountriesPage";
 import AuditLogsPage from "./pages/AuditLogsPage";
@@ -80,14 +79,6 @@ function Layout({ collapsed, setCollapsed }) {
               element={
                 <PermissionGuard permission="Billing.AMSTickets">
                   <AMSTicketsPage />
-                </PermissionGuard>
-              }
-            />
-            <Route
-              path="/overdue-tickets"
-              element={
-                <PermissionGuard permission="Billing.AMSTickets">
-                  <AllOverduePage />
                 </PermissionGuard>
               }
             />

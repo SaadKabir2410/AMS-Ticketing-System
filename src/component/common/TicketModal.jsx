@@ -58,6 +58,15 @@ function Field({ label, error, children }) {
 const inputClass =
   "w-full px-4 py-2.5 rounded-xl border border-transparent border-slate-500 bg-slate-100 dark:bg-slate-800/50 backdrop-blur-sm text-sm outline-none transition-all duration-300 focus:bg-white dark:focus:bg-slate-900 focus:border-pink-500/30 focus:ring-4 focus:ring-pink-500/10 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800/50 font-medium text-black dark:text-slate-200 placeholder:text-slate-500/80";
 
+// ─── Robust string-based equality ──────────────────────────────────────────
+// Converts both sides to lowercase strings before comparing so that
+// number/string type mismatches (e.g. 1 vs "1") or UUID casing differences
+// never cause a false negative.
+const isEqual = (v1, v2) => {
+  if (v1 == null || v2 == null) return v1 === v2;
+  return String(v1).toLowerCase().trim() === String(v2).toLowerCase().trim();
+};
+
 function Combobox({
   value,
   onChange,
@@ -67,13 +76,6 @@ function Combobox({
   loading,
   error,
 }) {
-  const isEqual = (v1, v2) => {
-    if (typeof v1 === "string" && typeof v2 === "string") {
-      return v1.toLowerCase() === v2.toLowerCase();
-    }
-    return v1 === v2;
-  };
-
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const containerRef = useRef(null);
@@ -87,7 +89,6 @@ function Combobox({
         setOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -97,66 +98,107 @@ function Combobox({
     return label.toLowerCase().includes(search.toLowerCase());
   });
 
-  // ─── FIX: resolve the display label safely ───────────────────────────────
-  // Handles three cases:
-  // 1. value is a GUID  → match by opt.value
-  // 2. value is a name string → match by opt.label (API returned name not id)
-  // 3. options not loaded yet → show placeholder, never show raw GUID
+  // ─── Resolve what text to display in the trigger button ────────────────
+  // Priority order:
+  //   1. Match stored value against opt.value  (value is a GUID/id)
+  //   2. Match stored value against opt.label  (value is already a display name)
+  //   3. Options are still loading → show placeholder (never show raw GUID)
+  //   4. Options loaded but no match → still show placeholder to avoid noise
   const resolveDisplayLabel = () => {
-    if (!value) return placeholder;
+    if (value == null || value === "") return placeholder;
 
     const opts = options || [];
+    const valStr = String(value).toLowerCase().trim();
 
-    // Case 1: match by value (GUID / id)
-    const matchById = opts.find((opt) => isEqual(opt.value ?? opt, value));
-    if (matchById) return matchById.label || String(matchById.value ?? matchById);
-
-    // Case 2: match by label (value IS the display name string)
-    const matchByLabel = opts.find((opt) =>
-      isEqual(opt.label || String(opt), value)
+    // Case 1: stored value is an id/GUID — find by opt.value
+    const matchById = opts.find(
+      (opt) => String(opt.value ?? opt).toLowerCase().trim() === valStr
     );
-    if (matchByLabel) return matchByLabel.label || String(matchByLabel.value ?? matchByLabel);
+    if (matchById) {
+      return matchById.label || String(matchById.value ?? matchById);
+    }
 
-    // Options still loading — don't render the raw value
-    if (loading || opts.length === 0) return placeholder;
+    // Case 2: stored value is a display name string — find by opt.label
+    const matchByLabel = opts.find(
+      (opt) => String(opt.label || opt).toLowerCase().trim() === valStr
+    );
+    if (matchByLabel) {
+      return matchByLabel.label || String(matchByLabel.value ?? matchByLabel);
+    }
 
-    // Options loaded but nothing matched — still hide the raw value
-    return placeholder;
+    // Options are still loading or empty — show the value
+    if (loading || opts.length === 0) return value;
+
+    // Options loaded but nothing matched.
+    // Return the typed value to allow manual text input.
+    return value;
   };
-  // ─────────────────────────────────────────────────────────────────────────
 
   const displayLabel = resolveDisplayLabel();
-  const hasResolvedValue = value && displayLabel !== placeholder;
+  const hasResolvedValue = displayLabel != null && displayLabel !== "" && displayLabel !== placeholder;
 
   return (
     <div className="relative w-full" ref={containerRef}>
       <div
-        onClick={() => !disabled && setOpen(!open)}
-        className={`${inputClass} flex items-center justify-between cursor-pointer ${disabled
+        onClick={() => {
+          if (!disabled && !open) setOpen(true);
+        }}
+        className={`${inputClass} flex items-center justify-between ${disabled
           ? "opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/30"
-          : ""
+          : "cursor-text"
           } ${error ? "border-rose-500" : ""}`}
       >
-        <div className="flex items-center gap-3 truncate">
+        <div className="flex items-center gap-3 w-full truncate">
           <Search
             size={14}
-            className={`text-slate-400 group-focus-within:text-pink-500 transition-colors ${!hasResolvedValue ? "opacity-50" : "opacity-100"
+            className={`text-slate-400 shrink-0 group-focus-within:text-pink-500 transition-colors ${!hasResolvedValue ? "opacity-50" : "opacity-100"
               }`}
           />
-          <span
-            className={`truncate ${!hasResolvedValue
+          <input
+            type="text"
+            className={`w-full bg-transparent outline-none truncate ${!hasResolvedValue
               ? "text-slate-600/80"
               : "text-black dark:text-white"
               }`}
-          >
-            {displayLabel}
-          </span>
+            value={displayLabel === placeholder ? "" : displayLabel}
+            placeholder={placeholder}
+            disabled={disabled}
+            onChange={(e) => {
+              onChange(e.target.value);
+              setSearch(e.target.value);
+              if (!open) setOpen(true);
+            }}
+          />
         </div>
-        <ChevronDown
-          size={16}
-          className={`transition-transform duration-300 ${open ? "rotate-180" : ""
-            } text-slate-400 shrink-0 ml-2`}
-        />
+        <div className="flex items-center gap-1 shrink-0 ml-2">
+          {hasResolvedValue && !disabled && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("");
+                setSearch("");
+                setOpen(false);
+              }}
+              className="text-slate-400 hover:text-rose-500 transition-colors p-1 rounded-md flex items-center justify-center"
+            >
+              <X size={14} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!disabled) setOpen(!open);
+            }}
+            className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-md flex items-center justify-center"
+          >
+            <ChevronDown
+              size={16}
+              className={`transition-transform duration-300 ${open ? "rotate-180" : ""}`}
+            />
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -205,6 +247,8 @@ function Combobox({
                   {filteredOptions.map((opt, idx) => {
                     const label = opt.label || String(opt);
                     const val = opt.value ?? opt;
+                    // Use the same robust isEqual for active highlight
+                    const isSelected = isEqual(value, val);
                     return (
                       <button
                         key={idx}
@@ -214,13 +258,13 @@ function Combobox({
                           setOpen(false);
                           setSearch("");
                         }}
-                        className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs transition-all flex items-center justify-between group/opt ${isEqual(value, val)
+                        className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs transition-all flex items-center justify-between group/opt ${isSelected
                           ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 font-bold"
                           : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/80 hover:text-black dark:hover:text-white"
                           }`}
                       >
                         <span className="truncate">{label}</span>
-                        {isEqual(value, val) && (
+                        {isSelected && (
                           <motion.div
                             layoutId="active-check"
                             initial={{ scale: 0 }}
@@ -252,6 +296,7 @@ const EMPTY = {
   ticketType: "",
   servicePlannedType: "",
   ticketIncomingChannel: "",
+  incomingChannelEmail: "",
   isTicketForwarded: false,
   ticketForwardedBy: "",
   cmsTicketAddedBy: "",
@@ -267,6 +312,23 @@ const EMPTY = {
   cmsTicketClosedOn: "",
   serviceClosedDate: "",
   activities: [],
+};
+
+// ─── Shared helper: resolve a stored value (name string OR id) to an id ───
+// Works in both the options-load effect and the normalization effect.
+const normalizeToId = (val, optList) => {
+  if (!val) return val;
+  const lower = String(val).toLowerCase().trim();
+  // Already a valid ID in the list → keep as-is
+  const byId = optList.find(
+    (o) => String(o.value ?? o).toLowerCase().trim() === lower
+  );
+  if (byId) return byId.value ?? byId;
+  // It's a name string → resolve to the matching ID
+  const byLabel = optList.find(
+    (o) => String(o.label || "").toLowerCase().trim() === lower
+  );
+  return byLabel ? (byLabel.value ?? byLabel) : val;
 };
 
 export default function TicketModal({
@@ -313,6 +375,7 @@ export default function TicketModal({
   const [showDateWarning, setShowDateWarning] = useState(false);
   const [showActivityWarning, setShowActivityWarning] = useState(false);
 
+  // ── Reset / seed form whenever the modal opens or the ticket changes ──────
   useEffect(() => {
     if (!open) {
       setForm({ ...EMPTY });
@@ -331,6 +394,9 @@ export default function TicketModal({
     setActiveTab("Ticket");
 
     if (ticket) {
+
+
+
       setForm({
         ...EMPTY,
         ...ticket,
@@ -361,6 +427,10 @@ export default function TicketModal({
             ticket.ticketIncomingChannel
           )
           : ticket.ticketIncomingChannel || "",
+        incomingChannelEmail: ticket.emailAddress || ticket.incomingChannelEmail || "",
+        notes: ticket.ticketNotes || ticket.notes || "",
+        issueDescription: ticket.issueDescription || "",
+        possibleRootCause: ticket.possibleRootCause || "",
         receivedAt: ticket.ticketReceivedDate
           ? ticket.ticketReceivedDate.slice(0, 16)
           : ticket.receivedAt
@@ -390,9 +460,15 @@ export default function TicketModal({
         activities: ticket.activities || ticket.amsTicketDetails || [],
       });
 
+      // Fetch full record details (may resolve before or after options load)
       amsTicketApi
         .getById(ticket.id)
         .then((fullData) => {
+          console.log("fullData keys with email:", Object.keys(fullData).filter(k => k.toLowerCase().includes("email")));
+          console.log("fullData:", fullData);
+          console.log("fullData.emailAddress:", fullData.emailAddress);
+          console.log("fullData.incomingChannelEmail:", fullData.incomingChannelEmail);
+          console.log("fullData.ticketIncomingChannel:", fullData.ticketIncomingChannel);
           setForm((prev) => ({
             ...prev,
             ...fullData,
@@ -433,6 +509,10 @@ export default function TicketModal({
                   fullData.ticketIncomingChannel
                 )
                 : fullData.ticketIncomingChannel || prev.ticketIncomingChannel,
+            incomingChannelEmail: fullData.emailAddress || fullData.incomingChannelEmail || prev.incomingChannelEmail || "",
+            notes: fullData.ticketNotes || fullData.notes || prev.notes || "",
+            issueDescription: fullData.issueDescription ?? prev.issueDescription ?? "",
+            possibleRootCause: fullData.possibleRootCause ?? prev.possibleRootCause ?? "",
             receivedAt: fullData.ticketReceivedDate
               ? fullData.ticketReceivedDate.slice(0, 16)
               : fullData.receivedAt
@@ -477,9 +557,7 @@ export default function TicketModal({
           console.error("Failed to fetch secure ticket record:", err)
         );
     } else {
-      setForm({
-        ...EMPTY,
-      });
+      setForm({ ...EMPTY });
     }
   }, [open, isEdit, user]);
 
@@ -493,6 +571,43 @@ export default function TicketModal({
     }
   }, [open, isEdit, user]);
 
+  // ── Re-normalize id fields whenever options finish loading ─────────────────
+  // Fixes the race condition: getById may resolve before OR after options load.
+  // Whichever happens last, this effect runs and maps any name strings → ids.
+  useEffect(() => {
+    if (!open || !isEdit) return;
+    if (apiData.itsUsers.length === 0 && apiData.siteNames.length === 0) return;
+
+    setForm((prev) => ({
+      ...prev,
+      siteName:
+        apiData.siteNames.length > 0
+          ? normalizeToId(prev.siteName, apiData.siteNames)
+          : prev.siteName,
+      ticketAssignedTo:
+        apiData.itsUsers.length > 0
+          ? normalizeToId(prev.ticketAssignedTo, apiData.itsUsers)
+          : prev.ticketAssignedTo,
+      ticketForwardedBy:
+        apiData.itsUsers.length > 0
+          ? normalizeToId(prev.ticketForwardedBy, apiData.itsUsers)
+          : prev.ticketForwardedBy,
+      cmsTicketAddedBy:
+        apiData.itsUsers.length > 0
+          ? normalizeToId(prev.cmsTicketAddedBy, apiData.itsUsers)
+          : prev.cmsTicketAddedBy,
+      ticketResolutionVerifiedBy:
+        apiData.itsUsers.length > 0
+          ? normalizeToId(prev.ticketResolutionVerifiedBy, apiData.itsUsers)
+          : prev.ticketResolutionVerifiedBy,
+      cmsTicketClosedBy:
+        apiData.itsUsers.length > 0
+          ? normalizeToId(prev.cmsTicketClosedBy, apiData.itsUsers)
+          : prev.cmsTicketClosedBy,
+    }));
+  }, [apiData.itsUsers, apiData.siteNames, open, isEdit]);
+
+  // ── Fetch all dropdown options when modal opens ────────────────────────────
   useEffect(() => {
     if (!open) return;
 
@@ -505,7 +620,9 @@ export default function TicketModal({
           "[TicketModal] Failed to fetch sites:",
           err?.response?.data || err.message
         );
-        setOptionsError("Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in.");
+        setOptionsError(
+          "Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in."
+        );
         return { items: [] };
       }),
       usersApi
@@ -515,28 +632,41 @@ export default function TicketModal({
         })
         .catch((err) => {
           console.error("[TicketModal] Failed to fetch users:", err);
-          setOptionsError("Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in.");
+          setOptionsError(
+            "Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in."
+          );
           return [];
         }),
       usersApi
         .getUsersList({ onlyLoadCurrentUser: true })
         .catch((err) => {
           console.error("[TicketModal] Failed to fetch current user:", err);
-          setOptionsError("Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in.");
+          setOptionsError(
+            "Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in."
+          );
           return [];
         }),
       codeDetailsApi
         .getListByLookupCodes({
-          lookupCodes: ["TicketType", "TicketIncomingChannel", "ServicePlannedType"],
+          lookupCodes: [
+            "TicketType",
+            "TicketIncomingChannel",
+            "ServicePlannedType",
+          ],
         })
         .catch((err) => {
           console.error("[TicketModal] Failed to fetch lookups:", err);
-          setOptionsError("Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in.");
+          setOptionsError(
+            "Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in."
+          );
           return {};
         }),
     ])
       .then(([sitesRes, itsUsersRes, currentUserRes, lookupsRes]) => {
-        const fetchedSites = sitesRes?.items || sitesRes?.data || (Array.isArray(sitesRes) ? sitesRes : []);
+        const fetchedSites =
+          sitesRes?.items ||
+          sitesRes?.data ||
+          (Array.isArray(sitesRes) ? sitesRes : []);
         setRawSites(fetchedSites);
 
         const ticketTypes = (lookupsRes["TicketType"] || [])
@@ -554,8 +684,12 @@ export default function TicketModal({
           .filter(Boolean)
           .sort((a, b) => a.localeCompare(b));
 
-        const itsUsersArr = Array.isArray(itsUsersRes) ? itsUsersRes : (itsUsersRes?.items || itsUsersRes?.data || []);
-        const currentUsersArr = Array.isArray(currentUserRes) ? currentUserRes : (currentUserRes?.items || currentUserRes?.data || []);
+        const itsUsersArr = Array.isArray(itsUsersRes)
+          ? itsUsersRes
+          : itsUsersRes?.items || itsUsersRes?.data || [];
+        const currentUsersArr = Array.isArray(currentUserRes)
+          ? currentUserRes
+          : currentUserRes?.items || currentUserRes?.data || [];
 
         const mergedUsersMap = new Map();
         [...itsUsersArr, ...currentUsersArr].forEach((u) => {
@@ -587,38 +721,41 @@ export default function TicketModal({
           }))
           .sort((a, b) => a.label.localeCompare(b.label));
 
-        // Normalize form fields: if a stored value is a name string instead of
-        // a GUID, resolve it to the correct ID now that options are loaded.
-        const normalizeToId = (val, optList) => {
-          if (!val) return val;
-          const lower = val.toString().toLowerCase();
-          const byId = optList.find((o) => (o.value ?? o).toString().toLowerCase() === lower);
-          if (byId) return byId.value ?? byId;
-          const byLabel = optList.find((o) => (o.label || "").toLowerCase() === lower);
-          return byLabel ? (byLabel.value ?? byLabel) : val;
-        };
-
+        // Normalize form fields now that options are available.
+        // This handles the case where getById resolved first and stored a
+        // name string instead of a GUID.
         setForm((prev) => ({
           ...prev,
           siteName: normalizeToId(prev.siteName, siteNameOptions),
           ticketAssignedTo: normalizeToId(prev.ticketAssignedTo, itsUsersList),
-          ticketForwardedBy: normalizeToId(prev.ticketForwardedBy, itsUsersList),
+          ticketForwardedBy: normalizeToId(
+            prev.ticketForwardedBy,
+            itsUsersList
+          ),
           cmsTicketAddedBy: normalizeToId(prev.cmsTicketAddedBy, itsUsersList),
-          ticketResolutionVerifiedBy: normalizeToId(prev.ticketResolutionVerifiedBy, itsUsersList),
-          cmsTicketClosedBy: normalizeToId(prev.cmsTicketClosedBy, itsUsersList),
+          ticketResolutionVerifiedBy: normalizeToId(
+            prev.ticketResolutionVerifiedBy,
+            itsUsersList
+          ),
+          cmsTicketClosedBy: normalizeToId(
+            prev.cmsTicketClosedBy,
+            itsUsersList
+          ),
         }));
 
         setApiData((prev) => ({
           ...prev,
-
           siteNames: siteNameOptions,
-
           itsUsers: itsUsersList,
-
           ticketTypes:
             ticketTypes.length > 0
               ? ticketTypes
-              : ["Service Planned", "Service Demand", "Inquiry", "Complaint"],
+              : [
+                "Service Planned",
+                "Service Demand",
+                "Complaint",
+                "Inquiry",
+              ].sort((a, b) => a.localeCompare(b)),
           servicePlannedTypes:
             servicePlannedTypes.length > 0
               ? servicePlannedTypes
@@ -627,15 +764,20 @@ export default function TicketModal({
                 "Rule",
                 "Installation",
                 "Configuration",
-                "TSB",
-                "Others",
-              ],
+                "TBS",
+                "Other"
+
+              ].sort((a, b) => a.localeCompare(b)),
           incomingChannels:
             incomingChannels.length > 0
               ? incomingChannels
-              : ["Whatsapp/viber", "Phone Call", "Email", "Teams"].sort((a, b) =>
-                a.localeCompare(b)
-              ),
+              : [
+                "Phone Call",
+                "Email",
+                "Whatsapp/viber",
+                "Teams"].sort((a, b) =>
+                  a.localeCompare(b)
+                ),
         }));
       })
       .catch((err) => {
@@ -649,15 +791,21 @@ export default function TicketModal({
       });
   }, [open, ticket]);
 
+  // ── Load customers whenever the selected site changes ─────────────────────
   useEffect(() => {
     if (!form.siteName) {
       setApiData((prev) => ({ ...prev, customers: [] }));
       return;
     }
 
-    const selectedSite = rawSites.find((s) => s.id === form.siteName);
+    // form.siteName may be a GUID or a name string — check both
+    const selectedSite =
+      rawSites.find((s) => isEqual(s.id, form.siteName)) ||
+      rawSites.find((s) =>
+        isEqual(s.name || s.Name || "", form.siteName)
+      );
 
-    if (selectedSite && selectedSite.id) {
+    if (selectedSite?.id) {
       setLoadingCustomers(true);
       usersApi
         .getCustomerUsers(selectedSite.id)
@@ -669,15 +817,16 @@ export default function TicketModal({
             }))
             .filter((c) => c.label)
             .sort((a, b) => a.label.localeCompare(b.label));
+
           setApiData((prev) => ({ ...prev, customers }));
-          // Normalize form.customer: resolve name string → ID if needed
+
+          // Normalize form.customer (name string → id) if needed
           setForm((prev) => {
             if (!prev.customer) return prev;
-            const lower = prev.customer.toString().toLowerCase();
-            const byId = customers.find((c) => c.value.toString().toLowerCase() === lower);
-            if (byId) return prev; // already an ID, no change
-            const byLabel = customers.find((c) => (c.label || "").toLowerCase() === lower);
-            return byLabel ? { ...prev, customer: byLabel.value } : prev;
+            const normalized = normalizeToId(prev.customer, customers);
+            return normalized !== prev.customer
+              ? { ...prev, customer: normalized }
+              : prev;
           });
         })
         .catch(() => {
@@ -705,30 +854,28 @@ export default function TicketModal({
     }
   };
 
+  // ── Auto-compute total duration ────────────────────────────────────────────
   useEffect(() => {
-    if (!form.receivedAt || !form.cmsTicketAddedOn) {
-      setForm((prev) => ({
-        ...prev,
-        totalDuration: "",
-      }));
+    const activities = form.activities || [];
+    if (activities.length === 0) {
+      // Avoid unnecessary updates if already empty/zero
+      setForm((prev) => (prev.totalDuration !== "0.00" && prev.totalDuration !== "" ? { ...prev, totalDuration: "0.00" } : prev));
       return;
     }
 
-    const received = new Date(form.receivedAt);
-    const addedOn = new Date(form.cmsTicketAddedOn);
-
-    if (Number.isNaN(received.getTime()) || Number.isNaN(addedOn.getTime())) {
-      return;
+    let totalMinutes = 0;
+    for (const act of activities) {
+      totalMinutes += parseFloat(act.durationMinutes) || 0;
     }
 
-    const diffMs = addedOn.getTime() - received.getTime();
-    const diffHours = diffMs / (1000 * 60 * 60);
+    const totalHours = totalMinutes / 60;
+    const computedDuration = totalHours > 0 ? totalHours.toFixed(2) : "0.00";
 
-    setForm((prev) => ({
-      ...prev,
-      totalDuration: diffHours >= 0 ? diffHours.toFixed(2) : "0.00",
-    }));
-  }, [form.receivedAt, form.cmsTicketAddedOn]);
+    setForm((prev) => {
+      if (prev.totalDuration === computedDuration) return prev;
+      return { ...prev, totalDuration: computedDuration };
+    });
+  }, [form.activities]);
 
   const handleTicketTypeChange = (value) => {
     setForm((f) => ({
@@ -828,8 +975,16 @@ export default function TicketModal({
     }
     if (!form.issueDescription)
       newErrors.issueDescription = "Issue Description is required";
-    if (!form.ticketIncomingChannel)
+    if (!form.ticketIncomingChannel) {
       newErrors.ticketIncomingChannel = "Channel is required";
+    } else if (
+      (String(form.ticketIncomingChannel).toLowerCase().includes("email") ||
+        form.ticketIncomingChannel === 2 ||
+        form.ticketIncomingChannel === "2") &&
+      !form.incomingChannelEmail
+    ) {
+      newErrors.incomingChannelEmail = "Email Address is required";
+    }
 
     if (activeTab === "Ticket Verification") {
       if (!form.serviceClosedDate) {
@@ -848,6 +1003,17 @@ export default function TicketModal({
 
     if (!form.activities || form.activities.length === 0) {
       setShowActivityWarning(true);
+      return;
+    }
+
+    const hasInvalidActivity = form.activities.some(
+      (act) => !act.activityType && !act.ActivityType
+    );
+    if (hasInvalidActivity) {
+      toast(
+        "Every activity detail must have an Activity Type selected.",
+        "error"
+      );
       return;
     }
 
@@ -891,8 +1057,19 @@ export default function TicketModal({
                         </span>
                         <span className="text-pink-600">Tickets</span>
                       </nav>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
+                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
                         {isEdit ? "Update Ticket" : "New AMS Ticket"}
+                        {form.ticketResolutionVerifiedBy ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50/50 dark:bg-emerald-500/5 text-emerald-500/80 dark:text-emerald-400/80 text-[11px] font-bold tracking-wide uppercase border border-emerald-200/50 dark:border-emerald-500/20 select-none pointer-events-none">
+                            <Check size={12} strokeWidth={3} />
+                            Verified
+                          </span>
+                        ) : isEdit ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-rose-50/50 dark:bg-rose-500/5 text-rose-500/80 dark:text-rose-400/80 text-[11px] font-bold tracking-wide uppercase border border-rose-200/50 dark:border-rose-500/20 select-none pointer-events-none">
+                            <X size={12} strokeWidth={3} />
+                            Non-verified
+                          </span>
+                        ) : null}
                       </h2>
                     </div>
                   </div>
@@ -970,9 +1147,7 @@ export default function TicketModal({
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                               Ticket Information
                             </h3>
-                            <p className="text-[12px] font-medium text-slate-500 mt-0.5">
-                              Basic details and documentation for this request
-                            </p>
+
                           </div>
                         </div>
 
@@ -1181,7 +1356,7 @@ export default function TicketModal({
                           </Field>
 
                           {form.ticketType === "Service Planned" && (
-                            <div className="md:col-span-2">
+                            <div className="animate-in fade-in zoom-in duration-200">
                               <Field
                                 label="Service Planned Type *"
                                 error={errors.servicePlannedType}
@@ -1253,12 +1428,32 @@ export default function TicketModal({
                               options={apiData.itsUsers}
                               placeholder="Search users..."
                               loading={loadingApis}
-                              disabled={
-                                !form.isTicketForwarded || loadingApis
-                              }
+                              disabled={!form.isTicketForwarded || loadingApis}
                               error={errors.ticketForwardedBy}
                             />
                           </Field>
+                          {console.log("channel at render:", form.ticketIncomingChannel, typeof form.ticketIncomingChannel)}
+
+                          {form.ticketIncomingChannel &&
+                            (String(form.ticketIncomingChannel).toLowerCase().includes("email") ||
+                              form.ticketIncomingChannel === 2 ||
+                              form.ticketIncomingChannel === "2") && (
+
+                              <div className="animate-in fade-in zoom-in duration-200">
+                                <Field
+                                  label="Email Address *"
+                                  error={errors.incomingChannelEmail}
+                                >
+                                  <input
+                                    type="email"
+                                    value={form.incomingChannelEmail || ""}
+                                    onChange={setField("incomingChannelEmail")}
+                                    placeholder="Enter Email Address"
+                                    className={`${inputClass} ${errors.incomingChannelEmail ? "border-rose-500 text-rose-600" : ""}`}
+                                  />
+                                </Field>
+                              </div>
+                            )}
 
                           <Field
                             label="CMS Ticket Added By"
@@ -1331,7 +1526,7 @@ export default function TicketModal({
                               error={errors.issueDescription}
                             >
                               <textarea
-                                value={form.issueDescription}
+                                value={form.issueDescription || ""}
                                 onChange={setField("issueDescription")}
                                 rows={3}
                                 className={inputClass}
@@ -1345,7 +1540,7 @@ export default function TicketModal({
                               error={errors.possibleRootCause}
                             >
                               <textarea
-                                value={form.possibleRootCause}
+                                value={form.possibleRootCause || ""}
                                 onChange={setField("possibleRootCause")}
                                 rows={3}
                                 className={inputClass}
@@ -1356,7 +1551,7 @@ export default function TicketModal({
                           <div className="md:col-span-2">
                             <Field label="Notes *" error={errors.notes}>
                               <textarea
-                                value={form.notes}
+                                value={form.notes || ""}
                                 onChange={setField("notes")}
                                 rows={2}
                                 className={inputClass}
@@ -1420,9 +1615,6 @@ export default function TicketModal({
                               <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                                 Ticket Activities
                               </h3>
-                              <p className="text-[12px] font-medium text-slate-500 mt-0.5">
-                                Manage chronological service records
-                              </p>
                             </div>
                           </div>
 
@@ -1560,12 +1752,15 @@ export default function TicketModal({
                             <ShieldCheck size={20} />
                           </div>
                           <div>
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                            <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                               Ticket Verification
+                              {form.ticketResolutionVerifiedBy && (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50/50 dark:bg-emerald-500/5 text-emerald-500/70 dark:text-emerald-400/70 text-[11px] font-bold tracking-wide uppercase border border-emerald-200/50 dark:border-emerald-500/20 cursor-not-allowed select-none">
+                                  <Check size={12} strokeWidth={3} />
+                                  Verified
+                                </span>
+                              )}
                             </h3>
-                            <p className="text-[12px] font-medium text-slate-500 mt-0.5">
-                              Review and finalize the ticket resolution details
-                            </p>
                           </div>
                         </div>
                         <Field

@@ -48,32 +48,15 @@ function saveUsers(users) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
-      const stored = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+      const stored = localStorage.getItem(SESSION_KEY);
       if (!stored) return null;
       const parsed = JSON.parse(stored);
       // Basic validation: must be an object with an id
-      if (parsed && parsed.id) {
-        parsed.customAvatar = localStorage.getItem(`profile_pic_${parsed.id}`) || null;
-        return parsed;
-      }
-      return null;
+      return parsed && parsed.id ? parsed : null;
     } catch {
       return null;
     }
   });
-
-  const updateUser = (updates) => {
-    if (user) {
-      const newUser = { ...user, ...updates };
-      setUser(newUser);
-      const isLocal = !!localStorage.getItem(SESSION_KEY);
-      if (isLocal) {
-        localStorage.setItem(SESSION_KEY, JSON.stringify(newUser));
-      } else {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(newUser));
-      }
-    }
-  };
 
   useEffect(() => {
     // Sync with manual login session if available
@@ -81,7 +64,7 @@ export function AuthProvider({ children }) {
     if (!isManualAuth && user) {
       // No authentication at all, clear internal state
       setUser(null);
-      sessionStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(SESSION_KEY);
     }
   }, [user]);
 
@@ -124,21 +107,21 @@ export function AuthProvider({ children }) {
       role: newUser.role,
       avatar: newUser.avatar,
     };
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     setUser(session);
     setLoading(false);
     return true;
   };
 
   // Login — trades username/password for a real JWT from port 3333
-  const login = async ({ email, password, rememberMe }) => {
+  const login = async ({ email, password }) => {
     setLoading(true);
     setError("");
 
     try {
-      const session = await loginWithPassword(email, password, rememberMe);
+      const session = await loginWithPassword(email, password);
 
-      let userId = email; 
+      let userId = email;
       let actualRoles = [];
       let actualName = email.split("@")[0];
       let actualEmail = email;
@@ -148,8 +131,8 @@ export function AuthProvider({ children }) {
         try {
           let base64Url = session.access_token.split(".")[1];
           let base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-          let jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          let jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
           }).join(''));
 
           const payload = JSON.parse(jsonPayload);
@@ -175,16 +158,16 @@ export function AuthProvider({ children }) {
 
         const userDetails = await usersApi.getById(userId);
         if (userDetails) {
-           actualName = userDetails.name + (userDetails.surname ? " " + userDetails.surname : "");
-           actualEmail = userDetails.email || email;
+          actualName = userDetails.name + (userDetails.surname ? " " + userDetails.surname : "");
+          actualEmail = userDetails.email || email;
         }
 
         const rolesRes = await usersApi.getUserRoles(userId);
         if (rolesRes) {
-           const items = rolesRes.items || rolesRes || [];
-           if (items.length > 0) {
-             actualRoles = items.map((r) => r.name || r);
-           }
+          const items = rolesRes.items || rolesRes || [];
+          if (items.length > 0) {
+            actualRoles = items.map((r) => r.name || r);
+          }
         }
       } catch (err) {
         console.warn("Could not fetch user profile or roles from API, using fallbacks:", err);
@@ -199,13 +182,7 @@ export function AuthProvider({ children }) {
         permissions: permissionsMap,
       };
 
-      if (rememberMe) {
-        localStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
-        sessionStorage.removeItem(SESSION_KEY);
-      } else {
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
-        localStorage.removeItem(SESSION_KEY);
-      }
+      localStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
       setUser(userProfile);
       setLoading(false);
       return true;
@@ -223,12 +200,10 @@ export function AuthProvider({ children }) {
       console.log("[Auth] Starting logout process...");
 
       // 1. Clear ALL storage keys related to auth
-      sessionStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(SESSION_KEY);
-      sessionStorage.removeItem("auth_token");
       localStorage.removeItem("auth_token");
-      sessionStorage.removeItem("spike_session");
       localStorage.removeItem("spike_session");
+      localStorage.removeItem("spike_users"); // Just in case
 
       // 2. Clear manual password-token session (from tokenAuth.js)
       clearSession();
@@ -256,7 +231,6 @@ export function AuthProvider({ children }) {
         register,
         login,
         logout,
-        updateUser,
         signinRedirect: () => (window.location.href = "/login"),
       }}
     >
@@ -264,7 +238,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
-
-
-

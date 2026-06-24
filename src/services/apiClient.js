@@ -21,8 +21,7 @@ apiClient.interceptors.request.use((config) => {
   const manualKey = "tokenAuth:session";
 
   try {
-    const raw = sessionStorage.getItem(manualKey) || localStorage.getItem(manualKey);
-    const manualSession = raw ? JSON.parse(raw) : null;
+    const manualSession = JSON.parse(localStorage.getItem(manualKey));
     if (manualSession?.access_token) {
       config.headers.Authorization = `Bearer ${manualSession.access_token}`;
     }
@@ -91,22 +90,7 @@ apiClient.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      // Avoid infinite loop if refresh also returns 401
-      if (config && !config._isRetry) {
-        config._isRetry = true;
-        try {
-          const { refreshAccessToken } = await import("./tokenAuth");
-          const newSession = await refreshAccessToken();
-          if (newSession?.access_token) {
-            config.headers.Authorization = `Bearer ${newSession.access_token}`;
-            return apiClient(config);
-          }
-        } catch (refreshErr) {
-          console.error("[apiClient] Token refresh failed:", refreshErr);
-        }
-      }
-
-      // If refresh failed or was already tried, trigger logout
+      // Trigger event for App.jsx to handle redirect
       window.dispatchEvent(new CustomEvent("auth:expired"));
     }
     return Promise.reject(error);

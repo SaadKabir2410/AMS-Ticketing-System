@@ -242,11 +242,7 @@ export default function AMSTicketsReportPage() {
       setLoading(true);
       setFormError("");
 
-      if (!filters.dateFrom || !filters.dateTo) {
-        setFormError("Date From and Date To are required.");
-        setLoading(false);
-        return;
-      }
+      // Removed Date From/To validation
 
       const params = buildParams();
 
@@ -332,11 +328,7 @@ export default function AMSTicketsReportPage() {
       setLoading(true);
       setFormError("");
 
-      if (!filters.dateFrom || !filters.dateTo) {
-        setFormError("Date From and Date To are required.");
-        setLoading(false);
-        return;
-      }
+      // Removed Date From/To validation
 
       const formatDateStart = (d) => {
         if (!d) return undefined;
@@ -567,29 +559,7 @@ export default function AMSTicketsReportPage() {
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                Date From
-              </label>
-              <input
-                type="date"
-                value={filters.dateFrom}
-                onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                className={filterInputClass}
-              />
-            </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                Date To
-              </label>
-              <input
-                type="date"
-                value={filters.dateTo}
-                onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                className={filterInputClass}
-              />
-            </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
@@ -610,10 +580,7 @@ export default function AMSTicketsReportPage() {
                 ))}
               </select>
             </div>
-          </div>
 
-          {/* Row 2 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
                 Country
@@ -689,10 +656,7 @@ export default function AMSTicketsReportPage() {
                 )}
               />
             </div>
-          </div>
 
-          {/* Row 3 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
                 Work Done Code

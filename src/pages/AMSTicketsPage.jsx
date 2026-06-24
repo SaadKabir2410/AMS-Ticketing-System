@@ -22,11 +22,13 @@ import {
   Eye,
   ArrowUp,
   ArrowRight,
-  MoreVertical
+  MoreVertical,
+  Check,
+  ShieldCheck,
+  ShieldAlert
 } from "lucide-react";
 import { Popper, ClickAwayListener, Paper, Box, MenuItem, ListItemText } from "@mui/material";
-import Flatpickr from "react-flatpickr";
-import "flatpickr/dist/flatpickr.css";
+
 import { useAuth } from "../context/AuthContextHook";
 import amsTicketApi from "../services/api/amsTicketApi";
 import { useToast } from "../component/common/ToastContext";
@@ -118,7 +120,7 @@ const getInitials = (name) => {
   return name.charAt(0).toUpperCase();
 };
 
-const RowActions = ({ row, onEdit, onAuditLog }) => {
+const RowActions = ({ row, onUpdateData, onVoid, onAuditLog, isAdmin }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
   const handleClick = (e) => {
@@ -132,11 +134,6 @@ const RowActions = ({ row, onEdit, onAuditLog }) => {
 
   return (
     <div className="flex items-center justify-center gap-1">
-      {onEdit && (
-        <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-1 text-slate-400 hover:text-slate-600 transition-colors" title="Edit">
-          <Edit size={16} />
-        </button>
-      )}
       <button onClick={handleClick} className="p-1 text-slate-400 hover:text-slate-600 transition-colors" title="More Actions">
         <MoreVertical size={16} />
       </button>
@@ -157,6 +154,16 @@ const RowActions = ({ row, onEdit, onAuditLog }) => {
             }}
           >
             <Box sx={{ py: 0.5 }}>
+              {!isAdmin && onUpdateData && (
+                <MenuItem onClick={(e) => { handleClose(e); onUpdateData(); }}>
+                  <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                </MenuItem>
+              )}
+              {!isAdmin && onVoid && (
+                <MenuItem onClick={(e) => { handleClose(e); onVoid(); }}>
+                  <ListItemText primary="Void" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                </MenuItem>
+              )}
               <MenuItem onClick={(e) => { handleClose(e); onAuditLog(); }}>
                 <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
               </MenuItem>
@@ -180,7 +187,6 @@ export default function AMSTicketsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
   const [isUnclosedModalOpen, setIsUnclosedModalOpen] = useState(false);
   const [sortKey, setSortKey] = useState("status");
   const [sortDir, setSortDir] = useState("asc");
@@ -192,30 +198,72 @@ export default function AMSTicketsPage() {
 
   // Filters
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState({
-    siteName: "",
-    siteOcn: "",
-    cmsNextTicketNo: "",
-    status: "",
-    ticketReceivedDate: null,
-  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterStatus, setFilterStatus] = useState("");
+  const [filterIsPRE, setFilterIsPRE] = useState("");
+  const [filterIsVerified, setFilterIsVerified] = useState("");
 
-  const [globalStats, setGlobalStats] = useState({ open: 0, closed: 0, inProgress: 0, overdue: 0 });
+  const activeFilterCount = [filterStatus, filterIsPRE, filterIsVerified].filter(v => v !== "").length;
 
-  const fetchGlobalStats = async () => {
+  const [globalStats, setGlobalStats] = useState({ open: 0, closed: 0, inProgress: 0, verified: 0, nonVerified: 0 });
+
+  // Carousel ref
+  const kpiScrollRef = useRef(null);
+
+  const scrollKPI = (direction) => {
+    if (kpiScrollRef.current) {
+      const scrollAmount = 300; // width of one card + gap roughly
+      kpiScrollRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const fetchGlobalStats = async (currentSearch = search) => {
     try {
-      const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, ".0000000Z");
-      const [openRes, closedRes, overdueRes] = await Promise.all([
-        amsTicketApi.getAll({ status: 1, page: 1, perPage: 1 }),
-        amsTicketApi.getAll({ status: 2, page: 1, perPage: 1 }),
-        amsTicketApi.getAll({ status: 1, dateTo: eightHoursAgo, page: 1, perPage: 1 })
+      const baseParams = {
+        search: currentSearch,
+      };
+
+      const safeFetch = (params) => amsTicketApi.getAll(params).catch(() => ({ totalCount: 0, items: [] }));
+
+      const [openRes, closedRes, initialAllRes] = await Promise.all([
+        safeFetch({ ...baseParams, status: 1, page: 1, perPage: 1 }),
+        safeFetch({ ...baseParams, status: 2, page: 1, perPage: 1 }),
+        safeFetch({ ...baseParams, page: 1, perPage: 1000 }) // Fetch first page safely (max 1000)
       ]);
+
       const openCount = openRes.totalCount || 0;
+      const closedCount = closedRes.totalCount || 0;
+      const totalCount = initialAllRes.totalCount || 0;
+
+      let allItems = initialAllRes.items || [];
+
+      // Fetch the remaining pages in parallel if there are more than 1000 tickets
+      if (totalCount > allItems.length && allItems.length > 0) {
+        const limit = 1000;
+        const pagesToFetch = Math.ceil(totalCount / limit);
+        const pagePromises = [];
+
+        for (let i = 2; i <= pagesToFetch; i++) {
+          pagePromises.push(safeFetch({ ...baseParams, page: i, perPage: limit }));
+        }
+
+        const additionalPages = await Promise.all(pagePromises);
+        additionalPages.forEach(res => {
+          if (res.items) {
+            allItems = allItems.concat(res.items);
+          }
+        });
+      }
+
+      const verifiedCount = allItems.filter(r => r.ticketResolutionVerifiedBy || r.ticketResolutionVerifiedById).length;
+      const nonVerifiedCount = totalCount > 0 ? totalCount - verifiedCount : 0;
+
       setGlobalStats({
         open: openCount,
-        closed: closedRes.totalCount || 0,
+        closed: closedCount,
         inProgress: Math.floor(openCount * 0.2),
-        overdue: overdueRes.totalCount || 0,
+        verified: verifiedCount,
+        nonVerified: nonVerifiedCount,
       });
     } catch (e) {
       console.error("Failed to fetch global stats", e);
@@ -230,56 +278,24 @@ export default function AMSTicketsPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
+      fetchGlobalStats(search);
       fetchTickets();
     }, 400);
     return () => clearTimeout(timer);
-  }, [search, filters, currentPage, pageSize, isAdvancedSearch, sortKey, sortDir]);
+  }, [search, currentPage, pageSize, sortKey, sortDir, filterStatus, filterIsPRE, filterIsVerified]);
 
   const fetchTickets = async () => {
     setLoading(true);
     try {
-      let formattedTicketDate = undefined;
-      let dateFrom = undefined;
-      let dateTo = undefined;
-
-      if (isAdvancedSearch && filters.ticketReceivedDate) {
-        const d = new Date(filters.ticketReceivedDate);
-        formattedTicketDate = d.toISOString().replace(/\.\d{3}Z$/, ".0000000Z");
-
-        // The backend requires DateFrom and DateTo for date searches
-        const firstDay = new Date(d.getFullYear(), d.getMonth(), 1);
-        const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
-
-        dateFrom = firstDay.toISOString().replace(/\.\d{3}Z$/, ".0000000Z");
-        dateTo = lastDay.toISOString().replace(/\.\d{3}Z$/, ".0000000Z");
-      }
-
-      const extraParams = isAdvancedSearch
-        ? {
-          siteName: filters.siteName || undefined,
-          siteOcn: filters.siteOcn || undefined,
-          cmsNextTicketNo: filters.cmsNextTicketNo || undefined,
-          status: filters.status || undefined,
-          ticketReceivedDate: formattedTicketDate,
-          dateFrom: dateFrom,
-          dateTo: dateTo,
-        }
-        : {};
-
-      console.log("[AMS] fetchTickets extraParams:", JSON.stringify(extraParams));
-
-      const data = await amsTicketApi.getAll({
+      const params = {
         page: currentPage,
         perPage: pageSize,
         search,
         sortKey,
         sortDir,
-        ticketReceivedDate: formattedTicketDate,
-        dateFrom,
-        dateTo,
-        siteName: filters.siteName || undefined,
-        ...extraParams,
-      });
+      };
+      if (filterStatus !== "") params.status = Number(filterStatus);
+      const data = await amsTicketApi.getAll(params);
 
       let items = data.items || [];
 
@@ -295,6 +311,17 @@ export default function AMSTicketsPage() {
         return bDate - aDate;
       });
 
+      // Apply client-side filters for isPRE and isVerified
+      if (filterIsPRE !== "") {
+        items = items.filter(r => String(r.isPRE) === filterIsPRE);
+      }
+      if (filterIsVerified !== "") {
+        const verified = filterIsVerified === "true";
+        items = items.filter(r => {
+          const isVer = !!(r.ticketResolutionVerifiedBy || r.ticketResolutionVerifiedById);
+          return isVer === verified;
+        });
+      }
       setTickets(items);
       setTotalCount(data.totalCount || 0);
     } catch (err) {
@@ -304,16 +331,6 @@ export default function AMSTicketsPage() {
     }
   };
 
-  const handleClearFilters = () => {
-    setFilters({
-      siteName: "",
-      siteOcn: "",
-      cmsNextTicketNo: "",
-      status: "",
-      ticketReceivedDate: null,
-    });
-    setSearch("");
-  };
 
   const handleDelete = async (row) => {
     try {
@@ -372,103 +389,14 @@ export default function AMSTicketsPage() {
     { key: "serviceClosedDate", label: "SERVICE CLOSED", width: 120 },
     { key: "status", label: "STATUS", width: 90 },
     { key: "isPRE", label: "PRE", width: 50, align: "center" },
+    { key: "isVerified", label: "VERIFIED", width: 80, align: "center" },
     { key: "createdBy", label: "CREATED BY", width: 110 },
     { key: "actions", label: "ACTIONS", width: 70, align: "center" },
   ];
 
   const totalPages = Math.ceil(totalCount / pageSize);
 
-  const filterRow = (
-    <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 transition-all p-4">
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Search */}
-        <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-          <span className="text-[10px] font-semibold text-slate-500">Search tickets by site name, ticket no...</span>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search size={14} className="text-slate-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500"
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        </div>
 
-
-
-        {/* Status Dropdown */}
-        <div className="flex flex-col gap-1 w-[140px]">
-          <span className="text-[10px] font-semibold text-slate-500">Status</span>
-          <select
-            value={filters.status}
-            onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))}
-            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium outline-none appearance-none focus:border-pink-500"
-          >
-            <option value="">All Status</option>
-            <option value="1">Open</option>
-            <option value="2">Closed</option>
-            <option value="3">Void</option>
-          </select>
-        </div>
-
-        {/* Date Range Picker */}
-        <div className="flex flex-col gap-1 w-[180px]">
-          <span className="text-[10px] font-semibold text-slate-500">Date Range</span>
-          <div className="relative">
-            <Flatpickr
-              value={filters.ticketReceivedDate || ""}
-              onChange={(selectedDates) => {
-                const d = selectedDates[0] || null;
-                setFilters((p) => ({ ...p, ticketReceivedDate: d }));
-              }}
-              options={{ dateFormat: "Y-m-d" }}
-              className="w-full pl-8 pr-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium outline-none placeholder:text-slate-400 focus:border-pink-500"
-              placeholder="Select Date Range"
-            />
-            <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-              <Calendar size={14} className="text-slate-400" />
-            </div>
-            {filters.ticketReceivedDate && (
-              <button
-                onClick={() => setFilters((p) => ({ ...p, ticketReceivedDate: null }))}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-pink-500"
-              >
-                <X size={12} />
-              </button>
-            )}
-          </div>
-        </div>
-
-
-        {/* Action Buttons */}
-        <div className="flex items-end gap-2 h-[50px]">
-          <button
-            onClick={handleClearFilters}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-          >
-            Clear
-          </button>
-          <button
-            className="px-5 py-2 text-xs font-semibold text-white bg-pink-500 rounded-lg hover:bg-pink-600 transition-colors shadow-sm"
-          >
-            Apply Filters
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <motion.div
@@ -508,15 +436,22 @@ export default function AMSTicketsPage() {
               </h1>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              {/* Advanced Filter Toggle */}
               <button
-                onClick={() => setIsAdvancedSearch(!isAdvancedSearch)}
-                className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-pink-500 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 transition-all"
+                onClick={() => setShowFilters(v => !v)}
+                className={`relative inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${showFilters || activeFilterCount > 0
+                  ? "bg-pink-50 border-pink-300 text-pink-600 dark:bg-pink-500/10 dark:border-pink-500/40 dark:text-pink-400"
+                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-pink-500 hover:border-pink-300"
+                  }`}
               >
-                Show Advanced Filters
-                <motion.div animate={{ rotate: isAdvancedSearch ? 180 : 0 }}>
-                  <ChevronRight size={14} className="rotate-90" />
-                </motion.div>
+                <Filter size={13} />
+                Advanced Filter
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-pink-500 text-white text-[9px] font-black flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
 
               {!isAdmin && (
@@ -531,91 +466,154 @@ export default function AMSTicketsPage() {
             </div>
           </div>
 
-          {/* ── Stats Cards ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-2 mb-6">
-            {/* Open Tickets */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-              <div className="w-12 h-12 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-500">
-                <Ticket size={24} strokeWidth={2} />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Open Tickets</span>
-                <span className="text-2xl font-bold text-slate-900 dark:text-white leading-tight mt-1">{stats.open}</span>
-                <div className="flex items-center text-[10px] mt-1">
-                  <ArrowUp size={10} className="text-red-500 mr-0.5" />
-                  <span className="text-red-500 font-medium">6</span>
-                  <span className="text-slate-400 ml-1">from yesterday</span>
-                </div>
-              </div>
-            </div>
-
-            {/* In Progress */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500">
-                <Clock size={24} strokeWidth={2} />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">In Progress</span>
-                <span className="text-2xl font-bold text-slate-900 dark:text-white leading-tight mt-1">{stats.inProgress}</span>
-                <div className="flex items-center text-[10px] mt-1">
-                  <ArrowUp size={10} className="text-red-500 mr-0.5" />
-                  <span className="text-red-500 font-medium">2</span>
-                  <span className="text-slate-400 ml-1">from yesterday</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Closed Today */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                <CheckCircle2 size={24} strokeWidth={2} />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Closed</span>
-                <span className="text-2xl font-bold text-slate-900 dark:text-white leading-tight mt-1">{stats.closed}</span>
-                <div className="flex items-center text-[10px] mt-1">
-                  <ArrowUp size={10} className="text-emerald-500 mr-0.5" />
-                  <span className="text-emerald-500 font-medium">4</span>
-                  <span className="text-slate-400 ml-1">from yesterday</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Overdue */}
-            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                  <Calendar size={24} strokeWidth={2} />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Overdue</span>
-                  <span className="text-2xl font-bold text-slate-900 dark:text-white leading-tight mt-1">{stats.overdue}</span>
-                  <div 
-                    onClick={() => navigate("/overdue-tickets")}
-                    className="flex items-center text-[10px] mt-1 group cursor-pointer"
-                  >
-                    <span className="text-indigo-600 font-medium group-hover:underline">View all overdue</span>
-                    <ArrowRight size={10} className="text-indigo-600 ml-1" />
+          {/* ── Advanced Filter Panel ── */}
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="flex flex-wrap items-center gap-3 py-3 border-t border-slate-100 dark:border-slate-800/50">
+                  {/* Search */}
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search size={13} className="text-slate-400" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Search tickets..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="pl-8 pr-7 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400 min-w-[200px]"
+                    />
+                    {search && (
+                      <button
+                        onClick={() => setSearch("")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500"
+                      >
+                        <X size={11} />
+                      </button>
+                    )}
                   </div>
+
+                  {/* Status */}
+                  <select
+                    value={filterStatus}
+                    onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}
+                    className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                  >
+                    <option value="">Ticket Status</option>
+                    <option value="1">Open</option>
+                    <option value="2">Closed</option>
+                    <option value="3">Void</option>
+                  </select>
+
+                  {/* PRE */}
+                  <select
+                    value={filterIsPRE}
+                    onChange={e => { setFilterIsPRE(e.target.value); setCurrentPage(1); }}
+                    className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                  >
+                    <option value="">PRE Status</option>
+                    <option value="true">PRE</option>
+                    <option value="false">Non-PRE</option>
+                  </select>
+
+                  {/* Verified */}
+                  <select
+                    value={filterIsVerified}
+                    onChange={e => { setFilterIsVerified(e.target.value); setCurrentPage(1); }}
+                    className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                  >
+                    <option value="">Verification Status</option>
+                    <option value="true">Verified</option>
+                    <option value="false">Non-Verified</option>
+                  </select>
+
+                  {/* Clear Filters */}
+                  {(activeFilterCount > 0 || search) && (
+                    <button
+                      onClick={() => { setFilterStatus(""); setFilterIsPRE(""); setFilterIsVerified(""); setSearch(""); setCurrentPage(1); }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-rose-200 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
+                    >
+                      <X size={11} />
+                      Clear All
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ── Stats Cards Carousel ── */}
+          <div className="relative group/kpi mt-2 mb-2">
+            <div
+              ref={kpiScrollRef}
+              className="flex justify-between gap-4 overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-2"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {/* Open Tickets */}
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-2 shadow-sm snap-start">
+                <div className="w-10 h-10 rounded-lg bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-500 shrink-0">
+                  <Ticket size={18} strokeWidth={2} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Open Tickets</span>
+                  <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.open}</span>
                 </div>
               </div>
+
+              {/* In Progress */}
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-2 shadow-sm snap-start">
+                <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
+                  <Clock size={18} strokeWidth={2} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">In Progress</span>
+                  <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.inProgress}</span>
+                </div>
+              </div>
+
+              {/* Verified Tickets */}
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-2 shadow-sm snap-start">
+                <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center text-blue-500 shrink-0">
+                  <ShieldCheck size={18} strokeWidth={2} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Verified  </span>
+                  <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.verified}</span>
+                </div>
+              </div>
+
+              {/* Non Verified Tickets */}
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-2 shadow-sm snap-start">
+                <div className="w-10 h-10 rounded-lg bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0">
+                  <ShieldAlert size={18} strokeWidth={2} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Non Verified</span>
+                  <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.nonVerified}</span>
+                </div>
+              </div>
+
+              {/* Closed Today */}
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-2 shadow-sm snap-start">
+                <div className="w-10 h-10 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+                  <CheckCircle2 size={18} strokeWidth={2} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Closed  </span>
+                  <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.closed}</span>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
 
-        {/* Advanced Filter Row (Visible only if toggled) */}
-        <AnimatePresence>
-          {isAdvancedSearch && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden"
-            >
-              {filterRow}
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Table Area */}
         <div className="w-full bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 relative min-h-[300px]">
@@ -633,13 +631,13 @@ export default function AMSTicketsPage() {
                   {columns.map((col, i) => (
                     <th
                       key={col.key}
-                      onClick={() => handleSort(col.key)}
+                      onClick={() => col.key !== "actions" && col.key !== "isVerified" && handleSort(col.key)}
                       style={{ width: col.width, minWidth: col.width }}
-                      className={`px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-${col.align || "left"} whitespace-nowrap ${col.key !== "actions" ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" : ""}`}
+                      className={`px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-${col.align || "left"} whitespace-nowrap ${col.key !== "actions" && col.key !== "isVerified" ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors" : ""}`}
                     >
                       <div className={`flex items-center ${col.align === "center" ? "justify-center" : "justify-start"} gap-1`}>
                         {col.label}
-                        {col.key !== "actions" && (
+                        {col.key !== "actions" && col.key !== "isVerified" && (
                           <div className="flex flex-col">
                             <ChevronRight size={10} className={`-rotate-90 -mb-1 ${sortKey === col.key && sortDir === "asc" ? "text-pink-500" : "text-slate-300 dark:text-slate-600"}`} />
                             <ChevronRight size={10} className={`rotate-90 ${sortKey === col.key && sortDir === "desc" ? "text-pink-500" : "text-slate-300 dark:text-slate-600"}`} />
@@ -726,12 +724,20 @@ export default function AMSTicketsPage() {
                                 </span>
                               ) : col.key === "isPRE" ? (
                                 <div className={`w-2 h-2 rounded-full mx-auto ${row.isPRE ? "bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.6)]" : "bg-slate-200 dark:bg-slate-700"}`} />
+                              ) : col.key === "isVerified" ? (
+                                <div className="flex justify-center w-full">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${(row.ticketResolutionVerifiedBy || row.ticketResolutionVerifiedById) ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
+                                    {(row.ticketResolutionVerifiedBy || row.ticketResolutionVerifiedById) ? "Verified" : "Non-verified"}
+                                  </span>
+                                </div>
                               ) : col.key === "createdBy" ? (
                                 <span className="text-slate-600 dark:text-slate-400 font-medium">{row.createdBy || "—"}</span>
                               ) : col.key === "actions" ? (
-                                <RowActions 
+                                <RowActions
                                   row={row}
-                                  onEdit={!isAdmin ? () => { setActionItem(row); setActionType("edit"); } : null}
+                                  isAdmin={isAdmin}
+                                  onUpdateData={() => { setActionItem(row); setActionType("edit"); }}
+                                  onVoid={() => { setActionItem(row); setActionType("delete"); }}
                                   onAuditLog={() => navigate(`/audit-logs?primaryKey=${row.id}&entityName=AMSTicket`)}
                                 />
                               ) : (
@@ -832,11 +838,23 @@ export default function AMSTicketsPage() {
         open={actionType === "create"}
         onClose={() => setActionType("")}
         onSave={async (payload) => {
-          await amsTicketApi.create(payload);
-          toast("Ticket created successfully");
-          setActionType("");
-          fetchGlobalStats();
-          fetchTickets();
+          try {
+            await amsTicketApi.create(payload);
+            toast("Ticket created successfully");
+            setActionType("");
+            fetchGlobalStats();
+            fetchTickets();
+          } catch (error) {
+            const errorData = error.response?.data?.error;
+            if (errorData?.validationErrors?.length > 0) {
+              const msg = errorData.validationErrors.map((e) => e.message).join("\n");
+              toast(msg, "error");
+            } else if (errorData?.message) {
+              toast(errorData.message, "error");
+            } else {
+              toast("Failed to create ticket", "error");
+            }
+          }
         }}
       />
 
@@ -853,17 +871,29 @@ export default function AMSTicketsPage() {
             ticket={actionItem}
             onSave={async (payload) => {
               const { activeTab, ...dataToSave } = payload;
-              if (activeTab === "Ticket Verification") {
-                await amsTicketApi.close(actionItem.id, dataToSave);
-                toast("Ticket closed successfully");
-              } else {
-                await amsTicketApi.update(actionItem.id, dataToSave);
-                toast("Ticket updated successfully");
+              try {
+                if (activeTab === "Ticket Verification") {
+                  await amsTicketApi.close(actionItem.id, dataToSave);
+                  toast("Ticket closed successfully");
+                } else {
+                  await amsTicketApi.update(actionItem.id, dataToSave);
+                  toast("Ticket updated successfully");
+                }
+                setActionType("");
+                setActionItem(null);
+                fetchGlobalStats();
+                fetchTickets();
+              } catch (error) {
+                const errorData = error.response?.data?.error;
+                if (errorData?.validationErrors?.length > 0) {
+                  const msg = errorData.validationErrors.map((e) => e.message).join("\n");
+                  toast(msg, "error");
+                } else if (errorData?.message) {
+                  toast(errorData.message, "error");
+                } else {
+                  toast("Failed to save ticket", "error");
+                }
               }
-              setActionType("");
-              setActionItem(null);
-              fetchGlobalStats();
-              fetchTickets();
             }}
           />
           <DeleteConfirmModal

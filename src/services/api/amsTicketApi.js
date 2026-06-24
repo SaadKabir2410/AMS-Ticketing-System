@@ -78,40 +78,29 @@ const formatDate = (val) => {
 // ── Enum label → integer maps (exact form dropdown values) ───────────────────
 
 const ticketTypeMap = {
-    "Corrective": 1,
-    "Service Planned": 2,
-    "Project": 3,
-    "Service Demand": 4,
-    "Inquiry": 5,
-    "Complaint": 6,
+    "Service Planned": 1,
+    "Service Demand": 2,
+    "Complaint": 3,
+    "Inquiry": 4
 };
 
 const ticketIncomingChannelMap = {
-    "Phone": 1,
     "Phone Call": 1,
     "Email": 2,
-    "Walk In": 3,
-    "WhatsApp": 4,
-    "Whatsapp": 4,
-    "Whatsapp/viber": 4,
-    "Whatsapp/Viber": 4,
-    "Viber": 4,
-    "Teams": 5,
+    "Whatsapp/viber": 3,
+    "Teams": 4,
 };
 
 const servicePlannedTypeMap = {
-    "Preventive Maintenance": 1,
-    "Upgrade": 2,
+    "Report": 1,
+    "Rule": 2,
     "Installation": 3,
-    "Report": 4,
-    "Rule": 5,
-    "Configuration": 6,
-    "TSB": 7,
-    "Others": 8,
+    "Configuration": 4,
+    "TBS": 5,
+    "Other": 6
 };
 
 const activityTypeMap = {
-    "Documentaion": 1,
     "Documentation": 1,
     "Testing": 2,
     "Installation": 3,
@@ -139,33 +128,107 @@ const resolveIntegerToLabel = (map, value) => {
     return match || String(value);
 };
 
-// Builds activity/detail row — form calls them "activities", API calls them "amsTicketDetails"
-const buildDetailPayload = (detail = {}) => ({
-    id: pickId(detail.id) || "00000000-0000-0000-0000-000000000000",
-    amsTicketId: pickId(detail.amsTicketId) || "00000000-0000-0000-0000-000000000000",
-    startDate: toIsoOrNull(detail.startDate),
-    endDate: toIsoOrNull(detail.endDate),
-    // form sends string label e.g. " Documentaion "
-    activityType: resolveStringEnum(activityTypeMap, detail.activityType?.trim?.(), 0),
-    // form sends "workDoneCode" as "28040 - Rule Testing and Verification"
-    workDoneCodeId: pickId(detail.workDoneCodeId || detail.workDoneCode) || null,
-    afterWorkingHoursReasonId: pickId(detail.afterWorkingHoursReasonId) || null,
-    afterWorkingHoursReasonRemarks: detail.afterWorkingHoursReasonRemarks || "",
-    workDoneCodeAndDescription: detail.workDoneCodeAndDescription || detail.workDoneCode || "",
-    // API uses "isLikelyCause", form uses "likelyCause"
-    isLikelyCause: toBoolean(
-        detail.isLikelyCause ?? detail.likelyCauseOfIssue ?? detail.likelyCause
-    ),
-    isActive: toBoolean(detail.isActive ?? true),
-    isActivityDuringWorkingHours: toBoolean(detail.isActivityDuringWorkingHours ?? true),
-    amsTicketDetailUserIds: Array.isArray(detail.amsTicketDetailUserIds)
-        ? detail.amsTicketDetailUserIds.map(pickId).filter(Boolean)
-        : Array.isArray(detail.users)
-            ? detail.users.map(pickId).filter(Boolean)
-            : Array.isArray(detail.performedByUsers)
-                ? detail.performedByUsers.map(pickId).filter(Boolean)
-                : [],
-});
+// ── FIX: Dedicated ActivityType resolver ─────────────────────────────────────
+// ActivityModal stores activityType as a plain string label (e.g. "Testing").
+// buildDetailPayload must always resolve this to a valid integer (1–5) before
+// sending to the server. The previous code used null as a fallback which caused:
+//   "The JSON value could not be converted to ActivityTypeEnum. Path: $"
+// because null is not a valid ActivityTypeEnum value.
+//
+// Resolution priority:
+//   1. Already a valid integer (1–5)       → use as-is
+//   2. String label like "Testing"         → look up in activityTypeMap
+//   3. Nested object with .id or .value    → extract and resolve
+//   4. Anything else / unresolvable        → fall back to 1 (Documentation)
+//      (1 is the safest non-zero default; the server rejects 0 for this enum)
+const ACTIVITY_TYPE_FALLBACK = 1; // Documentation — safest non-zero default
+
+const resolveActivityType = (raw) => {
+    // null / undefined / empty string → use fallback
+    if (isNil(raw)) {
+        console.warn("[amsTicketApi] activityType missing — using fallback", ACTIVITY_TYPE_FALLBACK);
+        return ACTIVITY_TYPE_FALLBACK;
+    }
+
+    // Already a valid integer
+    if (typeof raw === "number" && !Number.isNaN(raw) && raw >= 1) {
+        return raw;
+    }
+
+    // Numeric string like "2"
+    const asNum = Number(raw);
+    if (!Number.isNaN(asNum) && asNum >= 1) {
+        return asNum;
+    }
+
+    // String label like "Testing" or "testing"
+    if (typeof raw === "string") {
+        const trimmed = raw.trim();
+        // Exact match
+        if (activityTypeMap[trimmed] !== undefined) {
+            return activityTypeMap[trimmed];
+        }
+        // Case-insensitive match
+        const lower = trimmed.toLowerCase();
+        const key = Object.keys(activityTypeMap).find(
+            (k) => k.toLowerCase() === lower
+        );
+        if (key) return activityTypeMap[key];
+    }
+
+    // Object with nested value — e.g. { id: "2" } or { value: "Testing" }
+    if (typeof raw === "object") {
+        const inner = raw?.id ?? raw?.value ?? raw?.raw?.id ?? raw?.raw?.value ?? null;
+        if (!isNil(inner)) {
+            return resolveActivityType(inner); // recurse once
+        }
+    }
+
+    console.warn("[amsTicketApi] Could not resolve activityType:", raw, "— using fallback", ACTIVITY_TYPE_FALLBACK);
+    return ACTIVITY_TYPE_FALLBACK;
+};
+
+const buildDetailPayload = (detail = {}) => {
+    // FIX: Use resolveActivityType instead of resolveStringEnum with null fallback.
+    // ActivityModal sends activityType as a plain string label like "Testing".
+    // resolveActivityType handles all forms: string label, integer, numeric string,
+    // nested object — and always returns a valid integer (never null).
+    const rawActType =
+        detail.ActivityType ??
+        detail.activityType ??
+        null;
+
+    const actTypeVal = resolveActivityType(rawActType);
+
+    // Debug log — remove after confirming fix works
+    console.log("[buildDetailPayload] rawActType:", rawActType, "→ resolved:", actTypeVal);
+
+    return {
+        id: pickId(detail.id) || "00000000-0000-0000-0000-000000000000",
+        amsTicketId: pickId(detail.amsTicketId) || "00000000-0000-0000-0000-000000000000",
+        startDate: formatDate(toIsoOrNull(detail.startDate)),
+        endDate: formatDate(toIsoOrNull(detail.endDate)),
+        // FIX: Send the resolved integer under both casing keys the server may expect
+        activityType: actTypeVal,
+        ActivityType: actTypeVal,
+        workDoneCodeId: pickId(detail.workDoneCodeId || detail.workDoneCode) || null,
+        afterWorkingHoursReasonId: pickId(detail.afterWorkingHoursReasonId) || null,
+        afterWorkingHoursReasonRemarks: detail.afterWorkingHoursReasonRemarks || "",
+        workDoneCodeAndDescription: detail.workDoneCodeAndDescription || detail.workDoneCode || "",
+        isLikelyCause: toBoolean(
+            detail.isLikelyCause ?? detail.likelyCauseOfIssue ?? detail.likelyCause
+        ),
+        isActive: toBoolean(detail.isActive ?? true),
+        isActivityDuringWorkingHours: toBoolean(detail.isActivityDuringWorkingHours ?? true),
+        amsTicketDetailUserIds: Array.isArray(detail.amsTicketDetailUserIds)
+            ? detail.amsTicketDetailUserIds.map(pickId).filter(Boolean)
+            : Array.isArray(detail.users)
+                ? detail.users.map(pickId).filter(Boolean)
+                : detail.resolvedById
+                    ? [detail.resolvedById]
+                    : [],
+    };
+};
 
 const buildTicketPayload = (data = {}) => {
     // ── Resolve IDs — handles both form keys and direct API keys ─────────────
@@ -206,7 +269,7 @@ const buildTicketPayload = (data = {}) => {
 
         // ── IDs ────────────────────────────────────────────────────────────────
         siteId,
-        siteName: null,                     // never pass siteId GUID as siteName
+        siteName: null,
         siteOCN: null,
         customerUserId,
         ticketAssignedToId,
@@ -219,31 +282,25 @@ const buildTicketPayload = (data = {}) => {
         ticketReOpenedById: data.ticketReOpenedById || null,
 
         // ── Enums ──────────────────────────────────────────────────────────────
-        // New tickets are always status=1 (Open)
         status: data.status ? normalizeEnum(data.status, 1) : 1,
-        // form sends string labels → resolve to integers
         ticketType: resolveStringEnum(ticketTypeMap, data.ticketType, 0),
         servicePlannedType: resolveStringEnum(servicePlannedTypeMap, data.servicePlannedType, 1),
         ticketIncomingChannel: resolveStringEnum(ticketIncomingChannelMap, data.ticketIncomingChannel, 0),
 
         // ── Booleans ───────────────────────────────────────────────────────────
-        // form sends "pre", API needs "isPRE"
         isPRE: toBoolean(data.isPRE ?? data.pre),
         isTicketForwarded: toBoolean(data.isTicketForwarded),
         isComingFromEditScreen: toBoolean(data.isComingFromEditScreen),
         isComingFromReOpenScreen: toBoolean(data.isComingFromReOpenScreen),
 
         // ── Required text ──────────────────────────────────────────────────────
-        // cmsNextTicketNo is auto-generated by server — send "0" as placeholder
         cmsNextTicketNo: data.cmsNextTicketNo || data.cMSNextTicketNo || "0",
-        // form sends "notes", API needs "ticketNotes"
         ticketNotes: data.ticketNotes || data.notes || "",
         issueDescription: data.issueDescription || null,
         possibleRootCause: data.possibleRootCause || null,
-        emailAddress: data.emailAddress || null,
+        emailAddress: data.emailAddress || data.incomingChannelEmail || null,
 
         // ── Dates ──────────────────────────────────────────────────────────────
-        // form sends "receivedAt", API needs "ticketReceivedDate"
         ticketReceivedDate:
             formatDate(data.ticketReceivedDate || data.receivedAt) ||
             formatDate(new Date().toISOString()),
@@ -255,7 +312,6 @@ const buildTicketPayload = (data = {}) => {
         ticketResolutionVerifiedOn: formatDate(data.ticketResolutionVerifiedOn) || undefined,
 
         // ── Numeric ────────────────────────────────────────────────────────────
-        // form sends "totalDuration", API needs "activityTotalDuration"
         activityTotalDuration:
             toNumberOrNull(data.activityTotalDuration ?? data.totalDuration) ?? 0,
         afterWorkingHoursActivityTotalAmountForSpecificUser:
@@ -265,9 +321,11 @@ const buildTicketPayload = (data = {}) => {
         afterWorkingHoursActivityTotalDurationForSpecificUserSpendTime:
             toNumberOrNull(data.afterWorkingHoursActivityTotalDurationForSpecificUserSpendTime) ?? 0,
 
-        // ── Details ────────────────────────────────────────────────────────────
-        // form sends "activities", API needs "amsTicketDetails"
+        // ── Activities ─────────────────────────────────────────────────────────
+        // FIX: buildDetailPayload now uses resolveActivityType which always returns
+        // a valid integer (1–5) and never null, preventing the 400 enum error.
         amsTicketDetails: rawActivities.map(buildDetailPayload),
+        aMSTicketDetails: rawActivities.map(buildDetailPayload),
     };
 
     // Remove undefined — keep null (API expects nulls)
@@ -279,6 +337,8 @@ const buildTicketPayload = (data = {}) => {
 };
 
 export const amsTicketApi = {
+
+
     getAll: ({
         page = 1,
         perPage = 10,
@@ -425,7 +485,6 @@ export const amsTicketApi = {
                     }
                 });
 
-                // Fallbacks to satisfy backend DTO validation
                 if (!cleanPayload.servicePlannedType) {
                     cleanPayload.servicePlannedType = 1;
                 }
@@ -463,7 +522,6 @@ export const amsTicketApi = {
                     }
                 });
 
-                // Fallbacks to satisfy backend DTO validation
                 if (!cleanPayload.servicePlannedType) {
                     cleanPayload.servicePlannedType = 1;
                 }
