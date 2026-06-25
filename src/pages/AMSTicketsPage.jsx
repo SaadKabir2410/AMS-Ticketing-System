@@ -203,10 +203,14 @@ export default function AMSTicketsPage() {
   const [filterIsPRE, setFilterIsPRE] = useState("");
   const [filterIsVerified, setFilterIsVerified] = useState("");
   const [filterCreatedBy, setFilterCreatedBy] = useState("");
+  const [filterTicketDelayed, setFilterTicketDelayed] = useState("");
 
-  const activeFilterCount = [filterStatus, filterIsPRE, filterIsVerified, filterCreatedBy].filter(v => v !== "").length;
+  const activeFilterCount = [filterStatus, filterIsPRE, filterIsVerified, filterCreatedBy, filterTicketDelayed].filter(v => v !== "").length;
 
-  const [globalStats, setGlobalStats] = useState({ open: 0, closed: 0, voided: 0, inProgress: 0, verified: 0, nonVerified: 0 });
+  const [globalStats, setGlobalStats] = useState({ open: 0, closed: 0, voided: 0, inProgress: 0, verified: 0, nonVerified: 0, lateClosures: 0 });
+
+  // Cache for client-side filtering to avoid redundant full-table fetches
+  const allTicketsCache = useRef({ paramsKey: null, items: null });
 
   // Carousel ref
   const kpiScrollRef = useRef(null);
@@ -230,9 +234,8 @@ export default function AMSTicketsPage() {
         safeFetch({ ...baseParams, status: 1, page: 1, perPage: 1 }),
         safeFetch({ ...baseParams, status: 2, page: 1, perPage: 1 }),
         safeFetch({ ...baseParams, status: 3, page: 1, perPage: 1 }),
-        safeFetch({ ...baseParams, page: 1, perPage: 1000 }) // Fetch first page safely (max 1000)
+        safeFetch({ ...baseParams, page: 1, perPage: 1000 })
       ]);
-
       const openCount = openRes.totalCount || 0;
       const closedCount = closedRes.totalCount || 0;
       const voidCount = voidRes.totalCount || 0;
@@ -240,68 +243,128 @@ export default function AMSTicketsPage() {
 
       let allItems = initialAllRes.items || [];
 
-      // Fetch the remaining pages in parallel if there are more than 1000 tickets
-      if (totalCount > allItems.length && allItems.length > 0) {
-        const limit = 1000;
-        const pagesToFetch = Math.ceil(totalCount / limit);
-        const pagePromises = [];
-
-        for (let i = 2; i <= pagesToFetch; i++) {
-          pagePromises.push(safeFetch({ ...baseParams, page: i, perPage: limit }));
-        }
-
-        const additionalPages = await Promise.all(pagePromises);
-        additionalPages.forEach(res => {
-          if (res.items) {
-            allItems = allItems.concat(res.items);
+      const calcStats = (items) => {
+        const verifiedCount = items.filter(r => r.ticketResolutionVerifiedBy || r.ticketResolutionVerifiedById).length;
+        const nonVerifiedCount = totalCount > 0 ? totalCount - verifiedCount : 0;
+        let lateClosuresCount = 0;
+        const now = new Date();
+        items.forEach(ticket => {
+          if (ticket.status === 3) return; // ignore void
+          if (!ticket.ticketReceivedDate) return;
+          const received = new Date(ticket.ticketReceivedDate);
+          let end = now;
+          if (ticket.status === 2) {
+            if (ticket.cmsTicketClosedOn) {
+              end = new Date(ticket.cmsTicketClosedOn);
+            } else if (ticket.serviceClosedDate) {
+              end = new Date(ticket.serviceClosedDate);
+            }
+          }
+          const diffHours = (end - received) / (1000 * 60 * 60);
+          if (diffHours > 24) {
+            lateClosuresCount++;
           }
         });
-      }
+        return { verifiedCount, nonVerifiedCount, lateClosuresCount };
+      };
 
-      const verifiedCount = allItems.filter(r => r.ticketResolutionVerifiedBy || r.ticketResolutionVerifiedById).length;
-      const nonVerifiedCount = totalCount > 0 ? totalCount - verifiedCount : 0;
-
+      const initialStats = calcStats(allItems);
       setGlobalStats({
         open: openCount,
         closed: closedCount,
         voided: voidCount,
         inProgress: Math.floor(openCount * 0.2),
-        verified: verifiedCount,
-        nonVerified: nonVerifiedCount,
+        verified: initialStats.verifiedCount,
+        nonVerified: initialStats.nonVerifiedCount,
+        lateClosures: initialStats.lateClosuresCount,
       });
+
+      if (totalCount > allItems.length && allItems.length > 0) {
+        const limit = 1000;
+        const pagesToFetch = Math.ceil(totalCount / limit);
+        for (let i = 2; i <= pagesToFetch; i++) {
+          const res = await safeFetch({ ...baseParams, page: i, perPage: limit });
+          if (res.items) {
+            allItems = allItems.concat(res.items);
+            const stats = calcStats(allItems);
+            setGlobalStats(prev => ({
+              ...prev,
+              verified: stats.verifiedCount,
+              nonVerified: stats.nonVerifiedCount,
+              lateClosures: stats.lateClosuresCount,
+            }));
+          }
+          // Yield to not block other network requests like fetchTickets
+          await new Promise(r => setTimeout(r, 50));
+        }
+      }
     } catch (e) {
       console.error("Failed to fetch global stats", e);
     }
   };
 
-  // --- Initialization ---
-  useEffect(() => {
-    fetchGlobalStats();
-    fetchTickets();
-  }, []);
-
+  // --- Initialization and Watchers ---
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchGlobalStats(search);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
       fetchTickets();
     }, 400);
     return () => clearTimeout(timer);
-  }, [search, currentPage, pageSize, sortKey, sortDir, filterStatus, filterIsPRE, filterIsVerified, filterCreatedBy]);
+  }, [search, currentPage, pageSize, sortKey, sortDir, filterStatus, filterIsPRE, filterIsVerified, filterCreatedBy, filterTicketDelayed]);
 
   const fetchTickets = async () => {
     setLoading(true);
     try {
+      const isClientSideFiltering = filterIsPRE !== "" || filterIsVerified !== "" || filterCreatedBy !== "" || filterTicketDelayed !== "";
+
       const params = {
-        page: currentPage,
-        perPage: pageSize,
         search,
         sortKey,
         sortDir,
       };
       if (filterStatus !== "") params.status = Number(filterStatus);
-      const data = await amsTicketApi.getAll(params);
 
-      let items = data.items || [];
+      let items = [];
+      let finalTotalCount = 0;
+
+      if (!isClientSideFiltering) {
+        // Fetch just the current page
+        const data = await amsTicketApi.getAll({
+          ...params,
+          page: currentPage,
+          perPage: pageSize,
+        });
+        items = data.items || [];
+        finalTotalCount = data.totalCount || 0;
+      } else {
+        const paramsKey = JSON.stringify(params);
+        if (allTicketsCache.current.paramsKey === paramsKey && allTicketsCache.current.items) {
+          items = [...allTicketsCache.current.items];
+        } else {
+          // Fetch all items to apply client-side filtering correctly
+          const limit = 1000;
+          const initialRes = await amsTicketApi.getAll({ ...params, page: 1, perPage: limit });
+          items = initialRes.items || [];
+          const serverTotalCount = initialRes.totalCount || 0;
+
+          if (serverTotalCount > items.length && items.length > 0) {
+            const pagesToFetch = Math.ceil(serverTotalCount / limit);
+            for (let i = 2; i <= pagesToFetch; i++) {
+              const res = await amsTicketApi.getAll({ ...params, page: i, perPage: limit }).catch(() => ({ items: [] }));
+              if (res.items) {
+                items = items.concat(res.items);
+              }
+            }
+          }
+          allTicketsCache.current = { paramsKey, items: [...items] };
+        }
+      }
 
       // Always show Open/New tickets (status === 1) first, then by received date (newest first)
       items = [...items].sort((a, b) => {
@@ -315,23 +378,50 @@ export default function AMSTicketsPage() {
         return bDate - aDate;
       });
 
-      // Apply client-side filters for isPRE and isVerified
-      if (filterIsPRE !== "") {
-        items = items.filter(r => String(r.isPRE) === filterIsPRE);
+      if (isClientSideFiltering) {
+        // Apply client-side filters
+        if (filterIsPRE !== "") {
+          items = items.filter(r => String(r.isPRE) === filterIsPRE);
+        }
+        if (filterIsVerified !== "") {
+          const verified = filterIsVerified === "true";
+          items = items.filter(r => {
+            const isVer = !!(r.ticketResolutionVerifiedBy || r.ticketResolutionVerifiedById);
+            return isVer === verified;
+          });
+        }
+        if (filterCreatedBy !== "") {
+          const lowerSearch = filterCreatedBy.toLowerCase();
+          items = items.filter(r => r.createdBy && r.createdBy.toLowerCase().includes(lowerSearch));
+        }
+        if (filterTicketDelayed === "late_closures") {
+          const now = new Date();
+          items = items.filter(ticket => {
+            if (ticket.status === 3) return false;
+            if (!ticket.ticketReceivedDate) return false;
+
+            const received = new Date(ticket.ticketReceivedDate);
+            let end = now;
+            if (ticket.status === 2) {
+              if (ticket.cmsTicketClosedOn) {
+                end = new Date(ticket.cmsTicketClosedOn);
+              } else if (ticket.serviceClosedDate) {
+                end = new Date(ticket.serviceClosedDate);
+              }
+            }
+            const diffHours = (end - received) / (1000 * 60 * 60);
+            return diffHours > 24;
+          });
+        }
+
+        finalTotalCount = items.length;
+        // Client-side pagination
+        const startIndex = (currentPage - 1) * pageSize;
+        items = items.slice(startIndex, startIndex + pageSize);
       }
-      if (filterIsVerified !== "") {
-        const verified = filterIsVerified === "true";
-        items = items.filter(r => {
-          const isVer = !!(r.ticketResolutionVerifiedBy || r.ticketResolutionVerifiedById);
-          return isVer === verified;
-        });
-      }
-      if (filterCreatedBy !== "") {
-        const lowerSearch = filterCreatedBy.toLowerCase();
-        items = items.filter(r => r.createdBy && r.createdBy.toLowerCase().includes(lowerSearch));
-      }
+
       setTickets(items);
-      setTotalCount(data.totalCount || 0);
+      setTotalCount(finalTotalCount);
     } catch (err) {
       toast("Failed to fetch tickets", "error");
     } finally {
@@ -541,6 +631,16 @@ export default function AMSTicketsPage() {
                     <option value="false">Non-Verified</option>
                   </select>
 
+                  {/* Ticket Delayed */}
+                  <select
+                    value={filterTicketDelayed}
+                    onChange={e => { setFilterTicketDelayed(e.target.value); setCurrentPage(1); }}
+                    className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                  >
+                    <option value="">Delayed Status</option>
+                    <option value="late_closures">Late Closures</option>
+                  </select>
+
                   {/* Created By */}
                   <div className="relative">
                     <input
@@ -563,7 +663,7 @@ export default function AMSTicketsPage() {
                   {/* Clear Filters */}
                   {(activeFilterCount > 0 || search) && (
                     <button
-                      onClick={() => { setFilterStatus(""); setFilterIsPRE(""); setFilterIsVerified(""); setFilterCreatedBy(""); setSearch(""); setCurrentPage(1); }}
+                      onClick={() => { setFilterStatus(""); setFilterIsPRE(""); setFilterIsVerified(""); setFilterCreatedBy(""); setFilterTicketDelayed(""); setSearch(""); setCurrentPage(1); }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-rose-200 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
                     >
                       <X size={11} />
@@ -645,6 +745,17 @@ export default function AMSTicketsPage() {
                 <div className="flex flex-col min-w-0">
                   <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Void</span>
                   <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.voided}</span>
+                </div>
+              </div>
+
+              {/* Late Closures */}
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-2 shadow-sm snap-start min-w-[140px]">
+                <div className="w-10 h-10 rounded-lg bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0">
+                  <AlertCircle size={18} strokeWidth={2} />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate">Late Closures</span>
+                  <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.lateClosures}</span>
                 </div>
               </div>
 

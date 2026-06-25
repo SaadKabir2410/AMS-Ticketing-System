@@ -1,59 +1,6 @@
 import { Dialog, IconButton, Box, Typography, Paper } from "@mui/material";
-
 import { DataGrid } from "@mui/x-data-grid";
-
-const OPERATION_LABELS = {
-  0: { label: "None", color: "slate" },
-  1: { label: "Create", color: "success" },
-  2: { label: "Update", color: "warning" },
-};
-
-function DetailsListView({ rows, opLabel }) {
-  return (
-    <div className="space-y-1">
-      <div className="grid grid-cols-12 gap-4 px-4 py-2 bg-slate-100/50 dark:bg-slate-800 rounded-lg mb-2">
-        <div className="col-span-4 text-[9px] text-slate-400 ">Property</div>
-        {opLabel !== "Create" && (
-          <div className="col-span-4 text-[9px] text-slate-400 ">Old Value</div>
-        )}
-        <div
-          className={`${opLabel !== "Create" ? "col-span-4" : "col-span-8"} text-[9px] text-slate-400 `}
-        >
-          New Value
-        </div>
-      </div>
-      {rows.map((row, idx) => (
-        <div
-          key={idx}
-          className="grid grid-cols-12 gap-4 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors border-b border-slate-100 dark:border-slate-800 items-center"
-        >
-          <div className="col-span-4">
-            <span className=" text-[11px] text-slate-500 dark:text-slate-400 ">{row.property}</span>
-          </div>
-          {opLabel !== "Create" && (
-            <div className="col-span-4">
-              <span className="text-[12px] text-slate-400 line-through decoration-slate-300 break-all">
-                {row.old}
-              </span>
-            </div>
-          )}
-          <div
-            className={`${opLabel !== "Create" ? "col-span-4" : "col-span-8"}`}
-          >
-            <span className=" text-[12px] text-emerald-600 dark:text-emerald-400 bg-emerald-50/50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-100/50 break-all">
-              {row.new}
-            </span>
-          </div>
-        </div>
-      ))}
-      {rows.length === 0 && (
-        <div className="p-8 text-center text-slate-400 text-xs italic">
-          No detailed changes detected
-        </div>
-      )}
-    </div>
-  );
-}
+import { ArrowRight } from "lucide-react";
 
 function formatDate(val) {
   if (!val) return "—";
@@ -328,39 +275,36 @@ export function AuditLogDetailsContent({
       )}
 
       {/* ── Data Display ──────────────────── */}
-      <Box sx={{ flex: 1, p: isCollapsible ? 0 : 0 }}>
-        {isCollapsible ? (
-          <DetailsListView rows={rows} opLabel={opLabel} />
-        ) : (
-          <div style={{ height: 450 }}>
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              density="compact"
-              hideFooter
-              sx={{
-                border: "none",
-                bgcolor: "inherit",
+      <Box sx={{ flex: 1, p: 0 }}>
+        <div style={{ height: isCollapsible ? "auto" : 450, width: "100%" }}>
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            density="compact"
+            hideFooter
+            autoHeight={isCollapsible}
+            sx={{
+              border: "none",
+              bgcolor: "inherit",
+              color: "inherit",
+              "& .MuiDataGrid-columnHeader": {
+                bgcolor: "rgba(240, 244, 250, 0.05)",
                 color: "inherit",
-                "& .MuiDataGrid-columnHeader": {
-                  bgcolor: "rgba(240, 244, 250, 0.05)",
-                  color: "inherit",
-                  fontWeight: 800,
-                  fontSize: "10px",
-                  letterSpacing: "0.05em",
-                },
-                "& .MuiDataGrid-cell": {
-                  borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
-                  display: "flex",
-                  alignItems: "center",
-                },
-                "& .MuiDataGrid-row:hover": {
-                  bgcolor: "rgba(240, 244, 250, 0.05)",
-                },
-              }}
-            />
-          </div>
-        )}
+                fontWeight: 800,
+                fontSize: "10px",
+                letterSpacing: "0.05em",
+              },
+              "& .MuiDataGrid-cell": {
+                borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+                display: "flex",
+                alignItems: "center",
+              },
+              "& .MuiDataGrid-row:hover": {
+                bgcolor: "rgba(240, 244, 250, 0.05)",
+              },
+            }}
+          />
+        </div>
       </Box>
 
       {/* Footer */}

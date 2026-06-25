@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Dialog, IconButton, Autocomplete, TextField } from "@mui/material";
+import { Check, AlertCircle } from "lucide-react";
 
 import { sitesApi } from "../../services/api/sites";
 import { countriesApi } from "../../services/api/countries";
@@ -255,7 +256,7 @@ export default function SiteModal({
       }}
     >
       <div className="flex items-center justify-between px-6 pt-5 pb-3">
-        <h2 className="text-lg text-blue-600 dark:text-blue-400">
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
           {isEdit ? "Update Site" : "Create Site"}
         </h2>
         <IconButton
@@ -431,7 +432,7 @@ export default function SiteModal({
         <button
           type="button"
           onClick={onClose}
-          className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+          className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
         >
           Cancel
         </button>
@@ -439,7 +440,7 @@ export default function SiteModal({
           type="button"
           onClick={handleSubmit}
           disabled={loading || ocnChecking}
-          className="px-8 py-2.5 btn-flagship  text-white rounded-xl text-sm flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-blue-100 dark:shadow-none transition-all"
+          className="px-8 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold rounded-xl text-sm flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-pink-500/20 transition-all"
         >
           {loading || ocnChecking ? "Wait..." : isEdit ? (
             "Update"

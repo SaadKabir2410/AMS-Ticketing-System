@@ -71,11 +71,11 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
           startTime: "09:00",
           endTime: "18:00",
         });
-        
+
         if (!isAdmin && user) {
-           setSelectedUser({ id: user.id, name: user.name, userName: user.email });
+          setSelectedUser({ id: user.id, name: user.name, userName: user.email });
         } else {
-           setSelectedUser(null);
+          setSelectedUser(null);
         }
       }
       setValidationErrors({});
@@ -87,8 +87,8 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
     setLoadingUsers(true);
     try {
       if (!isAdmin) {
-         setUsers(user ? [{ id: user.id, name: user.name, userName: user.email }] : []);
-         return;
+        setUsers(user ? [{ id: user.id, name: user.name, userName: user.email }] : []);
+        return;
       }
       const data = await usersApi.getUsersList({
         organizationTypes: ["VendorSureze"],
@@ -172,25 +172,26 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
         sx: {
           borderRadius: "24px",
           padding: 0,
-          boxShadow: "0 25px 50px -12px rgba(59, 130, 246, 0.15)",
-          bgcolor: "background.paper",
+          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.4)",
+          bgcolor: (theme) => theme.palette.mode === 'dark' ? "#0f172a" : "#ffffff",
           border: "1px solid",
-          borderColor: "divider",
+          borderColor: (theme) => theme.palette.mode === 'dark' ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.07)",
         },
+        className: "dark:bg-slate-900",
       }}
     >
-      <div className="bg-white dark:bg-[#020617] px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
+      <div className="bg-white dark:bg-slate-900 px-8 py-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center shrink-0">
         <div>
-          <h2 className="text-[18px] font-black text-black uppercase tracking-tight">
-            {item ? "Edit Working Hour" : "New Working Hour"}
+          <h2 className="text-[18px] font-black text-slate-900 dark:text-white uppercase tracking-tight">
+            {item ? "Update Working Hour" : "New Working Hour"}
           </h2>
-          <p className="text-[10px] text-black font-bold uppercase tracking-widest mt-0.5">
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-0.5">
             {item ? "Update existing schedule" : "Set up user schedule"}
           </p>
         </div>
         <button
           onClick={onClose}
-          className="p-2 text-black hover:text-black transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-white/5"
+          className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-white/5"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M18 6L6 18M6 6l12 12" />
@@ -198,7 +199,7 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
         </button>
       </div>
 
-      <DialogContent className="bg-white dark:bg-[#020617]" sx={{ p: 4 }}>
+      <DialogContent className="bg-white dark:bg-slate-900" sx={{ p: 4 }}>
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           {submitError && (
             <PremiumErrorAlert
@@ -209,8 +210,8 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
           )}
 
           {/* User Selection */}
-          <div className="flex flex-col gap-1 text-black">
-            <label className="text-[10px] font-black text-black uppercase tracking-widest px-1">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">
               User Name*
             </label>
             {isAdmin ? (
@@ -239,7 +240,7 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
                         borderRadius: "10px",
                         fontSize: "12px",
                         padding: "2px 8px !important",
-                        bgcolor: (theme) => theme.palette.mode === 'dark' ? "rgba(255, 255, 255, 0.03)" : "rgba(0, 0, 0, 0.02)",
+                        bgcolor: (theme) => theme.palette.mode === 'dark' ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.02)",
                         color: "text.primary",
                         transition: "all 0.2s",
                         "& fieldset": { borderColor: "divider" },
@@ -250,15 +251,15 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
                 )}
               />
             ) : (
-              <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-black text-[12px] font-bold">
+              <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white text-[12px] font-bold">
                 {user?.name || "Loading..."}
               </div>
             )}
           </div>
 
           {/* Week Day */}
-          <div className="flex flex-col gap-1 text-black">
-            <label className="text-[10px] font-black text-black uppercase tracking-widest px-1">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">
               Week Day *
             </label>
             <div className="relative">
@@ -267,16 +268,16 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
                 value={formData.weekDay}
                 onChange={handleInputChange}
                 className={`w-full appearance-none bg-slate-50 dark:bg-slate-800 border ${validationErrors.weekDay ? "border-red-500" : "border-slate-200 dark:border-slate-700"
-                  } text-black text-[12px] font-semibold rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500/20 transition-all cursor-pointer`}
+                  } text-slate-900 dark:text-white text-[12px] font-semibold rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-pink-500/20 transition-all cursor-pointer`}
               >
-                <option value="" className="bg-white dark:bg-[#020617]">Select Day</option>
+                <option value="" className="bg-white dark:bg-slate-900">Select Day</option>
                 {WEEK_DAYS.map((day) => (
-                  <option key={day} value={day} className="bg-white dark:bg-[#020617]">
+                  <option key={day} value={day} className="bg-white dark:bg-slate-900">
                     {day}
                   </option>
                 ))}
               </select>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-black">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="m6 9 6 6 6-6" />
                 </svg>
@@ -285,8 +286,8 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
           </div>
 
           {/* Start Time */}
-          <div className="flex flex-col gap-1 text-black">
-            <label className="text-[10px] font-black text-black uppercase tracking-widest px-1">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">
               Start Time *
             </label>
             <Flatpickr
@@ -304,13 +305,13 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
                 dateFormat: "H:i",
                 time_24hr: true,
               }}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-black text-[12px] font-mono rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500/20 transition-all"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-[12px] font-mono rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-pink-500/20 transition-all"
             />
           </div>
 
           {/* End Time */}
-          <div className="flex flex-col gap-1 text-black">
-            <label className="text-[10px] font-black text-black uppercase tracking-widest px-1">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">
               End Time *
             </label>
             <Flatpickr
@@ -328,7 +329,7 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
                 dateFormat: "H:i",
                 time_24hr: true,
               }}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-black text-[12px] font-mono rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-blue-500/20 transition-all"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-[12px] font-mono rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-pink-500/20 transition-all"
             />
           </div>
 
@@ -336,14 +337,14 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-black text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-white/5 hover:text-black transition-all"
+              className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-black uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-2 px-4 py-1.5 btn-flagship rounded-lg text-[10px] font-black uppercase tracking-widest hover:btn-flagship shadow-md  transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-[2] px-4 py-2 text-white rounded-xl text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg shadow-pink-500/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

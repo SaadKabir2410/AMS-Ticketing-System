@@ -32,11 +32,10 @@ export function ActionsMenu({
   const open = Boolean(anchorEl);
 
   const handleClick = (event) => {
-    event.stopPropagation();
+    // Let event bubble so other ClickAwayListeners can catch it
     setAnchorEl(open ? null : event.currentTarget);
   };
-  const handleClose = (e) => {
-    if (e) e.stopPropagation();
+  const handleClose = () => {
     setAnchorEl(null);
   };
 
@@ -48,21 +47,21 @@ export function ActionsMenu({
   const menuItemHover = { py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } };
 
   return (
-    <div className="inline-block relative">
-      <button
-        onClick={handleClick}
-        className={`${className} ${open ? 'bg-pink-50 dark:bg-pink-950/30 border-pink-500' : 'bg-transparent border-pink-500/20'}`}
-      >
-        {actionButtonText} <ChevronDown size={className.includes('h-[22px]') ? 9 : 10} strokeWidth={2.5} className="ml-1" />
-      </button>
+    <ClickAwayListener mouseEvent="onMouseDown" touchEvent="onTouchStart" onClickAway={handleClose}>
+      <div className="inline-block relative">
+        <button
+          onClick={handleClick}
+          className={`${className} ${open ? 'bg-pink-50 dark:bg-pink-950/30 border-pink-500' : 'bg-transparent border-pink-500/20'}`}
+        >
+          {actionButtonText} <ChevronDown size={className.includes('h-[22px]') ? 9 : 10} strokeWidth={2.5} className="ml-1" />
+        </button>
 
-      <Popper
-        open={open}
-        anchorEl={anchorEl}
-        placement="bottom-end"
-        style={{ zIndex: 1300 }}
-      >
-        <ClickAwayListener onClickAway={(e) => { if (e) e.stopPropagation(); handleClose(); }}>
+        <Popper
+          open={open}
+          anchorEl={anchorEl}
+          placement="bottom-end"
+          style={{ zIndex: 1300 }}
+        >
           <Paper
             elevation={8}
             sx={{
@@ -135,9 +134,9 @@ export function ActionsMenu({
               ))}
             </Box>
           </Paper>
-        </ClickAwayListener>
-      </Popper>
-    </div>
+        </Popper>
+      </div>
+    </ClickAwayListener>
   );
 }
 

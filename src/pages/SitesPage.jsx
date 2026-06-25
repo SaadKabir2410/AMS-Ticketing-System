@@ -17,7 +17,7 @@ const HighlightText = ({ text, searchTerm }) => {
   return (
     <span>
       {str.slice(0, idx)}
-      <mark className="bg-yellow-200 dark:bg-yellow-500/30 text-yellow-900 dark:text-yellow-100 rounded-[2px] px-[2px]">
+      <mark className="bg-pink-100 dark:bg-pink-500/30 text-pink-700 dark:text-pink-100 rounded-[2px] px-[2px]">
         {str.slice(idx, idx + searchTerm.length)}
       </mark>
       {str.slice(idx + searchTerm.length)}
@@ -40,9 +40,13 @@ export default function SitesPage() {
   // Modals
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
-  
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [detailItem, setDetailItem] = useState(null);
+
+
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -80,7 +84,34 @@ export default function SitesPage() {
 
   const handleEdit = (item) => {
     setEditItem(item);
+    setSubmitError(null);
     setModalOpen(true);
+  };
+
+  const handleSubmit = async (payload) => {
+    setSubmitLoading(true);
+    setSubmitError(null);
+    try {
+      if (editItem) {
+        await sitesApi.update(editItem.id, payload);
+        toast("Site updated successfully");
+      } else {
+        await sitesApi.create(payload);
+        toast("Site created successfully");
+      }
+      setModalOpen(false);
+      setEditItem(null);
+      fetchData();
+    } catch (err) {
+      setSubmitError(
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Failed to save"
+      );
+    } finally {
+      setSubmitLoading(false);
+    }
   };
 
   const handleDetail = (item) => {
@@ -88,16 +119,6 @@ export default function SitesPage() {
     setDetailModalOpen(true);
   };
 
-  const handleDelete = async (item) => {
-     if (!window.confirm("Are you sure you want to delete this site?")) return;
-     try {
-       await sitesApi.delete(item.id);
-       toast("Site deleted");
-       fetchData();
-     } catch (err) {
-       toast("Failed to delete", "error");
-     }
-  };
 
   const breadcrumb = ["Home", "Management", "Lookups", "Sites"];
 
@@ -113,7 +134,10 @@ export default function SitesPage() {
         .custom-scrollbar { scrollbar-width: thin !important; }
         .custom-scrollbar::-webkit-scrollbar-track:horizontal { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #cbd5e1; border-radius: 20px; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #475569; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:horizontal,
+        :is(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:horizontal,
+        html.dark .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #334155 !important; border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
       `}</style>
 
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
@@ -128,8 +152,8 @@ export default function SitesPage() {
                     i === breadcrumb.length - 1
                       ? "text-pink-500"
                       : b === "Home"
-                      ? "hover:text-pink-500 cursor-pointer transition-colors"
-                      : ""
+                        ? "hover:text-pink-500 cursor-pointer transition-colors"
+                        : ""
                   }
                 >
                   {b}
@@ -138,33 +162,33 @@ export default function SitesPage() {
               </span>
             ))}
           </nav>
-          
+
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <h1 className="text-4xl font-black text-black tracking-tighter">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               Sites
             </h1>
             <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
               <div className="relative w-full sm:w-64 group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search size={14} className={search ? "text-pink-500" : "text-black transition-colors"} />
+                  <Search size={14} className={search ? "text-pink-500" : "text-slate-400 dark:text-slate-500 transition-colors"} />
                 </div>
                 <input
                   type="text"
                   placeholder="Search by Site name, OCN..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-[12px] outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-black placeholder:text-black/50"
+                  className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-[12px] outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
                 />
                 {search && (
                   <button
                     onClick={() => setSearch("")}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-black hover:text-pink-500 transition-colors"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
                   >
                     <X size={14} />
                   </button>
                 )}
               </div>
-              
+
               <button
                 onClick={handleNew}
                 className="w-full sm:w-auto inline-flex justify-center items-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
@@ -177,58 +201,58 @@ export default function SitesPage() {
         </div>
 
         {/* Table */}
-        <div className="flex flex-col w-full h-auto relative text-black">
+        <div className="flex flex-col w-full h-auto relative text-slate-900 dark:text-white">
           {loading ? (
-            <div className="flex-1 flex items-center justify-center text-black text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-10">
+            <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-10">
               Refreshing data...
             </div>
           ) : data.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-black text-[11px] font-black uppercase tracking-[0.2em] py-10">
+            <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] py-10">
               No sites found
             </div>
           ) : (
-            <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar text-black">
+            <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar text-slate-900 dark:text-white">
               <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px]">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">
-                    <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-left">NAME</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-left">OCN</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-left">COUNTRY</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-left">ADDRESS</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">Actions</th>
+                    <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">NAME</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">OCN</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">COUNTRY</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">ADDRESS</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.map((row, idx) => {
                     const isEven = idx % 2 === 0;
                     return (
-                    <tr
-                      key={row.id || idx}
-                      className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
-                    >
-                      <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors text-black font-bold text-[12px]">
-                        <HighlightText text={row.name} searchTerm={debouncedSearch} />
-                      </td>
-                      <td className="px-5 h-[60px] text-left transition-colors text-black">
-                        <span className="font-mono font-bold text-[12px] text-black">
-                           <HighlightText text={row.ocn} searchTerm={debouncedSearch} />
-                        </span>
-                      </td>
-                      <td className="px-5 h-[60px] text-left transition-colors text-black font-bold text-[11px]">
-                        {row.countryName || "—"}
-                      </td>
-                      <td className="px-5 h-[60px] text-left transition-colors text-black font-medium text-[11px]">
-                        {row.address || "—"}
-                      </td>
-                      <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors text-black">
-                        <ActionsMenu
-                          onEdit={() => handleEdit(row)}
-                          onDetail={() => handleDetail(row)}
-                          onDelete={() => handleDelete(row)}
-                        />
-                      </td>
-                    </tr>
-                  )})}
+                      <tr
+                        key={row.id || idx}
+                        className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
+                      >
+                        <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[12px]">
+                          <HighlightText text={row.name} searchTerm={debouncedSearch} />
+                        </td>
+                        <td className="px-5 h-[60px] text-left transition-colors text-slate-900 dark:text-white">
+                          <span className="font-mono font-bold text-[12px] text-slate-900 dark:text-white">
+                            <HighlightText text={row.ocn} searchTerm={debouncedSearch} />
+                          </span>
+                        </td>
+                        <td className="px-5 h-[60px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[11px]">
+                          {row.countryName || "—"}
+                        </td>
+                        <td className="px-5 h-[60px] text-left transition-colors text-slate-700 dark:text-slate-300 font-medium text-[11px]">
+                          {row.address || "—"}
+                        </td>
+                        <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors text-slate-900 dark:text-white">
+                          <ActionsMenu
+                            onEdit={() => handleEdit(row)}
+                            onDetail={() => handleDetail(row)}
+                          />
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -239,7 +263,7 @@ export default function SitesPage() {
         <div className="px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-black">Page Size:</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
               <select
                 value={pageSize}
                 onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
@@ -252,16 +276,16 @@ export default function SitesPage() {
             </div>
 
             <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
-              <p className="text-[10px] font-black uppercase tracking-widest text-black">
-                <span className="text-black tabular-nums">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                <span className="text-slate-900 dark:text-white tabular-nums">
                   {totalCount > 0 ? (page - 1) * pageSize + 1 : 0}
                 </span>
-                <span className="text-black mx-1.5">—</span>
-                <span className="text-black tabular-nums">
+                <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
+                <span className="text-slate-900 dark:text-white tabular-nums">
                   {Math.min(page * pageSize, totalCount)}
                 </span>
-                <span className="text-black mx-2 lowercase font-bold tracking-normal italic">of</span>
-                <span className="text-black tabular-nums font-black">
+                <span className="text-slate-400 dark:text-slate-500 mx-2 lowercase font-bold tracking-normal italic">of</span>
+                <span className="text-slate-900 dark:text-white tabular-nums font-black">
                   {totalCount}
                 </span>
               </p>
@@ -290,11 +314,11 @@ export default function SitesPage() {
               <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
 
               <div className="px-3 flex items-center gap-2 py-1">
-                <span className="text-[10px] font-black text-black uppercase tracking-widest">Page</span>
+                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Page</span>
                 <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
                   <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{page}</span>
-                  <span className="text-[10px] font-black text-black">/</span>
-                  <span className="text-[10px] font-black text-black tabular-nums leading-none">{Math.ceil(totalCount / pageSize) || 1}</span>
+                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-600">/</span>
+                  <span className="text-[10px] font-black text-slate-900 dark:text-white tabular-nums leading-none">{Math.ceil(totalCount / pageSize) || 1}</span>
                 </div>
               </div>
 
@@ -323,11 +347,13 @@ export default function SitesPage() {
 
       <SiteModal
         open={modalOpen}
-        onClose={() => { setModalOpen(false); setEditItem(null); }}
-        onSave={() => { setModalOpen(false); setEditItem(null); fetchData(); }}
-        item={editItem}
+        onClose={() => { setModalOpen(false); setEditItem(null); setSubmitError(null); }}
+        onSubmit={handleSubmit}
+        site={editItem}
+        loading={submitLoading}
+        submitError={submitError}
       />
-      
+
       {detailItem && (
         <SiteDetailModal
           open={detailModalOpen}
@@ -336,6 +362,7 @@ export default function SitesPage() {
           SecondaryDetailComponent={SiteDetailContent}
         />
       )}
+
     </div>
   );
 }

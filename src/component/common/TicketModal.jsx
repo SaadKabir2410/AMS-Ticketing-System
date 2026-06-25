@@ -1057,8 +1057,14 @@ export default function TicketModal({
                         </span>
                         <span className="text-pink-600">Tickets</span>
                       </nav>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3 flex-wrap">
                         {isEdit ? "Update Ticket" : "New AMS Ticket"}
+                        {isEdit && form.cmsNextTicketNo && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 text-[13px] font-black tracking-wide border border-pink-200/60 dark:border-pink-500/20 select-none">
+                            <Ticket size={13} strokeWidth={2.5} />
+                            {form.cmsNextTicketNo}
+                          </span>
+                        )}
                         {form.ticketResolutionVerifiedBy ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50/50 dark:bg-emerald-500/5 text-emerald-500/80 dark:text-emerald-400/80 text-[11px] font-bold tracking-wide uppercase border border-emerald-200/50 dark:border-emerald-500/20 select-none pointer-events-none">
                             <Check size={12} strokeWidth={3} />

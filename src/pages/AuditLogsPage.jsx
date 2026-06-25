@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Filter, Search, X } from "lucide-react";
+import { ArrowLeft, Filter, Search, X, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { auditLogsApi } from "../services/api/auditLogs";
 import CollapsibleAuditLogTable from "../component/common/CollapsibleAuditLogTable";
@@ -36,7 +36,7 @@ export default function AuditLogsPage() {
   useEffect(() => {
     const key = searchParams.get("primaryKey") || "";
     const ent = searchParams.get("entityName") || "all";
-    
+
     if (key !== debouncedPrimaryKey) {
       setDebouncedPrimaryKey(key);
     }
@@ -129,6 +129,7 @@ export default function AuditLogsPage() {
   );
 
   const { data, total, loading } = useResource(auditLogsApi, apiParams);
+  const totalPages = Math.ceil(total / pageSize) || 1;
 
   const [showFilters, setShowFilters] = useState(false);
   const activeFilterCount = [
@@ -166,7 +167,14 @@ export default function AuditLogsPage() {
               <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-400 dark:text-slate-500 mb-2">
                 <span>Home</span>
                 <span className="text-slate-300">/</span>
-                <span>{entityType === "AMSTicket" ? "AMS Tickets" : entityType === "all" ? "Administration" : entityType}</span>
+                <span>Administration</span>
+                <span className="text-slate-300">/</span>
+                <span>{
+                  entityType === "AMSTicket" ? "AMS Tickets" :
+                  entityType === "UserWorkingHour" ? "User Working Hours" :
+                  entityType === "all" ? "All Entities" :
+                  entityType
+                }</span>
                 <span className="text-slate-300">/</span>
                 <span className="text-pink-500">Audit Logs</span>
               </nav>
@@ -289,19 +297,117 @@ export default function AuditLogsPage() {
           </AnimatePresence>
         </div>
 
-        <div className="w-full bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 relative min-h-[300px] flex-1 flex flex-col rounded-b-3xl overflow-hidden">
-          <CollapsibleAuditLogTable
-            data={data}
-            loading={loading}
-            total={total}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(s) => {
-              setPageSize(s);
-              setPage(1);
-            }}
-          />
+        <div className="w-full bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 relative min-h-[300px]">
+          {loading && (
+            <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="animate-spin text-pink-500" size={32} />
+              </div>
+            </div>
+          )}
+          <CollapsibleAuditLogTable data={data} loading={loading} />
+        </div>
+
+        {/* Pagination Section (CodePage Style) */}
+        <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/40 gap-4 mt-auto rounded-b-3xl">
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">
+                Show
+              </span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="bg-slate-50 dark:bg-slate-700 border-none rounded-lg text-[10px] font-black px-2 py-1 outline-none"
+              >
+                {[10, 20, 25, 50, 100].map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                <span className="text-slate-900 dark:text-white tabular-nums">
+                  {total > 0 ? (page - 1) * pageSize + 1 : 0}
+                </span>
+                <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
+                <span className="text-slate-900 dark:text-white tabular-nums">
+                  {Math.min(page * pageSize, total)}
+                </span>
+                <span className="text-slate-400 dark:text-slate-600 mx-2 lowercase font-bold tracking-normal italic">of</span>
+                <span className="text-slate-900 dark:text-white tabular-nums font-black">
+                  {total}
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
+              <button
+                type="button"
+                onClick={() => setPage(1)}
+                disabled={page === 1 || loading}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                title="First Page"
+              >
+                <ChevronsLeft size={14} strokeWidth={2.5} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                disabled={page === 1 || loading}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                title="Previous Page"
+              >
+                <ChevronLeft size={14} strokeWidth={2.5} />
+              </button>
+
+              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+
+              <div className="px-3 flex items-center gap-2 py-1">
+                <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  Page
+                </span>
+                <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
+                  <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">
+                    {page}
+                  </span>
+                  <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">/</span>
+                  <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums leading-none">
+                    {totalPages}
+                  </span>
+                </div>
+              </div>
+
+              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
+
+              <button
+                type="button"
+                onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={page >= totalPages || loading}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                title="Next Page"
+              >
+                <ChevronRight size={14} strokeWidth={2.5} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPage(totalPages)}
+                disabled={page >= totalPages || loading}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                title="Last Page"
+              >
+                <ChevronsRight size={14} strokeWidth={2.5} />
+              </button>
+            </div>
+          </div>
         </div>
       </motion.div>
     </motion.div>

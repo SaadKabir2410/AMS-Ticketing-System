@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { Activity, Database, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react";
+import { Activity, Database } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
-import { AuditLogDetailsContent } from "./AuditLogDetailModal";
 
 const containerVariants = {
   hidden: {},
@@ -22,19 +20,129 @@ const rowVariants = {
 const OPERATION_COLORS = {
   1: {
     label: "CREATE",
-    color: "emerald",
     bg: "bg-emerald-50",
     text: "text-emerald-700",
     border: "border-emerald-200",
   },
   2: {
     label: "UPDATE",
-    color: "amber",
     bg: "bg-amber-50",
     text: "text-amber-700",
     border: "border-amber-200",
   },
 };
+
+function safeParseJson(val) {
+  if (!val || val === "{}" || val === "null") return {};
+  if (typeof val === "object") return val;
+  try { return JSON.parse(val); } catch { return {}; }
+}
+
+function formatVal(val) {
+  if (val === undefined || val === null) return "";
+  if (typeof val === "object") {
+    if (val.Name !== undefined) return String(val.Name);
+    if (val.name) return String(val.name);
+    if (val.displayName) return String(val.displayName);
+    try {
+      const j = JSON.stringify(val);
+      return j === "{}" || j === "[]" ? "" : j;
+    } catch { return "[Object]"; }
+  }
+  return String(val);
+}
+
+function buildDetailRows(row) {
+  const parsedOld = {
+    ...safeParseJson(row.oldValues),
+    ...(row.oldValuesDic && typeof row.oldValuesDic === "object" ? row.oldValuesDic : {}),
+  };
+  const parsedNew = {
+    ...safeParseJson(row.newValues),
+    ...(row.newValuesDic && typeof row.newValuesDic === "object" ? row.newValuesDic : {}),
+  };
+  const affectedArr = Array.isArray(row.affectedColumnsArr) ? row.affectedColumnsArr : [];
+  const allKeys = Array.from(
+    new Set([...Object.keys(parsedOld), ...Object.keys(parsedNew), ...affectedArr])
+  ).filter(Boolean);
+
+  const opType = row.operationType;
+  let finalKeys = allKeys;
+  if (opType === 2) {
+    finalKeys = allKeys.filter((k) => String(parsedOld[k]) !== String(parsedNew[k]));
+  } else if (opType === 1) {
+    finalKeys = allKeys.filter((k) => parsedNew[k] !== undefined && parsedNew[k] !== null);
+  }
+  return { parsedOld, parsedNew, finalKeys, opType };
+}
+
+function DetailTable({ row }) {
+  const { parsedOld, parsedNew, finalKeys, opType } = buildDetailRows(row);
+
+  if (finalKeys.length === 0) {
+    return (
+      <p className="text-[10px] text-slate-400 italic py-2 px-3">
+        No detailed changes detected.
+      </p>
+    );
+  }
+
+  const isCreate = opType === 1;
+
+  return (
+    <div className="w-full overflow-x-auto">
+      <table className="border-collapse w-full">
+        <thead>
+          <tr>
+            <th className="border border-slate-300 dark:border-slate-600 bg-blue-50 dark:bg-slate-700 px-1.5 py-1" />
+            {finalKeys.map((key) => (
+              <th
+                key={key}
+                className="border border-slate-300 dark:border-slate-600 bg-blue-50 dark:bg-slate-700 px-1.5 py-1 text-center font-semibold text-[9px] text-slate-600 dark:text-slate-300 leading-tight align-bottom"
+              >
+                {key.replace(/([A-Z])/g, " $1").trim()}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {!isCreate && (
+            <tr>
+              <td className="border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-1.5 py-1 font-semibold text-[9px] text-slate-500 dark:text-slate-400 whitespace-nowrap align-top">
+                Old Values
+              </td>
+              {finalKeys.map((key) => (
+                <td
+                  key={key}
+                  className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-1.5 py-1 align-top"
+                >
+                  <span className="break-words block text-[10px] leading-snug text-slate-400 line-through decoration-slate-300">
+                    {formatVal(parsedOld[key])}
+                  </span>
+                </td>
+              ))}
+            </tr>
+          )}
+          <tr>
+            <td className="border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-1.5 py-1 font-semibold text-[9px] text-slate-500 dark:text-slate-400 whitespace-nowrap align-top">
+              New Values
+            </td>
+            {finalKeys.map((key) => (
+              <td
+                key={key}
+                className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-1.5 py-1 align-top"
+              >
+                <span className="break-words block text-[10px] leading-snug text-emerald-600 dark:text-emerald-400">
+                  {formatVal(parsedNew[key])}
+                </span>
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 function CollapsibleRow({ row }) {
   const [open, setOpen] = useState(false);
@@ -51,11 +159,26 @@ function CollapsibleRow({ row }) {
       <motion.tr
         variants={rowVariants}
         onClick={() => setOpen(!open)}
-        className={`group transition-all duration-200 border-b border-slate-50 dark:border-slate-800/30 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/20 ${open ? "bg-slate-50 dark:bg-slate-800/30" : "bg-white dark:bg-slate-900"}`}
+        className={`group transition-all duration-200 cursor-pointer hover:brightness-95 ${
+          open
+            ? "bg-slate-100 dark:bg-slate-800/50"
+            : row.operationType === 1
+              ? "bg-emerald-50/80 dark:bg-emerald-900/30"
+              : row.operationType === 2
+                ? "bg-amber-50/80 dark:bg-amber-900/30"
+                : "bg-white dark:bg-slate-900"
+        }`}
       >
         <td className="px-5 py-3 text-left w-[50px]">
-          <button className="w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-colors">
-            {open ? "-" : "+"}
+          <button
+            onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+            className={`w-6 h-6 flex items-center justify-center rounded-md text-sm font-bold transition-colors ${
+              open
+                ? "bg-pink-100 text-pink-600 dark:bg-pink-500/20 dark:text-pink-400"
+                : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+            }`}
+          >
+            {open ? "−" : "+"}
           </button>
         </td>
         <td className="px-5 py-3 text-left">
@@ -69,33 +192,25 @@ function CollapsibleRow({ row }) {
           </div>
         </td>
         <td className="px-5 py-3 text-left">
-          <span className="font-mono text-xs text-slate-400">
-            {row.primaryKey || "—"}
-          </span>
+          <span className="font-mono text-xs text-slate-400">{row.primaryKey || "—"}</span>
         </td>
         <td className="px-5 py-3 text-left">
           <div className="flex items-center gap-2">
             <div className="p-1.5 bg-blue-50 text-blue-500 rounded-md border border-blue-100 dark:bg-blue-500/10 dark:border-blue-500/20">
               <Database size={12} />
             </div>
-            <span className="text-xs text-slate-700 dark:text-slate-200 font-medium">
-              {row.entityName}
-            </span>
+            <span className="text-xs text-slate-700 dark:text-slate-200 font-medium">{row.entityName}</span>
           </div>
         </td>
         <td className="px-5 py-3 text-left">
-          <span className="text-[11px] text-slate-400 font-medium">
-            {row.schemaName || "public"}
-          </span>
+          <span className="text-[11px] text-slate-400 font-medium">{row.schemaName || "public"}</span>
         </td>
         <td className="px-5 py-3 text-left">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] text-slate-500 border border-slate-200 dark:border-slate-700">
               {row.userName?.[0]?.toUpperCase() || "U"}
             </div>
-            <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-              {row.userName || "System"}
-            </span>
+            <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">{row.userName || "System"}</span>
           </div>
         </td>
         <td className="px-5 py-3 text-right">
@@ -104,11 +219,7 @@ function CollapsibleRow({ row }) {
               {date.toLocaleDateString("en-GB")}
             </span>
             <span className="text-[9px] text-slate-400 font-medium mt-0.5">
-              {date.toLocaleTimeString("en-GB", {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              })}
+              {date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
             </span>
           </div>
         </td>
@@ -116,22 +227,42 @@ function CollapsibleRow({ row }) {
 
       <AnimatePresence>
         {open && (
-          <tr>
-            <td colSpan={7} className="p-0 border-b border-slate-100 dark:border-slate-800/50">
+          <tr style={{ marginTop: 0, marginBottom: 0 }}>
+            <td colSpan={7} className="p-0" style={{ paddingTop: 0, paddingBottom: 0 }}>
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="overflow-hidden bg-slate-50/50 dark:bg-slate-900/40"
+                className="overflow-hidden"
               >
-                <div className="p-6 border-l-4 border-l-blue-500/30">
-                  <div className="flex items-center gap-2 mb-6">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                      Detailed Audit Information
-                    </h3>
+                {/* Sticky wrapper: keeps content at left edge within viewport width */}
+                <div style={{ position: "sticky", left: 0, width: "100%", maxWidth: "100vw", overflow: "hidden" }}>
+                  {/* Metadata bar */}
+                  <div className="flex items-center gap-12 px-5 py-2 bg-slate-500 dark:bg-slate-700 text-white overflow-x-auto flex-nowrap">
+                    <span className={`shrink-0 font-bold text-[10px] px-2.5 py-0.5 rounded ${
+                      row.operationType === 1
+                        ? "bg-emerald-400/30 text-emerald-100"
+                        : row.operationType === 2
+                          ? "bg-amber-400/30 text-amber-100"
+                          : "bg-slate-400/30 text-slate-100"
+                    }`}>
+                      {op.label}
+                    </span>
+                    <span className="font-mono text-[10px] opacity-70 shrink-0">
+                      {`{"Id":"${row.primaryKey}"}`}
+                    </span>
+                    <span className="text-blue-200 text-[10px] shrink-0">{row.entityName}</span>
+                    <span className="text-slate-300 text-[10px] shrink-0">{row.schemaName || "public"}</span>
+                    <span className="text-amber-200 text-[10px] shrink-0">{row.userName}</span>
+                    <span className="ml-auto text-[9px] opacity-60 shrink-0 whitespace-nowrap">
+                      {date.toLocaleDateString("en-GB")} {date.toLocaleTimeString("en-GB")}
+                    </span>
                   </div>
-                  <AuditLogDetailsContent item={row} hideHeader isCollapsible />
+                  {/* Property table */}
+                  <div className="overflow-x-auto">
+                    <DetailTable row={row} />
+                  </div>
                 </div>
               </motion.div>
             </td>
@@ -142,156 +273,35 @@ function CollapsibleRow({ row }) {
   );
 }
 
-export default function CollapsibleAuditLogTable({
-  data,
-  loading,
-  total,
-  page,
-  onPageChange,
-  pageSize,
-  onPageSizeChange,
-}) {
-  const totalPages = Math.ceil(total / pageSize) || 1;
-
-  const handleFirstPage = () => onPageChange(1);
-  const handlePrevPage = () => onPageChange(Math.max(1, page - 1));
-  const handleNextPage = () => onPageChange(Math.min(totalPages, page + 1));
-  const handleLastPage = () => onPageChange(totalPages);
-  if (loading && !data.length) {
-    return (
-      <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="animate-spin text-pink-500" size={32} />
-        </div>
-      </div>
-    );
-  }
-
+export default function CollapsibleAuditLogTable({ data, loading }) {
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-white dark:bg-transparent relative">
-      <div className="flex-1 overflow-auto custom-scrollbar">
-        <table className="w-full text-left border-separate border-spacing-y-1 min-w-max">
-          <thead>
-            <tr className="border-b border-slate-200 dark:border-slate-800 h-[48px] bg-white dark:bg-slate-900">
-              <th className="px-5 w-[50px]"></th>
-              <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">OPERATION</th>
-              <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">RECORD KEY</th>
-              <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">ENTITY NAME</th>
-              <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">SCHEMA NAME</th>
-              <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">USER NAME</th>
-              <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap text-right">DATE TIME</th>
+    <div className="overflow-x-auto custom-scrollbar">
+      <table className="w-full text-left border-separate border-spacing-y-[3px] min-w-max">
+        <thead>
+          <tr className="border-b border-slate-200 dark:border-slate-800 h-[48px] bg-white dark:bg-slate-900">
+            <th className="px-5 w-[50px]"></th>
+            <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">OPERATION</th>
+            <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">RECORD KEY</th>
+            <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">ENTITY NAME</th>
+            <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">SCHEMA NAME</th>
+            <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">USER NAME</th>
+            <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap text-right">DATE TIME</th>
+          </tr>
+        </thead>
+        <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
+          {(!data || data.length === 0) && !loading ? (
+            <tr>
+              <td colSpan={7} className="py-32 text-center text-sm font-medium text-slate-400 uppercase tracking-widest">
+                No audit logs found.
+              </td>
             </tr>
-          </thead>
-          <motion.tbody
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {(!data || data.length === 0) && !loading ? (
-              <tr>
-                <td colSpan={7} className="py-32 text-center text-sm font-medium text-slate-400 uppercase tracking-widest">
-                  No audit logs found.
-                </td>
-              </tr>
-            ) : (
-              data.map((row, index) => (
-                <CollapsibleRow key={row.id || index} row={row} />
-              ))
-            )}
-          </motion.tbody>
-        </table>
-      </div>
-
-      {/* Standard Pagination Footer (Site Style) */}
-      <div className="px-8 py-4 bg-slate-50/80 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl mt-auto">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Page Size:</span>
-            <select
-              value={pageSize}
-              onChange={(e) => onPageSizeChange(Number(e.target.value))}
-              className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest text-pink-600 dark:text-pink-400"
-            >
-              {[10, 25, 50, 100].map((s) => (
-                <option key={s} value={s} className="dark:bg-slate-900 font-sans">
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-              <span className="text-slate-900 dark:text-white tabular-nums">
-                {total > 0 ? (page - 1) * pageSize + 1 : 0}
-              </span>
-              <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
-              <span className="text-slate-900 dark:text-white tabular-nums">
-                {Math.min(page * pageSize, total)}
-              </span>
-              <span className="text-slate-400 dark:text-slate-600 mx-2 lowercase font-bold tracking-normal italic">of</span>
-              <span className="text-slate-900 dark:text-white tabular-nums font-black">
-                {total}
-              </span>
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
-            <button
-              onClick={handleFirstPage}
-              disabled={page === 1 || loading}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-              title="First Page"
-            >
-              <ChevronsLeft size={14} strokeWidth={2.5} />
-            </button>
-            <button
-              onClick={handlePrevPage}
-              disabled={page === 1 || loading}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-              title="Previous Page"
-            >
-              <ChevronLeft size={14} strokeWidth={2.5} />
-            </button>
-
-            <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-            <div className="px-3 flex items-center gap-2 py-1">
-              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Page</span>
-              <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
-                <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{page}</span>
-                <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">/</span>
-                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums leading-none">{totalPages}</span>
-              </div>
-            </div>
-
-            <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-            <button
-              onClick={handleNextPage}
-              disabled={page >= totalPages || loading}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-              title="Next Page"
-            >
-              <ChevronRight size={14} strokeWidth={2.5} />
-            </button>
-            <button
-              onClick={handleLastPage}
-              disabled={page >= totalPages || loading}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-              title="Last Page"
-            >
-              <ChevronsRight size={14} strokeWidth={2.5} />
-            </button>
-          </div>
-        </div>
-      </div>
+          ) : (
+            data.map((row, index) => (
+              <CollapsibleRow key={row.id || index} row={row} />
+            ))
+          )}
+        </motion.tbody>
+      </table>
     </div>
   );
 }
-
-
-
-
