@@ -27,10 +27,23 @@ import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import { useToast } from "../component/common/ToastContext";
 import { useResource } from "../component/hooks/useResource";
 
+// ── Highlight helper ────────────────────────────────────────────────
+const highlightText = (text, query) => {
+  if (!query || !text) return text;
+  const parts = String(text).split(new RegExp(`(${query})`, 'gi'));
+  return parts.map((part, i) => 
+    part.toLowerCase() === query.toLowerCase() ? (
+      <mark key={i} className="bg-pink-100 dark:bg-pink-500/30 text-pink-700 dark:text-pink-100 rounded-[2px] px-[2px]">
+        {part}
+      </mark>
+    ) : part
+  );
+};
+
 // ── Skeleton row ──────────────────────────────────────────────────
 function SkeletonRow() {
   return (
-    <tr className="border-b border-slate-100 dark:border-slate-800/60 h-[60px] text-black">
+    <tr className="border-b border-slate-100 dark:border-slate-800/60 h-[60px] text-slate-900 dark:text-white">
       {[15, 30, 10, 10, 15, 10].map((w, i) => (
         <td key={i} className="px-5 h-[60px]">
           <div
@@ -44,7 +57,7 @@ function SkeletonRow() {
 }
 
 // ── Sortable row ──────────────────────────────────────────────────
-function SortableRow({ row, index, onEdit, onDisable, onEnable, isAdmin }) {
+function SortableRow({ row, index, onEdit, onDisable, onEnable, isAdmin, searchTerm }) {
   const navigate = useNavigate();
   const {
     attributes,
@@ -69,24 +82,24 @@ function SortableRow({ row, index, onEdit, onDisable, onEnable, isAdmin }) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 text-black ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"} ${isDragging ? "shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/40 z-50 relative pointer-events-none" : "cursor-grab active:cursor-grabbing"}`}
+      className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"} ${isDragging ? "shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/40 z-50 relative pointer-events-none" : "cursor-grab active:cursor-grabbing"}`}
     >
-      <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors text-black font-bold text-[12px]">
-        {row.lookupCode}
+      <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
+        {highlightText(row.lookupCode, searchTerm)}
       </td>
-      <td className="px-5 h-[60px] text-left transition-colors text-black">
-        {row.description || "—"}
+      <td className="px-5 h-[60px] text-left transition-colors">
+        {highlightText(row.description || "—", searchTerm)}
       </td>
-      <td className="px-5 h-[60px] text-center transition-colors text-black">
+      <td className="px-5 h-[60px] text-center transition-colors">
         {row.sequence}
       </td>
-      <td className="px-5 h-[60px] text-center transition-colors text-black">
+      <td className="px-5 h-[60px] text-center transition-colors">
         {row.isSystemIndicator ? "✓" : "–"}
       </td>
-      <td className="px-5 h-[60px] text-center transition-colors text-black">
+      <td className="px-5 h-[60px] text-center transition-colors">
         {row.isActive ? "Active" : "Inactive"}
       </td>
-      <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors text-black">
+      <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">
         {!row.isSystemIndicator && (
           <ActionsMenu
             onAuditLog={isAdmin ? () => navigate(`/audit-logs?primaryKey=${row.id}&entityName=Lookup`) : null}
@@ -252,7 +265,7 @@ export default function CodePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
-      className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial] text-black"
+      className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial] text-slate-900 dark:text-white"
     >
       <style>{`
         *::-webkit-scrollbar { display: none !important; }
@@ -268,7 +281,7 @@ export default function CodePage() {
       >
         {/* ── Header ── */}
         <div className="flex flex-col gap-6 py-6 px-4 md:px-8 transition-colors">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
 
             <div className="flex items-center gap-4">
               <div>
@@ -299,76 +312,75 @@ export default function CodePage() {
               </div>
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => {
-                setActionItem(null);
-                setActionType("create");
-                setModalOpen(true);
-              }}
-              className="inline-flex items-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
-            >
-              New Code
-            </motion.button>
-          </div>
-
-          {/* Search bar row */}
-          <div className="w-full">
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <Search
-                  size={16}
-                  className={
-                    searchTerm
-                      ? "text-pink-500"
-                      : "text-slate-400 dark:text-slate-600 transition-colors"
-                  }
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+              <div className="relative group w-full sm:w-64">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search
+                    size={14}
+                    className={
+                      searchTerm
+                        ? "text-pink-500"
+                        : "text-slate-400 dark:text-slate-600 transition-colors"
+                    }
+                  />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search codes..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-8 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-[12px] outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
                 />
+                {searchTerm && (
+                  <button
+                    onClick={() => setSearchTerm("")}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
-              <input
-                type="text"
-                placeholder="Search codes..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-11 pr-10 py-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-sm outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-medium"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-300 hover:text-slate-500 transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              )}
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  setActionItem(null);
+                  setActionType("create");
+                  setModalOpen(true);
+                }}
+                className="w-full sm:w-auto h-[34px] inline-flex items-center justify-center px-4 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
+              >
+                New Code
+              </motion.button>
             </div>
           </div>
         </div>
 
         {/* ── Table Area ── */}
-        <div className="flex flex-col w-full h-auto relative text-black">
+        <div className="flex flex-col w-full h-auto relative">
           {resourceLoading && filteredItems.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-black text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-20 w-full">
+            <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-20 w-full">
               Refreshing data...
             </div>
           ) : !resourceLoading && filteredItems.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-black text-[11px] font-black uppercase tracking-[0.2em] py-20 w-full">
+            <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] py-20 w-full">
               No codes found
             </div>
           ) : (
-            <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar text-black">
-              <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px] text-black">
-                <thead className="sticky top-0 z-10 text-black">
-                  <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-black">
-                    <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-left">Lookup Code</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-left">Description</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">Sequence</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">System</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">Status</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">Actions</th>
+            <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar">
+              <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px]">
+                <thead className="sticky top-0 z-10">
+                  <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
+                    <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">Lookup Code</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">Description</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Sequence</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">System</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Status</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="text-black">
+                <tbody>
                   <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
@@ -384,6 +396,7 @@ export default function CodePage() {
                             key={row.id}
                             row={row}
                             index={idx}
+                            searchTerm={searchTerm}
                             onEdit={(r) => {
                               setActionItem(r);
                               setActionType("edit");
@@ -411,77 +424,77 @@ export default function CodePage() {
 
         {/* Footer & Standard Pagination - INSIDE CARD */}
         {items.length > 0 && (
-          <div className="w-full px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 transition-colors shrink-0 text-black">
+          <div className="w-full px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 transition-colors shrink-0">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-black">Page Size:</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
                 <select
                   value={pageSize}
                   onChange={(e) => {
                     setPageSize(Number(e.target.value));
                     setCurrentPage(1);
                   }}
-                  className="px-3 h-7 text-[10px] font-black bg-slate-50 dark:bg-slate-800 text-black border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none cursor-pointer uppercase tracking-widest"
+                  className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
                 >
                   {[10, 25, 50, 100].map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
                   ))}
                 </select>
               </div>
 
               <div className="hidden sm:flex items-center gap-2 border-l border-slate-200 dark:border-slate-800 pl-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-black">
-                  <span className="text-black">{filteredItems.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span>
-                  <span className="mx-1.5 text-black">—</span>
-                  <span className="text-black">{Math.min(currentPage * pageSize, filteredItems.length)}</span>
-                  <span className="mx-2 lowercase font-bold italic tracking-normal text-black">of</span>
-                  <span className="text-black">{filteredItems.length}</span>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                  <span className="text-slate-900 dark:text-white tabular-nums">{filteredItems.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span>
+                  <span className="mx-1.5 text-slate-400 dark:text-slate-600">—</span>
+                  <span className="text-slate-900 dark:text-white tabular-nums">{Math.min(currentPage * pageSize, filteredItems.length)}</span>
+                  <span className="mx-2 lowercase font-bold italic tracking-normal text-slate-400 dark:text-slate-500">of</span>
+                  <span className="text-slate-900 dark:text-white tabular-nums font-black">{filteredItems.length}</span>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
+            <div className="flex items-center gap-2 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
               <button
                 onClick={() => setCurrentPage(1)}
                 disabled={currentPage === 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-black hover:bg-white disabled:opacity-30 transition-all bg-transparent hover:bg-transparent"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
               >
-                <ChevronsLeft size={16} strokeWidth={2.5} />
+                <ChevronsLeft size={14} strokeWidth={2.5} />
               </button>
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-black hover:bg-white disabled:opacity-30 transition-all bg-transparent hover:bg-transparent"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
               >
-                <ChevronLeft size={16} strokeWidth={2.5} />
+                <ChevronLeft size={14} strokeWidth={2.5} />
               </button>
 
-              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1" />
 
-              <div className="px-3 flex items-center gap-2 text-black">
-                <span className="text-[10px] font-black uppercase tracking-widest">Page</span>
+              <div className="px-3 flex items-center gap-2 py-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page</span>
                 <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
-                  <span className="text-[12px] font-black leading-none">{currentPage}</span>
-                  <span className="text-[10px] font-black">/</span>
-                  <span className="text-[10px] font-black leading-none">{totalPages || 1}</span>
+                  <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{currentPage}</span>
+                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-600">/</span>
+                  <span className="text-[10px] font-black text-slate-900 dark:text-white tabular-nums leading-none">{totalPages || 1}</span>
                 </div>
               </div>
 
-              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1" />
 
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage >= totalPages}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-black hover:bg-white disabled:opacity-30 transition-all bg-transparent hover:bg-transparent"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
               >
-                <ChevronRight size={16} strokeWidth={2.5} />
+                <ChevronRight size={14} strokeWidth={2.5} />
               </button>
               <button
                 onClick={() => setCurrentPage(totalPages)}
                 disabled={currentPage >= totalPages}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-black hover:bg-white disabled:opacity-30 transition-all bg-transparent hover:bg-transparent"
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
               >
-                <ChevronsRight size={16} strokeWidth={2.5} />
+                <ChevronsRight size={14} strokeWidth={2.5} />
               </button>
             </div>
           </div>

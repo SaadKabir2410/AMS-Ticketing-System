@@ -452,13 +452,13 @@ export default function CodeDetailsPage() {
     <div className="bg-slate-50/50 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800/60 transition-all overflow-x-auto no-scrollbar">
       <div className="flex px-4 min-w-max relative group">
         {[
-          { label: "Code", key: "newCode", w: 80, isCombo: true },
-          { label: "Lookup", key: "lookupCode", w: 100, isCombo: true },
-          { label: "Description", key: "description", w: 220, isCombo: true },
-          { label: "Group", key: "groupCode", w: 100, isCombo: true },
-          { label: "Detail", key: "groupCodeDetail", w: 140, isCombo: true },
+          { label: "Code", key: "newCode", w: 120, isCombo: true },
+          { label: "Lookup", key: "lookupCode", w: 150, isCombo: true },
+          { label: "Description", key: "description", w: 280, isCombo: true },
+          { label: "Group", key: "groupCode", w: 150, isCombo: true },
+          { label: "Detail", key: "groupCodeDetail", w: 140, isCombo: false },
           { label: "Sub", key: "hasSubCategory", w: 50, isCombo: false },
-          { label: "Seq", key: "sequence", w: 50, isCombo: true },
+          { label: "Seq", key: "sequence", w: 50, isCombo: false },
           { label: "Def", key: "isDefaultIndicator", w: 50, isCombo: false },
           { label: "Sys", key: "isSystemIndicator", w: 50, isCombo: false },
           { label: "Ext", key: "hasExtraDescription", w: 50, isCombo: false },
@@ -466,7 +466,7 @@ export default function CodeDetailsPage() {
             label: "Extra Label",
             key: "extraDescriptionLable",
             w: 120,
-            isCombo: true,
+            isCombo: false,
           },
           { label: "Req", key: "isRequiredField", w: 50, isCombo: false },
           { label: "Status", key: "isActive", w: 100, isCombo: false },

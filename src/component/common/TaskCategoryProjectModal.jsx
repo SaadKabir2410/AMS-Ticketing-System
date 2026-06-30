@@ -249,7 +249,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
                     checked={selectedCategories.includes(cat.id)}
                     onChange={() => handleToggle(cat.id)}
                     disabled={submitting}
-                    className="peer appearance-none w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 checked:btn-flagship checked:border-blue-600 transition-all cursor-pointer"
+                    className="peer appearance-none w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 checked:bg-pink-500 checked:border-pink-500 transition-all cursor-pointer"
                   />
                   <svg
                     className="absolute w-2.5 h-2.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
@@ -258,7 +258,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-tight group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">
                   {cat.name}
                 </span>
               </label>
@@ -336,7 +336,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
         <button
           onClick={handleSave}
           disabled={submitting || loading}
-          className="h-[30px] px-8 btn-flagship  active:bg-blue-800 text-white rounded-lg text-[10.5px] font-black uppercase shadow-lg  transition-all active:scale-95 disabled:opacity-50"
+          className="h-[30px] px-8 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-lg text-[10.5px] font-black uppercase shadow-lg shadow-pink-500/20 transition-all active:scale-95 disabled:opacity-50"
         >
           {submitting ? "Processing..." : "Save"}
         </button>

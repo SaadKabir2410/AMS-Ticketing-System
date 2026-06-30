@@ -223,7 +223,7 @@ export default function HolidayModal({
             <input
               type="text"
               maxLength={200}
-              placeholder="e.g. Christmas Day"
+              placeholder="Enter Holiday Name"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               className={inputClasses(

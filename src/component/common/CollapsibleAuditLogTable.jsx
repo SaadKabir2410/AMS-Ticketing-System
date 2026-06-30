@@ -81,7 +81,7 @@ function DetailTable({ row }) {
 
   if (finalKeys.length === 0) {
     return (
-      <p className="text-[10px] text-slate-400 italic py-2 px-3">
+      <p className="text-[12px] text-slate-400 italic py-3 px-4">
         No detailed changes detected.
       </p>
     );
@@ -90,15 +90,15 @@ function DetailTable({ row }) {
   const isCreate = opType === 1;
 
   return (
-    <div className="w-full overflow-x-auto">
-      <table className="border-collapse w-full">
+    <div className="w-full overflow-x-auto pb-2">
+      <table className="border-collapse w-full min-w-max">
         <thead>
           <tr>
-            <th className="border border-slate-300 dark:border-slate-600 bg-blue-50 dark:bg-slate-700 px-1.5 py-1" />
+            <th className="border border-slate-300 dark:border-slate-600 bg-blue-50 dark:bg-slate-700 px-3 py-2 w-[120px]" />
             {finalKeys.map((key) => (
               <th
                 key={key}
-                className="border border-slate-300 dark:border-slate-600 bg-blue-50 dark:bg-slate-700 px-1.5 py-1 text-center font-semibold text-[9px] text-slate-600 dark:text-slate-300 leading-tight align-bottom"
+                className="border border-slate-300 dark:border-slate-600 bg-blue-50 dark:bg-slate-700 px-4 py-2 text-center font-bold text-[11px] text-slate-700 dark:text-slate-200 leading-tight align-bottom min-w-[200px]"
               >
                 {key.replace(/([A-Z])/g, " $1").trim()}
               </th>
@@ -108,15 +108,15 @@ function DetailTable({ row }) {
         <tbody>
           {!isCreate && (
             <tr>
-              <td className="border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-1.5 py-1 font-semibold text-[9px] text-slate-500 dark:text-slate-400 whitespace-nowrap align-top">
+              <td className="border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-3 py-2 font-semibold text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap align-top">
                 Old Values
               </td>
               {finalKeys.map((key) => (
                 <td
                   key={key}
-                  className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-1.5 py-1 align-top"
+                  className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 align-top"
                 >
-                  <span className="break-words block text-[10px] leading-snug text-slate-400 line-through decoration-slate-300">
+                  <span className="break-words block text-[12px] leading-snug text-slate-400 line-through decoration-slate-300 font-medium">
                     {formatVal(parsedOld[key])}
                   </span>
                 </td>
@@ -124,15 +124,15 @@ function DetailTable({ row }) {
             </tr>
           )}
           <tr>
-            <td className="border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-1.5 py-1 font-semibold text-[9px] text-slate-500 dark:text-slate-400 whitespace-nowrap align-top">
+            <td className="border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-3 py-2 font-semibold text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap align-top">
               New Values
             </td>
             {finalKeys.map((key) => (
               <td
                 key={key}
-                className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-1.5 py-1 align-top"
+                className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 align-top"
               >
-                <span className="break-words block text-[10px] leading-snug text-emerald-600 dark:text-emerald-400">
+                <span className="break-words block text-[12px] leading-snug text-emerald-600 dark:text-emerald-400 font-bold">
                   {formatVal(parsedNew[key])}
                 </span>
               </td>
@@ -159,33 +159,28 @@ function CollapsibleRow({ row }) {
       <motion.tr
         variants={rowVariants}
         onClick={() => setOpen(!open)}
-        className={`group transition-all duration-200 cursor-pointer hover:brightness-95 ${
-          open
-            ? "bg-slate-100 dark:bg-slate-800/50"
-            : row.operationType === 1
-              ? "bg-emerald-50/80 dark:bg-emerald-900/30"
-              : row.operationType === 2
-                ? "bg-amber-50/80 dark:bg-amber-900/30"
-                : "bg-white dark:bg-slate-900"
-        }`}
+        className={`group transition-all duration-200 cursor-pointer hover:brightness-95 ${open
+          ? "bg-slate-100 dark:bg-slate-800/50"
+          : row.operationType === 1
+            ? "bg-emerald-50/80 dark:bg-emerald-900/30"
+            : row.operationType === 2
+              ? "bg-amber-50/80 dark:bg-amber-900/30"
+              : "bg-white dark:bg-slate-900"
+          }`}
       >
         <td className="px-5 py-3 text-left w-[50px]">
           <button
             onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
-            className={`w-6 h-6 flex items-center justify-center rounded-md text-sm font-bold transition-colors ${
-              open
-                ? "bg-pink-100 text-pink-600 dark:bg-pink-500/20 dark:text-pink-400"
-                : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
-            }`}
+            className={`w-6 h-6 flex items-center justify-center rounded-md text-sm font-bold transition-colors ${open
+              ? "bg-pink-100 text-pink-600 dark:bg-pink-500/20 dark:text-pink-400"
+              : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+              }`}
           >
             {open ? "−" : "+"}
           </button>
         </td>
         <td className="px-5 py-3 text-left">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${op.bg} ${op.text} border ${op.border}`}>
-              <Activity size={16} />
-            </div>
             <span className={`text-[10px] px-2.5 py-1 font-semibold rounded-full border ${op.bg} ${op.text} ${op.border}`}>
               {op.label}
             </span>
@@ -236,17 +231,15 @@ function CollapsibleRow({ row }) {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {/* Sticky wrapper: keeps content at left edge within viewport width */}
-                <div style={{ position: "sticky", left: 0, width: "100%", maxWidth: "100vw", overflow: "hidden" }}>
+                <div className="w-full bg-white dark:bg-slate-900">
                   {/* Metadata bar */}
-                  <div className="flex items-center gap-12 px-5 py-2 bg-slate-500 dark:bg-slate-700 text-white overflow-x-auto flex-nowrap">
-                    <span className={`shrink-0 font-bold text-[10px] px-2.5 py-0.5 rounded ${
-                      row.operationType === 1
-                        ? "bg-emerald-400/30 text-emerald-100"
-                        : row.operationType === 2
-                          ? "bg-amber-400/30 text-amber-100"
-                          : "bg-slate-400/30 text-slate-100"
-                    }`}>
+                  <div className="flex items-center gap-12 px-5 py-2 bg-slate-500 dark:bg-slate-700 text-white flex-nowrap min-w-max">
+                    <span className={`shrink-0 font-bold text-[10px] px-2.5 py-0.5 rounded ${row.operationType === 1
+                      ? "bg-emerald-400/30 text-emerald-100"
+                      : row.operationType === 2
+                        ? "bg-amber-400/30 text-amber-100"
+                        : "bg-slate-400/30 text-slate-100"
+                      }`}>
                       {op.label}
                     </span>
                     <span className="font-mono text-[10px] opacity-70 shrink-0">
@@ -260,7 +253,7 @@ function CollapsibleRow({ row }) {
                     </span>
                   </div>
                   {/* Property table */}
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto bg-slate-50 dark:bg-slate-800/30">
                     <DetailTable row={row} />
                   </div>
                 </div>

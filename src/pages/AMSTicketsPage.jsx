@@ -124,26 +124,24 @@ const RowActions = ({ row, onUpdateData, onVoid, onAuditLog, isAdmin }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
   const handleClick = (e) => {
-    e.stopPropagation();
-    setAnchorEl(e.currentTarget);
+    setAnchorEl(anchorEl ? null : e.currentTarget);
   };
-  const handleClose = (e) => {
-    if (e) e.stopPropagation();
+  const handleClose = () => {
     setAnchorEl(null);
   };
 
   return (
-    <div className="flex items-center justify-center gap-1">
-      <button onClick={handleClick} className="p-1 text-slate-400 hover:text-slate-600 transition-colors" title="More Actions">
-        <MoreVertical size={16} />
-      </button>
-      <Popper
-        open={open}
-        anchorEl={anchorEl}
-        placement="bottom-end"
-        style={{ zIndex: 1300 }}
-      >
-        <ClickAwayListener onClickAway={(e) => { if (e) e.stopPropagation(); handleClose(); }}>
+    <ClickAwayListener onClickAway={handleClose}>
+      <div className="flex items-center justify-center gap-1">
+        <button onClick={handleClick} className="p-1 text-slate-400 hover:text-slate-600 transition-colors" title="More Actions">
+          <MoreVertical size={16} />
+        </button>
+        <Popper
+          open={open}
+          anchorEl={anchorEl}
+          placement="bottom-end"
+          style={{ zIndex: 1300 }}
+        >
           <Paper
             elevation={8}
             sx={{
@@ -155,23 +153,23 @@ const RowActions = ({ row, onUpdateData, onVoid, onAuditLog, isAdmin }) => {
           >
             <Box sx={{ py: 0.5 }}>
               {!isAdmin && onUpdateData && (
-                <MenuItem onClick={(e) => { handleClose(e); onUpdateData(); }}>
+                <MenuItem onClick={() => { handleClose(); onUpdateData(); }}>
                   <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
               {!isAdmin && onVoid && (
-                <MenuItem onClick={(e) => { handleClose(e); onVoid(); }}>
+                <MenuItem onClick={() => { handleClose(); onVoid(); }}>
                   <ListItemText primary="Void" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
-              <MenuItem onClick={(e) => { handleClose(e); onAuditLog(); }}>
+              <MenuItem onClick={() => { handleClose(); onAuditLog(); }}>
                 <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
               </MenuItem>
             </Box>
           </Paper>
-        </ClickAwayListener>
-      </Popper>
-    </div>
+        </Popper>
+      </div>
+    </ClickAwayListener>
   );
 };
 

@@ -1,10 +1,7 @@
 import { useState } from "react";
 import { Dialog, IconButton } from "@mui/material";
+import { Check } from "lucide-react";
 import PremiumErrorAlert from "./PremiumErrorAlert";
-
-
-
-
 const EMPTY = { name: "", code: "" };
 
 export default function CountryModal({

@@ -167,16 +167,24 @@ export default function AuditLogsPage() {
               <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-400 dark:text-slate-500 mb-2">
                 <span>Home</span>
                 <span className="text-slate-300">/</span>
-                <span>Administration</span>
-                <span className="text-slate-300">/</span>
-                <span>{
-                  entityType === "AMSTicket" ? "AMS Tickets" :
-                  entityType === "UserWorkingHour" ? "User Working Hours" :
-                  entityType === "all" ? "All Entities" :
-                  entityType
-                }</span>
-                <span className="text-slate-300">/</span>
-                <span className="text-pink-500">Audit Logs</span>
+                {entityType === "AMSTicket" ? (
+                  <>
+                    <span>AMS Ticket</span>
+                    <span className="text-slate-300">/</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Administration</span>
+                    <span className="text-slate-300">/</span>
+                    <span>{
+                      entityType === "UserWorkingHour" ? "User Working Hours" :
+                        entityType === "all" ? "All Entities" :
+                          entityType
+                    }</span>
+                    <span className="text-slate-300">/</span>
+                  </>
+                )}
+                <span className="text-pink-500">Audit Log</span>
               </nav>
               <div className="flex items-center gap-3">
                 <button
@@ -246,7 +254,7 @@ export default function AuditLogsPage() {
                     onChange={(e) => { setOperationType(e.target.value); setPage(1); }}
                     className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
                   >
-                    <option value="all">All Types</option>
+                    <option value="all">Operation Type</option>
                     <option value="1">CREATE</option>
                     <option value="2">UPDATE</option>
                   </select>
@@ -256,7 +264,7 @@ export default function AuditLogsPage() {
                     onChange={(e) => { setDatePreset(e.target.value); setPage(1); }}
                     className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
                   >
-                    <option value="all">All Time</option>
+                    <option value="all">Date Time</option>
                     <option value="today">Today</option>
                     <option value="week">This Week</option>
                     <option value="month">This Month</option>

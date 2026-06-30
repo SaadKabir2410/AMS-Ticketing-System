@@ -1,9 +1,5 @@
 import {
   Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
   Chip,
   Divider,
   Box,
@@ -37,18 +33,10 @@ function InfoCard({ label, value, mono = false }) {
         display: "flex",
         flexDirection: "column",
         gap: 0.5,
-        border: "1px solid",
-        borderColor: "divider",
         borderRadius: "12px",
         transition: "all 0.2s ease-in-out",
-        bgcolor: "rgba(248, 250, 252, 0.5)",
-        "&:hover": {
-          bgcolor: "white",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.03)",
-          borderColor: "primary.200",
-        },
-        className: "dark:bg-slate-800/50 dark:hover:bg-white/5 dark:border-slate-800",
       }}
+      className="bg-slate-50/50 hover:bg-white border border-slate-200 hover:border-pink-200 hover:shadow-sm dark:bg-slate-800/50 dark:hover:bg-slate-800 dark:border-slate-700 dark:hover:border-slate-600"
     >
       <Box sx={{ minWidth: 0 }}>
         <Typography
@@ -57,11 +45,11 @@ function InfoCard({ label, value, mono = false }) {
             fontWeight: 800,
             textTransform: "",
             letterSpacing: "0.05em",
-            color: "text.disabled",
             display: "block",
             mb: 0.3,
             fontSize: "0.65rem",
           }}
+          className="text-slate-500 dark:text-slate-400"
         >
           {label}
         </Typography>
@@ -71,9 +59,9 @@ function InfoCard({ label, value, mono = false }) {
             fontWeight: 600,
             wordBreak: "break-word",
             fontFamily: mono ? "monospace" : "inherit",
-            color: mono ? "primary.main" : "text.primary",
             fontSize: "0.875rem",
           }}
+          className={mono ? "text-pink-600 dark:text-pink-400" : "text-slate-900 dark:text-slate-100"}
         >
           {value || "—"}
         </Typography>
@@ -87,7 +75,7 @@ export function SiteDetailContent({ item, site, onClose }) {
   if (!s) return null;
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3 }} className="dark:bg-slate-900">
       <Stack spacing={2.5}>
         {/* Header info for side panel */}
         <Box>
@@ -97,25 +85,24 @@ export function SiteDetailContent({ item, site, onClose }) {
               fontWeight: 800,
               textTransform: "",
               letterSpacing: 1.5,
-              color: "primary.main",
               display: "block",
               mb: 1,
             }}
+            className="text-pink-600 dark:text-pink-500"
           >
             Site Identity
           </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 900, mb: 1.5 }}>
+          <Typography variant="h5" sx={{ fontWeight: 900, mb: 1.5 }} className="text-slate-900 dark:text-white">
             {s.name || "—"}
           </Typography>
           <Chip
             label={s.ocn || s.oCN || "—"}
             size="small"
-            color="primary"
-            sx={{ fontWeight: 800, fontFamily: "monospace" }}
+            className="bg-pink-100 text-pink-700 dark:bg-pink-500/20 dark:text-pink-300 font-bold font-mono"
           />
         </Box>
 
-        <Divider />
+        <Divider className="dark:border-slate-700" />
 
         <Stack spacing={2}>
           <InfoCard label="Full Address" value={s.address} />
@@ -140,7 +127,7 @@ export function SiteDetailContent({ item, site, onClose }) {
         <Box sx={{ pt: 4 }}>
           <button
             onClick={onClose}
-            className="w-full py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs hover:bg-white transition-all shadow-sm"
+            className="w-full py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs hover:bg-white dark:hover:bg-slate-700 text-slate-900 dark:text-white transition-all shadow-sm font-bold"
           >
             Dismiss Panel
           </button>

@@ -28,13 +28,14 @@ export const codeDetailsApi = {
     return response.data;
   },
 
+  // FIX: this route is NOT under BASE — Swagger shows it as a bare top-level route.
   getAll: async (params) => {
     if (!params?.lookupId) return [];
     try {
-      const response = await apiClient.get(`${BASE}/get-list-by-lookup-code`, {
+      const response = await apiClient.get(`/get-list-by-lookup-code`, {
         params: {
           lookupId: params.lookupId,
-          isDeleted: "True",
+          isDeleted: true, // boolean, not the string "True"
         },
       });
       const data = Array.isArray(response.data)
@@ -53,13 +54,21 @@ export const codeDetailsApi = {
     return response.data;
   },
 
+  // FIX: same bare-route correction, kept for direct use elsewhere
   getListByLookupCode: async (params) => {
     const response = await apiClient.get(`/get-list-by-lookup-code`, { params });
     return response.data;
   },
 
+  // FIX: same bare-route correction
   getListByLookupCodes: async (params) => {
     const response = await apiClient.get(`/get-list-by-lookup-codes`, { params });
+    return response.data;
+  },
+
+  // Swagger also exposes a DIFFERENT route for this — keep separate if you need it:
+  getByLookupCodes: async (params) => {
+    const response = await apiClient.get(`${BASE}/by-lookup-codes`, { params });
     return response.data;
   },
 
