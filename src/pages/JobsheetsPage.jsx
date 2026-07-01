@@ -225,8 +225,8 @@ export default function JobsheetsPage() {
         if (!val) return "—";
         const d = new Date(val);
         return (
-          <div className="flex items-center gap-2 text-black">
-            <span className="text-[12px] font-bold text-black uppercase tracking-tight">
+          <div className="flex items-center gap-2">
+            <span className="text-[12px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
               {d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
             </span>
           </div>
@@ -252,8 +252,8 @@ export default function JobsheetsPage() {
       label: "CREATED BY",
       sortable: true, // paged api supports sorting
       render: (val) => (
-        <div className="flex items-center gap-2 text-black">
-          <span className="text-black text-[11px] font-semibold uppercase tracking-tight">
+        <div className="flex items-center gap-2">
+          <span className="text-slate-900 dark:text-white text-[11px] font-semibold uppercase tracking-tight">
             {val || "—"}
           </span>
         </div>
@@ -265,7 +265,7 @@ export default function JobsheetsPage() {
       label: "Total Duration (Hours)",
       sortable: false,
       render: (val) => (
-        <span className="text-black font-mono font-black text-[12px]">
+        <span className="text-slate-900 dark:text-white font-mono font-black text-[12px]">
           {val ?? "—"}
         </span>
       ),
@@ -275,7 +275,7 @@ export default function JobsheetsPage() {
       label: "Total Duration (Minutes)",
       sortable: false,
       render: (val) => (
-        <span className="text-black font-mono font-black text-[12px]">
+        <span className="text-slate-900 dark:text-white font-mono font-black text-[12px]">
           {val ?? "—"}
         </span>
       ),
@@ -286,7 +286,7 @@ export default function JobsheetsPage() {
       render: (val) => {
         if (!val) return "—";
         return (
-          <span className="text-black text-[10px] font-medium font-mono uppercase">
+          <span className="text-slate-900 dark:text-white text-[10px] font-medium font-mono uppercase">
             {new Date(val).toLocaleString("en-GB", {
               day: "2-digit", month: "short", year: "numeric",
               hour: "2-digit", minute: "2-digit",
@@ -334,9 +334,9 @@ export default function JobsheetsPage() {
       </div>
 
       {/* Date From */}
-      <div className="flex-1 min-w-0 text-black">
-        <div className="flex flex-col gap-1 text-black">
-          <label className="text-[9px] font-black text-black uppercase tracking-widest ml-1">Date From</label>
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Date From</label>
           <Flatpickr
             value={filters.dateFrom}
             onChange={(dates, dateStr) => setFilters({ ...filters, dateFrom: dateStr })}
@@ -348,9 +348,9 @@ export default function JobsheetsPage() {
       </div>
 
       {/* Date To */}
-      <div className="flex-1 min-w-0 text-black">
-        <div className="flex flex-col gap-1 text-black">
-          <label className="text-[9px] font-black text-black uppercase tracking-widest ml-1">Date To</label>
+      <div className="flex-1 min-w-0">
+        <div className="flex flex-col gap-1">
+          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Date To</label>
           <Flatpickr
             value={filters.dateTo}
             onChange={(dates, dateStr) => setFilters({ ...filters, dateTo: dateStr })}
@@ -574,16 +574,14 @@ export default function JobsheetsPage() {
     {
       key: "view",
       label: "View",
-      icon: <Eye size={14} />,
       onClick: (row) => handleAction("view", row),
-      className: "text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10",
+      className: "text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 font-bold",
     },
     {
       key: "audit",
       label: "Audit Log",
-      icon: <History size={14} />,
       onClick: (row) => handleAction("audit", row),
-      className: "text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10",
+      className: "text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 font-bold",
     },
   ];
 
@@ -628,7 +626,7 @@ export default function JobsheetsPage() {
   const paginatedData = overrideData; // We are now using server-side pagination
 
   return (
-    <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial] text-black">
+    <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial] text-slate-900 dark:text-white">
       <style>{`
         *::-webkit-scrollbar { display: none !important; }
         * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
@@ -644,76 +642,76 @@ export default function JobsheetsPage() {
         .no-scrollbar { -ms-overflow-style: none !important; scrollbar-width: none !important; }
       `}</style>
 
-      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl text-black">
+      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
         
         {/* Header */}
-        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50 text-black">
-          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-black mb-1 flex-wrap">
-            <span onClick={() => navigate("/")} className="text-black hover:opacity-80 cursor-pointer transition-all">Home</span>
-            <span className="text-black">/</span>
-            <span className="text-black">Management</span>
-            <span className="text-black">/</span>
-            <span className="text-black font-black">Jobsheets</span>
+        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
+            <span onClick={() => navigate("/")} className="hover:opacity-80 cursor-pointer transition-all hover:text-pink-500">Home</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="text-slate-500 dark:text-slate-400">Management</span>
+            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="text-pink-500 font-black">Jobsheets</span>
           </nav>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-black">
-            <div className="flex items-center gap-4 text-black">
-              <h1 className="text-4xl font-black text-black tracking-tighter">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <h1 className="text-4xl font-black tracking-tighter">
                 Jobsheets
               </h1>
             </div>
-            <div className="flex items-center gap-3 text-black">
+            <div className="flex items-center gap-3">
               {headerActions}
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="relative z-20 px-4 py-4 sm:px-6 sm:py-6 flex items-center justify-between bg-transparent shrink-0 flex-wrap gap-4 sm:gap-6 text-black">
-          <div className="flex items-center gap-4 sm:gap-6 flex-1 min-w-[200px] text-black">
+        <div className="relative z-20 px-4 py-4 sm:px-6 sm:py-6 flex items-center justify-between bg-transparent shrink-0 flex-wrap gap-4 sm:gap-6">
+          <div className="flex items-center gap-4 sm:gap-6 flex-1 min-w-[200px]">
             {customFilterArea}
           </div>
         </div>
 
         {/* Table */}
-        <div className="flex flex-col w-full h-auto relative text-black">
+        <div className="flex flex-col w-full h-auto relative">
           {reportLoading && !reportData ? (
-            <div className="flex-1 flex items-center justify-center text-black text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-20 w-full">
+            <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-20 w-full">
               Refreshing data...
             </div>
           ) : !overrideData || overrideData.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-black text-[11px] font-black uppercase tracking-[0.2em] py-20 w-full">
+            <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] py-20 w-full">
               No jobsheets found.
             </div>
           ) : (
-            <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar text-black w-full h-full">
-              <div className="min-w-max flex flex-col text-black">
-                <table className="text-left border-separate border-spacing-y-1 table-auto text-[11px] text-black transition-opacity duration-200">
-                  <thead className="sticky top-0 z-10 text-black">
-                    <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-black">
+            <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar w-full h-full">
+              <div className="min-w-max flex flex-col">
+                <table className="text-left border-separate border-spacing-y-1 table-auto text-[11px] transition-opacity duration-200">
+                  <thead className="sticky top-0 z-10 text-slate-500 dark:text-slate-400">
+                    <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">
                       {columns.map((col, idx) => (
-                        <th key={col.key} className={`px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-left ${idx === 0 ? "pl-8" : ""}`}>
+                        <th key={col.key} className={`px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-left ${idx === 0 ? "pl-8" : ""}`}>
                           {col.label}
                         </th>
                       ))}
-                      <th className="w-[120px] px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-black text-center">
+                      <th className="w-[120px] px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="text-black">
+                  <tbody>
                     {paginatedData.map((row, idx) => {
                       const isEven = idx % 2 === 0;
                       return (
                         <tr
                           key={row.id || idx}
-                          className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 text-black ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
+                          className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
                         >
                           {columns.map((col, colIdx) => (
-                            <td key={col.key} className={`px-5 h-[60px] text-left transition-colors text-black font-bold text-[12px] ${colIdx === 0 ? "pl-8 rounded-l-2xl" : ""}`}>
+                            <td key={col.key} className={`px-5 h-[60px] text-left transition-colors font-bold text-[12px] text-slate-700 dark:text-slate-200 ${colIdx === 0 ? "pl-8 rounded-l-2xl" : ""}`}>
                               {col.render ? col.render(row[col.key], row) : (row[col.key] || "—")}
                             </td>
                           ))}
-                          <td className="w-[120px] px-5 rounded-r-2xl h-[60px] text-center transition-colors text-black">
+                          <td className="w-[120px] px-5 rounded-r-2xl h-[60px] text-center transition-colors">
                             <ActionsMenu
                               onAuditLog={!user?.role?.toLowerCase().includes("ticketing") ? () => handleAction("audit", row) : undefined}
                               customActions={customActions.map(ca => ({ ...ca, onClick: () => ca.onClick(row) }))}
@@ -731,44 +729,44 @@ export default function JobsheetsPage() {
 
         {/* Pagination Section */}
         {totalCount > 0 && (
-          <div className="px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl text-black">
-            <div className="flex items-center gap-4 text-black">
-              <div className="flex items-center gap-2.5 text-black">
-                <span className="text-[10px] font-black uppercase tracking-widest text-black">Page Size:</span>
+          <div className="px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2.5">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
                 <select
                   value={pageSize}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                  className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-black border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-black uppercase tracking-widest"
+                  className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
                 >
                   {[10, 14, 25, 50, 100].map((s) => (
-                    <option key={s} value={s} className="font-sans text-black">{s}</option>
+                    <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
                   ))}
                 </select>
               </div>
 
-              <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800 text-black">
-                <p className="text-[10px] font-black uppercase tracking-widest text-black">
-                  <span className="text-black tabular-nums">
+              <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                  <span className="text-slate-900 dark:text-white tabular-nums">
                     {totalCount > 0 ? (page - 1) * pageSize + 1 : 0}
                   </span>
-                  <span className="text-black mx-1.5">—</span>
-                  <span className="text-black tabular-nums">
+                  <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
+                  <span className="text-slate-900 dark:text-white tabular-nums">
                     {Math.min(page * pageSize, totalCount)}
                   </span>
-                  <span className="text-black mx-2 lowercase font-bold tracking-normal italic">of</span>
-                  <span className="text-black tabular-nums font-black">
+                  <span className="text-slate-400 dark:text-slate-500 mx-2 lowercase font-bold tracking-normal italic">of</span>
+                  <span className="text-slate-900 dark:text-white tabular-nums font-black">
                     {totalCount}
                   </span>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 text-black">
-              <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm text-black">
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
                 <button
                   onClick={() => setPage(1)}
                   disabled={page === 1 || reportLoading}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-black hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
                   title="First Page"
                 >
                   <ChevronsLeft size={14} strokeWidth={2.5} />
@@ -776,7 +774,7 @@ export default function JobsheetsPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1 || reportLoading}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-black hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
                   title="Previous Page"
                 >
                   <ChevronLeft size={14} strokeWidth={2.5} />
@@ -784,12 +782,12 @@ export default function JobsheetsPage() {
 
                 <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
 
-                <div className="px-3 flex items-center gap-2 py-1 text-black">
-                  <span className="text-[10px] font-black text-black uppercase tracking-widest">Page</span>
-                  <div className="flex items-center gap-1.5 min-w-[40px] justify-center text-black">
-                    <span className="text-[11px] font-black text-black tabular-nums leading-none">{page}</span>
-                    <span className="text-[10px] font-black text-black">/</span>
-                    <span className="text-[10px] font-black text-black tabular-nums leading-none">{Math.ceil(totalCount / pageSize) || 1}</span>
+                <div className="px-3 flex items-center gap-2 py-1">
+                  <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Page</span>
+                  <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
+                    <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{page}</span>
+                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-600">/</span>
+                    <span className="text-[10px] font-black text-slate-900 dark:text-white tabular-nums leading-none">{Math.ceil(totalCount / pageSize) || 1}</span>
                   </div>
                 </div>
 
@@ -798,15 +796,15 @@ export default function JobsheetsPage() {
                 <button
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page >= Math.ceil(totalCount / pageSize) || reportLoading}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-black hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
                   title="Next Page"
                 >
                   <ChevronRight size={14} strokeWidth={2.5} />
                 </button>
                 <button
-                  onClick={() => setPage(Math.ceil(totalCount / pageSize))}
+                  onClick={() => setPage(Math.ceil(totalCount / pageSize) || 1)}
                   disabled={page >= Math.ceil(totalCount / pageSize) || reportLoading}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-black hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
                   title="Last Page"
                 >
                   <ChevronsRight size={14} strokeWidth={2.5} />

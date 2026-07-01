@@ -11,6 +11,7 @@ export const ticketCommissionReportApi = {
       DateTo: params.DateTo,
     };
 
+
     //  ServicePlannedTypes as indexed string array
     if (params.ServicePlannedTypes?.length) {
       params.ServicePlannedTypes.forEach((val, index) => {
@@ -31,6 +32,7 @@ export const ticketCommissionReportApi = {
         ([_, v]) => v !== undefined && v !== null && v !== "",
       ),
     );
+
 
     return apiClient
       .get("/api/app/a-mSTicket/rules-report-aMSTicket-commission", {
