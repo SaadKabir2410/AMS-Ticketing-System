@@ -108,7 +108,7 @@ export function ActionsMenu({
                 </MenuItem>
               )}
               {onDelete && (
-                <MenuItem onClick={() => { onDelete(); handleClose(); }} sx={menuItemHover}>
+                <MenuItem onClick={(e) => { e.stopPropagation(); handleClose(); setTimeout(onDelete, 50); }} sx={menuItemHover}>
                   <ListItemText primary={deleteButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }} />
                 </MenuItem>
               )}

@@ -499,8 +499,17 @@ export default function UsersPage() {
       if (!data.userName?.trim())
         errors.userName = "The User name field is required";
       if (!data.name?.trim()) errors.name = "The Name field is required";
-      if (!item && !data.password?.trim())
+      if (!item && !data.password?.trim()) {
         errors.password = "The Password field is required";
+      } else if (data.password?.trim()) {
+        const pwd = data.password.trim();
+        const hasUpper = /[A-Z]/.test(pwd);
+        const hasLower = /[a-z]/.test(pwd);
+        const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
+        if (!hasUpper || !hasLower || !hasSpecial) {
+          errors.password = "Password must contain uppercase, lowercase, and special character";
+        }
+      }
       if (!data.phoneNumber?.trim())
         errors.phoneNumber = "The Phone number field is required";
       if (!orgType || orgType === "" || orgType === "0") {
@@ -557,7 +566,7 @@ export default function UsersPage() {
             onClose();
           }
         }}
-        maxWidth="xs"
+        maxWidth="sm"
         fullWidth
         scroll="body"
         PaperProps={{
@@ -565,19 +574,25 @@ export default function UsersPage() {
             borderRadius: "24px",
             padding: 0,
             boxShadow: "0 25px 50px -12px rgba(59, 130, 246, 0.15)",
+            bgcolor: isDark ? "#0f172a" : "#ffffff",
+            backgroundImage: "none",
           },
         }}
       >
-        <div className="bg-white dark:bg-slate-900 px-6 py-5 border-b border-slate-100 dark:border-slate-700 shrink-0 flex justify-between items-center">
-          <h2 className="text-base font-bold dark:text-white text-slate-800 flex items-center gap-2">
-            {item ? "Edit User" : "Create User"}
+        <div className="bg-white dark:bg-[#0f172a] px-6 py-6 border-b border-slate-100 dark:border-slate-800 shrink-0 flex justify-between items-center relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 via-purple-500 to-rose-500"></div>
+          <h2 className="text-xl font-black bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent flex items-center">
+            <div className="w-10 h-10 rounded-2xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-500 mr-3 shadow-inner shadow-pink-500/20">
+              <ShieldCheck size={20} strokeWidth={2.5} />
+            </div>
+            {item ? "Edit User Profile" : "Create New User"}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-[#ec4899] dark:hover:text-[#ec4899] transition-colors rounded-lg bg-slate-50 dark:bg-slate-800"
+            className="p-2 text-slate-400 hover:text-pink-500 hover:rotate-90 transition-all duration-300 rounded-xl hover:bg-pink-50 dark:hover:bg-pink-500/10"
           >
-            <X size={16} />
+            <X size={20} strokeWidth={2.5} />
           </button>
         </div>
 
@@ -593,15 +608,14 @@ export default function UsersPage() {
                 <p className="text-sm text-slate-500 animate-pulse">Loading user details...</p>
               </div>
             )}
-            <Box sx={{ borderBottom: 1, borderColor: "divider", px: 3, pt: 1 }}>
+            <Box sx={{ borderBottom: 1, borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", px: 3, pt: 1, bgcolor: isDark ? "#0f172a" : "#f8fafc" }}>
               <Tabs
                 value={tabIndex}
                 onChange={(e, val) => setTabIndex(val)}
-                indicatorColor="primary"
-                textColor="primary"
+                TabIndicatorProps={{ style: { backgroundColor: '#ec4899', height: 3, borderRadius: '3px 3px 0 0' } }}
               >
-                <Tab label="User Information" sx={{ fontWeight: "bold" }} />
-                <Tab label="Roles" sx={{ fontWeight: "bold" }} />
+                <Tab label="User Information" sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', color: isDark ? '#64748b' : '#94a3b8', '&.Mui-selected': { color: '#ec4899' } }} />
+                <Tab label="Roles" sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', color: isDark ? '#64748b' : '#94a3b8', '&.Mui-selected': { color: '#ec4899' } }} />
               </Tabs>
             </Box>
 
@@ -610,7 +624,7 @@ export default function UsersPage() {
                 <PremiumErrorAlert
                   open={!!submitError}
                   message={submitError}
-                  onClose={() => { }}
+                  onClose={() => setSubmitError("")}
                 />
               )}
 
@@ -621,15 +635,20 @@ export default function UsersPage() {
                     <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       User name *
                     </label>
-                    <input
-                      name="userName"
-                      autoComplete="new-password"
-                      defaultValue={userData?.userName || ""}
-                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.userName
-                        ? "border-red-500 focus:ring-red-500/20"
-                        : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"
-                        } rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200 font-medium`}
-                    />
+                    <div className="relative group">
+                      <input
+                        name="userName"
+                        autoComplete="new-password"
+                        defaultValue={userData?.userName || ""}
+                        className={`w-full px-3 py-2.5 bg-transparent border-2 ${validationErrors.userName
+                          ? "border-red-500 focus:ring-red-500/20"
+                          : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
+                          } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
+                      />
+                      <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        <X size={14} />
+                      </button>
+                    </div>
                     {validationErrors.userName && (
                       <p className="text-red-500 text-[9px] mt-1 ml-1">
                         {validationErrors.userName}
@@ -640,14 +659,19 @@ export default function UsersPage() {
                     <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       Name *
                     </label>
-                    <input
-                      name="name"
-                      defaultValue={userData?.name || ""}
-                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.name
-                        ? "border-red-500 focus:ring-red-500/20"
-                        : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"
-                        } rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200 font-medium`}
-                    />
+                    <div className="relative group">
+                      <input
+                        name="name"
+                        defaultValue={userData?.name || ""}
+                        className={`w-full px-3 py-2.5 bg-transparent border-2 ${validationErrors.name
+                          ? "border-red-500 focus:ring-red-500/20"
+                          : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
+                          } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
+                      />
+                      <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        <X size={14} />
+                      </button>
+                    </div>
                     {validationErrors.name && (
                       <p className="text-red-500 text-[9px] mt-1 ml-1">
                         {validationErrors.name}
@@ -658,24 +682,29 @@ export default function UsersPage() {
                     <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       Surname
                     </label>
-                    <input
-                      name="surname"
-                      defaultValue={userData?.surname || ""}
-                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
-                    />
+                    <div className="relative group">
+                      <input
+                        name="surname"
+                        defaultValue={userData?.surname || ""}
+                        className="w-full px-3 py-2.5 bg-transparent border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
+                      />
+                      <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        <X size={14} />
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       Password {item ? "(Leave blank to keep)" : "*"}
                     </label>
-                    <div className="relative">
+                    <div className="relative group">
                       <input
                         name="password"
                         autoComplete="new-password"
                         type={showPassword ? "text" : "password"}
-                        className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.password
+                        className={`w-full px-3 py-2.5 bg-transparent border-2 ${validationErrors.password
                           ? "border-red-500 focus:ring-red-500/20"
-                          : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"
+                          : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-12 transition-all duration-200 font-medium`}
                       />
                       <button
@@ -696,25 +725,35 @@ export default function UsersPage() {
                     <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       Email Address
                     </label>
-                    <input
-                      name="email"
-                      type="email"
-                      defaultValue={userData?.email || ""}
-                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
-                    />
+                    <div className="relative group">
+                      <input
+                        name="email"
+                        type="email"
+                        defaultValue={userData?.email || ""}
+                        className="w-full px-3 py-2.5 bg-transparent border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
+                      />
+                      <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        <X size={14} />
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       Phone Number *
                     </label>
-                    <input
-                      name="phoneNumber"
-                      defaultValue={userData?.phoneNumber || ""}
-                      className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.phoneNumber
-                        ? "border-red-500 focus:ring-red-500/20"
-                        : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"
-                        } rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200 font-medium`}
-                    />
+                    <div className="relative group">
+                      <input
+                        name="phoneNumber"
+                        defaultValue={userData?.phoneNumber || ""}
+                        className={`w-full px-3 py-2.5 bg-transparent border-2 ${validationErrors.phoneNumber
+                          ? "border-red-500 focus:ring-red-500/20"
+                          : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
+                          } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
+                      />
+                      <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        <X size={14} />
+                      </button>
+                    </div>
                     {validationErrors.phoneNumber && (
                       <p className="text-red-500 text-[9px] mt-1 ml-1">
                         {validationErrors.phoneNumber}
@@ -737,16 +776,16 @@ export default function UsersPage() {
                             setSelectedSite(null);
                           }
                         }}
-                        className={`w-full px-3 py-1.5 bg-transparent border ${validationErrors.organizationType
+                        className={`w-full px-3 py-2.5 bg-transparent border-2 ${validationErrors.organizationType
                           ? "border-red-500 focus:ring-red-500/20"
-                          : "border-slate-200 dark:border-slate-700 focus:ring-blue-500/20"
+                          : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200 font-bold`}
                       >
-                        <option value="" disabled>
+                        <option value="" disabled className="dark:bg-slate-900 dark:text-slate-200 text-slate-800">
                           Select an option
                         </option>
                         {ORGANIZATION_TYPES.map((org) => (
-                          <option key={org.value} value={org.value}>
+                          <option key={org.value} value={org.value} className="dark:bg-slate-900 dark:text-slate-200 text-slate-800">
                             {org.label}
                           </option>
                         ))}
@@ -821,17 +860,20 @@ export default function UsersPage() {
                                   borderRadius: "0.5rem",
                                   fontSize: "0.875rem",
                                   padding: "0px 9px !important",
-                                  minHeight: "34px",
+                                  minHeight: "42px",
                                   backgroundColor: "transparent",
                                   transition: "all 0.2s",
                                   "& fieldset": {
-                                    borderColor: validationErrors.siteId ? "#ef4444" : "#e2e8f0",
+                                    borderWidth: "2px",
+                                    borderColor: validationErrors.siteId ? "#ef4444" : "#94a3b8", // slate-400
                                   },
                                   "&:hover fieldset": {
-                                    borderColor: validationErrors.siteId ? "#ef4444" : "#cbd5e1",
+                                    borderWidth: "2px",
+                                    borderColor: validationErrors.siteId ? "#ef4444" : "#64748b", // slate-500
                                   },
                                   "&.Mui-focused fieldset": {
-                                    borderColor: validationErrors.siteId ? "#ef4444" : "#e2e8f0",
+                                    borderWidth: "2px",
+                                    borderColor: validationErrors.siteId ? "#ef4444" : "#94a3b8",
                                   },
                                 },
                               }}
@@ -856,7 +898,7 @@ export default function UsersPage() {
                       type="number"
                       step="0.01"
                       defaultValue={userData?.baseRateFirstHourAfterWorkingHours || ""}
-                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
+                      className="w-full px-3 py-2.5 bg-transparent border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
                     />
                   </div>
                   <div>
@@ -868,7 +910,7 @@ export default function UsersPage() {
                       type="number"
                       step="0.01"
                       defaultValue={userData?.baseRateAfterFirstHourAfterWorkingHours || ""}
-                      className="w-full px-3 py-1.5 bg-transparent border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
+                      className="w-full px-3 py-2.5 bg-transparent border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
                     />
                   </div>
                 </div>
@@ -1076,23 +1118,22 @@ export default function UsersPage() {
     }
 
     return (
-      <div className="inline-block relative">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setAnchorEl(open ? null : e.currentTarget);
-          }}
-          className={`text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider  shadow-sm ${open ? 'bg-pink-50 dark:bg-pink-950/30 border-pink-500' : 'bg-transparent border-pink-500/20'}`}
-        >
-          Actions <ChevronDown size={10} strokeWidth={2.5} className="transition-transform group-hover:rotate-90" />
-        </button>
-        <Popper
-          open={open}
-          anchorEl={anchorEl}
-          placement="bottom-end"
-          style={{ zIndex: 1300 }}
-        >
-          <ClickAwayListener onClickAway={(e) => { if (e) e.stopPropagation(); setAnchorEl(null); }}>
+      <ClickAwayListener onClickAway={(e) => { setAnchorEl(null); }}>
+        <div className="inline-block relative">
+          <button
+            onClick={(e) => {
+              setAnchorEl(open ? null : e.currentTarget);
+            }}
+            className={`text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider  shadow-sm ${open ? 'bg-pink-50 dark:bg-pink-950/30 border-pink-500' : 'bg-transparent border-pink-500/20'}`}
+          >
+            Actions <ChevronDown size={10} strokeWidth={2.5} className="transition-transform group-hover:rotate-90" />
+          </button>
+          <Popper
+            open={open}
+            anchorEl={anchorEl}
+            placement="bottom-end"
+            style={{ zIndex: 1300 }}
+          >
             <Paper
               elevation={8}
               sx={{
@@ -1135,7 +1176,7 @@ export default function UsersPage() {
                     onClick={(e) => {
                       e.stopPropagation();
                       setAnchorEl(null);
-                      handleDelete(row);
+                      setTimeout(() => handleDelete(row), 50);
                     }}
                     sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
                   >
@@ -1147,9 +1188,9 @@ export default function UsersPage() {
                 )}
               </MenuList>
             </Paper>
-          </ClickAwayListener>
-        </Popper>
-      </div>
+          </Popper>
+        </div>
+      </ClickAwayListener>
     );
   };
 
@@ -1158,6 +1199,15 @@ export default function UsersPage() {
       <style>{`
         *::-webkit-scrollbar { display: none !important; }
         * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+        
+        .custom-scrollbar::-webkit-scrollbar:horizontal { height: 8px; display: block !important; }
+        .custom-scrollbar::-webkit-scrollbar:vertical { display: none !important; width: 0 !important; }
+        .custom-scrollbar { scrollbar-width: thin !important; }
+        .custom-scrollbar::-webkit-scrollbar-track:horizontal { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #cbd5e1; border-radius: 20px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:horizontal,
+        :is(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:horizontal,
+        html.dark .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #334155 !important; border-radius: 20px; }
       `}</style>
 
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-visible min-h-0">
@@ -1209,6 +1259,18 @@ export default function UsersPage() {
                 className="w-full pl-11 pr-10 py-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-sm outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setPage(1);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full"
+                >
+                  <X size={14} strokeWidth={2.5} />
+                </button>
+              )}
             </div>
 
             {/* Show Customer toggle directly in the toolbar */}
@@ -1234,22 +1296,13 @@ export default function UsersPage() {
               </button>
             </div>
           </div>
-
-          <button
-            onClick={fetchUsers}
-            disabled={loading}
-            className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/50 flex items-center justify-center text-slate-500 hover:text-pink-600 hover:border-pink-500/40 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-            title="Refresh Users"
-          >
-            <RefreshCw size={16} className={`${loading ? "animate-spin" : ""}`} />
-          </button>
         </div>
 
 
         {/* Table Area */}
         <div className="flex-1 flex flex-col min-h-0 relative px-6 pb-6 pt-2 overflow-visible">
 
-          <div className="overflow-x-auto flex-1 no-scrollbar min-h-0">
+          <div className="overflow-x-auto flex-1 min-h-0 custom-scrollbar pb-2">
             <table className="w-full text-left border-separate border-spacing-y-1 min-w-max">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 h-[56px]">
@@ -1356,10 +1409,29 @@ export default function UsersPage() {
           {/* Pagination Section */}
           {totalPages > 0 && (
             <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/50 mt-4 pt-4 shrink-0">
-              <div className="text-[11px] font-bold text-slate-400 tracking-wider">
-                Showing <span className="text-pink-500">{(page - 1) * pageSize + 1}</span> to{" "}
-                <span className="text-pink-500">{Math.min(page * pageSize, totalCount)}</span> of{" "}
-                <span className="text-pink-500">{totalCount}</span> users
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-400 tracking-wider">Rows per page:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setPage(1); // Reset to first page when changing page size
+                    }}
+                    className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-bold rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-pink-500/50"
+                  >
+                    {[14, 25, 50, 100].map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="text-[11px] font-bold text-slate-400 tracking-wider">
+                  Showing <span className="text-pink-500">{(page - 1) * pageSize + 1}</span> to{" "}
+                  <span className="text-pink-500">{Math.min(page * pageSize, totalCount)}</span> of{" "}
+                  <span className="text-pink-500">{totalCount}</span> users
+                </div>
               </div>
               <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
                 <button
@@ -1434,39 +1506,56 @@ export default function UsersPage() {
         submitError={submitError}
       />
 
-      {/* Material UI Delete Confirmation Dialog */}
-      <Dialog
-        open={Boolean(deleteUser)}
-        onClose={() => setDeleteUser(null)}
-        maxWidth="xs"
-        PaperProps={{
-          sx: { borderRadius: "24px", padding: "4px", maxWidth: "340px", width: "100%" },
-        }}
-      >
-        <DialogTitle sx={{ fontWeight: 800, color: "#1e293b", fontSize: "16px" }}>
-          Confirm Deletion
-        </DialogTitle>
-        <DialogContent sx={{ pb: 1 }}>
-          <div className="text-[13px] text-slate-600 dark:text-slate-400">
-            Are you sure you want to delete the user{" "}
-            <strong className="text-rose-500">{deleteUser?.userName}</strong>? This action cannot be undone.
+      {/* Delete Confirmation Card - Custom Overlay */}
+      {deleteUser && (
+        <div
+          className="fixed inset-0 flex items-center justify-center"
+          style={{ zIndex: 9999 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setDeleteUser(null); }}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+          {/* Card */}
+          <div
+            className={`relative rounded-3xl p-6 w-[340px] flex flex-col items-center gap-4 shadow-2xl ${isDark ? 'bg-[#0f172a] border border-white/5' : 'bg-white border border-slate-100'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center border-4 border-rose-100 dark:border-rose-500/20">
+              <X size={30} className="text-rose-500" strokeWidth={3} />
+            </div>
+
+            {/* Text */}
+            <div className="text-center">
+              <h3 className="text-[17px] font-black text-slate-800 dark:text-slate-100 mb-1">
+                Confirm Deletion
+              </h3>
+              <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Are you sure you want to delete{" "}
+                <strong className="text-rose-500">{deleteUser?.userName}</strong>?
+                <br />This action cannot be undone.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 w-full pt-1">
+              <button
+                onClick={() => setDeleteUser(null)}
+                className="flex-1 font-bold text-[12px] h-[42px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 font-bold text-[12px] h-[42px] bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition-all shadow-md shadow-rose-500/20 active:scale-95"
+              >
+                Delete
+              </button>
+            </div>
           </div>
-        </DialogContent>
-        <DialogActions sx={{ p: 2, gap: 1.5 }}>
-          <button
-            onClick={() => setDeleteUser(null)}
-            className="flex-1 font-bold text-[11px] h-[36px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 rounded-xl transition-all"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={confirmDelete}
-            className="flex-1 font-bold text-[11px] h-[36px] bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition-all shadow-md shadow-rose-500/10 active:scale-95"
-          >
-            Delete
-          </button>
-        </DialogActions>
-      </Dialog>
+        </div>
+      )}
 
       {/* Material UI Permissions Dialog */}
       <Dialog
@@ -1479,19 +1568,19 @@ export default function UsersPage() {
           sx: {
             borderRadius: "20px",
             backgroundImage: "none",
-            backgroundColor: "#0f172a", // Dark Blue
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+            backgroundColor: isDark ? "#0f172a" : "#ffffff",
+            boxShadow: isDark ? "0 25px 50px -12px rgba(0, 0, 0, 0.5)" : "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
           },
         }}
       >
         <DialogTitle className="flex items-center justify-between px-6 pt-5 pb-2">
-          <span className="text-lg font-bold text-slate-200">
+          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">
             Permissions - {permissionUser?.userName}
           </span>
           <button
             type="button"
             onClick={handleClosePermissions}
-            className="p-1.5 text-slate-400 hover:text-[#ec4899] dark:hover:text-[#ec4899] transition-colors rounded-lg bg-slate-50 dark:bg-slate-800"
+            className="p-1.5 text-slate-400 hover:text-[#ec4899] dark:hover:text-[#ec4899] transition-colors rounded-lg bg-slate-100 dark:bg-slate-800"
           >
             <X size={16} />
           </button>
@@ -1502,10 +1591,10 @@ export default function UsersPage() {
               <Loader2 className="animate-spin text-pink-500" size={32} />
             </div>
           ) : (
-            <div className="text-sm text-slate-400 space-y-3">
-              <div className="flex justify-between items-center mb-4 pb-2">
+            <div className="text-sm text-slate-600 dark:text-slate-400 space-y-3">
+              <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
                 <p>
-                  Control what <strong className="text-slate-200">{permissionUser?.userName}</strong> can do.
+                  Control what <strong className="text-slate-800 dark:text-slate-200">{permissionUser?.userName}</strong> can do.
                 </p>
 
                 {/* Grant All Checkbox */}
@@ -1522,13 +1611,13 @@ export default function UsersPage() {
                           .every((p) => checkedPerms[p.name])
                       }
                       onChange={(e) => handleGrantAll(e.target.checked)}
-                      className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-slate-950 border-slate-600 text-pink-500"
+                      className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500"
                     />
                     <label
                       htmlFor="grant-all-permissions"
-                      className="text-sm text-slate-200 cursor-pointer font-medium"
+                      className="text-sm text-slate-700 dark:text-slate-200 cursor-pointer font-medium"
                     >
-                      Grant all permissions
+                      Grant all
                     </label>
                   </div>
                 )}
@@ -1550,13 +1639,13 @@ export default function UsersPage() {
                     {/* Collapsible Header */}
                     <div
                       onClick={() => toggleGroup(group.name)}
-                      className="flex items-center justify-between px-4 py-2.5 bg-slate-800/40 rounded-xl hover:bg-slate-800/80 cursor-pointer transition-all duration-200 group"
+                      className="flex items-center justify-between px-4 py-2.5 bg-slate-100 dark:bg-slate-800/40 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800/80 cursor-pointer transition-all duration-200 group"
                     >
                       <div className="flex items-center gap-3">
                         <div className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
                           <ChevronDown size={18} className="text-slate-500 group-hover:text-[#ec4899]" />
                         </div>
-                        <h4 className="text-slate-200 text-[14px] font-bold uppercase tracking-wider">
+                        <h4 className="text-slate-800 dark:text-slate-200 text-[14px] font-bold uppercase tracking-wider">
                           {group.displayName || group.name}
                         </h4>
                       </div>
@@ -1569,7 +1658,7 @@ export default function UsersPage() {
                           onChange={(e) =>
                             handleSelectAllGroup(group.name, e.target.checked)
                           }
-                          className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-slate-950 border-slate-600 text-pink-500"
+                          className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500"
                         />
                         <label
                           htmlFor={`select-all-${group.name}`}
@@ -1582,7 +1671,7 @@ export default function UsersPage() {
 
                     {/* Drop Down Menu (Content) */}
                     {isExpanded && (
-                      <div className="mt-2 ml-2 p-3 bg-slate-800/20 rounded-xl animate-in slide-in-from-top-2 duration-200">
+                      <div className="mt-2 ml-2 p-3 bg-slate-50 dark:bg-slate-800/20 rounded-xl animate-in slide-in-from-top-2 duration-200">
                         <PermissionTree
                           permissions={groupPerms}
                           parentName={null}
@@ -1596,24 +1685,24 @@ export default function UsersPage() {
               })}
 
               {!permissionsData?.groups?.length && (
-                <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 text-center text-slate-400">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">
                   No specific permissions defined.
                 </div>
               )}
             </div>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2.5, gap: 1.5, backgroundColor: "#0f172a", border: "none" }}>
+        <DialogActions sx={{ p: 2.5, gap: 1.5, backgroundColor: isDark ? "#0f172a" : "#f8fafc", borderTop: isDark ? "1px solid #1e293b" : "1px solid #e2e8f0" }}>
           <button
             onClick={() => handleClosePermissions()}
-            className="flex-1 btn-flagship !h-[38px] !text-[11px] !border-slate-700 !text-slate-400 hover:bg-white/5!"
+            className={`flex-1 border h-[38px] text-[11px] font-bold rounded-xl transition-all duration-200 ${isDark ? 'border-slate-700 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
           >
             Cancel
           </button>
           <button
             onClick={handleSavePermissions}
             disabled={loadingPermissions}
-            className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold h-[38px] text-[11px] rounded-xl transition-all duration-200 shadow-md shadow-pink-500/10 active:scale-95"
+            className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold h-[38px] text-[11px] rounded-xl transition-all duration-200 shadow-md shadow-pink-500/10 active:scale-95 disabled:opacity-50"
           >
             {loadingPermissions ? "Wait..." : "Save Changes"}
           </button>

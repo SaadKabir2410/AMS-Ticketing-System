@@ -525,13 +525,14 @@ export default function JobsheetsPage() {
         </div>
       </div>
 
-      {/* Clear All */}
-      <button
-        onClick={handleClear}
-        className="btn-flagship border-slate-200! dark:border-slate-800! text-slate-500! hover:text-pink-600! hover:border-pink-500/30! self-end"
-      >
-        Clear All
-      </button>
+      <div className="flex items-center gap-2 self-end">
+        <button
+          onClick={handleClear}
+          className="btn-flagship border-slate-200! dark:border-slate-800! text-slate-500! hover:text-pink-600! hover:border-pink-500/30!"
+        >
+          Clear All
+        </button>
+      </div>
     </div>
   );
 
@@ -561,6 +562,14 @@ export default function JobsheetsPage() {
           </button>
         </div>
       )}
+
+      <button
+        onClick={() => setPage(1)}
+        className="btn-flagship bg-[#1e293b] text-white hover:bg-[#334155] dark:bg-[#ec4899] dark:hover:bg-[#db2777] flex items-center gap-2"
+      >
+        <FileText size={16} />
+        Get Report
+      </button>
 
       {!user?.role?.toLowerCase().includes("admin") && (
         <button

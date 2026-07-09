@@ -97,6 +97,7 @@ export default function RolesPage() {
   const [activeItem, setActiveItem] = useState(null);
   const [submitError, setSubmitError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
+  const [deleteRole, setDeleteRole] = useState(null);
 
   // Permissions Dialog State
   const [permissionRole, setPermissionRole] = useState(null);
@@ -401,14 +402,19 @@ export default function RolesPage() {
       toast("Error: The Admin role cannot be deleted.", "error");
       return;
     }
+    setDeleteRole(role);
+  };
 
+  const confirmDelete = () => {
+    if (!deleteRole) return;
     rolesApi
-      .delete(role.id)
+      .delete(deleteRole.id)
       .then(() => {
-        toast(`${role.name} role deleted successfully`);
+        toast(`${deleteRole.name} role deleted successfully`);
         fetchRoles();
       })
-      .catch((err) => toast(`Error: ${err.message}`, "error"));
+      .catch((err) => toast(`Error: ${err.message}`, "error"))
+      .finally(() => setDeleteRole(null));
   };
 
   return (
@@ -471,17 +477,20 @@ export default function RolesPage() {
                 className="w-full pl-11 pr-10 py-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-sm outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch("");
+                    setPage(1);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full"
+                >
+                  <X size={14} strokeWidth={2.5} />
+                </button>
+              )}
             </div>
           </div>
-
-          <button
-            onClick={fetchRoles}
-            disabled={loading}
-            className="w-10 h-10 rounded-xl bg-white dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800/50 flex items-center justify-center text-slate-500 hover:text-pink-600 hover:border-pink-500/40 transition-all shadow-sm active:scale-95 disabled:opacity-50"
-            title="Refresh Roles"
-          >
-            <RefreshCw size={16} className={`${loading ? "animate-spin" : ""}`} />
-          </button>
         </div>
 
         {/* Table Area */}
@@ -665,18 +674,22 @@ export default function RolesPage() {
           sx: {
             borderRadius: "20px",
             backgroundImage: "none",
-            backgroundColor: "#0f172a", // Dark Blue
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)", // Extra shadow for depth since border is gone
+            backgroundColor: isDark ? "#0f172a" : "#ffffff",
+            boxShadow: isDark ? "0 25px 50px -12px rgba(0, 0, 0, 0.5)" : "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
           },
         }}
       >
         <DialogTitle className="flex items-center justify-between px-6 pt-5 pb-2">
-          <span className="text-lg font-bold text-slate-200">
+          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">
             Permissions - {permissionRole?.name}
           </span>
-          <IconButton onClick={() => handleClosePermissions()} size="small" sx={{ color: "rgba(255, 255, 255, 0.6)" }}>
-            <X size={20} />
-          </IconButton>
+          <button
+            type="button"
+            onClick={handleClosePermissions}
+            className="p-1.5 text-slate-400 hover:text-[#ec4899] dark:hover:text-[#ec4899] transition-colors rounded-lg bg-slate-100 dark:bg-slate-800"
+          >
+            <X size={16} />
+          </button>
         </DialogTitle>
         <DialogContent sx={{ border: "none" }}>
           {loadingPermissions ? (
@@ -684,10 +697,10 @@ export default function RolesPage() {
               <CircularProgress sx={{ color: "#3b82f6" }} />
             </div>
           ) : (
-            <div className="text-sm text-slate-400 space-y-3">
-              <div className="flex justify-between items-center mb-4 pb-2">
+            <div className="text-sm text-slate-600 dark:text-slate-400 space-y-3">
+              <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
                 <p>
-                  Control what <strong className="text-slate-200">{permissionRole?.name}</strong> can do.
+                  Control what <strong className="text-slate-800 dark:text-slate-200">{permissionRole?.name}</strong> can do.
                 </p>
 
                 {/* Grant All Checkbox */}
@@ -704,13 +717,13 @@ export default function RolesPage() {
                           .every((p) => checkedPerms[p.name])
                       }
                       onChange={(e) => handleGrantAll(e.target.checked)}
-                      className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-slate-950 border-slate-600 text-pink-500"
+                      className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500"
                     />
                     <label
                       htmlFor="grant-all-permissions"
-                      className="text-sm text-slate-200 cursor-pointer font-medium"
+                      className="text-sm text-slate-700 dark:text-slate-200 cursor-pointer font-medium"
                     >
-                      Grant all permissions
+                      Grant all
                     </label>
                   </div>
                 )}
@@ -732,13 +745,13 @@ export default function RolesPage() {
                     {/* Collapsible Header (Combobox style) */}
                     <div
                       onClick={() => toggleGroup(group.name)}
-                      className="flex items-center justify-between px-4 py-2.5 bg-slate-800/40 rounded-xl hover:bg-slate-800/80 cursor-pointer transition-all duration-200 group"
+                      className="flex items-center justify-between px-4 py-2.5 bg-slate-100 dark:bg-slate-800/40 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800/80 cursor-pointer transition-all duration-200 group"
                     >
                       <div className="flex items-center gap-3">
                         <div className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
                           <ChevronDown size={18} className="text-slate-500 group-hover:text-[#ec4899]" />
                         </div>
-                        <h4 className="text-slate-200 text-[14px] font-bold uppercase tracking-wider">
+                        <h4 className="text-slate-800 dark:text-slate-200 text-[14px] font-bold uppercase tracking-wider">
                           {group.displayName || group.name}
                         </h4>
                       </div>
@@ -751,7 +764,7 @@ export default function RolesPage() {
                           onChange={(e) =>
                             handleSelectAllGroup(group.name, e.target.checked)
                           }
-                          className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-slate-950 border-slate-600 text-pink-500"
+                          className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500"
                         />
                         <label
                           htmlFor={`select-all-${group.name}`}
@@ -764,7 +777,7 @@ export default function RolesPage() {
 
                     {/* Drop Down Menu (Content) */}
                     {isExpanded && (
-                      <div className="mt-2 ml-2 p-3 bg-slate-800/20 rounded-xl animate-in slide-in-from-top-2 duration-200">
+                      <div className="mt-2 ml-2 p-3 bg-slate-50 dark:bg-slate-800/20 rounded-xl animate-in slide-in-from-top-2 duration-200">
                         <PermissionTree
                           permissions={groupPerms}
                           parentName={null}
@@ -778,29 +791,80 @@ export default function RolesPage() {
               })}
 
               {!permissionsData?.groups?.length && (
-                <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 text-center text-slate-400">
+                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">
                   No specific permissions defined.
                 </div>
               )}
             </div>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2.5, gap: 1.5, backgroundColor: "#0f172a", border: "none" }}>
+        <DialogActions sx={{ p: 2.5, gap: 1.5, backgroundColor: isDark ? "#0f172a" : "#f8fafc", borderTop: isDark ? "1px solid #1e293b" : "1px solid #e2e8f0" }}>
           <button
             onClick={() => handleClosePermissions()}
-            className="flex-1 btn-flagship !h-[38px] !text-[11px] !border-slate-700 !text-slate-400 hover:bg-white/5!"
+            className={`flex-1 border h-[38px] text-[11px] font-bold rounded-xl transition-all duration-200 ${isDark ? 'border-slate-700 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
           >
             Cancel
           </button>
           <button
             onClick={handleSavePermissions}
             disabled={loadingPermissions}
-            className="flex-1 btn-flagship !h-[38px] !text-[11px]"
+            className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold h-[38px] text-[11px] rounded-xl transition-all duration-200 shadow-md shadow-pink-500/10 active:scale-95 disabled:opacity-50"
           >
             {loadingPermissions ? "Wait..." : "Save Changes"}
           </button>
         </DialogActions>
       </Dialog>
+
+      {/* Delete Confirmation Card - Custom Overlay */}
+      {deleteRole && (
+        <div
+          className="fixed inset-0 flex items-center justify-center"
+          style={{ zIndex: 9999 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setDeleteRole(null); }}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+
+          {/* Card */}
+          <div
+            className={`relative rounded-3xl p-6 w-[340px] flex flex-col items-center gap-4 shadow-2xl ${isDark ? 'bg-[#0f172a] border border-white/5' : 'bg-white border border-slate-100'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center border-4 border-rose-100 dark:border-rose-500/20">
+              <X size={30} className="text-rose-500" strokeWidth={3} />
+            </div>
+
+            {/* Text */}
+            <div className="text-center">
+              <h3 className="text-[17px] font-black text-slate-800 dark:text-slate-100 mb-1">
+                Confirm Deletion
+              </h3>
+              <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                Are you sure you want to delete{" "}
+                <strong className="text-rose-500">{deleteRole?.name}</strong>?
+                <br />This action cannot be undone.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 w-full pt-1">
+              <button
+                onClick={() => setDeleteRole(null)}
+                className="flex-1 font-bold text-[12px] h-[42px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 font-bold text-[12px] h-[42px] bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition-all shadow-md shadow-rose-500/20 active:scale-95"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

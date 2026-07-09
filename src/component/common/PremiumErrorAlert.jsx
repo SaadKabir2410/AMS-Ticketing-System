@@ -1,8 +1,11 @@
 import React from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, Zoom } from '@mui/material';
+import { useTheme } from "../../context/ThemeContext";
 
 export default function PremiumErrorAlert({ open, message, onClose }) {
+  const { isDark } = useTheme();
+
   return (
     <Dialog
       open={open}
@@ -16,9 +19,11 @@ export default function PremiumErrorAlert({ open, message, onClose }) {
           width: "90%",
           textAlign: "center",
           overflow: "visible",
-          boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+          boxShadow: isDark ? "0 25px 50px -12px rgba(0, 0, 0, 0.5)" : "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
           border: "1px solid",
-          borderColor: "divider"
+          borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
+          bgcolor: isDark ? "#0f172a" : "#ffffff",
+          backgroundImage: "none",
         }
       }}
     >
@@ -27,7 +32,7 @@ export default function PremiumErrorAlert({ open, message, onClose }) {
         <div className="flex justify-center mb-6">
           <div className="relative">
             <div className="absolute inset-0 bg-red-100 dark:bg-red-500/10 rounded-full animate-ping opacity-20 scale-150" />
-            <div className="w-20 h-20 rounded-full bg-red-50 dark:bg-red-500/20 flex items-center justify-center border-4 border-white dark:border-slate-900 shadow-xl relative z-10">
+            <div className="w-20 h-20 rounded-full bg-red-50 dark:bg-red-500/20 flex items-center justify-center border-4 border-white dark:border-slate-800 shadow-xl relative z-10">
               <X size={44} strokeWidth={2.5} className="text-red-500" />
             </div>
           </div>
@@ -38,7 +43,7 @@ export default function PremiumErrorAlert({ open, message, onClose }) {
           <h3 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">
              Execution Error
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed wrap-break-word">
+          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed break-words">
             {message}
           </p>
         </div>
@@ -57,5 +62,3 @@ export default function PremiumErrorAlert({ open, message, onClose }) {
     </Dialog>
   );
 }
-
-
