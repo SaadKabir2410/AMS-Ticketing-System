@@ -1,11 +1,72 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Dialog, IconButton } from "@mui/material";
-import { X, Check } from "lucide-react";
-
+import { X, Check, ChevronDown } from "lucide-react";
+import Flatpickr from "react-flatpickr";
+import "flatpickr/dist/flatpickr.css";
+import "flatpickr/dist/themes/dark.css";
 import PremiumErrorAlert from "./PremiumErrorAlert";
 
+const YEARS = Array.from({ length: 31 }, (_, i) => new Date().getFullYear() - 10 + i);
 
-
+function CompactSelect({ value, onChange, options, placeholder = "Select...", error, isValid, getLabel, getValue }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+  const filtered = options.filter((o) =>
+    String(getLabel ? getLabel(o) : o).toLowerCase().includes(search.toLowerCase())
+  );
+  const displayLabel = value !== "" && value !== null && value !== undefined
+    ? (getLabel ? getLabel(options.find(o => (getValue ? getValue(o) : o) === value) ?? value) : value)
+    : null;
+  const borderColor = error
+    ? "border-red-400 dark:border-red-500/50"
+    : isValid
+    ? "border-green-500 dark:border-green-500/50"
+    : "border-slate-200 dark:border-slate-700 hover:border-pink-400 dark:hover:border-pink-500/60";
+  const bgColor = error ? "bg-red-50/50 dark:bg-red-500/10" : isValid ? "bg-green-50/50 dark:bg-green-500/10" : "bg-slate-50 dark:bg-slate-800";
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border outline-none transition-all text-sm cursor-pointer ${bgColor} ${borderColor}`}
+      >
+        <span className={displayLabel ? "text-slate-700 dark:text-slate-200 truncate text-sm" : "text-slate-400 dark:text-slate-500 text-sm"}>
+          {displayLabel ?? placeholder}
+        </span>
+        <ChevronDown size={14} strokeWidth={2.5} className={`shrink-0 ml-2 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute z-[9999] left-0 top-[calc(100%+4px)] w-full bg-white dark:bg-[#1e2330] border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl overflow-hidden">
+          <div className="p-2 border-b border-slate-100 dark:border-slate-800">
+            <input autoFocus type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="w-full px-2.5 py-1.5 text-[11px] rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 outline-none text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-pink-500 transition-all" />
+          </div>
+          <ul className="max-h-44 overflow-y-auto py-1" style={{ scrollbarWidth: "none" }}>
+            <li className="px-3 py-1.5 text-[11px] text-slate-400 dark:text-slate-500 hover:bg-pink-50 dark:hover:bg-pink-500/10 cursor-pointer transition-colors" onClick={() => { onChange(""); setOpen(false); setSearch(""); }}>{placeholder}</li>
+            {filtered.length === 0 && (<li className="px-3 py-2 text-[11px] text-slate-400 dark:text-slate-500 text-center">No results</li>)}
+            {filtered.map((o) => {
+              const val = getValue ? getValue(o) : o;
+              const lbl = getLabel ? getLabel(o) : o;
+              const selected = val === value;
+              return (
+                <li key={String(val)} onClick={() => { onChange(val); setOpen(false); setSearch(""); }}
+                  className={`flex items-center justify-between px-3 py-1.5 text-[11px] cursor-pointer transition-colors ${selected ? "bg-pink-50 dark:bg-pink-500/15 text-pink-600 dark:text-pink-400 font-semibold" : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"}`}>
+                  {lbl}
+                  {selected && <Check size={11} strokeWidth={3} className="text-pink-500" />}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const LOCAL_COUNTRIES = [
   { id: "gb", name: "United Kingdom", code: "GB" },
@@ -52,7 +113,7 @@ const HOLIDAY_TYPES = [
 ];
 
 const Label = ({ children, required }) => (
-  <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">
+  <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5">
     {children} {required && <span className="text-red-500">*</span>}
   </label>
 );
@@ -178,7 +239,11 @@ export default function HolidayModal({
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={(event, reason) => {
+        if (reason !== "backdropClick") {
+          onClose();
+        }
+      }}
       maxWidth="sm"
       fullWidth
       PaperProps={{
@@ -187,21 +252,31 @@ export default function HolidayModal({
           p: 1,
           boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
         },
-        className: "bg-white dark:bg-slate-900 dark:text-white",
+        className: "bg-white dark:bg-[#161920] dark:text-white",
       }}
     >
+      <style>{`
+        .hm-fp .flatpickr-input {
+          background: transparent !important;
+          border: none !important;
+          outline: none !important;
+          color: inherit !important;
+          width: 100% !important;
+          font-size: 0.875rem !important;
+          padding: 0 !important;
+          cursor: pointer;
+        }
+        .hm-fp .flatpickr-input::placeholder { color: #94a3b8; }
+      `}</style>
       <div className="flex items-center justify-between px-8 pt-6 pb-2">
         <div>
           <h2 className="text-xl text-slate-800 dark:text-white ">
             {isEdit ? "Update Holiday" : "Create Holiday"}
           </h2>
-          <p className="text-[10px] text-blue-500 mt-0.5">
-            Manage Calendar Events
-          </p>
         </div>
         <IconButton
           onClick={onClose}
-          className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700"
+          className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
         >
           <X size={18} />
         </IconButton>
@@ -267,12 +342,16 @@ export default function HolidayModal({
           <div className="grid grid-cols-2 gap-6">
             <div>
               <Label required>Date</Label>
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className={inputClasses(errors.date, !!form.date)}
-              />
+              <div className={`hm-fp ${inputClasses(errors.date, !!form.date)} flex items-center`}>
+                <Flatpickr
+                  value={form.date}
+                  onChange={(dates, dateStr) => {
+                    setForm({ ...form, date: dateStr, year: dates[0] ? dates[0].getFullYear() : form.year });
+                  }}
+                  options={{ dateFormat: "Y-m-d", allowInput: true, disableMobile: true }}
+                  placeholder="YYYY-MM-DD"
+                />
+              </div>
               {errors.date && (
                 <p className="text-red-500 text-[10px] mt-1.5 ml-1">
                   {errors.date}
@@ -281,14 +360,13 @@ export default function HolidayModal({
             </div>
             <div>
               <Label required>Year</Label>
-              <input
-                type="number"
-                min="2000"
-                max="2200"
-                placeholder="2024"
+              <CompactSelect
                 value={form.year}
-                onChange={(e) => setForm({ ...form, year: e.target.value })}
-                className={inputClasses(errors.year, !!form.year)}
+                onChange={(val) => setForm({ ...form, year: val !== "" ? Number(val) : "" })}
+                options={YEARS}
+                placeholder="Select Year..."
+                error={errors.year}
+                isValid={!!form.year && !errors.year}
               />
               {errors.year && (
                 <p className="text-red-500 text-[10px] mt-1.5 ml-1">
@@ -302,20 +380,20 @@ export default function HolidayModal({
           <div className="grid grid-cols-2 gap-6">
             <div>
               <Label>Country</Label>
-              <select
+              <CompactSelect
                 value={form.countryId}
-                onChange={handleCountryChange}
-                className={inputClasses(false, !!form.countryId)}
-              >
-                <option value="">Global / Select...</option>
-                {countries.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => {
+                  const s = countries.find((c) => c.id === val);
+                  setForm({ ...form, countryId: val, countryName: s?.name || "", countryISOCode: s?.code || "" });
+                }}
+                options={countries}
+                placeholder="Global / Select..."
+                isValid={!!form.countryId}
+                getLabel={(o) => (typeof o === "object" ? o.name : o)}
+                getValue={(o) => (typeof o === "object" ? o.id : o)}
+              />
               {form.countryISOCode && (
-                <p className="text-[10px] text-blue-500 mt-1 ml-1">
+                <p className="text-[10px] text-pink-500 mt-1 ml-1 font-semibold">
                   ISO: {form.countryISOCode}
                 </p>
               )}
@@ -347,18 +425,14 @@ export default function HolidayModal({
           <div className="grid grid-cols-2 gap-6 items-end">
             <div>
               <Label required>Holiday Type</Label>
-              <select
+              <CompactSelect
                 value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value })}
-                className={inputClasses(errors.type, !!form.type)}
-              >
-                <option value="">Select Type...</option>
-                {HOLIDAY_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setForm({ ...form, type: val })}
+                options={HOLIDAY_TYPES}
+                placeholder="Select Type..."
+                error={errors.type}
+                isValid={!!form.type && !errors.type}
+              />
               {errors.type && (
                 <p className="text-red-500 text-[10px] mt-1.5 ml-1">
                   {errors.type}
@@ -368,7 +442,7 @@ export default function HolidayModal({
             <div className="pb-2.5">
               <label className="flex items-center gap-3 cursor-pointer group">
                 <div
-                  className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${form.disabled ? "bg-red-500 border-red-500 shadow-lg shadow-red-500/20" : "border-slate-200 dark:border-slate-700 group-hover:border-red-400"}`}
+                  className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${form.disabled ? "bg-red-500 border-red-500 shadow-lg shadow-red-500/20" : "bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600 group-hover:border-red-400 dark:group-hover:border-red-500"}`}
                 >
                   <input
                     type="checkbox"
@@ -394,14 +468,14 @@ export default function HolidayModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-8 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-95"
+            className="px-8 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 text-[11px] font-black text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-95 uppercase tracking-widest"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-10 py-3 btn-flagship  text-white rounded-2xl text-sm flex items-center justify-center min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl shadow-blue-500/30 transition-all active:scale-95"
+            className="px-10 py-3 bg-pink-500 hover:bg-pink-600 text-white rounded-2xl text-[11px] font-black flex items-center justify-center min-w-[160px] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-pink-500/25 transition-all active:scale-95 uppercase tracking-widest"
           >
             {loading ? "Saving..." : isEdit ? "Save Changes" : "Create Holiday"}
           </button>

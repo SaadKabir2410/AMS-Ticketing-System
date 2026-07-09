@@ -84,7 +84,7 @@ async function fetchLookupByCode(code) {
 
 
 // ─── Reusable dynamic select ──────────────────────────────────────
-function DynSelect({ name, value, onChange, options, loading, placeholder = "Choose An Option", disabled = false, hasError = false }) {
+function DynSelect({ name, value, onChange, options, loading, placeholder = "Choose An Option", disabled = false, hasError = false, styles }) {
   return (
     <select
       name={name}
@@ -94,12 +94,11 @@ function DynSelect({ name, value, onChange, options, loading, placeholder = "Cho
       style={{
         ...styles.input,
         ...styles.select,
-        color: value ? "#333" : "#aaa",
+        color: value ? (styles._isDark ? "#e2e8f0" : "#333") : "#aaa",
         opacity: disabled ? 0.7 : 1,
         border: hasError ? "1px solid #ff4d4f" : styles.input.border
       }}
     >
-
       <option value="">{loading ? "Loading…" : placeholder}</option>
       {options.map((o) => (
         <option key={o.id} value={o.id}>{o.name}</option>
@@ -109,9 +108,10 @@ function DynSelect({ name, value, onChange, options, loading, placeholder = "Cho
 }
 
 // ─── Collaborator pill picker ─────────────────────────────────────
-function CollaboratorPicker({ users, selected, onChange, loading, disabled = false, fieldErrors = {} }) {
+function CollaboratorPicker({ users, selected, onChange, loading, disabled = false, fieldErrors = {}, styles }) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const isDark = styles?._isDark;
 
   const filtered = users.filter((u) => {
     const full = `${u.name || ""} ${u.surname || ""}`.toLowerCase();
@@ -122,7 +122,6 @@ function CollaboratorPicker({ users, selected, onChange, loading, disabled = fal
     selected.map(id => users.find(u => u.id === id)).filter(Boolean),
     [selected, users]
   );
-
 
   const toggle = (id) => {
     if (selected.includes(id)) {
@@ -145,7 +144,6 @@ function CollaboratorPicker({ users, selected, onChange, loading, disabled = fal
           minHeight: "40px",
           alignItems: "center",
           cursor: "text",
-          background: "#f8fafc",
           border: fieldErrors?.jobsheetDetailUserIds ? "1px solid #ff4d4f" : styles.input.border,
           position: "relative"
         }}
@@ -177,7 +175,7 @@ function CollaboratorPicker({ users, selected, onChange, loading, disabled = fal
             flex: 1,
             minWidth: "120px",
             fontSize: "13px",
-            color: "#1e293b",
+            color: isDark ? "#e2e8f0" : "#1e293b",
             padding: "4px 0"
           }}
           placeholder={loading ? "Loading users…" : selected.length === 0 ? "Search users…" : ""}
@@ -209,7 +207,7 @@ function CollaboratorPicker({ users, selected, onChange, loading, disabled = fal
                 key={u.id}
                 style={{
                   ...styles.dropdownItem,
-                  background: isSel ? "#fdf2f8" : "#fff",
+                  background: isSel ? (isDark ? "rgba(236,72,153,0.15)" : "#fdf2f8") : "transparent",
                   display: "flex", justifyContent: "space-between", alignItems: "center"
                 }}
                 onMouseDown={(e) => {
@@ -232,8 +230,11 @@ function CollaboratorPicker({ users, selected, onChange, loading, disabled = fal
 
 // ─── Main component ───────────────────────────────────────────────
 export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly = false, jobsheet = null }) {
-  // ── Form state ──
+  // ── Dark mode detection ──
+  const isDark = document.documentElement.classList.contains("dark");
+  const styles = getStyles(isDark);
 
+  // ── Form state ──
   const [date, setDate] = useState("");
   const [attendanceStatus, setAttendanceStatus] = useState("");
   const [detail, setDetail] = useState(emptyDetail);
@@ -573,7 +574,8 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
             <select
               style={{
                 ...styles.input, ...styles.select,
-                background: attendanceStatus === "" && !viewOnly ? "#fffbe6" : "#fff",
+                background: attendanceStatus === "" && !viewOnly ? (isDark ? "#422006" : "#fffbe6") : styles.input.background,
+                color: attendanceStatus === "" ? (isDark ? "#94a3b8" : "#aaa") : styles.input.color,
                 opacity: viewOnly ? 0.7 : 1,
                 border: fieldErrors.attendanceStatus ? "1px solid #ff4d4f" : styles.input.border
               }}
@@ -614,6 +616,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 loading={loadingOptions}
                 disabled={viewOnly}
                 hasError={!!fieldErrors.projectId}
+                styles={styles}
               />
               {fieldErrors.projectId && <span style={styles.errorText}>{fieldErrors.projectId}</span>}
             </div>
@@ -631,6 +634,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 loading={loadingOptions}
                 disabled={viewOnly || !detail.projectId}
                 hasError={!!fieldErrors.taskCategoryId}
+                styles={styles}
               />
               {fieldErrors.taskCategoryId && <span style={styles.errorText}>{fieldErrors.taskCategoryId}</span>}
             </div>
@@ -650,6 +654,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                   loading={loadingSubCats}
                   placeholder={loadingSubCats ? "Fetching..." : "Choose Sub Category"}
                   disabled={viewOnly}
+                  styles={styles}
                 />
 
               </div>
@@ -725,6 +730,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 loading={loadingOptions}
                 disabled={viewOnly}
                 hasError={!!fieldErrors.statusId}
+                styles={styles}
               />
               {fieldErrors.statusId && <span style={styles.errorText}>{fieldErrors.statusId}</span>}
             </div>
@@ -741,6 +747,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 loading={loadingOptions}
                 disabled={viewOnly}
                 fieldErrors={fieldErrors}
+                styles={styles}
               />
             </div>
           </div>
@@ -904,141 +911,158 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
 }
 
 // ─── Styles ───────────────────────────────────────────────────────
-const styles = {
-  overlay: {
-    position: "fixed", inset: 0,
-    background: "rgba(0,0,0,0.45)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    zIndex: 1000, fontFamily: "'Segoe UI', sans-serif",
-  },
-  modal: {
-    background: "#fff", borderRadius: 12,
-    width: "min(96vw, 1200px)",
-    height: "min(96vh, 1200px)", // Increased height
-    overflowY: "auto", padding: "32px 36px", // More spacious
-    boxShadow: "0 12px 60px rgba(0,0,0,0.22)",
-    display: "flex", flexDirection: "column",
-  },
-
-  header: {
-    display: "flex", justifyContent: "space-between",
-    alignItems: "center", marginBottom: 28, // Increased gap
-  },
-  title: { fontSize: 20, fontWeight: 6400, color: "#111" },
-  closeBtn: { background: "none", border: "none", fontSize: 22, cursor: "pointer", color: "#bbb" },
-  errorBanner: {
-    background: "#fff2f0", border: "1px solid #ffccc7",
-    borderRadius: 8, padding: "10px 16px",
-    color: "#cf1322", fontSize: 13, marginBottom: 18,
-  },
-  warningBanner: {
-    background: "#fffbe6", border: "1px solid #ffe58f",
-    borderRadius: 8, padding: "10px 16px",
-    color: "#ad6800", fontSize: 13, marginBottom: 18,
-  },
-  row: { display: "flex", gap: 16, marginBottom: 16 },
-  fieldGroup: { flex: 1 },
-  label: { fontSize: 12.5, fontWeight: 600, color: "#555", display: "block", marginBottom: 5 },
-  req: { color: "#e74c3c" },
-  inputWrapper: { display: "flex", alignItems: "center" },
-  input: {
-    width: "100%", border: "1px solid #e2e8f0", borderRadius: 8,
-    padding: "8px 12px", fontSize: 13, outline: "none",
-    color: "#1e293b", boxSizing: "border-box", background: "#f8fafc",
-    transition: "all 0.2s ease",
-  },
-  select: {
-    appearance: "none", cursor: "pointer",
-    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-    backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center", paddingRight: 32,
-  },
-  sectionLabel: {
-    fontSize: 15, fontWeight: 700, color: "#1e293b",
-    marginBottom: 16, paddingBottom: 8, borderBottom: "1px solid #f1f5f9",
-  },
-  detailGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    gap: 16, marginBottom: 12,
-  },
-
-  pill: {
-    display: "inline-flex", alignItems: "center", gap: 6,
-    background: "#fdf2f8", color: "#ec4899",
-    borderRadius: 20, padding: "4px 12px", fontSize: 12,
-    border: "1px solid #fbcfe8", fontWeight: 500,
-  },
-  pillRemove: {
-    background: "none", border: "none", cursor: "pointer",
-    color: "#ec4899", fontSize: 14, padding: 0,
-    display: "flex", alignItems: "center", justifyContent: "center",
-  },
-  dropdown: {
-    position: "absolute", zIndex: 10,
-    background: "#fff", border: "1px solid #d9d9d9",
-    borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-    maxHeight: 200, overflowY: "auto", width: "100%",
-  },
-  dropdownItem: {
-    padding: "8px 12px", fontSize: 13, cursor: "pointer", color: "#333",
-    borderBottom: "1px solid #f5f5f5",
-  },
-  textarea: {
-    width: "100%", minHeight: 80, border: "1px solid #d9d9d9",
-    borderRadius: 6, padding: "8px 10px", fontSize: 13,
-    outline: "none", color: "#333", background: "#fffff0",
-    resize: "vertical", boxSizing: "border-box",
-  },
-  actionRow: { display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 16 },
-  cancelBtn: {
-    padding: "7px 18px", borderRadius: 6,
-    border: "1px solid #d9d9d9", background: "#fff",
-    fontSize: 13, cursor: "pointer", color: "#444",
-  },
-  createBtn: {
-    padding: "7px 18px", borderRadius: 6, border: "none",
-    background: "#3b5bdb", fontSize: 13, cursor: "pointer",
-    color: "#fff", fontWeight: 600,
-  },
-  tableWrapper: {
-    overflowX: "auto", marginBottom: 16,
-    border: "1px solid #f0f0f0", borderRadius: 6,
-  },
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 12 },
-  th: {
-    padding: "8px 10px", textAlign: "left", background: "#fafafa",
-    color: "#888", fontWeight: 600, fontSize: 11,
-    borderBottom: "1px solid #eee", whiteSpace: "nowrap",
-  },
-  td: { padding: "8px 10px", color: "#444", whiteSpace: "nowrap" },
-  emptyCell: { textAlign: "center", padding: "24px", color: "#aaa", fontSize: 13 },
-  removeBtn: {
-    background: "none", border: "none", color: "#e74c3c",
-    cursor: "pointer", fontSize: 13, fontWeight: 700,
-  },
-  errorText: {
-    color: "#ff4d4f", fontSize: 11, marginTop: 4, display: "block"
-  },
-  footer: {
-    display: "flex", justifyContent: "flex-end", gap: 8,
-    borderTop: "1px solid #f0f0f0", paddingTop: 16,
-  },
-  confirmOverlay: {
-    position: "fixed", inset: 0,
-    background: "rgba(15, 23, 42, 0.6)",
-    backdropFilter: "blur(4px)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    zIndex: 2000,
-  },
-  confirmCard: {
-    background: "#fff", borderRadius: 16,
-    width: "400px", padding: "32px",
-    display: "flex", flexDirection: "column", alignItems: "center",
-    boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
-  },
-  exitBtn: {
-    background: "#fee2e2", color: "#ef4444", border: "1px solid #fecaca",
-    borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
-    transition: "all 0.2s ease",
-  }
-};
+function getStyles(isDark) {
+  const bg = isDark ? "#161920" : "#fff";
+  const bgSecondary = isDark ? "#1e293b" : "#f8fafc";
+  const border = isDark ? "#334155" : "#e2e8f0";
+  const text = isDark ? "#f1f5f9" : "#111";
+  const textMuted = isDark ? "#94a3b8" : "#555";
+  const textSubtle = isDark ? "#64748b" : "#888";
+  const inputBg = isDark ? "#1e293b" : "#f8fafc";
+  const inputColor = isDark ? "#e2e8f0" : "#1e293b";
+  const sectionBorder = isDark ? "#1e293b" : "#f1f5f9";
+  const tableTh = isDark ? "#0f172a" : "#fafafa";
+  const tableBorder = isDark ? "#1e293b" : "#eee";
+  const dropdownBg = isDark ? "#1e293b" : "#fff";
+  const dropdownBorder = isDark ? "#334155" : "#d9d9d9";
+  const confirmBg = isDark ? "#1e293b" : "#fff";
+  return {
+    overlay: {
+      position: "fixed", inset: 0,
+      background: "rgba(0,0,0,0.65)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 1000, fontFamily: "'Segoe UI', sans-serif",
+    },
+    modal: {
+      background: bg, borderRadius: 12,
+      width: "min(96vw, 1200px)",
+      height: "min(96vh, 1200px)",
+      overflowY: "auto", padding: "32px 36px",
+      boxShadow: isDark ? "0 12px 60px rgba(0,0,0,0.6)" : "0 12px 60px rgba(0,0,0,0.22)",
+      display: "flex", flexDirection: "column",
+    },
+    header: {
+      display: "flex", justifyContent: "space-between",
+      alignItems: "center", marginBottom: 28,
+    },
+    title: { fontSize: 20, fontWeight: 700, color: text },
+    closeBtn: { background: "none", border: "none", fontSize: 22, cursor: "pointer", color: isDark ? "#64748b" : "#bbb" },
+    errorBanner: {
+      background: isDark ? "#450a0a" : "#fff2f0", border: `1px solid ${isDark ? "#7f1d1d" : "#ffccc7"}`,
+      borderRadius: 8, padding: "10px 16px",
+      color: isDark ? "#fca5a5" : "#cf1322", fontSize: 13, marginBottom: 18,
+    },
+    warningBanner: {
+      background: isDark ? "#422006" : "#fffbe6", border: `1px solid ${isDark ? "#92400e" : "#ffe58f"}`,
+      borderRadius: 8, padding: "10px 16px",
+      color: isDark ? "#fcd34d" : "#ad6800", fontSize: 13, marginBottom: 18,
+    },
+    row: { display: "flex", gap: 16, marginBottom: 16 },
+    fieldGroup: { flex: 1 },
+    label: { fontSize: 12.5, fontWeight: 600, color: textMuted, display: "block", marginBottom: 5 },
+    req: { color: "#e74c3c" },
+    inputWrapper: { display: "flex", alignItems: "center" },
+    input: {
+      width: "100%", border: `1px solid ${border}`, borderRadius: 8,
+      padding: "8px 12px", fontSize: 13, outline: "none",
+      color: inputColor, boxSizing: "border-box", background: inputBg,
+      transition: "all 0.2s ease",
+    },
+    select: {
+      appearance: "none", cursor: "pointer",
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+      backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center", paddingRight: 32,
+    },
+    sectionLabel: {
+      fontSize: 15, fontWeight: 700, color: text,
+      marginBottom: 16, paddingBottom: 8, borderBottom: `1px solid ${sectionBorder}`,
+    },
+    detailGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+      gap: 16, marginBottom: 12,
+    },
+    pill: {
+      display: "inline-flex", alignItems: "center", gap: 6,
+      background: isDark ? "rgba(236,72,153,0.15)" : "#fdf2f8", color: "#ec4899",
+      borderRadius: 20, padding: "4px 12px", fontSize: 12,
+      border: isDark ? "1px solid rgba(236,72,153,0.3)" : "1px solid #fbcfe8", fontWeight: 500,
+    },
+    pillRemove: {
+      background: "none", border: "none", cursor: "pointer",
+      color: "#ec4899", fontSize: 14, padding: 0,
+      display: "flex", alignItems: "center", justifyContent: "center",
+    },
+    dropdown: {
+      position: "absolute", zIndex: 10,
+      background: dropdownBg, border: `1px solid ${dropdownBorder}`,
+      borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+      maxHeight: 200, overflowY: "auto", width: "100%",
+    },
+    dropdownItem: {
+      padding: "8px 12px", fontSize: 13, cursor: "pointer", color: inputColor,
+      borderBottom: `1px solid ${sectionBorder}`,
+    },
+    textarea: {
+      width: "100%", minHeight: 80, border: `1px solid ${border}`,
+      borderRadius: 6, padding: "8px 10px", fontSize: 13,
+      outline: "none", color: inputColor, background: inputBg,
+      resize: "vertical", boxSizing: "border-box",
+    },
+    actionRow: { display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 16 },
+    cancelBtn: {
+      padding: "7px 18px", borderRadius: 6,
+      border: `1px solid ${border}`, background: inputBg,
+      fontSize: 13, cursor: "pointer", color: inputColor,
+    },
+    createBtn: {
+      padding: "7px 18px", borderRadius: 6, border: "none",
+      background: "#3b5bdb", fontSize: 13, cursor: "pointer",
+      color: "#fff", fontWeight: 600,
+    },
+    tableWrapper: {
+      overflowX: "auto", overflowY: "auto", marginBottom: 16,
+      border: `1px solid ${tableBorder}`, borderRadius: 6,
+      flex: 1, minHeight: 250,
+    },
+    table: { width: "100%", borderCollapse: "collapse", fontSize: 12 },
+    th: {
+      padding: "8px 10px", textAlign: "left", background: tableTh,
+      color: textSubtle, fontWeight: 600, fontSize: 11,
+      borderBottom: `1px solid ${tableBorder}`, whiteSpace: "nowrap",
+      position: "sticky", top: 0, zIndex: 10,
+    },
+    td: { padding: "8px 10px", color: isDark ? "#cbd5e1" : "#444", whiteSpace: "nowrap" },
+    emptyCell: { textAlign: "center", padding: "24px", color: textSubtle, fontSize: 13 },
+    removeBtn: {
+      background: "none", border: "none", color: "#e74c3c",
+      cursor: "pointer", fontSize: 13, fontWeight: 700,
+    },
+    errorText: {
+      color: "#ff4d4f", fontSize: 11, marginTop: 4, display: "block"
+    },
+    footer: {
+      display: "flex", justifyContent: "flex-end", gap: 8,
+      borderTop: `1px solid ${tableBorder}`, paddingTop: 16,
+    },
+    confirmOverlay: {
+      position: "fixed", inset: 0,
+      background: "rgba(15, 23, 42, 0.6)",
+      backdropFilter: "blur(4px)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 2000,
+    },
+    confirmCard: {
+      background: confirmBg, borderRadius: 16,
+      width: "400px", padding: "32px",
+      display: "flex", flexDirection: "column", alignItems: "center",
+      boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+      border: `1px solid ${border}`,
+    },
+    exitBtn: {
+      background: "#fee2e2", color: "#ef4444", border: "1px solid #fecaca",
+      borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
+      transition: "all 0.2s ease",
+    }
+  };
+}

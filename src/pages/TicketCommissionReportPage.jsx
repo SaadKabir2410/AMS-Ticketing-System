@@ -246,9 +246,10 @@ export default function TicketCommissionReportPage() {
             <div className="flex items-center gap-4">
               <div>
                 <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
-                  <span onClick={() => navigate("/")} className="hover:opacity-80 cursor-pointer transition-all hover:text-pink-500">Home</span>
-                  <span className="text-slate-300 dark:text-slate-700">/</span>
-                  <span className="text-pink-500 font-black">Management Reports</span>
+                  <span onClick={() => navigate("/")} className="text-slate-400 dark:text-slate-600">Home</span>
+                  <span className="text-slate-400 dark:text-slate-600">/ Management</span>
+                  <span className="text-slate-400 dark:text-slate-600">/ Reports</span>
+                  <span className="text-pink-500 font-black">/Ticket Commision Report</span>
                 </nav>
                 <h1 className="text-4xl font-black tracking-tighter flex items-center gap-3">
                   Ticket Commission Report
@@ -354,7 +355,7 @@ export default function TicketCommissionReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Date From*</label>
+              <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Date From</label>
               <Flatpickr
                 value={filters.dateFrom}
                 onChange={(dates, dateStr) => setFilters({ ...filters, dateFrom: dateStr })}
@@ -365,7 +366,7 @@ export default function TicketCommissionReportPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Date To*</label>
+              <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Date To</label>
               <Flatpickr
                 value={filters.dateTo}
                 onChange={(dates, dateStr) => setFilters({ ...filters, dateTo: dateStr })}

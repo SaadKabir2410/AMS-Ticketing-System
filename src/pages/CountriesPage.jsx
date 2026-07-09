@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { countriesApi } from "../services/api/countries";
 import { useToast } from "../component/common/ToastContext";
 import { ActionsMenu } from "../component/common/ResourcePage";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Search, X, Filter } from "lucide-react";
 import CountryModal from "../component/common/CountryModal";
 import { useAuth } from "../context/AuthContextHook";
 
@@ -42,6 +42,12 @@ export default function CountriesPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advSearchName, setAdvSearchName] = useState("");
+  const [advSearchCode, setAdvSearchCode] = useState("");
+  const [debouncedAdvName, setDebouncedAdvName] = useState("");
+  const [debouncedAdvCode, setDebouncedAdvCode] = useState("");
+
   // Modals
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
@@ -66,10 +72,12 @@ export default function CountriesPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
+      setDebouncedAdvName(advSearchName);
+      setDebouncedAdvCode(advSearchCode);
       setPage(1);
     }, 500);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, advSearchName, advSearchCode]);
 
   const handleNew = () => {
     setEditItem(null);
@@ -98,16 +106,16 @@ export default function CountriesPage() {
     }
   };
 
-  const breadcrumb = ["Home", "Management", "Lookups", "Countries"];
+  const breadcrumb = ["Home", "Codes", "Countries"];
 
   const filteredData = useMemo(() => {
-    if (!debouncedSearch) return data;
-    const s = debouncedSearch.toLowerCase();
-    return data.filter(d => 
-      (d.name || "").toLowerCase().includes(s) || 
-      (d.code || "").toLowerCase().includes(s)
-    );
-  }, [data, debouncedSearch]);
+    return data.filter(d => {
+      const matchName = !debouncedSearch || (d.name || "").toLowerCase().includes(debouncedSearch.toLowerCase());
+      const matchAdvName = !debouncedAdvName || (d.name || "").toLowerCase().includes(debouncedAdvName.toLowerCase());
+      const matchAdvCode = !debouncedAdvCode || (d.code || "").toLowerCase().includes(debouncedAdvCode.toLowerCase());
+      return matchName && matchAdvName && matchAdvCode;
+    });
+  }, [data, debouncedSearch, debouncedAdvName, debouncedAdvCode]);
 
   const totalCount = filteredData.length;
 
@@ -164,7 +172,7 @@ export default function CountriesPage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Search countries..."
+                  placeholder="Search country name..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-[12px] outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
@@ -178,6 +186,13 @@ export default function CountriesPage() {
                   </button>
                 )}
               </div>
+              <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className={`p-2 rounded-xl border transition-all ${showAdvanced ? "bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-500/10 dark:border-pink-500/30 dark:text-pink-400" : "bg-white text-slate-500 border-slate-200/60 dark:bg-slate-900/50 dark:border-slate-800/50 dark:text-slate-400 hover:text-pink-600"}`}
+                title="Advanced Filter"
+              >
+                <Filter size={16} />
+              </button>
               <button
                 onClick={handleNew}
                 className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
@@ -202,15 +217,64 @@ export default function CountriesPage() {
           ) : (
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar">
               <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px]">
-                <thead className="sticky top-0 z-10">
-                  <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
+                <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
                     <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">Country Name</th>
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Country Code</th>
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Actions</th>
                   </tr>
+                  {showAdvanced && (
+                    <tr className="bg-slate-100/50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                      <th className="px-5 pl-5 py-2">
+                        <div className="relative w-full max-w-[350px]">
+                          <input
+                            type="text"
+                            placeholder="Filter by country name..."
+                            value={advSearchName}
+                            onChange={(e) => setAdvSearchName(e.target.value)}
+                            className="w-full pl-3 pr-8 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-700/50 bg-white dark:bg-slate-900 text-[11px] outline-none transition-all focus:border-pink-500 focus:ring-2 focus:ring-pink-500/10 font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
+                          />
+                          {advSearchName && (
+                            <button
+                              onClick={() => setAdvSearchName("")}
+                              className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+                      <th className="px-5 py-2 text-center">
+                        <div className="relative w-full max-w-[250px] mx-auto">
+                          <input
+                            type="text"
+                            placeholder="Filter by country code..."
+                            value={advSearchCode}
+                            onChange={(e) => setAdvSearchCode(e.target.value)}
+                            className="w-full pl-3 pr-8 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-700/50 bg-white dark:bg-slate-900 text-[11px] outline-none transition-all focus:border-pink-500 focus:ring-2 focus:ring-pink-500/10 font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
+                          />
+                          {advSearchCode && (
+                            <button
+                              onClick={() => setAdvSearchCode("")}
+                              className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+                      <th className="px-5 py-2"></th>
+                    </tr>
+                  )}
                 </thead>
                 <tbody>
-                  {paginatedData.map((row, idx) => {
+                  {filteredData.length === 0 ? (
+                    <tr>
+                      <td colSpan="3" className="px-5 py-20 text-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em]">
+                        No result found
+                      </td>
+                    </tr>
+                  ) : paginatedData.map((row, idx) => {
                     const isEven = idx % 2 === 0;
                     return (
                       <tr
@@ -219,12 +283,12 @@ export default function CountriesPage() {
                       >
                         <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
                           <div className="flex items-center gap-3">
-                            <HighlightText text={row.name} searchTerm={debouncedSearch} />
+                            <HighlightText text={row.name} searchTerm={debouncedAdvName || debouncedSearch} />
                           </div>
                         </td>
                         <td className="px-5 h-[60px] text-center transition-colors">
                           <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-bold tracking-wider text-[11px]">
-                            <HighlightText text={row.code} searchTerm={debouncedSearch} />
+                            <HighlightText text={row.code} searchTerm={debouncedAdvCode} />
                           </span>
                         </td>
                         <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">

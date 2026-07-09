@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { holidaysApi } from "../services/api/holidays";
 import HolidayModal from "../component/common/HolidayModal";
 import { useToast } from "../component/common/ToastContext";
@@ -8,7 +8,63 @@ import "flatpickr/dist/themes/dark.css";
 import { usePermission } from "../hooks/usePermission";
 import { useNavigate } from "react-router-dom";
 import { ActionsMenu } from "../component/common/ResourcePage";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Check, ChevronDown } from "lucide-react";
+
+const HP_YEARS = Array.from({ length: 31 }, (_, i) => new Date().getFullYear() - 10 + i);
+
+function CompactFilterSelect({ value, onChange, options, placeholder = "Select...", getLabel, getValue }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef(null);
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+  const filtered = options.filter((o) =>
+    String(getLabel ? getLabel(o) : o).toLowerCase().includes(search.toLowerCase())
+  );
+  const displayLabel = value !== "" && value !== null && value !== undefined
+    ? (getLabel ? getLabel(options.find(o => (getValue ? getValue(o) : o) === value) ?? value) : value)
+    : null;
+  return (
+    <div ref={ref} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-3 py-2 bg-white/80 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-lg text-[11px] outline-none transition-all text-slate-900 dark:text-white shadow-sm font-bold cursor-pointer hover:border-pink-500 focus:border-pink-600"
+      >
+        <span className={displayLabel ? "text-slate-900 dark:text-white truncate" : "text-slate-400 dark:text-slate-500"}>
+          {displayLabel ?? placeholder}
+        </span>
+        <ChevronDown size={12} strokeWidth={2.5} className={`shrink-0 ml-1 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute z-[9999] left-0 top-[calc(100%+3px)] w-[200px] min-w-full bg-white dark:bg-[#1e2330] border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl overflow-hidden">
+          <div className="p-1.5 border-b border-slate-100 dark:border-slate-800">
+            <input autoFocus type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="w-full px-2 py-1 text-[10px] rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 outline-none text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-pink-500 transition-all" />
+          </div>
+          <ul className="max-h-40 overflow-y-auto py-0.5" style={{ scrollbarWidth: "none" }}>
+            <li className="px-2.5 py-1 text-[10px] text-slate-400 dark:text-slate-500 hover:bg-pink-50 dark:hover:bg-pink-500/10 cursor-pointer transition-colors" onClick={() => { onChange(""); setOpen(false); setSearch(""); }}>{placeholder}</li>
+            {filtered.length === 0 && <li className="px-2.5 py-1.5 text-[10px] text-slate-400 text-center">No results</li>}
+            {filtered.map((o) => {
+              const val = getValue ? getValue(o) : o;
+              const lbl = getLabel ? getLabel(o) : o;
+              const selected = val === value;
+              return (
+                <li key={String(val)} onClick={() => { onChange(val); setOpen(false); setSearch(""); }}
+                  className={`flex items-center justify-between px-2.5 py-1 text-[10px] cursor-pointer transition-colors ${selected ? "bg-pink-50 dark:bg-pink-500/15 text-pink-600 dark:text-pink-400 font-semibold" : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"}`}>
+                  {lbl}
+                  {selected && <Check size={10} strokeWidth={3} className="text-pink-500" />}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const LOCAL_COUNTRIES = [
   { id: "gb", name: "United Kingdom", code: "GB" },
@@ -254,17 +310,24 @@ export default function HolidaysPage() {
                     />
                   </div>
 
-                  <div className="px-[10px] w-full"><input type="number" placeholder="2024" value={filters.year} onChange={(e) => setFilters({ ...filters, year: e.target.value })} className={filterInputClass} /></div>
+                  <div className="px-[10px] w-full">
+                    <CompactFilterSelect
+                      value={filters.year || ""}
+                      onChange={(val) => setFilters({ ...filters, year: val !== "" ? Number(val) : "" })}
+                      options={HP_YEARS}
+                      placeholder="All Years"
+                    />
+                  </div>
 
                   <div className="px-[10px] w-full">
-                    <select
+                    <CompactFilterSelect
                       value={filters.country}
-                      onChange={(e) => setFilters({ ...filters, country: e.target.value })}
-                      className={`${filterInputClass} appearance-none pr-3 cursor-pointer`}
-                    >
-                      <option value="">All Countries</option>
-                      {LOCAL_COUNTRIES.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                    </select>
+                      onChange={(val) => setFilters({ ...filters, country: val })}
+                      options={LOCAL_COUNTRIES}
+                      placeholder="All Countries"
+                      getLabel={(o) => (typeof o === "object" ? o.name : o)}
+                      getValue={(o) => (typeof o === "object" ? o.name : o)}
+                    />
                   </div>
 
                   <div className="px-[10px] w-full"><input type="text" placeholder="Region..." value={filters.locations} onChange={(e) => setFilters({ ...filters, locations: e.target.value })} className={filterInputClass} /></div>
@@ -350,12 +413,9 @@ export default function HolidaysPage() {
                         </td>
                         <td className="w-[10%] px-5 h-[60px] text-center transition-colors">
                           <div className="flex justify-center w-full">
-                            <input
-                              type="checkbox"
-                              checked={!!row.isDeleted}
-                              readOnly
-                              className="w-4 h-4 rounded accent-blue-500 border-slate-300 dark:border-white/20 pointer-events-none appearance-none checked:btn-flagship dark:checked:btn-flagship checked:border-transparent bg-slate-100 dark:bg-slate-800 border relative after:content-[''] after:hidden checked:after:block after:absolute after:left-[5px] after:top-[1px] after:w-[4px] after:h-[8px] after:border-white after:border-b-2 after:border-r-2 after:rotate-45"
-                            />
+                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${row.isDeleted ? 'bg-red-500 border-red-500 shadow-md shadow-red-500/20' : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}>
+                              {row.isDeleted && <Check size={12} className="text-white" strokeWidth={4} />}
+                            </div>
                           </div>
                         </td>
                         <td className="w-[120px] px-5 rounded-r-2xl h-[60px] text-center transition-colors">

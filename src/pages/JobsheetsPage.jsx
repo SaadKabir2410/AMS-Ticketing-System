@@ -194,25 +194,6 @@ export default function JobsheetsPage() {
     setCollaboratorSearch("");
   };
 
-  // ── Fetch Report ──
-  const fetchReport = async () => {
-    setReportLoading(true);
-    setReportError(null);
-    try {
-      // Non-admins can only see their own jobsheets
-      const finalFilters = isAdmin 
-        ? filters 
-        : { ...filters, user: [user?.id] };
-
-      const data = await jobsheetsApi.getReport({ filters: finalFilters, currentUserId: user?.id });
-      setReportData(data);
-
-    } catch (err) {
-      setReportError(err?.message || "Failed to generate report.");
-    } finally {
-      setReportLoading(false);
-    }
-  };
 
 
 
@@ -298,19 +279,43 @@ export default function JobsheetsPage() {
     {
       key: "holiday",
       label: "HOLIDAY",
-      render: (val) => (
-        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black border transition-all ${val
-          ? "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-500/10 dark:border-purple-500/20"
-          : "bg-slate-50 text-slate-400 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
-          }`}>
-          {val ? "YES" : "NO"}
-        </span>
-      ),
+      render: (val) => {
+        if (!val) return <span className="text-slate-300 dark:text-slate-700">—</span>;
+        return (
+          <span className="px-2 py-0.5 rounded-lg text-[9px] font-black border transition-all bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-500/10 dark:border-purple-500/20 uppercase tracking-wide">
+            {val}
+          </span>
+        );
+      },
     },
   ], []);
 
+  const selectedUserNames = filters.user
+    .map(id => allUsers.find(u => u.id === id))
+    .filter(Boolean)
+    .map(u => `${u.name || ''} ${u.surname || ''}`.trim());
+
+  const userPlaceholder = selectedUserNames.length === 1
+    ? selectedUserNames[0]
+    : selectedUserNames.length > 1
+      ? `${selectedUserNames.length} selected`
+      : "Search User...";
+
+  const selectedCollaboratorNames = filters.collaborator
+    .map(id => allCollaborators.find(u => u.id === id))
+    .filter(Boolean)
+    .map(u => `${u.name || ''} ${u.surname || ''}`.trim());
+
+  const collaboratorPlaceholder = selectedCollaboratorNames.length === 1
+    ? selectedCollaboratorNames[0]
+    : selectedCollaboratorNames.length > 1
+      ? `${selectedCollaboratorNames.length} selected`
+      : "Search Collaborator...";
+
   const filterInputClass =
     "pl-3 pr-8 py-2 text-[11px] bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all placeholder:text-slate-400 shadow-sm w-full font-semibold text-slate-700 dark:text-slate-200";
+
+  const clearButtonClass = "absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-0.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors z-10";
 
   const customFilterArea = (
     <div className="flex items-center gap-4 bg-slate-50/30 dark:bg-[#0f172a]/50 p-2.5 rounded-[22px] border border-slate-100 dark:border-slate-800 backdrop-blur-sm shadow-inner w-full flex-nowrap overflow-visible">
@@ -319,17 +324,27 @@ export default function JobsheetsPage() {
       <div className="flex-1 min-w-0">
         <div className="flex flex-col gap-1">
           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Project</label>
-          <select
-            value={filters.project}
-            onChange={(e) => setFilters({ ...filters, project: e.target.value })}
-            className={`${filterInputClass} appearance-none cursor-pointer pr-3`}
-            disabled={loadingProjects}
-          >
-            <option value="">{loadingProjects ? "Loading..." : "All Projects"}</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={filters.project}
+              onChange={(e) => setFilters({ ...filters, project: e.target.value })}
+              className={`${filterInputClass} appearance-none cursor-pointer pr-8`}
+              disabled={loadingProjects}
+            >
+              <option value="">{loadingProjects ? "Loading..." : "Choose An Option"}</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            {filters.project && (
+              <button
+                className={clearButtonClass}
+                onClick={() => setFilters({ ...filters, project: "" })}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -337,13 +352,23 @@ export default function JobsheetsPage() {
       <div className="flex-1 min-w-0">
         <div className="flex flex-col gap-1">
           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Date From</label>
-          <Flatpickr
-            value={filters.dateFrom}
-            onChange={(dates, dateStr) => setFilters({ ...filters, dateFrom: dateStr })}
-            options={{ dateFormat: "Y-m-d", allowInput: true }}
-            placeholder="YYYY-MM-DD"
-            className={filterInputClass}
-          />
+          <div className="relative">
+            <Flatpickr
+              value={filters.dateFrom}
+              onChange={(dates, dateStr) => setFilters({ ...filters, dateFrom: dateStr })}
+              options={{ dateFormat: "Y-m-d", allowInput: true }}
+              placeholder="YYYY-MM-DD"
+              className={filterInputClass}
+            />
+            {filters.dateFrom && (
+              <button
+                className={clearButtonClass}
+                onClick={() => setFilters({ ...filters, dateFrom: "" })}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -351,13 +376,23 @@ export default function JobsheetsPage() {
       <div className="flex-1 min-w-0">
         <div className="flex flex-col gap-1">
           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Date To</label>
-          <Flatpickr
-            value={filters.dateTo}
-            onChange={(dates, dateStr) => setFilters({ ...filters, dateTo: dateStr })}
-            options={{ dateFormat: "Y-m-d", allowInput: true }}
-            placeholder="YYYY-MM-DD"
-            className={filterInputClass}
-          />
+          <div className="relative">
+            <Flatpickr
+              value={filters.dateTo}
+              onChange={(dates, dateStr) => setFilters({ ...filters, dateTo: dateStr })}
+              options={{ dateFormat: "Y-m-d", allowInput: true }}
+              placeholder="YYYY-MM-DD"
+              className={filterInputClass}
+            />
+            {filters.dateTo && (
+              <button
+                className={clearButtonClass}
+                onClick={() => setFilters({ ...filters, dateTo: "" })}
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -369,7 +404,7 @@ export default function JobsheetsPage() {
             <div className="relative">
               <input
                 type="text"
-                placeholder={filters.user.length > 0 ? `${filters.user.length} selected` : "Search User..."}
+                placeholder={userPlaceholder}
                 value={userSearch}
                 onFocus={() => setShowUserDropdown(true)}
                 onChange={(e) => {
@@ -380,10 +415,10 @@ export default function JobsheetsPage() {
               />
               {(userSearch || filters.user.length > 0) && (
                 <button
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 text-[9px] font-black uppercase"
+                  className={clearButtonClass}
                   onClick={() => { setUserSearch(""); setFilters({ ...filters, user: [] }); }}
                 >
-                  Clear
+                  <X size={14} />
                 </button>
               )}
             </div>
@@ -434,7 +469,7 @@ export default function JobsheetsPage() {
           <div className="relative">
             <input
               type="text"
-              placeholder={filters.collaborator.length > 0 ? `${filters.collaborator.length} selected` : "Search User..."}
+              placeholder={collaboratorPlaceholder}
               value={collaboratorSearch}
               onFocus={() => setShowCollaboratorDropdown(true)}
               onChange={(e) => {
@@ -445,10 +480,10 @@ export default function JobsheetsPage() {
             />
             {(collaboratorSearch || filters.collaborator.length > 0) && (
               <button
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 text-[9px] font-black uppercase"
+                className={clearButtonClass}
                 onClick={() => { setCollaboratorSearch(""); setFilters({ ...filters, collaborator: [] }); }}
               >
-                Clear
+                <X size={14} />
               </button>
             )}
           </div>
@@ -507,10 +542,10 @@ export default function JobsheetsPage() {
     if (filters.dateFrom) p.FromDate = filters.dateFrom;
     if (filters.dateTo) p.ToDate = filters.dateTo;
     if (filters.collaborator) p.UserIdsSearchValues = filters.collaborator;
-    
+
     // Force current user if not admin
     p.userId = isAdmin ? filters.user : [user?.id];
-    
+
     return p;
   }, [filters, user, isAdmin]);
 
@@ -526,14 +561,7 @@ export default function JobsheetsPage() {
           </button>
         </div>
       )}
-      {reportData && (
-        <button
-          onClick={clearReportData}
-          className="btn-flagship border-slate-200! dark:border-slate-800! text-slate-500! hover:text-red-500! hover:border-red-500/30!"
-        >
-          Close Report
-        </button>
-      )}
+
       {!user?.role?.toLowerCase().includes("admin") && (
         <button
           type="button"
@@ -543,14 +571,6 @@ export default function JobsheetsPage() {
           New Jobsheet
         </button>
       )}
-      <button
-        type="button"
-        className="btn-flagship-solid"
-        onClick={fetchReport}
-        disabled={reportLoading}
-      >
-        {reportLoading ? "Generating..." : "Get Report"}
-      </button>
     </div>
   );
 
@@ -590,20 +610,31 @@ export default function JobsheetsPage() {
   const [pageSize, setPageSize] = useState(14);
   const [serverTotalCount, setServerTotalCount] = useState(0);
 
-  // Initial load / Pagination change
+  // Initial load / Pagination change / Filter change
   useEffect(() => {
     const fetchGridData = async () => {
       setReportLoading(true);
       try {
         const finalFilters = isAdmin ? filters : { ...filters, user: [user?.id] };
+        const selectedUserIds = finalFilters.user?.length > 0 ? finalFilters.user : undefined;
+        const selectedCollabIds = finalFilters.collaborator?.length > 0 ? finalFilters.collaborator : undefined;
+
+        // Combine user + collaborator IDs for the search (API searches across both fields)
+        const combinedIds = [
+          ...(finalFilters.user || []),
+          ...(finalFilters.collaborator || []),
+        ].filter(Boolean);
+        const userIdsParam = combinedIds.length > 0 ? combinedIds : undefined;
+
         const data = await jobsheetsApi.getAll({
           page,
           perPage: pageSize,
           FromDate: finalFilters.dateFrom,
           ToDate: finalFilters.dateTo,
           Project: finalFilters.project,
-          UserIdsSearchValues: finalFilters.collaborator,
-          userId: finalFilters.user
+          UserIdsSearchValues: selectedUserIds,
+          JobsheetDetailUserIdsSearchValues: selectedCollabIds,
+          CurrentUserId: user?.id,
         });
         setReportData(data);
         setServerTotalCount(data?.totalCount || data?.items?.length || 0);
@@ -614,7 +645,12 @@ export default function JobsheetsPage() {
       }
     };
     fetchGridData();
-  }, [page, pageSize, isAdmin, user?.id]);
+  }, [page, pageSize, isAdmin, user?.id, filters]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filters]);
 
   const tableData = Array.isArray(reportData)
     ? reportData
@@ -622,7 +658,7 @@ export default function JobsheetsPage() {
 
   const overrideData = tableData.map((t, i) => ({ ...t, id: t.id || i }));
   const totalCount = serverTotalCount;
-  
+
   const paginatedData = overrideData; // We are now using server-side pagination
 
   return (
@@ -643,7 +679,7 @@ export default function JobsheetsPage() {
       `}</style>
 
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
-        
+
         {/* Header */}
         <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
           <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
@@ -713,7 +749,6 @@ export default function JobsheetsPage() {
                           ))}
                           <td className="w-[120px] px-5 rounded-r-2xl h-[60px] text-center transition-colors">
                             <ActionsMenu
-                              onAuditLog={!user?.role?.toLowerCase().includes("ticketing") ? () => handleAction("audit", row) : undefined}
                               customActions={customActions.map(ca => ({ ...ca, onClick: () => ca.onClick(row) }))}
                             />
                           </td>

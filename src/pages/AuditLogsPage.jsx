@@ -172,6 +172,24 @@ export default function AuditLogsPage() {
                     <span>AMS Ticket</span>
                     <span className="text-slate-300">/</span>
                   </>
+                ) : entityType === "Country" ? (
+                  <>
+                    <span>Management</span>
+                    <span className="text-slate-300">/</span>
+                    <span>Lookups</span>
+                    <span className="text-slate-300">/</span>
+                    <span>Countries</span>
+                    <span className="text-slate-300">/</span>
+                  </>
+                ) : entityType === "Lookup" ? (
+                  <>
+                    <span>Management</span>
+                    <span className="text-slate-300">/</span>
+                    <span>Lookups</span>
+                    <span className="text-slate-300">/</span>
+                    <span>Codes</span>
+                    <span className="text-slate-300">/</span>
+                  </>
                 ) : (
                   <>
                     <span>Administration</span>

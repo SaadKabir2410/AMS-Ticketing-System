@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Dialog, IconButton } from "@mui/material";
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
 import PremiumErrorAlert from "./PremiumErrorAlert";
 const EMPTY = { name: "", code: "" };
 
@@ -76,7 +76,11 @@ export default function CountryModal({
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={(event, reason) => {
+        if (reason !== "backdropClick") {
+          onClose();
+        }
+      }}
       maxWidth="xs"
       fullWidth
       PaperProps={{
@@ -85,11 +89,11 @@ export default function CountryModal({
       }}
     >
       <div className="flex items-center justify-between px-6 pt-5 pb-3">
-        <h2 className="text-lg text-blue-600 dark:text-blue-400">
+        <h2 className="text-lg text-pink-600 dark:text-pink-400">
           {isEdit ? "Update Country" : "Create Country"}
         </h2>
         <IconButton onClick={onClose} size="small">
-          
+          <X className="text-slate-500 dark:text-slate-400" size={20} />
         </IconButton>
       </div>
 
@@ -168,14 +172,14 @@ export default function CountryModal({
         <button
           type="button"
           onClick={onClose}
-          className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+          className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="px-8 py-2.5 btn-flagship  text-white rounded-xl text-sm flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-blue-100 dark:shadow-none transition-all"
+          className="px-8 py-2.5 bg-pink-600 hover:bg-pink-700 dark:bg-pink-500 dark:hover:bg-pink-600 text-white rounded-xl text-sm flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-all"
         >
           {loading ? "Saving..." : isEdit ? "Update" : "Create"}
         </button>

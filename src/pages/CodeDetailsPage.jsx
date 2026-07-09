@@ -148,8 +148,11 @@ export default function CodeDetailsPage() {
 
   const handleClearAll = () => {
     setSelectedParent(null);
+    setParentSearch("");
+    setCodeDetails([]);
     setFilters({
       newCode: "",
+      lookupCode: "",
       description: "",
       value1: "",
       value2: "",
@@ -777,7 +780,7 @@ export default function CodeDetailsPage() {
                   )}
 
                   {/* Data rows */}
-                  {!loadingDetails && paginatedItems.length > 0 && (
+                  {selectedParent && !loadingDetails && paginatedItems.length > 0 && (
                     <AnimatePresence>
                       {paginatedItems.map((row, idx) => {
                         const rowBgClass =
