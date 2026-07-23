@@ -39,7 +39,6 @@ const PermissionTree = ({
 }) => {
   const children = permissions.filter((p) => {
     if (p.parentName !== parentName) return false;
-    if (parentName !== null && !checkedPerms[p.name]) return false;
     return true;
   });
   if (children.length === 0) return null;

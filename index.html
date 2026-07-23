@@ -4,7 +4,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Dashboard</title>
+  <title>Sureze Ticketing System</title>
+  <script>
+    try {
+      var session = localStorage.getItem("spike_session");
+      var userId = session ? JSON.parse(session).id : null;
+      var themeKey = userId ? "theme_" + userId : "theme";
+      var theme = localStorage.getItem(themeKey) || "light";
+      if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+        document.documentElement.style.backgroundColor = "#020617";
+      }
+    } catch (e) {}
+  </script>
 </head>
 
 <body>

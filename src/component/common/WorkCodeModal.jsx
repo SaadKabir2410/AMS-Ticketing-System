@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Dialog, IconButton } from "@mui/material";
-import { AlertCircle, Check } from "lucide-react";
+import { AlertCircle, Check, X } from "lucide-react";
 
 import { workCodesApi } from "../../services/api/workCodes";
 import PremiumErrorAlert from "./PremiumErrorAlert";
@@ -157,7 +157,7 @@ export default function WorkCodeModal({
       ? `bg-red-50/50 border-red-400 text-red-900 placeholder:text-red-300 dark:bg-red-500/10 dark:border-red-500/50 dark:text-red-200`
       : isValid
         ? `bg-green-50/50 border-green-500 focus:border-green-600 text-green-900 dark:bg-green-500/10 dark:border-green-500/50 dark:text-green-200`
-        : `bg-slate-50 border-slate-200 hover:border-slate-300 focus:bg-white focus:border-blue-500 text-slate-700 placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:focus:border-blue-500`);
+        : `bg-slate-50 border-slate-200 hover:border-slate-300 focus:bg-white focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 text-slate-700 placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:focus:border-pink-500 dark:focus:ring-pink-500/20`);
 
   return (
     <Dialog
@@ -171,11 +171,11 @@ export default function WorkCodeModal({
       }}
     >
       <div className="flex items-center justify-between px-6 pt-5 pb-3">
-        <h2 className="text-lg text-blue-600 dark:text-blue-400">
+        <h2 className="text-lg font-bold text-pink-600 dark:text-pink-400">
           {isEdit ? "Update Work Code" : "Create Work Code"}
         </h2>
-        <IconButton onClick={onClose} size="small">
-          
+        <IconButton onClick={onClose} size="small" className="text-slate-400 hover:text-pink-500 transition-colors">
+          <X size={20} />
         </IconButton>
       </div>
 
@@ -264,7 +264,7 @@ export default function WorkCodeModal({
         <button
           onClick={handleSubmit}
           disabled={loading || checkingCode || !!errors.code}
-          className="px-8 py-2.5 btn-flagship  text-white rounded-xl text-sm flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-blue-100 dark:shadow-none transition-all"
+          className="px-8 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-xl text-sm font-bold flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-500/20 dark:shadow-none transition-all active:scale-95"
         >
           {loading ? "Loading..." : isEdit ? (
             "Update"

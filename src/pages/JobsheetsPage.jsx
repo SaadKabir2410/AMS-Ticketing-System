@@ -73,6 +73,76 @@ export default function JobsheetsPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportError, setReportError] = useState(null);
   const clearReportData = () => setReportData(null);
+  const clearReportError = () => setReportError(null);
+  const [reportDownloading, setReportDownloading] = useState(false);
+
+  const handleGetReport = async () => {
+    setReportDownloading(true);
+    setReportError(null);
+
+    try {
+      const finalFilters = isAdmin ? filters : { ...filters, user: [user?.id] };
+      const response = await jobsheetsApi.getReport({ filters: finalFilters, currentUserId: user?.id });
+
+      const contentType = response.headers["content-type"] || "";
+      const isJson = contentType.includes("application/json");
+
+      if (isJson) {
+        const text = await response.data.text();
+        const jsonData = JSON.parse(text);
+        if (jsonData?.error?.message) {
+          throw new Error(jsonData.error.message);
+        }
+        throw new Error("Report generation failed.");
+      } else {
+        const blob = new Blob([response.data], { type: contentType });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+
+        let fileName = "Jobsheet_Report";
+        const contentDisposition = response.headers["content-disposition"];
+        if (contentDisposition) {
+          const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+          if (fileNameMatch && fileNameMatch.length >= 2) {
+            fileName = fileNameMatch[1];
+          }
+        } else {
+          if (contentType.includes("pdf")) fileName += ".pdf";
+          else if (contentType.includes("spreadsheetml")) fileName += ".xlsx";
+          else if (contentType.includes("excel")) fileName += ".xls";
+          else if (contentType.includes("csv")) fileName += ".csv";
+          else fileName += ".pdf";
+        }
+
+        link.setAttribute("download", fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error("Failed to generate jobsheet report:", error);
+      let errorMessage = "Failed to generate report.";
+      
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const errorData = JSON.parse(text);
+          errorMessage = errorData?.error?.message || errorMessage;
+        } catch (e) {
+          console.error("Could not parse blob error:", e);
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setReportError(errorMessage);
+    } finally {
+      setReportDownloading(false);
+    }
+  };
+
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedJobsheet, setSelectedJobsheet] = useState(null);
@@ -438,6 +508,7 @@ export default function JobsheetsPage() {
                             ? filters.user.filter(id => id !== u.id)
                             : [...filters.user, u.id];
                           setFilters({ ...filters, user: newUsers });
+                          setUserSearch("");
                         }}
                       >
                         <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isChecked ? 'bg-[#ec4899] border-[#ec4899]' : 'border-slate-200 dark:border-slate-700'}`}>
@@ -503,6 +574,7 @@ export default function JobsheetsPage() {
                           ? filters.collaborator.filter(id => id !== u.id)
                           : [...filters.collaborator, u.id];
                         setFilters({ ...filters, collaborator: newCollabs });
+                        setCollaboratorSearch("");
                       }}
                     >
                       <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isChecked ? 'bg-[#ec4899] border-[#ec4899]' : 'border-slate-200 dark:border-slate-700'}`}>
@@ -564,11 +636,12 @@ export default function JobsheetsPage() {
       )}
 
       <button
-        onClick={() => setPage(1)}
-        className="btn-flagship bg-[#1e293b] text-white hover:bg-[#334155] dark:bg-[#ec4899] dark:hover:bg-[#db2777] flex items-center gap-2"
+        onClick={handleGetReport}
+        disabled={reportDownloading}
+        className="btn-flagship bg-[#1e293b] text-white hover:bg-[#334155] dark:bg-[#ec4899] dark:hover:bg-[#db2777] flex items-center gap-2 disabled:opacity-50"
       >
         <FileText size={16} />
-        Get Report
+        {reportDownloading ? "Generating..." : "Get Report"}
       </button>
 
       {!user?.role?.toLowerCase().includes("admin") && (

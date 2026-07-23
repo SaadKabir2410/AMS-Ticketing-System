@@ -66,15 +66,15 @@ export const jobsheetsApi = {
     const params = {};
 
     if (currentUserId && isGuid(currentUserId)) {
-      params["CurrentUserId"] = currentUserId;
+      params["JobsheetSearch.CurrentUserId"] = currentUserId;
     }
 
     // Support for multiple users (arrays or single string)
     const userIds = Array.isArray(filters.user) ? filters.user : (filters.user ? [filters.user] : []);
     userIds.forEach((id, index) => {
       if (isGuid(id)) {
-        params[`UserIdsSearchValues[${index}]`] = id;
-        params[`JobsheetDetailUserIdsSearchValues[${index}]`] = id;
+        params[`JobsheetSearch.UserIdsSearchValues[${index}]`] = id;
+        params[`JobsheetSearch.JobsheetDetailUserIdsSearchValues[${index}]`] = id;
       }
     });
 
@@ -84,21 +84,24 @@ export const jobsheetsApi = {
       if (isGuid(id)) {
         // We start indexing after the main users to avoid collisions
         const finalIndex = userIds.length + index;
-        params[`UserIdsSearchValues[${finalIndex}]`] = id;
-        params[`JobsheetDetailUserIdsSearchValues[${finalIndex}]`] = id;
+        params[`JobsheetSearch.UserIdsSearchValues[${finalIndex}]`] = id;
+        params[`JobsheetSearch.JobsheetDetailUserIdsSearchValues[${finalIndex}]`] = id;
       }
     });
 
     if (filters.project && isGuid(filters.project)) {
-      params["ProjectIdSearchValue"] = filters.project;
+      params["JobsheetSearch.ProjectIdSearchValue"] = filters.project;
     }
 
-    if (filters.dateFrom) params["DateFrom"] = formatDateStart(filters.dateFrom);
-    if (filters.dateTo) params["DateTo"] = formatDateEnd(filters.dateTo);
+    if (filters.dateFrom) params["JobsheetSearch.DateFrom"] = formatDateStart(filters.dateFrom);
+    if (filters.dateTo) params["JobsheetSearch.DateTo"] = formatDateEnd(filters.dateTo);
 
     return apiClient
-      .get("/api/app/jobsheet/jobsheet-report", { params })
-      .then((r) => r.data);
+      .get("/api/app/jobsheet/jobsheet-report", { 
+        params, 
+        responseType: "blob",
+        headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/pdf, application/json" }
+      });
   },
 
   create: (data) =>

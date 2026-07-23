@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { workCodesApi } from "../services/api/workCodes";
 import { useToast } from "../component/common/ToastContext";
 import { ActionsMenu } from "../component/common/ResourcePage";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Search, X, Filter } from "lucide-react";
 import WorkCodeModal from "../component/common/WorkCodeModal";
 import { useAuth } from "../context/AuthContextHook";
 
@@ -41,6 +41,11 @@ export default function WorkCodesPage() {
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [advSearchCode, setAdvSearchCode] = useState("");
+  const [advSearchDesc, setAdvSearchDesc] = useState("");
+  const [debouncedAdvSearchCode, setDebouncedAdvSearchCode] = useState("");
+  const [debouncedAdvSearchDesc, setDebouncedAdvSearchDesc] = useState("");
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Modals
   const [modalOpen, setModalOpen] = useState(false);
@@ -66,10 +71,12 @@ export default function WorkCodesPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
+      setDebouncedAdvSearchCode(advSearchCode);
+      setDebouncedAdvSearchDesc(advSearchDesc);
       setPage(1);
     }, 500);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, advSearchCode, advSearchDesc]);
 
   const handleNew = () => {
     setEditItem(null);
@@ -101,12 +108,19 @@ export default function WorkCodesPage() {
   const breadcrumb = ["Home", "Management", "Lookups", "Work Done Codes"];
 
   const filteredData = useMemo(() => {
-    if (!debouncedSearch) return data;
-    const s = debouncedSearch.toLowerCase();
-    return data.filter(d => 
-      (d.code || "").toLowerCase().includes(s)
-    );
-  }, [data, debouncedSearch]);
+    return data.filter(d => {
+      const globalMatch = debouncedSearch 
+        ? (d.code || "").toLowerCase().includes(debouncedSearch.toLowerCase())
+        : true;
+      const matchCode = debouncedAdvSearchCode 
+        ? (d.code || "").toLowerCase().includes(debouncedAdvSearchCode.toLowerCase())
+        : true;
+      const matchDesc = debouncedAdvSearchDesc
+        ? (d.description || "").toLowerCase().includes(debouncedAdvSearchDesc.toLowerCase())
+        : true;
+      return globalMatch && matchCode && matchDesc;
+    });
+  }, [data, debouncedSearch, debouncedAdvSearchCode, debouncedAdvSearchDesc]);
 
   const totalCount = filteredData.length;
 
@@ -178,6 +192,13 @@ export default function WorkCodesPage() {
                 )}
               </div>
               <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className={`p-2 rounded-xl border transition-all ${showAdvanced ? "bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-500/10 dark:border-pink-500/30 dark:text-pink-400" : "bg-white text-slate-500 border-slate-200/60 dark:bg-slate-900/50 dark:border-slate-800/50 dark:text-slate-400 hover:text-pink-600"}`}
+                title="Advanced Filter"
+              >
+                <Filter size={16} />
+              </button>
+              <button
                 onClick={handleNew}
                 className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
               >
@@ -207,6 +228,49 @@ export default function WorkCodesPage() {
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Description</th>
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Actions</th>
                   </tr>
+                  {showAdvanced && (
+                    <tr className="bg-slate-100/50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                      <th className="px-5 pl-5 py-2">
+                        <div className="relative w-full max-w-[250px]">
+                          <input
+                            type="text"
+                            placeholder="Filter by code..."
+                            value={advSearchCode}
+                            onChange={(e) => setAdvSearchCode(e.target.value)}
+                            className="w-full pl-3 pr-8 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-700/50 bg-white dark:bg-slate-900 text-[11px] outline-none transition-all focus:border-pink-500 focus:ring-2 focus:ring-pink-500/10 font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
+                          />
+                          {advSearchCode && (
+                            <button
+                              onClick={() => setAdvSearchCode("")}
+                              className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+                      <th className="px-5 py-2 text-center">
+                        <div className="relative w-full max-w-[250px] mx-auto">
+                          <input
+                            type="text"
+                            placeholder="Filter by description..."
+                            value={advSearchDesc}
+                            onChange={(e) => setAdvSearchDesc(e.target.value)}
+                            className="w-full pl-3 pr-8 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-700/50 bg-white dark:bg-slate-900 text-[11px] outline-none transition-all focus:border-pink-500 focus:ring-2 focus:ring-pink-500/10 font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
+                          />
+                          {advSearchDesc && (
+                            <button
+                              onClick={() => setAdvSearchDesc("")}
+                              className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+                      <th className="px-5 py-2 text-center"></th>
+                    </tr>
+                  )}
                 </thead>
                 <tbody>
                   {paginatedData.map((row, idx) => {
@@ -218,12 +282,12 @@ export default function WorkCodesPage() {
                       >
                         <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
                           <div className="flex items-center gap-3">
-                            <HighlightText text={row.code} searchTerm={debouncedSearch} />
+                            <HighlightText text={row.code} searchTerm={debouncedSearch || debouncedAdvSearchCode} />
                           </div>
                         </td>
                         <td className="px-5 h-[60px] text-center transition-colors">
                           <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-bold tracking-wider text-[11px]">
-                            {row.description || "—"}
+                            <HighlightText text={row.description} searchTerm={debouncedAdvSearchDesc} />
                           </span>
                         </td>
                         <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">

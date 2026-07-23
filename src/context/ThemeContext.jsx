@@ -3,44 +3,35 @@ import { useAuth } from "./AuthContextHook";
 
 const ThemeContext = createContext();
 
-// Build a user-scoped localStorage key so each user has their own preference.
-const themeKey = (userId) =>
-  userId ? `theme_${userId}` : "theme_guest";
-
 export function ThemeProvider({ children }) {
   const { user } = useAuth();
-  const userId = user?.id ?? null;
+  
+  const getThemeKey = (userId) => userId ? `theme_${userId}` : "theme";
 
-  // Derive initial theme from the current user's stored preference.
-  // This runs once on mount; the useEffect below re-syncs on user change.
+  // Derive initial theme from stored preference.
   const [dark, setDarkInternal] = useState(() => {
-    const key = themeKey(userId);
-    return localStorage.getItem(key) || "light";
+    return localStorage.getItem(getThemeKey(user?.id)) || "light";
   });
 
-  // When the logged-in user changes (login / logout / switch):
-  //   1. Read *that* user's preference from localStorage.
-  //   2. Apply it to the document.
+  // When user changes (login/logout), fetch their specific theme
   useEffect(() => {
-    const key = themeKey(userId);
-    const saved = localStorage.getItem(key) || "light";
-    setDarkInternal(saved);
-  }, [userId]);
+    const key = getThemeKey(user?.id);
+    const stored = localStorage.getItem(key) || "light";
+    setDarkInternal(stored);
+  }, [user?.id]);
 
-  // Whenever `dark` changes, persist under the current user's key and
+  // Whenever `dark` changes, persist under the user's specific key and
   // update the <html> class so Tailwind's dark-mode utilities activate.
   useEffect(() => {
-    const key = themeKey(userId);
+    const key = getThemeKey(user?.id);
     localStorage.setItem(key, dark);
     if (dark === "dark") {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
     }
-  }, [dark, userId]);
+  }, [dark, user?.id]);
 
-  // Wrap the setter so callers can keep calling setDark("dark") / setDark("light")
-  // without knowing about the per-user key logic.
   const setDark = (value) => setDarkInternal(value);
 
   return (

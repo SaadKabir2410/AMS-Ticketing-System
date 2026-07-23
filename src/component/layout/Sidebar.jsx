@@ -297,8 +297,7 @@ function NavItem({ item, collapsed, closeMobile, isMobile }) {
                   )}
                   <span
                     className={clsx(
-                      !subActive &&
-                      "ml-4 transition-all duration-200 group-hover/sub:ml-0",
+                      !subActive && "ml-4"
                     )}
                   >
                     {sub.name}

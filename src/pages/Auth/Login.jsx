@@ -4,7 +4,6 @@ import { useAuth } from "../../context/AuthContextHook";
 import { AlertCircle } from "lucide-react";
 import Logo from "../../assets/Sureze_Logo.png";
 
-
 function InputField({
   label,
   id,

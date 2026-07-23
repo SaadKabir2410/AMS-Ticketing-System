@@ -106,7 +106,7 @@ export default function CountriesPage() {
     }
   };
 
-  const breadcrumb = ["Home", "Codes", "Countries"];
+  const breadcrumb = ["Home", "Management", "Lookup", "Countries"];
 
   const filteredData = useMemo(() => {
     return data.filter(d => {

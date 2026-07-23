@@ -1063,6 +1063,7 @@ function getStyles(isDark) {
       background: "#fee2e2", color: "#ef4444", border: "1px solid #fecaca",
       borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
       transition: "all 0.2s ease",
-    }
+    },
+    _isDark: isDark
   };
 }
