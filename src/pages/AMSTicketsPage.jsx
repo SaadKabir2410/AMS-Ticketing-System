@@ -120,7 +120,7 @@ const getInitials = (name) => {
   return name.charAt(0).toUpperCase();
 };
 
-const RowActions = ({ row, onUpdateData, onVoid, onAuditLog, isAdmin }) => {
+const RowActions = ({ row, onUpdateData, onVoid, onAuditLog, onReopen, isAdmin }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
   const handleClick = (e) => {
@@ -157,9 +157,14 @@ const RowActions = ({ row, onUpdateData, onVoid, onAuditLog, isAdmin }) => {
                   <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
-              {!isAdmin && onVoid && (
+              {!isAdmin && row?.status !== 2 && onVoid && (
                 <MenuItem onClick={() => { handleClose(); onVoid(); }}>
                   <ListItemText primary="Void" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                </MenuItem>
+              )}
+              {!isAdmin && row?.status === 2 && onReopen && (
+                <MenuItem onClick={() => { handleClose(); onReopen(); }}>
+                  <ListItemText primary="Reopen Ticket" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
               <MenuItem onClick={() => { handleClose(); onAuditLog(); }}>
@@ -889,6 +894,7 @@ export default function AMSTicketsPage() {
                                   isAdmin={isAdmin}
                                   onUpdateData={() => { setActionItem(row); setActionType("edit"); }}
                                   onVoid={() => { setActionItem(row); setActionType("delete"); }}
+                                  onReopen={() => { setActionItem(row); setActionType("reopen"); }}
                                   onAuditLog={() => navigate(`/audit-logs?primaryKey=${row.id}&entityName=AMSTicket`)}
                                 />
                               ) : (

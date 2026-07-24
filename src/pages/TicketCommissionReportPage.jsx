@@ -17,6 +17,7 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import ticketCommissionReportApi from "../services/api/ticketCommissionReport";
 import usersApi from "../services/api/users";
+import { useAuth } from "../context/AuthContextHook";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
 
 const STATUS_OPTIONS = [
@@ -37,6 +38,9 @@ const SERVICE_PLANNED_TYPES = [
 
 export default function TicketCommissionReportPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = useMemo(() => user?.role?.toLowerCase().includes("admin"), [user]);
+
   const [filters, setFilters] = useState({
     performedByUsers: [],
     dateFrom: "",
@@ -44,6 +48,7 @@ export default function TicketCommissionReportPage() {
     servicePlannedTypes: [],
     status: "",
   });
+
   const [usersList, setUsersList] = useState([]);
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -52,6 +57,7 @@ export default function TicketCommissionReportPage() {
   const [globalFilter, setGlobalFilter] = useState("");
 
   useEffect(() => {
+    if (!isAdmin) return;
     const fetchUsers = async () => {
       try {
         const data = await usersApi.getUsersList({
@@ -63,7 +69,7 @@ export default function TicketCommissionReportPage() {
       }
     };
     fetchUsers();
-  }, []);
+  }, [isAdmin]);
 
   const handleClear = () => {
     setFilters({
@@ -99,9 +105,9 @@ export default function TicketCommissionReportPage() {
         ServicePlannedTypes: filters.servicePlannedTypes.length
           ? filters.servicePlannedTypes
           : undefined,
-        PerformedByUsers: filters.performedByUsers.length
+        PerformedByUsers: isAdmin && filters.performedByUsers.length
           ? filters.performedByUsers
-          : undefined,
+          : (!isAdmin && user?.id ? [user.id] : undefined),
       };
 
       const data = await ticketCommissionReportApi.getReport(params);
@@ -289,70 +295,72 @@ export default function TicketCommissionReportPage() {
         {/* Filters */}
         <div className="px-4 md:px-8 py-6 border-b border-slate-100 dark:border-slate-800/50">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 items-end">
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Performed By Users</label>
-              <Autocomplete
-                size="small"
-                limitTags={1}
-                multiple
-                options={usersList}
-                disableCloseOnSelect
-                componentsProps={{
-                  paper: { className: "bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg" }
-                }}
-                getOptionLabel={(option) => option.name || option.userName || ""}
-                value={usersList.filter((u) => filters.performedByUsers.includes(u.id))}
-                onChange={(e, newValue) => setFilters({ ...filters, performedByUsers: newValue.map((v) => v.id) })}
-                renderOption={(props, option, { selected }) => {
-                  const { key, ...restProps } = props;
-                  return (
-                    <li key={key} {...restProps} style={{ fontSize: "11px", padding: "4px 8px" }} className="hover:bg-slate-50 dark:hover:bg-slate-800">
-                      <Checkbox style={{ marginRight: 8, padding: 0 }} checked={selected} size="small" sx={{ color: 'var(--tw-prose-counters)', '&.Mui-checked': { color: '#ec4899' } }} />
-                      <span className="text-slate-900 dark:text-white">{option.name || option.userName}</span>
-                    </li>
-                  );
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    size="small"
-                    placeholder="Select Users..."
-                    className="bg-white dark:bg-slate-900/50 border-slate-200/60 dark:border-slate-800/50 rounded-xl shadow-sm hover:border-pink-500"
-                    sx={{
-                      "& .MuiInputBase-root": {
-                        fontSize: "10px",
-                        backgroundColor: "transparent",
-                        borderRadius: "0.75rem",
-                        padding: "0px 4px !important",
-                        minHeight: "32px !important",
-                        border: "1px solid transparent",
-                        color: "inherit"
-                      },
-                      "& .MuiInputBase-input": {
-                        padding: "2px 0px !important",
-                        height: "unset",
-                        color: "inherit"
-                      },
-                      "& .MuiOutlinedInput-notchedOutline": {
-                        border: "none"
-                      },
-                      "& .MuiSvgIcon-root": {
-                        color: "inherit"
-                      },
-                      "& .MuiChip-root": {
-                        backgroundColor: "rgba(236, 72, 153, 0.1)",
-                        color: "#db2777",
-                        "& .MuiChip-deleteIcon": {
-                          color: "#db2777"
+            
+            {isAdmin && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Performed By Users</label>
+                <Autocomplete
+                  size="small"
+                  limitTags={1}
+                  multiple
+                  options={usersList}
+                  disableCloseOnSelect
+                  componentsProps={{
+                    paper: { className: "bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg" }
+                  }}
+                  getOptionLabel={(option) => option.name || option.userName || ""}
+                  value={usersList.filter((u) => filters.performedByUsers.includes(u.id))}
+                  onChange={(e, newValue) => setFilters({ ...filters, performedByUsers: newValue.map((v) => v.id) })}
+                  renderOption={(props, option, { selected }) => {
+                    const { key, ...restProps } = props;
+                    return (
+                      <li key={key} {...restProps} style={{ fontSize: "11px", padding: "4px 8px" }} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+                        <Checkbox style={{ marginRight: 8, padding: 0 }} checked={selected} size="small" sx={{ color: 'var(--tw-prose-counters)', '&.Mui-checked': { color: '#ec4899' } }} />
+                        <span className="text-slate-900 dark:text-white">{option.name || option.userName}</span>
+                      </li>
+                    );
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      size="small"
+                      placeholder="Select Users..."
+                      className="bg-white dark:bg-slate-900/50 border-slate-200/60 dark:border-slate-800/50 rounded-xl shadow-sm hover:border-pink-500"
+                      sx={{
+                        "& .MuiInputBase-root": {
+                          fontSize: "10px",
+                          backgroundColor: "transparent",
+                          borderRadius: "0.75rem",
+                          padding: "0px 4px !important",
+                          minHeight: "32px !important",
+                          border: "1px solid transparent",
+                          color: "inherit"
+                        },
+                        "& .MuiInputBase-input": {
+                          padding: "2px 0px !important",
+                          height: "unset",
+                          color: "inherit"
+                        },
+                        "& .MuiOutlinedInput-notchedOutline": {
+                          border: "none"
+                        },
+                        "& .MuiSvgIcon-root": {
+                          color: "inherit"
+                        },
+                        "& .MuiChip-root": {
+                          backgroundColor: "rgba(236, 72, 153, 0.1)",
+                          color: "#db2777",
+                          "& .MuiChip-deleteIcon": {
+                            color: "#db2777"
+                          }
                         }
-                      }
-                    }}
-                  />
-                )}
-                sx={{ width: "100%", color: "inherit" }}
-              />
-            </div>
+                      }}
+                    />
+                  )}
+                  sx={{ width: "100%", color: "inherit" }}
+                />
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Date From</label>

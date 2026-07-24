@@ -367,6 +367,9 @@ export default function TicketModal({
 
   const [isSiteModalOpen, setIsSiteModalOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [customerSubmitting, setCustomerSubmitting] = useState(false);
+  const [customerForm, setCustomerForm] = useState({ name: "", email: "", phoneNumber: "" });
+  const [customerFormErrors, setCustomerFormErrors] = useState({});
 
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [activityToEdit, setActivityToEdit] = useState(null);
@@ -1199,7 +1202,6 @@ export default function TicketModal({
                             <div className="relative group/input">
                               <Flatpickr
                                 data-enable-time
-                                value={form.receivedAt}
                                 onChange={(date, dateStr) => {
                                   setForm((f) => ({
                                     ...f,
@@ -1213,16 +1215,17 @@ export default function TicketModal({
                                   }
                                 }}
                                 options={{
+                                  defaultDate: form.receivedAt || undefined,
                                   enableTime: true,
-                                  dateFormat: "Y-m-d\\TH:i",
-                                  time_24hr: true,
+                                  dateFormat: "Y-m-d h:i K",
+                                  time_24hr: false,
                                   allowInput: true,
                                 }}
                                 className={`${inputClass} !pr-10 ${errors.receivedAt
                                   ? "border-rose-500 text-rose-600"
                                   : ""
                                   }`}
-                                placeholder="YYYY-MM-DD HH:MM"
+                                placeholder="YYYY-MM-DD hh:mm AM/PM"
                               />
                               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-pink-500 transition-colors pointer-events-none">
                                 <svg
@@ -1309,16 +1312,15 @@ export default function TicketModal({
                                   }
                                   error={errors.customer}
                                 />
-                                {!isAdmin && (
-                                  <button
+                                <button
                                     type="button"
                                     onClick={() => setIsCustomerModalOpen(true)}
-                                    className="w-[42px] h-[42px] flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-pink-600 rounded-xl hover:bg-pink-600 hover:text-white transition-all shadow-sm active:scale-95 shrink-0"
-                                    title="Add New Customer"
+                                    disabled={!form.siteName || loadingApis || loadingCustomers}
+                                    className="w-[42px] h-[42px] flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-pink-600 rounded-xl hover:bg-pink-600 hover:text-white transition-all shadow-sm active:scale-95 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-100 disabled:hover:text-pink-600 dark:disabled:hover:bg-slate-800"
+                                    title={!form.siteName ? "Select a site first" : "Add New Customer"}
                                   >
                                     <Plus size={18} strokeWidth={2.5} />
                                   </button>
-                                )}
                               </div>
                             </Field>
                           </div>
@@ -1483,7 +1485,6 @@ export default function TicketModal({
                             <div className="relative group/input">
                               <Flatpickr
                                 data-enable-time
-                                value={form.cmsTicketAddedOn}
                                 onChange={(date, dateStr) => {
                                   setForm((f) => ({
                                     ...f,
@@ -1497,16 +1498,17 @@ export default function TicketModal({
                                   }
                                 }}
                                 options={{
+                                  defaultDate: form.cmsTicketAddedOn || undefined,
                                   enableTime: true,
-                                  dateFormat: "Y-m-d\\TH:i",
-                                  time_24hr: true,
+                                  dateFormat: "Y-m-d h:i K",
+                                  time_24hr: false,
                                   allowInput: true,
                                 }}
                                 className={`${inputClass} !pr-10 ${errors.cmsTicketAddedOn
                                   ? "border-rose-500 text-rose-600"
                                   : ""
                                   }`}
-                                placeholder="YYYY-MM-DD HH:MM"
+                                placeholder="YYYY-MM-DD hh:mm AM/PM"
                               />
                               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-pink-500 transition-colors pointer-events-none">
                                 <svg
@@ -1797,7 +1799,6 @@ export default function TicketModal({
                           <div className="flex items-center w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all">
                             <Flatpickr
                               data-enable-time
-                              value={form.ticketResolutionVerifiedOn}
                               onChange={(date, dateStr) => {
                                 setForm((f) => ({
                                   ...f,
@@ -1811,13 +1812,14 @@ export default function TicketModal({
                                 }
                               }}
                               options={{
+                                defaultDate: form.ticketResolutionVerifiedOn || undefined,
                                 enableTime: true,
-                                dateFormat: "Y-m-d\\TH:i",
-                                time_24hr: true,
+                                dateFormat: "Y-m-d h:i K",
+                                time_24hr: false,
                                 allowInput: true,
                               }}
                               className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
-                              placeholder="YYYY-MM-DDTHH:mm"
+                              placeholder="YYYY-MM-DD hh:mm AM/PM"
                             />
                           </div>
                         </Field>
@@ -1850,7 +1852,6 @@ export default function TicketModal({
                           <div className="flex items-center w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all">
                             <Flatpickr
                               data-enable-time
-                              value={form.cmsTicketClosedOn}
                               onChange={(date, dateStr) => {
                                 setForm((f) => ({
                                   ...f,
@@ -1864,13 +1865,14 @@ export default function TicketModal({
                                 }
                               }}
                               options={{
+                                defaultDate: form.cmsTicketClosedOn || undefined,
                                 enableTime: true,
-                                dateFormat: "Y-m-d\\TH:i",
-                                time_24hr: true,
+                                dateFormat: "Y-m-d h:i K",
+                                time_24hr: false,
                                 allowInput: true,
                               }}
                               className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
-                              placeholder="YYYY-MM-DDTHH:mm"
+                              placeholder="YYYY-MM-DD hh:mm AM/PM"
                             />
                           </div>
                         </Field>
@@ -1882,7 +1884,6 @@ export default function TicketModal({
                           <div className="flex items-center w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all">
                             <Flatpickr
                               data-enable-time
-                              value={form.serviceClosedDate}
                               onChange={(date, dateStr) => {
                                 setForm((f) => ({
                                   ...f,
@@ -1896,13 +1897,14 @@ export default function TicketModal({
                                 }
                               }}
                               options={{
+                                defaultDate: form.serviceClosedDate || undefined,
                                 enableTime: true,
-                                dateFormat: "Y-m-d\\TH:i",
-                                time_24hr: true,
+                                dateFormat: "Y-m-d h:i K",
+                                time_24hr: false,
                                 allowInput: true,
                               }}
                               className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
-                              placeholder="YYYY-MM-DDTHH:mm"
+                              placeholder="YYYY-MM-DD hh:mm AM/PM"
                             />
                           </div>
                         </Field>
@@ -1977,24 +1979,166 @@ export default function TicketModal({
       />
 
       {isCustomerModalOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 backdrop-blur-sm font-[Arial]">
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl w-[400px]">
-            <h3 className="text-lg font-semibold mb-4 dark:text-white">
-              New Customer
-            </h3>
-            <p className="text-sm text-slate-500 mb-6">
-              Existing customer form goes here. Implementation pending.
-            </p>
-            <div className="flex justify-end">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm font-[Arial] p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md overflow-hidden"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-600">
+                  <Plus size={18} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-0.5">New</p>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white leading-none">Add Customer</h3>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => setIsCustomerModalOpen(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-sm transition-colors"
+                onClick={() => { setIsCustomerModalOpen(false); setCustomerForm({ name: "", email: "", phoneNumber: "" }); setCustomerFormErrors({}); }}
+                className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-colors border border-slate-200 dark:border-slate-700"
               >
-                Close
+                <X size={16} />
               </button>
             </div>
-          </div>
+
+            {/* Form */}
+            <div className="px-6 py-5 space-y-4">
+              {/* Name */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                  Name <span className="text-rose-500 animate-pulse">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={customerForm.name}
+                  onChange={(e) => { setCustomerForm(f => ({ ...f, name: e.target.value })); setCustomerFormErrors(err => ({ ...err, name: "" })); }}
+                  placeholder="Full name"
+                  className={`${inputClass} ${customerFormErrors.name ? "border-rose-500" : ""}`}
+                />
+                {customerFormErrors.name && <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1"><AlertCircle size={10} />{customerFormErrors.name}</p>}
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                  Phone Number <span className="text-rose-500 animate-pulse">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={customerForm.phoneNumber}
+                  onChange={(e) => { setCustomerForm(f => ({ ...f, phoneNumber: e.target.value })); setCustomerFormErrors(err => ({ ...err, phoneNumber: "" })); }}
+                  placeholder="Phone number"
+                  className={`${inputClass} ${customerFormErrors.phoneNumber ? "border-rose-500" : ""}`}
+                />
+                {customerFormErrors.phoneNumber && <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1"><AlertCircle size={10} />{customerFormErrors.phoneNumber}</p>}
+              </div>
+
+              {/* Email */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={customerForm.email}
+                  onChange={(e) => setCustomerForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="Email address (optional)"
+                  className={inputClass}
+                />
+              </div>
+
+              {customerFormErrors.server && (
+                <p className="text-[11px] font-semibold text-rose-500 flex items-center gap-1.5 bg-rose-50 dark:bg-rose-500/10 px-3 py-2 rounded-lg border border-rose-200/60 dark:border-rose-500/20">
+                  <AlertCircle size={12} />{customerFormErrors.server}
+                </p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+              <button
+                type="button"
+                onClick={() => { setIsCustomerModalOpen(false); setCustomerForm({ name: "", email: "", phoneNumber: "" }); setCustomerFormErrors({}); }}
+                disabled={customerSubmitting}
+                className="px-5 py-2 text-[11px] font-bold uppercase tracking-widest rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={customerSubmitting}
+                onClick={async () => {
+                  // Validate
+                  const errs = {};
+                  if (!customerForm.name.trim()) errs.name = "Name is required";
+                  if (!customerForm.phoneNumber.trim()) errs.phoneNumber = "Phone number is required";
+                  if (Object.keys(errs).length > 0) { setCustomerFormErrors(errs); return; }
+
+                  // Auto-generate userName from name (e.g. "John Doe" → "john.doe")
+                  const autoUserName = customerForm.name.trim().toLowerCase().replace(/\s+/g, ".").replace(/[^a-z0-9.]/g, "") + "." + Date.now().toString().slice(-4);
+
+                  // Resolve the siteId from the selected site name
+                  const selectedSite =
+                    rawSites.find((s) => isEqual(s.id, form.siteName)) ||
+                    rawSites.find((s) => isEqual(s.name || s.Name || "", form.siteName));
+
+                  setCustomerSubmitting(true);
+                  try {
+                    const result = await usersApi.create({
+                      name: customerForm.name.trim(),
+                      userName: autoUserName,
+                      email: customerForm.email.trim() || undefined,
+                      phoneNumber: customerForm.phoneNumber.trim(),
+                      password: "Customer@123",
+                      organizationType: 1,
+                      siteId: selectedSite?.id ?? null,
+                      isActive: true,
+                      roleNames: [],
+                    });
+
+                    const newCustomer = result?.data ?? result;
+
+                    // Refresh customer list
+                    if (selectedSite?.id) {
+                      const refreshed = await usersApi.getCustomerUsers(selectedSite.id);
+                      const customers = (refreshed?.items || refreshed || [])
+                        .map((c) => ({ label: c.name || c.userName || "", value: c.id }))
+                        .filter((c) => c.label)
+                        .sort((a, b) => a.label.localeCompare(b.label));
+                      setApiData((prev) => ({ ...prev, customers }));
+                      // Auto-select the new customer
+                      const newId = newCustomer?.id;
+                      if (newId) setForm((f) => ({ ...f, customer: newId }));
+                    }
+
+                    toast("Customer added successfully!", "success");
+                    setIsCustomerModalOpen(false);
+                    setCustomerForm({ name: "", email: "", phoneNumber: "" });
+                    setCustomerFormErrors({});
+                  } catch (err) {
+                    const msg =
+                      err?.response?.data?.error?.message ||
+                      err?.response?.data?.message ||
+                      err?.message ||
+                      "Failed to create customer. Please try again.";
+                    setCustomerFormErrors((prev) => ({ ...prev, server: msg }));
+                  } finally {
+                    setCustomerSubmitting(false);
+                  }
+                }}
+                className="px-6 py-2 text-[11px] font-bold uppercase tracking-widest rounded-xl bg-pink-600 text-white shadow-lg shadow-pink-500/20 hover:bg-pink-700 transition-all disabled:opacity-50 flex items-center gap-2 min-w-[110px] justify-center"
+              >
+                {customerSubmitting ? (
+                  <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving...</>
+                ) : "Save Customer"}
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
 

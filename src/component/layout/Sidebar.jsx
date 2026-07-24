@@ -21,6 +21,11 @@ export default function Sidebar({
   const { hasPermission, isLoading } = usePermissionContext();
   const [searchQuery, setSearchQuery] = useState("");
 
+  const isAdmin = useMemo(
+    () => !!user?.role?.toLowerCase().includes("admin"),
+    [user]
+  );
+
   const filteredGroups = useMemo(() => {
     if (isLoading) return [];
 
@@ -37,6 +42,8 @@ export default function Sidebar({
           // ✅ Filter submenu children first
           if (link.subMenu) {
             const validSubMenu = link.subMenu.filter((sub) => {
+              // 🔒 adminOnly items are hidden from non-admins regardless of permissions
+              if (sub.adminOnly && !isAdmin) return false;
               if (!checkPerm(sub.permission)) return false;
               if (
                 searchQuery &&
@@ -65,7 +72,8 @@ export default function Sidebar({
             return true;
           }
 
-          // ✅ Leaf item — check its own permission
+          // ✅ Leaf item — adminOnly check first, then permission
+          if (link.adminOnly && !isAdmin) return false;
           if (!checkPerm(link.permission)) return false;
           if (
             searchQuery &&
@@ -77,7 +85,7 @@ export default function Sidebar({
 
       return { ...group, links: validLinks };
     }).filter((group) => group.links.length > 0);
-  }, [user, hasPermission, isLoading, searchQuery]);
+  }, [user, isAdmin, hasPermission, isLoading, searchQuery]);
 
   return (
     <aside

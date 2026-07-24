@@ -97,7 +97,7 @@ function Layout({ collapsed, setCollapsed }) {
             <Route
               path="/reports/general"
               element={
-                <PermissionGuard permission="Billing.Reports">
+                <PermissionGuard permission="Billing.Reports.AMSTicketingGeneralReport">
                   <GeneralReportPage />
                 </PermissionGuard>
               }
@@ -105,7 +105,7 @@ function Layout({ collapsed, setCollapsed }) {
             <Route
               path="/reports/user-yearly"
               element={
-                <PermissionGuard permission="Billing.Reports">
+                <PermissionGuard permission="Billing.Reports.AMSTicketingUserYearlyReport">
                   <UserYearlyReportPage />
                 </PermissionGuard>
               }
@@ -129,7 +129,7 @@ function Layout({ collapsed, setCollapsed }) {
             <Route
               path="/reports/commission"
               element={
-                <PermissionGuard permission="Billing.Reports">
+                <PermissionGuard permission="Billing.Reports.TicketsWithCommissionsReport">
                   <TicketCommissionReportPage />
                 </PermissionGuard>
               }

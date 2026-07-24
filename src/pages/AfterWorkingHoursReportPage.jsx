@@ -17,6 +17,7 @@ import { saveAs } from "file-saver";
 import usersApi from "../services/api/users";
 import afterWorkingHoursReportApi from "../services/api/afterWorkingHoursReport";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
+import { useAuth } from "../context/AuthContextHook";
 
 const STATUS_OPTIONS = [
   { label: "All", value: "" },
@@ -26,6 +27,8 @@ const STATUS_OPTIONS = [
 ]
 
 export default function AfterWorkingHoursReportPage() {
+  const { user } = useAuth();
+  const isTicketing = user?.role?.toLowerCase().includes("ticketing");
   const navigate = useNavigate();
   const [filters, setFilters] = useState({
     user: "",
@@ -265,23 +268,25 @@ export default function AfterWorkingHoursReportPage() {
         <div className="px-4 md:px-8 py-4 border-b border-slate-100 dark:border-slate-800/50">
           <div className="max-w-[1600px] mx-auto flex flex-col lg:flex-row items-end justify-between gap-4">
             <div className="flex flex-wrap items-end gap-3 w-full">
-              <div className="flex flex-col gap-1 w-full sm:w-40">
-                <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">User</label>
-                <select
-                  value={filters.user}
-                  onChange={(e) => setFilters({ ...filters, user: e.target.value })}
-                  className={filterInputClass}
-                >
-                  <option value="">All Users</option>
-                  {usersList.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.userName}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {!isTicketing && (
+                <div className="flex flex-col gap-1 w-full sm:w-40">
+                  <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">User</label>
+                  <select
+                    value={filters.user}
+                    onChange={(e) => setFilters({ ...filters, user: e.target.value })}
+                    className={filterInputClass}
+                  >
+                    <option value="">All Users</option>
+                    {usersList.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.userName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              <div className="flex flex-col gap-1 w-full sm:w-36">
+              <div className="flex flex-col gap-1 w-full sm:w-44">
                 <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Date From</label>
                 <Flatpickr
                   value={filters.dateFrom}
@@ -292,7 +297,7 @@ export default function AfterWorkingHoursReportPage() {
                 />
               </div>
 
-              <div className="flex flex-col gap-1 w-full sm:w-36">
+              <div className="flex flex-col gap-1 w-full sm:w-44">
                 <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Date To</label>
                 <Flatpickr
                   value={filters.dateTo}
@@ -303,7 +308,7 @@ export default function AfterWorkingHoursReportPage() {
                 />
               </div>
 
-              <div className="flex flex-col gap-1 w-full sm:w-28">
+              <div className="flex flex-col gap-1 w-full sm:w-40">
                 <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Status</label>
                 <select
                   value={filters.status}

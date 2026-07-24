@@ -36,6 +36,7 @@ const PermissionTree = ({
   parentName,
   checkedPerms,
   onToggle,
+  isDark,
 }) => {
   const children = permissions.filter((p) => {
     if (p.parentName !== parentName) return false;
@@ -45,7 +46,7 @@ const PermissionTree = ({
 
   return (
     <div
-      className={`space-y-2 ${parentName ? "ml-6 mt-2 border-l-2 border-slate-700/50 pl-4" : "mt-2"}`}
+      className={`space-y-2 ${parentName ? `ml-6 mt-2 border-l-2 pl-4 ${isDark ? 'border-slate-700/50' : 'border-slate-300/70'}` : "mt-2"}`}
     >
       {children.map((perm) => (
         <div key={perm.name} className="flex flex-col">
@@ -55,11 +56,15 @@ const PermissionTree = ({
               id={perm.name}
               checked={!!checkedPerms[perm.name]}
               onChange={(e) => onToggle(perm, e.target.checked)}
-              className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-slate-950 border-slate-600 text-pink-500"
+              className={`w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 border-slate-600 text-pink-500 ${isDark ? 'bg-slate-950' : 'bg-white'}`}
             />
             <label
               htmlFor={perm.name}
-              className={`text-sm cursor-pointer ${parentName ? "text-slate-400" : "text-slate-200 font-semibold"}`}
+              className={`text-sm cursor-pointer ${
+                parentName
+                  ? isDark ? 'text-slate-400' : 'text-slate-500'
+                  : isDark ? 'text-slate-200 font-semibold' : 'text-slate-700 font-semibold'
+              }`}
             >
               {perm.displayName || perm.name}
             </label>
@@ -69,6 +74,7 @@ const PermissionTree = ({
             parentName={perm.name}
             checkedPerms={checkedPerms}
             onToggle={onToggle}
+            isDark={isDark}
           />
         </div>
       ))}
@@ -304,6 +310,7 @@ export default function RolesPage() {
         setPermissionsData(data);
         const initial = {};
         if (data && data.groups) {
+          // ✅ Initialize checked state from backend response
           data.groups.forEach((g) => {
             g.permissions.forEach((p) => {
               initial[p.name] = p.isGranted;
@@ -690,16 +697,16 @@ export default function RolesPage() {
             <X size={16} />
           </button>
         </DialogTitle>
-        <DialogContent sx={{ border: "none" }}>
+        <DialogContent sx={{ border: "none", backgroundColor: isDark ? "#0f172a" : "#ffffff" }}>
           {loadingPermissions ? (
             <div className="flex justify-center items-center py-10">
-              <CircularProgress sx={{ color: "#3b82f6" }} />
+              <CircularProgress sx={{ color: "#ec4899" }} />
             </div>
           ) : (
-            <div className="text-sm text-slate-600 dark:text-slate-400 space-y-3">
-              <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div className={`text-sm space-y-3 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+              <div className={`flex justify-between items-center mb-4 pb-2 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
                 <p>
-                  Control what <strong className="text-slate-800 dark:text-slate-200">{permissionRole?.name}</strong> can do.
+                  Control what <strong className={isDark ? 'text-slate-200' : 'text-slate-800'}>{permissionRole?.name}</strong> can do.
                 </p>
 
                 {/* Grant All Checkbox */}
@@ -716,11 +723,11 @@ export default function RolesPage() {
                           .every((p) => checkedPerms[p.name])
                       }
                       onChange={(e) => handleGrantAll(e.target.checked)}
-                      className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500"
+                      className={`w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 border-slate-300 text-pink-500 ${isDark ? 'bg-slate-950 border-slate-600' : 'bg-white border-slate-300'}`}
                     />
                     <label
                       htmlFor="grant-all-permissions"
-                      className="text-sm text-slate-700 dark:text-slate-200 cursor-pointer font-medium"
+                      className={`text-sm cursor-pointer font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}
                     >
                       Grant all
                     </label>
@@ -737,20 +744,21 @@ export default function RolesPage() {
                 const isExpanded = !!expandedGroups[group.name];
 
                 return (
-                  <div
-                    key={idx}
-                    className="mb-3"
-                  >
-                    {/* Collapsible Header (Combobox style) */}
+                  <div key={idx} className="mb-3">
+                    {/* Collapsible Header */}
                     <div
                       onClick={() => toggleGroup(group.name)}
-                      className="flex items-center justify-between px-4 py-2.5 bg-slate-100 dark:bg-slate-800/40 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800/80 cursor-pointer transition-all duration-200 group"
+                      className={`flex items-center justify-between px-4 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group ${
+                        isDark
+                          ? 'bg-slate-800/40 hover:bg-slate-800/80'
+                          : 'bg-slate-100 hover:bg-slate-200'
+                      }`}
                     >
                       <div className="flex items-center gap-3">
                         <div className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
-                          <ChevronDown size={18} className="text-slate-500 group-hover:text-[#ec4899]" />
+                          <ChevronDown size={18} className={`group-hover:text-[#ec4899] ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                         </div>
-                        <h4 className="text-slate-800 dark:text-slate-200 text-[14px] font-bold uppercase tracking-wider">
+                        <h4 className={`text-[14px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                           {group.displayName || group.name}
                         </h4>
                       </div>
@@ -760,28 +768,29 @@ export default function RolesPage() {
                           type="checkbox"
                           id={`select-all-${group.name}`}
                           checked={isAllChecked}
-                          onChange={(e) =>
-                            handleSelectAllGroup(group.name, e.target.checked)
-                          }
-                          className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500"
+                          onChange={(e) => handleSelectAllGroup(group.name, e.target.checked)}
+                          className={`w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 text-pink-500 ${isDark ? 'bg-slate-950 border-slate-600' : 'bg-white border-slate-300'}`}
                         />
                         <label
                           htmlFor={`select-all-${group.name}`}
-                          className="text-[10px] text-slate-500 uppercase font-black tracking-widest cursor-pointer hover:text-[#ec4899] transition-colors"
+                          className={`text-[10px] uppercase font-black tracking-widest cursor-pointer hover:text-[#ec4899] transition-colors ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
                         >
                           Select all
                         </label>
                       </div>
                     </div>
 
-                    {/* Drop Down Menu (Content) */}
+                    {/* Drop Down Content */}
                     {isExpanded && (
-                      <div className="mt-2 ml-2 p-3 bg-slate-50 dark:bg-slate-800/20 rounded-xl animate-in slide-in-from-top-2 duration-200">
+                      <div className={`mt-2 ml-2 p-3 rounded-xl animate-in slide-in-from-top-2 duration-200 ${
+                        isDark ? 'bg-slate-800/20' : 'bg-slate-50 border border-slate-200'
+                      }`}>
                         <PermissionTree
                           permissions={groupPerms}
                           parentName={null}
                           checkedPerms={checkedPerms}
                           onToggle={handleTogglePerm}
+                          isDark={isDark}
                         />
                       </div>
                     )}
@@ -790,7 +799,11 @@ export default function RolesPage() {
               })}
 
               {!permissionsData?.groups?.length && (
-                <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">
+                <div className={`p-4 rounded-xl border text-center ${
+                  isDark
+                    ? 'bg-slate-800/50 border-slate-700 text-slate-400'
+                    : 'bg-slate-50 border-slate-200 text-slate-500'
+                }`}>
                   No specific permissions defined.
                 </div>
               )}
