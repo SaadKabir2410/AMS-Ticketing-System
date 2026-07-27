@@ -35,4 +35,47 @@ export default defineConfig({
     },
   },
 
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Core React runtime — changes rarely, gets cached aggressively
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          // MUI — very large, worth its own cache bucket
+          "vendor-mui": [
+            "@mui/material",
+            "@mui/icons-material",
+            "@mui/x-data-grid",
+            "@mui/x-tree-view",
+            "@emotion/react",
+            "@emotion/styled",
+          ],
+          // Charts — only loaded on pages that use them
+          "vendor-charts": ["recharts"],
+          // Utility libraries
+          "vendor-utils": ["axios", "qs", "clsx", "tailwind-merge", "framer-motion"],
+          // Drag-and-drop
+          "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
+          // Excel/export — only needed for export actions
+          "vendor-excel": ["exceljs", "file-saver", "xlsx"],
+          // Date pickers
+          "vendor-dates": ["flatpickr", "react-flatpickr"],
+        },
+      },
+    },
+    // Increase the warning threshold slightly for large vendor chunks
+    chunkSizeWarningLimit: 1000,
+  },
+
+  optimizeDeps: {
+    include: [
+      "react",
+      "react-dom",
+      "react-router-dom",
+      "@mui/material",
+      "@mui/icons-material",
+      "axios",
+      "lucide-react",
+    ],
+  },
 });

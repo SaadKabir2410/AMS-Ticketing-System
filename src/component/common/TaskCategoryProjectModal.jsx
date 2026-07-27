@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Dialog, IconButton } from "@mui/material";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-import { codesApi } from "../../services/api/Code";
 import codeDetailsApi from "../../services/api/CodeDetails";
 import { taskCategoryProjectsApi } from "../../services/api/taskCategoryProjects";
 import { useToast } from "./ToastContext";
@@ -79,32 +78,24 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
     const fetchData = async () => {
       setLoading(true);
       try {
-        const allLookups = await codesApi.getAll();
-
         // Load Projects
-        const projectLookup = allLookups.find((l) => l.lookupCode === "PRJ");
-        if (projectLookup) {
-          const pDetails = await codeDetailsApi.getAll({ lookupId: projectLookup.id });
-          const pList = pDetails.map((d) => ({ id: d.id, name: d.description || d.newCode }));
-          setProjects(pList);
+        const pDetails = await codeDetailsApi.getAll({ lookupCode: "PRJ" });
+        const pList = pDetails.map((d) => ({ id: d.id, name: d.description || d.newCode }));
+        setProjects(pList);
 
-          // Pre-select project if passed in
-          if (preSelectedProject) {
-            const matched = pList.find(
-              (p) => p.id === preSelectedProject.id || p.name === preSelectedProject.name
-            );
-            setProjectId(matched?.id || "");
-          } else {
-            setProjectId("");
-          }
+        // Pre-select project if passed in
+        if (preSelectedProject) {
+          const matched = pList.find(
+            (p) => p.id === preSelectedProject.id || p.name === preSelectedProject.name
+          );
+          setProjectId(matched?.id || "");
+        } else {
+          setProjectId("");
         }
 
         // Load Task Categories
-        const taskCategoryLookup = allLookups.find((l) => l.lookupCode === "TSK");
-        if (taskCategoryLookup) {
-          const cDetails = await codeDetailsApi.getAll({ lookupId: taskCategoryLookup.id });
-          setCategories(cDetails.map((d) => ({ id: d.id, name: d.description || d.newCode })));
-        }
+        const cDetails = await codeDetailsApi.getAll({ lookupCode: "TSK" });
+        setCategories(cDetails.map((d) => ({ id: d.id, name: d.description || d.newCode })));
       } catch (err) {
         toast("Error loading projects/categories", "error");
       } finally {
@@ -267,7 +258,6 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
         </div>
 
         {/* Category Pagination Controls */}
-        {/* Category Pagination Controls */}
         {!loading && categories.length > catPageSize && (
           <div className="mt-4 pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">
@@ -290,9 +280,9 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
               >
                 <ChevronLeft size={14} strokeWidth={2.5} />
               </button>
-              
+
               <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-0.5"></div>
-              
+
               <div className="px-2 flex items-center gap-1.5 py-1">
                 <div className="flex items-center gap-1 min-w-[35px] justify-center">
                   <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{catPage}</span>
@@ -349,6 +339,3 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
     </Dialog>
   );
 }
-
-
-

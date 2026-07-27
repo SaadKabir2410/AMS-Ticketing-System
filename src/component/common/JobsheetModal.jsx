@@ -3,7 +3,6 @@ import { Check, AlertCircle, X } from "lucide-react";
 import { jobsheetsApi } from "../../services/api/jobsheets";
 
 import { usersApi } from "../../services/api/users";
-import { codesApi } from "../../services/api/Code";
 import codeDetailsApi from "../../services/api/CodeDetails";
 import { taskCategoryProjectsApi } from "../../services/api/taskCategoryProjects";
 import Flatpickr from "react-flatpickr";
@@ -70,17 +69,7 @@ function buildPayload(date, attendanceStatus, details) {
   };
 }
 
-// Fetch codeDetails by lookupCode — same pattern as JobsheetsPage
-async function fetchLookupByCode(code) {
-  const allLookups = await codesApi.getAll();
-  const lookup = allLookups.find((l) => l.lookupCode === code);
-  if (!lookup) return [];
-  const details = await codeDetailsApi.getAll({ lookupId: lookup.id });
-  // only that things will show in modal if isActive- true
-  return details
-    .filter((d) => d.isActive !== false)
-    .map((d) => ({ id: d.id, name: d.description || d.newCode }));
-}
+// Fetching lookup details using getByLookupCodes instead
 
 
 // ─── Reusable dynamic select ──────────────────────────────────────
@@ -288,21 +277,31 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
       setLoadingOptions(true);
       setFetchError("");
       try {
-        const [proj, cats, stats, usrs] = await Promise.all([
-          // Projects — same as JobsheetsPage
-          fetchLookupByCode(LOOKUP_CODES.PROJECT),
+        // Fetch all lookups at once
+        const allLookups = await codeDetailsApi.getByLookupCodes(['TSK', 'STS', 'PRJ']);
 
-          // Task Categories — via codesApi lookup
-          fetchLookupByCode(LOOKUP_CODES.TASK_CATEGORY),
+        // Split into separate arrays
+        const projects = allLookups.filter(item => item.lookupCode === 'PRJ');
+        const tasks = allLookups.filter(item => item.lookupCode === 'TSK');
+        const statuses = allLookups.filter(item => item.lookupCode === 'STS');
 
-          // Statuses — via codesApi lookup
-          fetchLookupByCode(LOOKUP_CODES.STATUS),
+        // Map them into the { id, name } structure
+        const proj = projects
+          .filter(d => d.isActive !== false)
+          .map(item => ({ id: item.id, name: item.description || item.newCode }));
 
-          // Users — same as CollaboratorPicker in JobsheetsPage (all users)
-          usersApi.getUsersList().then((data) =>
-            Array.isArray(data) ? data : data?.items || []
-          ),
-        ]);
+        const cats = tasks
+          .filter(d => d.isActive !== false)
+          .map(item => ({ id: item.id, name: item.description || item.newCode }));
+
+        const stats = statuses
+          .filter(d => d.isActive !== false)
+          .map(item => ({ id: item.id, name: item.description || item.newCode }));
+
+        // Users — same as CollaboratorPicker in JobsheetsPage (all users)
+        const usrs = await usersApi.getUsersList().then((data) =>
+          Array.isArray(data) ? data : data?.items || []
+        );
 
         setProjects(proj);
         setTaskCategories(cats);

@@ -28,20 +28,19 @@ export const codeDetailsApi = {
     return response.data;
   },
 
-  // FIX: this route is NOT under BASE — Swagger shows it as a bare top-level route.
+  // Kept as-is for the single-lookupId use case (different from getByLookupCodes below)
   getAll: async (params) => {
-    if (!params?.lookupId) return [];
+    if (!params?.lookupCode && !params?.lookupId) return [];
     try {
-      const response = await apiClient.get(`/get-list-by-lookup-code`, {
-        params: {
-          lookupId: params.lookupId,
-          isDeleted: true, // boolean, not the string "True"
-        },
-      });
+      const codesArray = params.lookupCode ? [params.lookupCode] : [];
+      const urlParams = new URLSearchParams();
+      codesArray.forEach((code, i) => urlParams.append(`codes[${i}]`, code));
+      urlParams.append("api-version", "1.0");
+
+      const response = await apiClient.get(`${BASE}/by-lookup-codes?${urlParams.toString()}`);
       const data = Array.isArray(response.data)
         ? response.data
         : response.data?.items || [];
-      console.log(`[CodeDetails] getAll -> ${data.length} records`);
       return data;
     } catch (err) {
       console.error("[CodeDetails] getAll failed:", err);
@@ -54,21 +53,26 @@ export const codeDetailsApi = {
     return response.data;
   },
 
-  // FIX: same bare-route correction, kept for direct use elsewhere
+  // Legacy bare routes — kept in case other parts of the app still use them
   getListByLookupCode: async (params) => {
     const response = await apiClient.get(`/get-list-by-lookup-code`, { params });
     return response.data;
   },
 
-  // FIX: same bare-route correction
   getListByLookupCodes: async (params) => {
     const response = await apiClient.get(`/get-list-by-lookup-codes`, { params });
     return response.data;
   },
 
-  // Swagger also exposes a DIFFERENT route for this — keep separate if you need it:
-  getByLookupCodes: async (params) => {
-    const response = await apiClient.get(`${BASE}/by-lookup-codes`, { params });
+  // FIXED: matches confirmed production request format —
+  // GET /api/app/lookup-detail/by-lookup-codes?codes[0]=TSK&codes[1]=STS&codes[2]=PRJ&api-version=1.0
+  // Accepts an array of code strings, e.g. getByLookupCodes(['TSK', 'STS', 'PRJ'])
+  getByLookupCodes: async (codesArray = []) => {
+    const params = new URLSearchParams();
+    codesArray.forEach((code, i) => params.append(`codes[${i}]`, code));
+    params.append("api-version", "1.0");
+
+    const response = await apiClient.get(`${BASE}/by-lookup-codes?${params.toString()}`);
     return response.data;
   },
 

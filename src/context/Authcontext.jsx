@@ -147,22 +147,22 @@ export function AuthProvider({ children }) {
         }
       }
 
-      // Fetch actual user details, roles, and permissions from API
+      // Fetch actual user details, roles, and permissions from API — all in parallel
       let permissionsMap = {};
       try {
-        // Fetch ABP config to get grantedPolicies
-        const appConfig = await apiClient.get("/api/abp/application-configuration").then(r => r.data);
+        const [appConfig, userDetails, rolesRes] = await Promise.all([
+          apiClient.get("/api/abp/application-configuration").then(r => r.data),
+          usersApi.getById(userId).catch(() => null),
+          usersApi.getUserRoles(userId).catch(() => null),
+        ]);
+
         if (appConfig?.auth?.grantedPolicies) {
           permissionsMap = appConfig.auth.grantedPolicies;
         }
-
-        const userDetails = await usersApi.getById(userId);
         if (userDetails) {
           actualName = userDetails.name + (userDetails.surname ? " " + userDetails.surname : "");
           actualEmail = userDetails.email || email;
         }
-
-        const rolesRes = await usersApi.getUserRoles(userId);
         if (rolesRes) {
           const items = rolesRes.items || rolesRes || [];
           if (items.length > 0) {

@@ -59,50 +59,39 @@ export const jobsheetsApi = {
       .then((r) => r.data);
   },
 
-  // ✅ FIXED: Changed from URLSearchParams to plain object
-  // URLSearchParams was not being serialized by axios into the query string
-  // Plain object keys like "UserIdsSearchValues[0]" are serialized correctly by axios
   getReport: ({ filters, currentUserId }) => {
-    const params = {};
+    // Use the exact same flat key format as getAll — proven to work with the backend.
+    // The global qs serializer (arrayFormat: "repeat") turns arrays into:
+    //   JobsheetSearch.UserIdsSearchValues=id1&JobsheetSearch.UserIdsSearchValues=id2
+    const userIds = Array.isArray(filters.user)
+      ? filters.user.filter(isGuid)
+      : filters.user && isGuid(filters.user) ? [filters.user] : [];
 
-    if (currentUserId && isGuid(currentUserId)) {
-      params["JobsheetSearch.CurrentUserId"] = currentUserId;
-    }
+    const collabIds = Array.isArray(filters.collaborator)
+      ? filters.collaborator.filter(isGuid)
+      : filters.collaborator && isGuid(filters.collaborator) ? [filters.collaborator] : [];
 
-    // Support for multiple users (arrays or single string)
-    const userIds = Array.isArray(filters.user) ? filters.user : (filters.user ? [filters.user] : []);
-    userIds.forEach((id, index) => {
-      if (isGuid(id)) {
-        params[`JobsheetSearch.UserIdsSearchValues[${index}]`] = id;
-        params[`JobsheetSearch.JobsheetDetailUserIdsSearchValues[${index}]`] = id;
-      }
+    const allUserIds = [...new Set([...userIds, ...collabIds])];
+
+    const params = {
+      "JobsheetSearch.CurrentUserId": currentUserId && isGuid(currentUserId) ? currentUserId : undefined,
+      "JobsheetSearch.UserIdsSearchValues": allUserIds.length > 0 ? allUserIds : undefined,
+      "JobsheetSearch.JobsheetDetailUserIdsSearchValues": allUserIds.length > 0 ? allUserIds : undefined,
+      "JobsheetSearch.ProjectIdSearchValue": filters.project && isGuid(filters.project) ? filters.project : undefined,
+      "JobsheetSearch.DateFrom": filters.dateFrom ? formatDateStart(filters.dateFrom) : undefined,
+      "JobsheetSearch.DateTo": filters.dateTo ? formatDateEnd(filters.dateTo) : undefined,
+    };
+
+    return apiClient.get("/api/app/jobsheet/jobsheet-report", {
+      params,
+      responseType: "blob",
+      headers: {
+        Accept:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/pdf, application/json",
+      },
     });
-
-    const collabIds = Array.isArray(filters.collaborator) ? filters.collaborator : (filters.collaborator ? [filters.collaborator] : []);
-    // Note: Collaborators usually go into the same user filter arrays as the main user for this report
-    collabIds.forEach((id, index) => {
-      if (isGuid(id)) {
-        // We start indexing after the main users to avoid collisions
-        const finalIndex = userIds.length + index;
-        params[`JobsheetSearch.UserIdsSearchValues[${finalIndex}]`] = id;
-        params[`JobsheetSearch.JobsheetDetailUserIdsSearchValues[${finalIndex}]`] = id;
-      }
-    });
-
-    if (filters.project && isGuid(filters.project)) {
-      params["JobsheetSearch.ProjectIdSearchValue"] = filters.project;
-    }
-
-    if (filters.dateFrom) params["JobsheetSearch.DateFrom"] = formatDateStart(filters.dateFrom);
-    if (filters.dateTo) params["JobsheetSearch.DateTo"] = formatDateEnd(filters.dateTo);
-
-    return apiClient
-      .get("/api/app/jobsheet/jobsheet-report", { 
-        params, 
-        responseType: "blob",
-        headers: { Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/pdf, application/json" }
-      });
   },
+
 
   create: (data) =>
     apiClient.post("/api/app/jobsheets", data).then((r) => r.data),

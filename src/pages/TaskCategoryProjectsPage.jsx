@@ -33,12 +33,8 @@ export default function TaskCategoryProjectsPage() {
   const loadProjects = async () => {
     setLoadingProjects(true);
     try {
-      const allLookups = await codesApi.getAll();
-      const projectLookup = allLookups.find((l) => l.lookupCode === "PRJ");
-      if (projectLookup) {
-        const details = await codeDetailsApi.getAll({ lookupId: projectLookup.id });
-        setProjects(details.map((d) => ({ id: d.id, name: d.description || d.newCode })));
-      }
+      const details = await codeDetailsApi.getAll({ lookupCode: "PRJ" });
+      setProjects(details.map((d) => ({ id: d.id, name: d.description || d.newCode })));
     } catch (err) {
       toast("Error fetching projects", "error");
     } finally {
