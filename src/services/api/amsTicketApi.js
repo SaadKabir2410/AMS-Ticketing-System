@@ -101,11 +101,8 @@ const servicePlannedTypeMap = {
 };
 
 const activityTypeMap = {
-    "Documentation": 1,
-    "Testing": 2,
-    "Installation": 3,
-    "Configuration": 4,
-    "Maintenance": 5,
+    "Technical": 1,
+    "Documentation": 2,
 };
 
 // Case-insensitive string enum resolver
@@ -124,6 +121,7 @@ const resolveStringEnum = (map, value, fallback = 0) => {
 const resolveIntegerToLabel = (map, value) => {
     if (isNil(value)) return "";
     const numValue = Number(value);
+    if (numValue === 0) return "";
     const match = Object.keys(map).find((k) => map[k] === numValue);
     return match || String(value);
 };
@@ -136,12 +134,12 @@ const resolveIntegerToLabel = (map, value) => {
 // because null is not a valid ActivityTypeEnum value.
 //
 // Resolution priority:
-//   1. Already a valid integer (1–5)       → use as-is
-//   2. String label like "Testing"         → look up in activityTypeMap
+//   1. Already a valid integer (1–2)       → use as-is
+//   2. String label like "Technical"       → look up in activityTypeMap
 //   3. Nested object with .id or .value    → extract and resolve
-//   4. Anything else / unresolvable        → fall back to 1 (Documentation)
+//   4. Anything else / unresolvable        → fall back to 1 (Technical)
 //      (1 is the safest non-zero default; the server rejects 0 for this enum)
-const ACTIVITY_TYPE_FALLBACK = 1; // Documentation — safest non-zero default
+const ACTIVITY_TYPE_FALLBACK = 1; // Technical — safest non-zero default
 
 const resolveActivityType = (raw) => {
     // null / undefined / empty string → use fallback
@@ -335,6 +333,35 @@ const buildTicketPayload = (data = {}) => {
 
     return payload;
 };
+
+// ── FIX: base64 helper for PDF upload ────────────────────────────────────────
+// The ticket-via-pDF endpoint's Swagger contract shows:
+//   - fileName: query parameter (string)
+//   - Request body: application/json, schema = raw string ("string")
+// This means the server expects the PDF file content as a base64-encoded
+// JSON string, NOT multipart/form-data. Sending FormData (or an object) with
+// a multipart Content-Type causes a 415 Unsupported Media Type, because the
+// media type sent doesn't match what the endpoint's [Consumes] declares.
+const fileToBase64 = (file) =>
+    new Promise((resolve, reject) => {
+        if (!(file instanceof Blob)) {
+            reject(new Error("fileToBase64 expects a File/Blob object"));
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+            // reader.result looks like: "data:application/pdf;base64,JVBERi0xLjQK..."
+            const result = reader.result || "";
+            const base64 = typeof result === "string" ? result.split(",")[1] : "";
+            if (!base64) {
+                reject(new Error("Failed to read file as base64"));
+                return;
+            }
+            resolve(base64);
+        };
+        reader.onerror = () => reject(reader.error || new Error("FileReader error"));
+        reader.readAsDataURL(file);
+    });
 
 export const amsTicketApi = {
 
@@ -560,8 +587,51 @@ export const amsTicketApi = {
     isActivityDuringWorkingHours: (data) =>
         apiClient.post(`${BASE}/is-activity-during-working-hours`, data).then((r) => r.data),
 
-    uploadViaPDF: (data, config = {}) =>
-        apiClient.post(`${BASE}/ticket-via-pDF`, data, config).then((r) => r.data),
+    // ── FIX: uploadViaPDF ─────────────────────────────────────────────────────
+    // Swagger contract for POST /api/app/a-mSTicket/ticket-via-pDF:
+    //   - Query param: fileName (string)
+    //   - Body: application/json, schema is a raw string (base64 PDF content)
+    // Previous implementation just forwarded `data` (often a FormData object)
+    // straight to apiClient.post, which axios/browser send as
+    // multipart/form-data — a media type the endpoint doesn't declare support
+    // for, producing 415 Unsupported Media Type.
+    //
+    // Call as: amsTicketApi.uploadViaPDF(file) where `file` is a File/Blob
+    // from an <input type="file"> element. This function handles the
+    // base64 conversion and sends the correct content type automatically.
+    uploadViaPDF: async (file, config = {}) => {
+        if (!file || typeof file !== "object") {
+            throw new Error("uploadViaPDF requires a File/Blob object");
+        }
+        const fileName = file.name || (config.params && config.params.fileName) || "upload.pdf";
+        const base64String = await fileToBase64(file);
+
+        return apiClient
+            .post(
+                `${BASE}/ticket-via-pDF`,
+                JSON.stringify(base64String), // raw JSON string body, matches Swagger schema
+                {
+                    ...config,
+                    params: {
+                        fileName,
+                        "api-version": "1.0",
+                        ...(config.params || {}),
+                    },
+                    headers: {
+                        ...(config.headers || {}),
+                        "Content-Type": "application/json",
+                    },
+                }
+            )
+            .then((r) => r.data)
+            .catch((error) => {
+                console.error(
+                    "uploadViaPDF error:",
+                    JSON.stringify(error.response?.data, null, 2)
+                );
+                throw error;
+            });
+    },
 
     // Export mappers for components
     resolveTicketTypeLabel: (val) => resolveIntegerToLabel(ticketTypeMap, val),

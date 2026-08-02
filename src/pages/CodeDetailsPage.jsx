@@ -21,6 +21,7 @@ import { useToast } from "../component/common/ToastContext";
 import CodeDetailsModal from "../component/common/CodeDetailsModal";
 import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import { ActionsMenu } from "../component/common/ResourcePage";
+import { usePermission } from "../hooks/usePermission";
 
 // ── Animation variants ────────────────────────────────────────────
 const containerVariants = {
@@ -81,6 +82,7 @@ function SkeletonRow({ delay = 0 }) {
 export default function CodeDetailsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const canCreate = usePermission("Billing.Lookups.Create");
 
   const [parentCodes, setParentCodes] = useState([]);
   const [selectedParent, setSelectedParent] = useState(null);
@@ -585,7 +587,7 @@ export default function CodeDetailsPage() {
               </div>
             </div>
 
-            {selectedParent && (
+            {selectedParent && canCreate && (
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}

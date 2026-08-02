@@ -197,7 +197,7 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
 
   const [loadingApis, setLoadingApis] = useState(false);
   const [apiData, setApiData] = useState({
-    activityTypes: [],
+    activityTypes: [], // Array of { label, enumValue }
     workDoneCodes: [],
     users: [],
   });
@@ -228,9 +228,13 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
       }).catch(() => ({})),
       workCodesApi.getAll().catch(() => [])
     ]).then(([usersRes, lookupsRes, workCodesRes]) => {
-      const activityTypes = (lookupsRes["ActivityType"] || [])
-        .map(item => item.description || item.newCode)
-        .sort((a, b) => a.localeCompare(b));
+      const activityTypeObjects = (lookupsRes["ActivityType"] || [])
+        .map(item => ({
+          label: item.description || item.newCode,
+          enumValue: Number(item.sequence ?? item.value1 ?? 0),
+        }))
+        .filter(o => o.label)
+        .sort((a, b) => a.label.localeCompare(b.label));
 
       // ✅ Store full objects so we have both label and id
       const workDoneCodeObjects = (workCodesRes || [])
@@ -248,12 +252,25 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
         .filter(u => u.label)
         .sort((a, b) => a.label.localeCompare(b.label));
 
+      const resolvedTypes = activityTypeObjects.length > 0
+        ? activityTypeObjects
+        : [{ label: "Technical", enumValue: 1 }, { label: "Documentation", enumValue: 2 }];
+
       setApiData({
-        activityTypes: activityTypes.length > 0
-          ? activityTypes
-          : ["Documentaion", "Technical"],
+        activityTypes: resolvedTypes,
         workDoneCodes: workDoneCodeObjects,   // ✅ full objects
         users: userObjects,                   // ✅ full objects
+      });
+
+      // If editing and activityType is still an integer, resolve it to a label now
+      setForm(prev => {
+        const rawType = prev.activityType;
+        if (rawType !== null && rawType !== undefined && rawType !== "" && !isNaN(Number(rawType))) {
+          const numVal = Number(rawType);
+          const match = resolvedTypes.find(o => o.enumValue === numVal);
+          if (match) return { ...prev, activityType: match.label };
+        }
+        return prev;
       });
     }).finally(() => setLoadingApis(false));
 
@@ -358,23 +375,25 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
             </div>
 
             {/* Body */}
-            <div className="px-8 py-8 space-y-6 overflow-y-auto no-scrollbar max-h-[75vh]">
+            <div className="px-8 py-6 space-y-4 overflow-y-auto no-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                {/* Activity Type */}
+                <Field label="Activity Type *" error={errors.activityType}>
+                  <div className="relative group/input">
+                    <Combobox
+                      value={form.activityType}
+                      onChange={(label) => {
+                        setForm(f => ({ ...f, activityType: label }));
+                        if (errors.activityType) setErrors(e => ({ ...e, activityType: "" }));
+                      }}
+                      options={apiData.activityTypes.map(o => o.label ?? o)}
+                      placeholder={loadingApis ? "Loading..." : "Select type..."}
+                      disabled={loadingApis}
+                      error={errors.activityType}
+                    />
+                  </div>
+                </Field>
 
-              {/* Activity Type */}
-              <Field label="Activity Type *" error={errors.activityType}>
-                <div className="relative group/input">
-                  <Combobox
-                    value={form.activityType}
-                    onChange={setField("activityType")}
-                    options={apiData.activityTypes}
-                    placeholder="Select An Option"
-                    disabled={loadingApis}
-                    error={errors.activityType}
-                  />
-                </div>
-              </Field>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Start Date */}
                 <Field label="Start Date *" error={errors.startDate}>
                   <div className="relative group/input">
@@ -453,29 +472,29 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
                     error={errors.workDoneCode}
                   />
                 </Field>
+
+                {/* Resolved By */}
+                <Field label="Resolved By *" error={errors.resolvedBy}>
+                  <Combobox
+                    value={form.resolvedBy}
+                    onChange={(label) => {
+                      const found = apiData.users.find(u => u.label === label);
+                      setForm(f => ({
+                        ...f,
+                        resolvedBy: label,
+                        resolvedById: found?.id || "",   // ✅ store UUID
+                      }));
+                      if (errors.resolvedBy) setErrors(e => ({ ...e, resolvedBy: "" }));
+                    }}
+                    options={apiData.users.map(u => u.label)}  // ✅ show labels
+                    placeholder="Search users..."
+                    disabled={loadingApis}
+                    error={errors.resolvedBy}
+                  />
+                </Field>
               </div>
 
-              {/* Resolved By */}
-              <Field label="Resolved By *" error={errors.resolvedBy}>
-                <Combobox
-                  value={form.resolvedBy}
-                  onChange={(label) => {
-                    const found = apiData.users.find(u => u.label === label);
-                    setForm(f => ({
-                      ...f,
-                      resolvedBy: label,
-                      resolvedById: found?.id || "",   // ✅ store UUID
-                    }));
-                    if (errors.resolvedBy) setErrors(e => ({ ...e, resolvedBy: "" }));
-                  }}
-                  options={apiData.users.map(u => u.label)}  // ✅ show labels
-                  placeholder="Search users..."
-                  disabled={loadingApis}
-                  error={errors.resolvedBy}
-                />
-              </Field>
-
-              <div className="flex items-center gap-3 pt-2">
+              <div className="flex items-center gap-3 pt-4">
                 <label className="flex items-center gap-3 cursor-pointer w-max p-1 px-4 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
                   <div className="relative group/toggle">
                     <input

@@ -8,10 +8,12 @@ import { ActionsMenu } from "../component/common/ResourcePage";
 import TaskCategoryProjectModal from "../component/common/TaskCategoryProjectModal";
 import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus } from "lucide-react";
+import { usePermission } from "../hooks/usePermission";
 
 export default function TaskCategoryProjectsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const canCreate = usePermission("Billing.TaskCategoryProjects.Create");
 
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
@@ -140,13 +142,15 @@ export default function TaskCategoryProjectsPage() {
               Task Category Projects
             </h1>
             <div className="flex items-center gap-4">
-              <button
-                onClick={handleNew}
-                className="inline-flex items-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
-              >
-                <Plus size={16} className="mr-2" strokeWidth={3} />
-                Add New
-              </button>
+              {canCreate && (
+                <button
+                  onClick={handleNew}
+                  className="inline-flex items-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
+                >
+                  <Plus size={16} className="mr-2" strokeWidth={3} />
+                  Add New
+                </button>
+              )}
             </div>
           </div>
 

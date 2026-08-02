@@ -10,6 +10,9 @@ import {
   Ticket,
   ShieldCheck,
   History,
+  Sparkles,
+  FileText,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import PremiumErrorAlert from "./PremiumErrorAlert";
@@ -56,7 +59,7 @@ function Field({ label, error, children }) {
 }
 
 const inputClass =
-  "w-full px-4 py-2.5 rounded-xl border border-transparent border-slate-500 bg-slate-100 dark:bg-slate-800/50 backdrop-blur-sm text-sm outline-none transition-all duration-300 focus:bg-white dark:focus:bg-slate-900 focus:border-pink-500/30 focus:ring-4 focus:ring-pink-500/10 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800/50 font-medium text-black dark:text-slate-200 placeholder:text-slate-500/80";
+  "w-full px-4 py-2 rounded-xl border border-transparent border-slate-500 bg-slate-100 dark:bg-slate-800/50 backdrop-blur-sm text-sm outline-none transition-all duration-300 focus:bg-white dark:focus:bg-slate-900 focus:border-pink-500/30 focus:ring-4 focus:ring-pink-500/10 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800/50 font-medium text-black dark:text-slate-200 placeholder:text-slate-500/80";
 
 // ─── Robust string-based equality ──────────────────────────────────────────
 // Converts both sides to lowercase strings before comparing so that
@@ -377,6 +380,11 @@ export default function TicketModal({
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showDateWarning, setShowDateWarning] = useState(false);
   const [showActivityWarning, setShowActivityWarning] = useState(false);
+
+  // ── PDF Upload State ───────────────────────────────────────────────────────
+  const [pdfFile, setPdfFile] = useState(null);
+  const [pdfUploading, setPdfUploading] = useState(false);
+  const [pdfError, setPdfError] = useState("");
 
   // ── Reset / seed form whenever the modal opens or the ticket changes ──────
   useEffect(() => {
@@ -905,6 +913,95 @@ export default function TicketModal({
     }));
   };
 
+  // ── PDF Upload Handler ─────────────────────────────────────────────────────
+  const handleUploadViaPDF = async (file) => {
+    if (!file) return;
+    setPdfError("");
+    setPdfUploading(true);
+    try {
+      const result = await amsTicketApi.uploadViaPDF(file);
+      console.log("FULL PDF result:", JSON.stringify(result, null, 2));
+      console.log("PDF result keys:", Object.keys(result || {}));
+
+      // ── Map PDF-extracted activities ───────────────────────────────────────
+      // FIX: the endpoint returns detail rows under "amsTicketDetails", not
+      // "activities" — that's why nothing was ever filling in.
+      let mappedActivities = [];
+      try {
+        const rawDetails = Array.isArray(result.amsTicketDetails)
+          ? result.amsTicketDetails
+          : Array.isArray(result.aMSTicketDetails)
+            ? result.aMSTicketDetails
+            : Array.isArray(result.activities)
+              ? result.activities
+              : [];
+
+        mappedActivities = rawDetails.filter(Boolean).map((act) => {
+          // Resolved By: amsTicketDetailUserIds holds a user id — look up the name
+          const userId = Array.isArray(act.amsTicketDetailUserIds)
+            ? act.amsTicketDetailUserIds[0]
+            : null;
+          const matchedUser = userId
+            ? apiData.itsUsers.find((u) => isEqual(u.value, userId))
+            : null;
+
+          return {
+            ...act,
+            activityType: amsTicketApi.resolveActivityTypeLabel
+              ? amsTicketApi.resolveActivityTypeLabel(act.activityType)
+              : act.activityType,
+            workDoneCode: act.workDoneCodeAndDescription || act.workDoneCode || "",
+            resolvedBy: matchedUser?.label || userId || "",
+            resolvedById: userId || act.resolvedById || "",
+            isLikelyCause: !!act.isLikelyCause,
+            likelyCause: !!act.isLikelyCause,
+            isActivityDuringWorkingHours: !!act.isActivityDuringWorkingHours,
+          };
+        });
+      } catch (mapErr) {
+        console.error("Failed to map PDF activities:", mapErr, result.amsTicketDetails);
+      }
+
+      // Merge extracted data into the form — map API response fields to form keys
+      setForm((prev) => ({
+        ...prev,
+        ...(result.receivedAt || result.ticketReceivedDate
+          ? { receivedAt: (result.receivedAt || result.ticketReceivedDate || "").slice(0, 16) }
+          : {}),
+        ...(result.cmsNextTicketNo ? { cmsNextTicketNo: result.cmsNextTicketNo } : {}),
+        ...(result.siteName || result.siteId ? { siteName: result.siteId || result.siteName || prev.siteName } : {}),
+        ...(result.customer || result.customerUserId ? { customer: result.customerUserId || result.customer || prev.customer } : {}),
+        ...(result.ticketAssignedTo || result.ticketAssignedToId ? { ticketAssignedTo: result.ticketAssignedToId || result.ticketAssignedTo || prev.ticketAssignedTo } : {}),
+        // FIX: use != null instead of truthiness so value 0 isn't skipped
+        ...(result.ticketType != null ? { ticketType: amsTicketApi.resolveTicketTypeLabel(result.ticketType) } : {}),
+        ...(result.servicePlannedType != null ? { servicePlannedType: amsTicketApi.resolveServicePlannedTypeLabel(result.servicePlannedType) } : {}),
+        ...(result.ticketIncomingChannel != null ? { ticketIncomingChannel: amsTicketApi.resolveTicketIncomingChannelLabel(result.ticketIncomingChannel) } : {}),
+        ...(result.incomingChannelEmail || result.emailAddress ? { incomingChannelEmail: result.incomingChannelEmail || result.emailAddress || prev.incomingChannelEmail } : {}),
+        ...(result.isTicketForwarded !== undefined ? { isTicketForwarded: !!result.isTicketForwarded } : {}),
+        ...(result.ticketForwardedBy || result.ticketForwardedById ? { ticketForwardedBy: result.ticketForwardedById || result.ticketForwardedBy || prev.ticketForwardedBy } : {}),
+        ...(result.cmsTicketAddedBy || result.cmsTicketAddedById ? { cmsTicketAddedBy: result.cmsTicketAddedById || result.cmsTicketAddedBy || prev.cmsTicketAddedBy } : {}),
+        ...(result.cmsTicketAddedOn || result.cMSTicketAddedOn ? { cmsTicketAddedOn: (result.cmsTicketAddedOn || result.cMSTicketAddedOn || "").slice(0, 16) } : {}),
+        ...(result.issueDescription ? { issueDescription: result.issueDescription } : {}),
+        ...(result.possibleRootCause ? { possibleRootCause: result.possibleRootCause } : {}),
+        ...(result.notes || result.ticketNotes ? { notes: result.notes || result.ticketNotes || prev.notes } : {}),
+        ...(result.pre !== undefined ? { pre: !!result.pre } : {}),
+        ...(mappedActivities.length > 0 ? { activities: mappedActivities } : {}),
+      }));
+
+      toast("PDF extracted successfully! Form has been auto-filled.");
+    } catch (err) {
+      console.error("PDF upload error:", err);
+      const msg =
+        err.response?.data?.error?.message ||
+        err.response?.data?.error?.validationErrors?.map((e) => e.message).join(", ") ||
+        err.message ||
+        "Failed to process PDF. Please try again.";
+      setPdfError(msg);
+    } finally {
+      setPdfUploading(false);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -1047,20 +1144,20 @@ export default function TicketModal({
               className="relative w-full max-w-6xl bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-auto max-h-[95vh] overflow-hidden font-[Arial]"
             >
               <div className="flex flex-col gap-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                <div className="flex items-center justify-between px-8 py-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0">
-                      <Ticket size={24} />
+                <div className="flex items-center justify-between px-6 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0">
+                      <Ticket size={20} />
                     </div>
                     <div>
-                      <nav className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500 dark:text-slate-500 mb-0.5">
+                      <nav className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-500 mb-0.5">
                         <span>AMS</span>
                         <span className="text-slate-300 dark:text-slate-700">
                           /
                         </span>
                         <span className="text-pink-600">Tickets</span>
                       </nav>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3 flex-wrap">
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3 flex-wrap">
                         {isEdit ? "Update Ticket" : "New AMS Ticket"}
                         {isEdit && form.cmsNextTicketNo && (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 text-[13px] font-black tracking-wide border border-pink-200/60 dark:border-pink-500/20 select-none">
@@ -1092,14 +1189,14 @@ export default function TicketModal({
                   </button>
                 </div>
 
-                <div className="flex px-8 gap-10">
+                <div className="flex px-6 gap-8">
                   {["Ticket", "Activities", "Ticket Verification"].map(
                     (tab) => (
                       <button
                         key={tab}
                         type="button"
                         onClick={() => setActiveTab(tab)}
-                        className={`relative py-4 text-[12px] font-semibold transition-all flex items-center gap-2 group ${activeTab === tab
+                        className={`relative py-3 text-[12px] font-semibold transition-all flex items-center gap-2 group ${activeTab === tab
                           ? "text-pink-600"
                           : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                           }`}
@@ -1117,7 +1214,7 @@ export default function TicketModal({
                 </div>
               </div>
 
-              <div className="overflow-y-auto no-scrollbar px-8 py-8">
+              <div className="overflow-y-auto no-scrollbar px-6 py-5">
                 {optionsError && (
                   <div className="max-w-5xl mx-auto mb-6 flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs animate-in fade-in slide-in-from-top-4 duration-500">
                     <AlertCircle size={16} className="shrink-0 mt-0.5" />
@@ -1147,49 +1244,95 @@ export default function TicketModal({
                     )}
 
                     {activeTab === "Ticket" && (
-                      <div className="flex flex-col space-y-8">
-                        <div className="flex items-center gap-4 mb-2">
-                          <div className="w-10 h-10 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0">
-                            <Activity size={20} />
+                      <div className="flex flex-col space-y-4">
+                        <div className="flex items-center gap-3 mb-1">
+                          <div className="w-8 h-8 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0">
+                            <Activity size={18} />
                           </div>
                           <div>
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
                               Ticket Information
                             </h3>
 
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                           <div className="md:col-span-2">
                             <Field label="Upload PDF" error={errors.pdfFile}>
                               <div className="relative group/file">
                                 <input
-                                  key={
-                                    form.pdfFile ? form.pdfFile.name : "empty"
-                                  }
+                                  key={form.pdfFile ? form.pdfFile.name : "empty"}
                                   type="file"
                                   accept=".pdf"
-                                  onChange={setField("pdfFile")}
-                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                  disabled={pdfUploading}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    setField("pdfFile")(e);
+                                    handleUploadViaPDF(file);
+                                  }}
+                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
                                 />
-                                <div className="w-full p-8 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 flex flex-col items-center justify-center gap-2 transition-all group-hover/file:border-pink-500/50 group-hover/file:bg-pink-500/[0.02]">
-                                  <div className="text-center">
-                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                                      {form.pdfFile
-                                        ? form.pdfFile.name
-                                        : "Select PDF Document"}
-                                    </p>
-                                    <p className="text-[11px] font-semibold text-slate-400 mt-1">
-                                      {form.pdfFile
-                                        ? `${(
-                                          form.pdfFile.size /
-                                          1024 /
-                                          1024
-                                        ).toFixed(2)} MB`
-                                        : "PDF format only (Max 10MB)"}
-                                    </p>
-                                  </div>
+                                <div className={`w-full p-4 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-3 transition-all ${pdfUploading
+                                  ? "border-violet-400 bg-violet-50/60 dark:bg-violet-500/5"
+                                  : pdfError
+                                    ? "border-rose-400 bg-rose-50/40 dark:bg-rose-500/5 group-hover/file:border-rose-500"
+                                    : form.pdfFile
+                                      ? "border-emerald-400 bg-emerald-50/40 dark:bg-emerald-500/5 group-hover/file:border-emerald-500"
+                                      : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover/file:border-pink-500/50 group-hover/file:bg-pink-500/[0.02]"
+                                  }`}>
+                                  {pdfUploading ? (
+                                    <>
+                                      <div className="w-10 h-10 rounded-2xl bg-violet-100 dark:bg-violet-500/15 flex items-center justify-center">
+                                        <Loader2 size={20} className="text-violet-600 animate-spin" />
+                                      </div>
+                                      <div className="text-center">
+                                        <p className="text-sm font-bold text-violet-700 dark:text-violet-400">Extracting via AI...</p>
+                                        <p className="text-[11px] font-semibold text-slate-400 mt-1">Please wait while we read your PDF</p>
+                                      </div>
+                                    </>
+                                  ) : pdfError ? (
+                                    <>
+                                      <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-500/15 flex items-center justify-center">
+                                        <AlertCircle size={20} className="text-rose-500" />
+                                      </div>
+                                      <div className="text-center">
+                                        <p className="text-sm font-bold text-rose-600 dark:text-rose-400">Extraction Failed</p>
+                                        <p className="text-[11px] font-semibold text-rose-400/80 mt-1 max-w-xs">{pdfError}</p>
+                                        <p className="text-[10px] text-slate-400 mt-1">Click to try another file</p>
+                                      </div>
+                                    </>
+                                  ) : form.pdfFile ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setForm((prev) => ({ ...prev, pdfFile: null }));
+                                        }}
+                                        className="absolute top-4 right-4 z-20 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                        title="Remove PDF"
+                                      >
+                                        <X size={16} />
+                                      </button>
+                                      <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center">
+                                        <FileText size={20} className="text-emerald-600 dark:text-emerald-400" />
+                                      </div>
+                                      <div className="text-center">
+                                        <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{form.pdfFile.name}</p>
+                                        <p className="text-[11px] font-semibold text-slate-400 mt-1">
+                                          {(form.pdfFile.size / 1024 / 1024).toFixed(2)} MB &middot; Click to change
+                                        </p>
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="text-center">
+                                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Select PDF Document</p>
+                                      <p className="text-[11px] font-semibold text-slate-400 mt-1">PDF format only (Max 10MB) &middot; AI will auto-fill the form</p>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </Field>
@@ -1313,14 +1456,14 @@ export default function TicketModal({
                                   error={errors.customer}
                                 />
                                 <button
-                                    type="button"
-                                    onClick={() => setIsCustomerModalOpen(true)}
-                                    disabled={!form.siteName || loadingApis || loadingCustomers}
-                                    className="w-[42px] h-[42px] flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-pink-600 rounded-xl hover:bg-pink-600 hover:text-white transition-all shadow-sm active:scale-95 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-100 disabled:hover:text-pink-600 dark:disabled:hover:bg-slate-800"
-                                    title={!form.siteName ? "Select a site first" : "Add New Customer"}
-                                  >
-                                    <Plus size={18} strokeWidth={2.5} />
-                                  </button>
+                                  type="button"
+                                  onClick={() => setIsCustomerModalOpen(true)}
+                                  disabled={!form.siteName || loadingApis || loadingCustomers}
+                                  className="w-[42px] h-[42px] flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-pink-600 rounded-xl hover:bg-pink-600 hover:text-white transition-all shadow-sm active:scale-95 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-100 disabled:hover:text-pink-600 dark:disabled:hover:bg-slate-800"
+                                  title={!form.siteName ? "Select a site first" : "Add New Customer"}
+                                >
+                                  <Plus size={18} strokeWidth={2.5} />
+                                </button>
                               </div>
                             </Field>
                           </div>
@@ -1536,7 +1679,7 @@ export default function TicketModal({
                               <textarea
                                 value={form.issueDescription || ""}
                                 onChange={setField("issueDescription")}
-                                rows={3}
+                                rows={2}
                                 className={inputClass}
                               />
                             </Field>
@@ -1550,7 +1693,7 @@ export default function TicketModal({
                               <textarea
                                 value={form.possibleRootCause || ""}
                                 onChange={setField("possibleRootCause")}
-                                rows={3}
+                                rows={2}
                                 className={inputClass}
                               />
                             </Field>
@@ -1914,7 +2057,7 @@ export default function TicketModal({
                 </AnimatePresence>
               </div>
 
-              <div className="flex items-center justify-end gap-4 px-8 py-6 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                 <button
                   type="button"
                   onClick={

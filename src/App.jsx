@@ -194,7 +194,7 @@ function Layout({ collapsed, setCollapsed }) {
               <Route
                 path="/codes"
                 element={
-                  <PermissionGuard permission="Billing.Lookups">
+                  <PermissionGuard permission="Billing.Lookups.Create">
                     <CodePage />
                   </PermissionGuard>
                 }
@@ -202,7 +202,7 @@ function Layout({ collapsed, setCollapsed }) {
               <Route
                 path="/code-details"
                 element={
-                  <PermissionGuard permission="Billing.Lookups">
+                  <PermissionGuard permission="Billing.Lookups.Create">
                     <CodeDetailsPage />
                   </PermissionGuard>
                 }
@@ -210,7 +210,7 @@ function Layout({ collapsed, setCollapsed }) {
               <Route
                 path="/task-category-projects"
                 element={
-                  <PermissionGuard permission="Billing.TaskCategoryProjects">
+                  <PermissionGuard permission="Billing.TaskCategoryProjects.Create">
                     <TaskCategoryProjectsPage />
                   </PermissionGuard>
                 }
