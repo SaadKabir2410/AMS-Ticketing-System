@@ -123,3 +123,32 @@ body {
     cursor: not-allowed;
   }
 }
+
+/* ─── Flatpickr Custom Input Styling ─────────────────────────────── */
+
+/* Date picker — plain visible input (no altInput) */
+.flatpickr-date-custom {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+  color: #1e293b;
+  outline: none;
+  box-sizing: border-box;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.dark .flatpickr-date-custom {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+/* Hide the original hidden input — only show the altInput */
+.flatpickr-input-custom {
+  display: none !important;
+}

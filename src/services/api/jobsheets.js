@@ -84,10 +84,8 @@ export const jobsheetsApi = {
 
     return apiClient.get("/api/app/jobsheet/jobsheet-report", {
       params,
-      responseType: "blob",
       headers: {
-        Accept:
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/pdf, application/json",
+        Accept: "application/json",
       },
     });
   },

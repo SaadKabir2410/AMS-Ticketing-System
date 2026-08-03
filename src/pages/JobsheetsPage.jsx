@@ -139,6 +139,7 @@ export default function JobsheetsPage() {
   const [showModal, setShowModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedJobsheet, setSelectedJobsheet] = useState(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
 
 
@@ -668,7 +669,7 @@ export default function JobsheetsPage() {
   const customActions = [
     {
       key: "view",
-      label: "View",
+      label: "View / Update",
       onClick: (row) => handleAction("view", row),
       className: "text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-bold",
     },
@@ -720,7 +721,7 @@ export default function JobsheetsPage() {
       }
     };
     fetchGridData();
-  }, [page, pageSize, isAdmin, user?.id, filters]);
+  }, [page, pageSize, isAdmin, user?.id, filters, refreshTrigger]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -929,7 +930,7 @@ export default function JobsheetsPage() {
         open={showModal}
         onClose={() => setShowModal(false)}
         onSave={() => {
-          fetchReport();
+          setRefreshTrigger(prev => prev + 1);
         }}
       />
 
@@ -939,8 +940,10 @@ export default function JobsheetsPage() {
           setShowViewModal(false);
           setSelectedJobsheet(null);
         }}
-        viewOnly={true}
         jobsheet={selectedJobsheet}
+        onSave={() => {
+          setRefreshTrigger(prev => prev + 1);
+        }}
       />
     </div>
   );

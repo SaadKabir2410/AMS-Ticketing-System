@@ -51,22 +51,35 @@ function timeToTicks(timeStr) {
   return (h * 3600 + m * 60) * 10_000_000;
 }
 
-function buildPayload(date, attendanceStatus, details) {
-  return {
+function buildPayload(date, attendanceStatus, details, concurrencyStamp) {
+  const payload = {
     date: date ? new Date(date).toISOString() : null,
     attendanceStatus: Number(attendanceStatus),
-    jobsheetDetails: details.map((d) => ({
-      taskCategoryId: d.taskCategoryId || null,
-      subTaskCategoryId: d.subTaskCategoryId || null,
-      projectId: d.projectId || null,
-      startTime: { ticks: timeToTicks(d.startTimeDisplay) },
-      endTime: { ticks: timeToTicks(d.endTimeDisplay) },
-      statusId: d.statusId || null,
-      remarks: d.remarks,
-      amsTicketDetailId: d.amsTicketDetailId || null,
-      jobsheetDetailUserIds: d.jobsheetDetailUserIds,
-    })),
+    jobsheetDetails: details.map((d) => {
+      const detail = {
+        taskCategoryId: d.taskCategoryId || null,
+        projectId: d.projectId || null,
+        startTime: d.startTimeDisplay ? `${d.startTimeDisplay}:00` : "00:00:00",
+        endTime: d.endTimeDisplay ? `${d.endTimeDisplay}:00` : "00:00:00",
+        statusId: d.statusId || null,
+        remarks: d.remarks,
+        jobsheetDetailUserIds: d.jobsheetDetailUserIds || [],
+      };
+      if (d.subTaskCategoryId) detail.subTaskCategoryId = d.subTaskCategoryId;
+      if (d.amsTicketDetailId) detail.amsTicketDetailId = d.amsTicketDetailId;
+      return detail;
+    }),
   };
+
+  // Required for updates — ABP's optimistic concurrency check compares this
+  // against the DB value. Omitting it entirely (not just sending null) is
+  // treated as a stale/mismatched entity and throws
+  // SA:ConcurrencyErrorMessage on every update, not just real conflicts.
+  if (concurrencyStamp) {
+    payload.concurrencyStamp = concurrencyStamp;
+  }
+
+  return payload;
 }
 
 // Fetching lookup details using getByLookupCodes instead
@@ -83,6 +96,7 @@ function DynSelect({ name, value, onChange, options, loading, placeholder = "Cho
       style={{
         ...styles.input,
         ...styles.select,
+        backgroundColor: styles.input.backgroundColor, // re-apply to avoid background shorthand conflict
         color: value ? (styles._isDark ? "#e2e8f0" : "#333") : "#aaa",
         opacity: disabled ? 0.7 : 1,
         border: hasError ? "1px solid #ff4d4f" : styles.input.border
@@ -196,7 +210,7 @@ function CollaboratorPicker({ users, selected, onChange, loading, disabled = fal
                 key={u.id}
                 style={{
                   ...styles.dropdownItem,
-                  background: isSel ? (isDark ? "rgba(236,72,153,0.15)" : "#fdf2f8") : "transparent",
+                  backgroundColor: isSel ? (isDark ? "rgba(236,72,153,0.15)" : "#fdf2f8") : "transparent",
                   display: "flex", justifyContent: "space-between", alignItems: "center"
                 }}
                 onMouseDown={(e) => {
@@ -231,6 +245,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [allowedCategoryIds, setAllowedCategoryIds] = useState(null); // Filtered by Project
+  const [editingIndex, setEditingIndex] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState(null); // { type, message, confirmLabel, cancelLabel }
 
@@ -244,8 +259,26 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     return false;
   }, [date, attendanceStatus, details, detail, viewOnly]);
 
+  // ── Fully reset the form back to a clean slate ──
+  // Called whenever the modal is exited/closed or a jobsheet is successfully
+  // created, so the next time it opens the user never sees stale data.
+  const resetForm = () => {
+    setDate("");
+    setAttendanceStatus("");
+    setDetail(emptyDetail);
+    setDetails([]);
+    setEditingIndex(null);
+    setError("");
+    setFieldErrors({});
+    setAllowedCategoryIds(null);
+    setSubTaskCategories([]);
+    setFetchError("");
+    setConfirmation(null);
+  };
+
   const handleCloseAttempt = () => {
     if (viewOnly) {
+      resetForm();
       onClose();
       return;
     }
@@ -319,8 +352,14 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
   }, [open]);
 
   // ── Fetch allowed task categories when project changes ──
+  // NOTE: This effect ONLY fetches the allowed-category list for whatever
+  // project is currently selected. It intentionally does NOT clear
+  // taskCategoryId/subTaskCategoryId anymore — that used to run on every
+  // projectId change, including when handleEditDetail loaded a saved
+  // record into the form, which wiped out the record's task category the
+  // instant you clicked "edit". Clearing on a genuine user-driven project
+  // change is now handled directly in the Project <select>'s onChange.
   useEffect(() => {
-    // If we're entering a "New" jobsheet (no projectId or it changes)
     if (!detail.projectId) {
       setAllowedCategoryIds(null);
       return;
@@ -337,23 +376,21 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     };
 
     fetchAllowed();
-
-    // Clear the category when the project changes to avoid invalid state
-    // We only reset if it's not the initial population from 'jobsheet'
-    setDetail(prev => {
-      if (prev.projectId === detail.projectId && prev.taskCategoryId) {
-        // This is a bit tricky to distinguish initial vs manual change.
-        // But usually if the parent project changes manually, child must reset.
-      }
-      return { ...prev, taskCategoryId: "", subTaskCategoryId: "" };
-    });
   }, [detail.projectId]);
 
   // ── Compute filtered Task Categories ──
   const filteredTaskCategories = useMemo(() => {
     if (!detail.projectId || !allowedCategoryIds) return taskCategories;
-    return taskCategories.filter(cat => allowedCategoryIds.includes(cat.id));
-  }, [taskCategories, allowedCategoryIds, detail.projectId]);
+    const filtered = taskCategories.filter(cat => allowedCategoryIds.includes(cat.id));
+    // Safety net: if the record being edited has a taskCategoryId that
+    // isn't in the "allowed for this project" list (e.g. older data),
+    // still show it so the select doesn't silently render blank.
+    if (detail.taskCategoryId && !filtered.some(c => c.id === detail.taskCategoryId)) {
+      const current = taskCategories.find(c => c.id === detail.taskCategoryId);
+      if (current) return [...filtered, current];
+    }
+    return filtered;
+  }, [taskCategories, allowedCategoryIds, detail.projectId, detail.taskCategoryId]);
 
   // ── Fetch sub-task categories when parent category changes ──
   useEffect(() => {
@@ -412,6 +449,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
         setAttendanceStatus("");
         setDetail(emptyDetail);
         setDetails([]);
+        setEditingIndex(null);
       }
       setError("");
       setFetchError("");
@@ -427,6 +465,28 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     setDetail((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Project changes are handled separately (not via handleDetailChange)
+  // because a genuine, user-driven project change needs to reset the
+  // dependent task-category / sub-task-category fields. Doing this reset
+  // here — instead of in a useEffect keyed on projectId — means it only
+  // fires when the user actually picks a different project, and never
+  // fires when we programmatically load a saved record via handleEditDetail.
+  const handleProjectChange = (e) => {
+    const newProjectId = e.target.value;
+    setDetail((prev) => ({
+      ...prev,
+      projectId: newProjectId,
+      taskCategoryId: "",
+      subTaskCategoryId: "",
+    }));
+    setFieldErrors((prev) => ({
+      ...prev,
+      projectId: null,
+      taskCategoryId: null,
+      subTaskCategoryId: null,
+    }));
+  };
+
   const handleCollaboratorsChange = (ids) =>
     setDetail((prev) => ({ ...prev, jobsheetDetailUserIds: ids }));
 
@@ -439,8 +499,21 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     if (!detail.statusId) errors.statusId = "Status is required";
     if (!detail.remarks?.trim()) errors.remarks = "Remarks are required";
 
+    if (detail.startTimeDisplay && detail.endTimeDisplay) {
+      if (detail.startTimeDisplay >= detail.endTimeDisplay) {
+        errors.endTimeDisplay = "End time must be after start time";
+      }
+    }
+
     setFieldErrors(prev => ({ ...prev, ...errors }));
     return Object.keys(errors).length === 0;
+  };
+
+  const handleEditDetail = (idx) => {
+    setDetail(details[idx]);
+    setEditingIndex(idx);
+    setFieldErrors({});
+    setError("");
   };
 
   const handleDetailCancel = () => {
@@ -470,7 +543,16 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
       _statusName: nameOf(statuses, detail.statusId),
     };
 
-    setDetails((prev) => [...prev, enrichedDetail]);
+    if (editingIndex !== null) {
+      setDetails((prev) => {
+        const newDetails = [...prev];
+        newDetails[editingIndex] = enrichedDetail;
+        return newDetails;
+      });
+      setEditingIndex(null);
+    } else {
+      setDetails((prev) => [...prev, enrichedDetail]);
+    }
     setDetail(emptyDetail);
   };
 
@@ -483,32 +565,56 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     if (!date) errors.date = "Date is required";
     if (attendanceStatus === "") errors.attendanceStatus = "Choose one";
 
-    if (Object.keys(errors).length > 0 || !validateDetail()) {
+    if (Object.keys(errors).length > 0) {
       setFieldErrors(prev => ({ ...prev, ...errors }));
       setError("Please fill in all required fields before creating.");
       return;
     }
-    if (details.length === 0 && !validateDetail()) {
-      setError("Add at least one jobsheet record.");
-      return;
+
+    // If no records have been added yet, validate + add current form as first record
+    let finalDetails = details;
+    if (details.length === 0) {
+      if (!validateDetail()) {
+        setError("Please fill in all required detail fields or add at least one record.");
+        return;
+      }
+      const enrichedDetail = {
+        ...detail,
+        _taskCategoryName: nameOf(taskCategories, detail.taskCategoryId),
+        _subTaskCategoryName: nameOf(subTaskCategories, detail.subTaskCategoryId),
+        _projectName: nameOf(projects, detail.projectId),
+        _statusName: nameOf(statuses, detail.statusId),
+      };
+      finalDetails = [enrichedDetail];
     }
 
     setError("");
     setSubmitting(true);
     try {
-      const payload = buildPayload(date, attendanceStatus, details);
-      const result = await jobsheetsApi.create(payload);
+      const payload = buildPayload(date, attendanceStatus, finalDetails, jobsheet?.concurrencyStamp);
+      console.log("Submitting jobsheet payload:", JSON.stringify(payload, null, 2));
+
+      let result;
+      if (jobsheet && jobsheet.id) {
+        result = await jobsheetsApi.update(jobsheet.id, payload);
+      } else {
+        result = await jobsheetsApi.create(payload);
+      }
 
       // Support both onSave (JobsheetsPage) and onSubmit patterns
       if (onSave) onSave(result);
       if (onSubmit) onSubmit(result);
+      resetForm();
       onClose();
     } catch (err) {
-      console.error("Failed to create jobsheet:", err);
-      setError(
-        err?.response?.data?.error?.message ||
-        "Failed to create jobsheet. Please try again."
-      );
+      console.error("Failed to save jobsheet:", err, err.response?.data);
+      const data = err?.response?.data;
+      const msg = data?.error?.message ||
+        (data?.errors ? JSON.stringify(data.errors) : null) ||
+        data?.title ||
+        err?.message ||
+        "Failed to save jobsheet. Please try again.";
+      setError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -531,7 +637,9 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
 
         {/* Header */}
         <div style={styles.header}>
-          <span style={styles.title}>{viewOnly ? "Jobsheet Details" : "New Jobsheet"}</span>
+          <span style={styles.title}>
+            {viewOnly ? "Jobsheet Details" : (jobsheet && jobsheet.id ? "Update Jobsheet" : "New Jobsheet")}
+          </span>
           <button
 
             type="button"
@@ -560,7 +668,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                   disableMobile: "true",
                   clickOpens: !viewOnly
                 }}
-                className="flatpickr-input-custom"
+                className="flatpickr-date-custom"
                 style={{ ...styles.input, border: fieldErrors.date ? "1px solid #ff4d4f" : styles.input.border }}
                 placeholder="Select Date"
               />
@@ -572,8 +680,11 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
             <label style={styles.label}>Attendance Status <span style={styles.req}>*</span></label>
             <select
               style={{
-                ...styles.input, ...styles.select,
-                background: attendanceStatus === "" && !viewOnly ? (isDark ? "#422006" : "#fffbe6") : styles.input.background,
+                ...styles.input,
+                ...styles.select,
+                backgroundColor: attendanceStatus === "" && !viewOnly
+                  ? (isDark ? "#422006" : "#fffbe6")
+                  : styles.input.backgroundColor,
                 color: attendanceStatus === "" ? (isDark ? "#94a3b8" : "#aaa") : styles.input.color,
                 opacity: viewOnly ? 0.7 : 1,
                 border: fieldErrors.attendanceStatus ? "1px solid #ff4d4f" : styles.input.border
@@ -607,13 +718,10 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
               <DynSelect
                 name="projectId"
                 value={detail.projectId}
-                onChange={(e) => {
-                  handleDetailChange(e);
-                  setFieldErrors(prev => ({ ...prev, projectId: null }));
-                }}
+                onChange={handleProjectChange}
                 options={projects}
                 loading={loadingOptions}
-                disabled={viewOnly}
+                disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
                 hasError={!!fieldErrors.projectId}
                 styles={styles}
               />
@@ -631,7 +739,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 }}
                 options={filteredTaskCategories}
                 loading={loadingOptions}
-                disabled={viewOnly || !detail.projectId}
+                disabled={viewOnly || !detail.projectId || (jobsheet && jobsheet.id && editingIndex === null)}
                 hasError={!!fieldErrors.taskCategoryId}
                 styles={styles}
               />
@@ -652,7 +760,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                   options={subTaskCategories}
                   loading={loadingSubCats}
                   placeholder={loadingSubCats ? "Fetching..." : "Choose Sub Category"}
-                  disabled={viewOnly}
+                  disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
                   styles={styles}
                 />
 
@@ -661,59 +769,42 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
 
             <div>
               <label style={styles.label}>Start Time <span style={styles.req}>*</span></label>
-              <div style={styles.inputWrapper}>
-                <Flatpickr
-                  value={detail.startTimeDisplay}
-                  onChange={([d]) => {
-                    const hh = d.getHours().toString().padStart(2, '0');
-                    const mm = d.getMinutes().toString().padStart(2, '0');
-                    handleDetailChange({ target: { name: 'startTimeDisplay', value: `${hh}:${mm}` } });
-                  }}
-                  options={{
-                    enableTime: true,
-                    noCalendar: true,
-                    dateFormat: "H:i",
-                    time_24hr: true,
-                    disableMobile: "true",
-                    clickOpens: !viewOnly
-                  }}
-
-                  className="flatpickr-input-custom"
-                  style={{ ...styles.input, border: fieldErrors.startTimeDisplay ? "1px solid #ff4d4f" : styles.input.border }}
-                  placeholder="Start"
-                  disabled={viewOnly}
-                />
-                {fieldErrors.startTimeDisplay && <span style={styles.errorText}>{fieldErrors.startTimeDisplay}</span>}
-              </div>
+              <input
+                type="time"
+                name="startTimeDisplay"
+                value={detail.startTimeDisplay}
+                onChange={(e) => {
+                  handleDetailChange(e);
+                  setFieldErrors(prev => ({ ...prev, startTimeDisplay: null }));
+                }}
+                disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
+                style={{
+                  ...styles.input,
+                  border: fieldErrors.startTimeDisplay ? "1px solid #ff4d4f" : styles.input.border,
+                  colorScheme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+                }}
+              />
+              {fieldErrors.startTimeDisplay && <span style={styles.errorText}>{fieldErrors.startTimeDisplay}</span>}
             </div>
 
             <div>
               <label style={styles.label}>End Time <span style={styles.req}>*</span></label>
-              <div style={styles.inputWrapper}>
-                <Flatpickr
-                  value={detail.endTimeDisplay}
-                  onChange={([d]) => {
-                    const hh = d.getHours().toString().padStart(2, '0');
-                    const mm = d.getMinutes().toString().padStart(2, '0');
-                    handleDetailChange({ target: { name: 'endTimeDisplay', value: `${hh}:${mm}` } });
-                    setFieldErrors(prev => ({ ...prev, endTimeDisplay: null }));
-                  }}
-                  options={{
-                    enableTime: true,
-                    noCalendar: true,
-                    dateFormat: "H:i",
-                    time_24hr: true,
-                    disableMobile: "true",
-                    clickOpens: !viewOnly
-                  }}
-
-                  className="flatpickr-input-custom"
-                  style={{ ...styles.input, border: fieldErrors.endTimeDisplay ? "1px solid #ff4d4f" : styles.input.border }}
-                  placeholder="End"
-                  disabled={viewOnly}
-                />
-                {fieldErrors.endTimeDisplay && <span style={styles.errorText}>{fieldErrors.endTimeDisplay}</span>}
-              </div>
+              <input
+                type="time"
+                name="endTimeDisplay"
+                value={detail.endTimeDisplay}
+                onChange={(e) => {
+                  handleDetailChange(e);
+                  setFieldErrors(prev => ({ ...prev, endTimeDisplay: null }));
+                }}
+                disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
+                style={{
+                  ...styles.input,
+                  border: fieldErrors.endTimeDisplay ? "1px solid #ff4d4f" : styles.input.border,
+                  colorScheme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+                }}
+              />
+              {fieldErrors.endTimeDisplay && <span style={styles.errorText}>{fieldErrors.endTimeDisplay}</span>}
             </div>
 
             <div>
@@ -727,7 +818,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 }}
                 options={statuses}
                 loading={loadingOptions}
-                disabled={viewOnly}
+                disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
                 hasError={!!fieldErrors.statusId}
                 styles={styles}
               />
@@ -744,7 +835,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                   setFieldErrors(prev => ({ ...prev, jobsheetDetailUserIds: null }));
                 }}
                 loading={loadingOptions}
-                disabled={viewOnly}
+                disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
                 fieldErrors={fieldErrors}
                 styles={styles}
               />
@@ -762,7 +853,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 handleDetailChange(e);
                 setFieldErrors(prev => ({ ...prev, remarks: null }));
               }}
-              disabled={viewOnly}
+              disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
             />
             {fieldErrors.remarks && <span style={styles.errorText}>{fieldErrors.remarks}</span>}
           </div>
@@ -778,8 +869,17 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
               >
                 Cancel
               </button>
-              <button style={styles.createBtn} onClick={handleAddDetail}>
-                Create
+              <button 
+                style={{
+                  ...styles.createBtn,
+                  opacity: (jobsheet && jobsheet.id && editingIndex === null) ? 0.5 : 1,
+                  cursor: (jobsheet && jobsheet.id && editingIndex === null) ? "not-allowed" : "pointer"
+                }} 
+                onClick={handleAddDetail}
+                disabled={jobsheet && jobsheet.id && editingIndex === null}
+                title={jobsheet && jobsheet.id && editingIndex === null ? "Cannot add new records during update" : ""}
+              >
+                {editingIndex !== null ? "Update Record" : "Add Record"}
               </button>
             </div>
           )}
@@ -817,7 +917,10 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                     <td style={styles.td}>{d.remarks}</td>
                     <td style={styles.td}>
                       {!viewOnly && (
-                        <button style={styles.removeBtn} onClick={() => handleRemoveDetail(i)}>✕</button>
+                        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                          <button style={styles.editBtn} onClick={() => handleEditDetail(i)}>✎</button>
+                          <button style={styles.removeBtn} onClick={() => handleRemoveDetail(i)}>✕</button>
+                        </div>
                       )}
                     </td>
 
@@ -840,7 +943,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
               onClick={handleCreate}
               disabled={submitting}
             >
-              {submitting ? "Creating…" : "Create"}
+              {submitting ? (jobsheet && jobsheet.id ? "Updating…" : "Creating…") : (jobsheet && jobsheet.id ? "Update Jobsheet" : "Create Jobsheet")}
             </button>
           </div>
         )}
@@ -874,7 +977,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                   <button
                     style={{ ...styles.createBtn, flex: 1, padding: "12px", background: "#ec4899" }}
                     onClick={() => {
-                      setConfirmation(null);
+                      resetForm(); // clear all form state immediately, don't wait for next open
                       onClose(); // Instant Exit
                     }}
                   >
@@ -893,6 +996,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                     style={{ ...styles.exitBtn, flex: 1, padding: "12px" }}
                     onClick={() => {
                       setDetail(emptyDetail);
+                      setEditingIndex(null);
                       setError("");
                       setConfirmation(null);
                     }}
@@ -928,12 +1032,12 @@ function getStyles(isDark) {
   return {
     overlay: {
       position: "fixed", inset: 0,
-      background: "rgba(0,0,0,0.65)",
+      backgroundColor: "rgba(0,0,0,0.65)",
       display: "flex", alignItems: "center", justifyContent: "center",
       zIndex: 1000, fontFamily: "'Segoe UI', sans-serif",
     },
     modal: {
-      background: bg, borderRadius: 12,
+      backgroundColor: bg, borderRadius: 12,
       width: "min(96vw, 1200px)",
       height: "min(96vh, 1200px)",
       overflowY: "auto", padding: "32px 36px",
@@ -947,12 +1051,12 @@ function getStyles(isDark) {
     title: { fontSize: 20, fontWeight: 700, color: text },
     closeBtn: { background: "none", border: "none", fontSize: 22, cursor: "pointer", color: isDark ? "#64748b" : "#bbb" },
     errorBanner: {
-      background: isDark ? "#450a0a" : "#fff2f0", border: `1px solid ${isDark ? "#7f1d1d" : "#ffccc7"}`,
+      backgroundColor: isDark ? "#450a0a" : "#fff2f0", border: `1px solid ${isDark ? "#7f1d1d" : "#ffccc7"}`,
       borderRadius: 8, padding: "10px 16px",
       color: isDark ? "#fca5a5" : "#cf1322", fontSize: 13, marginBottom: 18,
     },
     warningBanner: {
-      background: isDark ? "#422006" : "#fffbe6", border: `1px solid ${isDark ? "#92400e" : "#ffe58f"}`,
+      backgroundColor: isDark ? "#422006" : "#fffbe6", border: `1px solid ${isDark ? "#92400e" : "#ffe58f"}`,
       borderRadius: 8, padding: "10px 16px",
       color: isDark ? "#fcd34d" : "#ad6800", fontSize: 13, marginBottom: 18,
     },
@@ -961,10 +1065,11 @@ function getStyles(isDark) {
     label: { fontSize: 12.5, fontWeight: 600, color: textMuted, display: "block", marginBottom: 5 },
     req: { color: "#e74c3c" },
     inputWrapper: { display: "flex", alignItems: "center" },
+    timeInputWrapper: { display: "block", width: "100%" },
     input: {
       width: "100%", border: `1px solid ${border}`, borderRadius: 8,
       padding: "8px 12px", fontSize: 13, outline: "none",
-      color: inputColor, boxSizing: "border-box", background: inputBg,
+      color: inputColor, boxSizing: "border-box", backgroundColor: inputBg,
       transition: "all 0.2s ease",
     },
     select: {
@@ -983,7 +1088,7 @@ function getStyles(isDark) {
     },
     pill: {
       display: "inline-flex", alignItems: "center", gap: 6,
-      background: isDark ? "rgba(236,72,153,0.15)" : "#fdf2f8", color: "#ec4899",
+      backgroundColor: isDark ? "rgba(236,72,153,0.15)" : "#fdf2f8", color: "#ec4899",
       borderRadius: 20, padding: "4px 12px", fontSize: 12,
       border: isDark ? "1px solid rgba(236,72,153,0.3)" : "1px solid #fbcfe8", fontWeight: 500,
     },
@@ -994,7 +1099,7 @@ function getStyles(isDark) {
     },
     dropdown: {
       position: "absolute", zIndex: 10,
-      background: dropdownBg, border: `1px solid ${dropdownBorder}`,
+      backgroundColor: dropdownBg, border: `1px solid ${dropdownBorder}`,
       borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
       maxHeight: 200, overflowY: "auto", width: "100%",
     },
@@ -1005,18 +1110,18 @@ function getStyles(isDark) {
     textarea: {
       width: "100%", minHeight: 80, border: `1px solid ${border}`,
       borderRadius: 6, padding: "8px 10px", fontSize: 13,
-      outline: "none", color: inputColor, background: inputBg,
+      outline: "none", color: inputColor, backgroundColor: inputBg,
       resize: "vertical", boxSizing: "border-box",
     },
     actionRow: { display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 16 },
     cancelBtn: {
       padding: "7px 18px", borderRadius: 6,
-      border: `1px solid ${border}`, background: inputBg,
+      border: `1px solid ${border}`, backgroundColor: inputBg,
       fontSize: 13, cursor: "pointer", color: inputColor,
     },
     createBtn: {
       padding: "7px 18px", borderRadius: 6, border: "none",
-      background: "#3b5bdb", fontSize: 13, cursor: "pointer",
+      backgroundColor: "#3b5bdb", fontSize: 13, cursor: "pointer",
       color: "#fff", fontWeight: 600,
     },
     tableWrapper: {
@@ -1026,7 +1131,7 @@ function getStyles(isDark) {
     },
     table: { width: "100%", borderCollapse: "collapse", fontSize: 12 },
     th: {
-      padding: "8px 10px", textAlign: "left", background: tableTh,
+      padding: "8px 10px", textAlign: "left", backgroundColor: tableTh,
       color: textSubtle, fontWeight: 600, fontSize: 11,
       borderBottom: `1px solid ${tableBorder}`, whiteSpace: "nowrap",
       position: "sticky", top: 0, zIndex: 10,
@@ -1037,6 +1142,10 @@ function getStyles(isDark) {
       background: "none", border: "none", color: "#e74c3c",
       cursor: "pointer", fontSize: 13, fontWeight: 700,
     },
+    editBtn: {
+      background: "none", border: "none", color: "#3b5bdb",
+      cursor: "pointer", fontSize: 14, fontWeight: 700,
+    },
     errorText: {
       color: "#ff4d4f", fontSize: 11, marginTop: 4, display: "block"
     },
@@ -1046,20 +1155,20 @@ function getStyles(isDark) {
     },
     confirmOverlay: {
       position: "fixed", inset: 0,
-      background: "rgba(15, 23, 42, 0.6)",
+      backgroundColor: "rgba(15, 23, 42, 0.6)",
       backdropFilter: "blur(4px)",
       display: "flex", alignItems: "center", justifyContent: "center",
       zIndex: 2000,
     },
     confirmCard: {
-      background: confirmBg, borderRadius: 16,
+      backgroundColor: confirmBg, borderRadius: 16,
       width: "400px", padding: "32px",
       display: "flex", flexDirection: "column", alignItems: "center",
       boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
       border: `1px solid ${border}`,
     },
     exitBtn: {
-      background: "#fee2e2", color: "#ef4444", border: "1px solid #fecaca",
+      backgroundColor: "#fee2e2", color: "#ef4444", border: "1px solid #fecaca",
       borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
       transition: "all 0.2s ease",
     },
