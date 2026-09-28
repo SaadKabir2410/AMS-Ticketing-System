@@ -869,12 +869,12 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
               >
                 Cancel
               </button>
-              <button 
+              <button
                 style={{
                   ...styles.createBtn,
                   opacity: (jobsheet && jobsheet.id && editingIndex === null) ? 0.5 : 1,
                   cursor: (jobsheet && jobsheet.id && editingIndex === null) ? "not-allowed" : "pointer"
-                }} 
+                }}
                 onClick={handleAddDetail}
                 disabled={jobsheet && jobsheet.id && editingIndex === null}
                 title={jobsheet && jobsheet.id && editingIndex === null ? "Cannot add new records during update" : ""}
