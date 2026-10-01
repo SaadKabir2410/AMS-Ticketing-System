@@ -21,20 +21,28 @@ import { useAuth } from "../context/AuthContextHook";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
 
 const STATUS_OPTIONS = [
-  { label: "All", value: "" },
-  { label: "Open", value: 1 },
-  { label: "Closed", value: 2 },
-  { label: "Void", value: 3 },
+  { label: "All", value: "All" },
+  { label: "Open", value: "Opened" },
+  { label: "Closed", value: "Closed" },
+  { label: "Void", value: "Void" },
 ];
 
 const SERVICE_PLANNED_TYPES = [
-  { label: "Report", value: "Report" },
   { label: "Rule", value: "Rule" },
+  { label: "Report", value: "Report" },
   { label: "Installation", value: "Installation" },
   { label: "Configuration", value: "Configuration" },
   { label: "TSB", value: "TSB" },
   { label: "Other", value: "Other" },
 ];
+
+const HEADER_FORMAT_MAPPING = {
+  "CMS NEXT TICKET NO": "CMS NEXT\n TICKET NO",
+  "TICKET RECEIVED DATE": "TICKET RECEIVED\n DATE",
+  "CMS TICKET CLOSED ON": "CMS TICKET\n CLOSED ON",
+  "ACTIVITY TOTAL DURATION FOR SPECIFIC USER": "ACTIVITY TOTAL\n DURATION FOR\n SPECIFIC\n USER",
+  "TOTAL AMOUNT FOR EACH TICKET": "TOTAL AMOUNT\n FOR EACH\n TICKET",
+};
 
 export default function TicketCommissionReportPage() {
   const navigate = useNavigate();
@@ -46,7 +54,7 @@ export default function TicketCommissionReportPage() {
     dateFrom: "",
     dateTo: "",
     servicePlannedTypes: [],
-    status: "",
+    status: "All",
   });
 
   const [usersList, setUsersList] = useState([]);
@@ -77,7 +85,7 @@ export default function TicketCommissionReportPage() {
       dateFrom: "",
       dateTo: "",
       servicePlannedTypes: [],
-      status: "",
+      status: "All",
     });
     setReportData([]);
     setError("");
@@ -94,14 +102,17 @@ export default function TicketCommissionReportPage() {
     setReportData([]);
 
     try {
-      const formatDateStart = (d) =>
-        d.includes("T") ? d : `${d}T00:00:00.000Z`;
-      const formatDateEnd = (d) => (d.includes("T") ? d : `${d}T23:59:59.999Z`);
+      const formatDateAtLocalEndOfDay = (dateValue) => {
+        if (dateValue.includes("T")) return dateValue;
+        const [year, month, day] = dateValue.split("-").map(Number);
+        return new Date(year, month - 1, day, 23, 59, 59).toISOString();
+      };
 
       const params = {
-        DateFrom: formatDateStart(filters.dateFrom),
-        DateTo: formatDateEnd(filters.dateTo),
-        Status: filters.status !== "" ? Number(filters.status) : undefined,
+        DateFrom: formatDateAtLocalEndOfDay(filters.dateFrom),
+        DateTo: formatDateAtLocalEndOfDay(filters.dateTo),
+        Status: filters.status || "All",
+        TicketType: "ServicePlanned",
         ServicePlannedTypes: filters.servicePlannedTypes.length
           ? filters.servicePlannedTypes
           : undefined,
@@ -112,6 +123,7 @@ export default function TicketCommissionReportPage() {
 
       const data = await ticketCommissionReportApi.getReport(params);
       const dataArray = Array.isArray(data) ? data :
+        data?.ticketsWithCommissionsDetails ||
         data?.items ||
         data?.data ||
         data?.result ||
@@ -180,14 +192,6 @@ export default function TicketCommissionReportPage() {
     );
   };
 
-  const headerFormatMapping = {
-    "CMS NEXT TICKET NO": "CMS NEXT\n TICKET NO",
-    "TICKET RECEIVED DATE": "TICKET RECEIVED\n DATE",
-    "CMS TICKET CLOSED ON": "CMS TICKET\n CLOSED ON",
-    "ACTIVITY TOTAL DURATION FOR SPECIFIC USER": "ACTIVITY TOTAL\n DURATION FOR\n SPECIFIC\n USER",
-    "TOTAL AMOUNT FOR EACH TICKET": "TOTAL AMOUNT\n FOR EACH\n TICKET",
-  };
-
   const columns = useMemo(() => {
     if (reportData.length === 0) return [];
     return Object.keys(reportData[0]).map((key) => {
@@ -199,7 +203,7 @@ export default function TicketCommissionReportPage() {
 
       return {
         accessorKey: key,
-        header: headerFormatMapping[defaultHeader] || defaultHeader,
+        header: HEADER_FORMAT_MAPPING[defaultHeader] || defaultHeader,
         cell: (info) => {
           const val = info.getValue();
           if (typeof val === "boolean") return val ? "Yes" : "No";

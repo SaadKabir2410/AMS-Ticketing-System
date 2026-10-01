@@ -45,7 +45,7 @@ const PermissionTree = ({
 }) => {
   const children = permissions.filter((p) => {
     if (p.parentName !== parentName) return false;
-    if (parentName !== null && !checkedPerms[p.name]) return false;
+    if (parentName !== null && !checkedPerms[parentName]) return false;
     return true;
   });
   if (children.length === 0) return null;
@@ -201,39 +201,20 @@ export default function UsersPage() {
       const userPerms = await usersApi.getPermissions(user.id);
       setPermissionsData(userPerms);
 
-      // Step 2 — get user's role
+      // Step 2 — get user's role (keep it if needed for saving)
       const userRolesObj = await usersApi.getUserRoles(user.id);
       const userRoles = userRolesObj?.items || [];
-
-      // Store role name for saving later
       const roleName = userRoles[0]?.name || null;
       setPermissionUser(prev => ({ ...prev, roleName }));
 
-      // Step 3 — fetch role permissions and use them as checked state
+      // Step 3 — fetch user permissions and use them as checked state
       const initial = {};
 
-      // First set all to false
       userPerms.groups?.forEach((g) => {
         g.permissions.forEach((p) => {
-          initial[p.name] = false;
+          initial[p.name] = p.isGranted || false;
         });
       });
-
-      // Then check what role has
-      if (roleName) {
-        try {
-          const rolePerms = await rolesApi.getPermissions("R", roleName);
-          rolePerms.groups?.forEach((g) => {
-            g.permissions.forEach((p) => {
-              if (p.isGranted) {
-                initial[p.name] = true; // ✅ show role permissions as checked
-              }
-            });
-          });
-        } catch (err) {
-          console.warn("Failed to fetch role permissions:", err);
-        }
-      }
 
       setCheckedPerms(initial);
     } catch (err) {
@@ -263,15 +244,6 @@ export default function UsersPage() {
   const handleSavePermissions = async () => {
     setLoadingPermissions(true);
     try {
-      const roleName = permissionUser?.roleName;
-
-      if (!roleName) {
-        toast("No role found for this user", "error");
-        setLoadingPermissions(false);
-        return;
-      }
-
-      // ✅ Save to ROLE, not user-level
       const payload = {
         permissions: Object.entries(checkedPerms).map(([name, isGranted]) => ({
           name,
@@ -279,8 +251,8 @@ export default function UsersPage() {
         })),
       };
 
-      await rolesApi.updatePermissions("R", roleName, payload);
-      toast(`Permissions for role "${roleName}" updated successfully`);
+      await usersApi.updatePermissions(permissionUser.id, payload);
+      toast(`Permissions updated successfully`);
       handleClosePermissions();
     } catch (err) {
       toast(`Failed to save permissions: ${err.message}`, "error");

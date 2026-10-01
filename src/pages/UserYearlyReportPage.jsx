@@ -2,7 +2,9 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { RotateCcw, ArrowLeft, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import apiClient from "../services/apiClient";
-import * as XLSX from 'xlsx';
+import { PermissionGuard } from "../component/common/PermissionGuard";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
 import {
   useReactTable,
   getCoreRowModel,
@@ -60,14 +62,77 @@ export default function UserYearlyReportPage() {
     }
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     if (reportData.length === 0) return;
     try {
-      const ws = XLSX.utils.json_to_sheet(reportData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Yearly Report");
-      XLSX.writeFile(wb, `User_Yearly_Report_${filters.year}.xlsx`);
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Yearly Report");
+
+      const headers = [
+        "USERNAME", "MONTH", "MONTH NAME",
+        "BILLED OFFICE HOURS COST", "BILLED AFTER OFFICE HOURS COST", "BILLED TOTAL AMOUNT",
+        "NON BILLED OFFICE HOURS COST", "NON BILLED AFTER OFFICE HOURS COST", "NON BILLED TOTAL AMOUNT",
+        "OFFICE HOURS COST", "AFTER OFFICE HOURS COST", "TOTAL AMOUNT",
+        "BILLED OFFICE HOURS", "BILLED AFTER OFFICE HOURS", "BILLED TOTAL HOURS",
+        "NON BILLED OFFICE HOURS", "NON BILLED AFTER OFFICE HOURS", "NON BILLED TOTAL HOURS",
+        "OFFICE HOURS", "AFTER OFFICE HOURS", "TOTAL HOURS"
+      ];
+      
+      const headerKeys = [
+        "userName", "month", "monthName",
+        "billedOfficeHoursCost", "billedAfterOfficeHoursCost", "billedTotalAmount",
+        "nonBilledOfficeHoursCost", "nonBilledAfterOfficeHoursCost", "nonBilledTotalAmount",
+        "officeHoursCost", "afterOfficeHoursCost", "totalAmount",
+        "billedOfficeHours", "billedAfterOfficeHours", "billedTotalHours",
+        "nonBilledOfficeHours", "nonBilledAfterOfficeHours", "nonBilledTotalHours",
+        "officeHours", "afterOfficeHours", "totalHours"
+      ];
+
+      const headerRow = worksheet.addRow(headers);
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFDB2777" },
+        };
+        cell.font = { color: { argb: "FFFFFFFF" }, bold: true };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      });
+      worksheet.getRow(1).height = 40;
+
+      reportData.forEach((row) => {
+        const rowData = headerKeys.map(key => {
+          const matchingKey = Object.keys(row).find(k => k.toLowerCase() === key.toLowerCase());
+          return matchingKey ? row[matchingKey] : "";
+        });
+        const excelRow = worksheet.addRow(rowData);
+        
+        // Highlight total rows
+        const isUserTotalKey = Object.keys(row).find(k => k.toLowerCase() === 'isusertotal');
+        const isGrandTotalKey = Object.keys(row).find(k => k.toLowerCase() === 'isgrandtotal');
+        if ((isUserTotalKey && row[isUserTotalKey]) || (isGrandTotalKey && row[isGrandTotalKey])) {
+          excelRow.eachCell((cell) => {
+            cell.font = { bold: true };
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFF1F5F9" }, // light gray
+            };
+          });
+        }
+      });
+
+      worksheet.columns.forEach((column) => {
+        column.width = 18;
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(
+        new Blob([buffer]),
+        `User_Yearly_Report_${filters.year}.xlsx`
+      );
     } catch (error) {
+      console.error(error);
       setFormError("Failed to export Excel file.");
     }
   };
@@ -208,12 +273,14 @@ export default function UserYearlyReportPage() {
                 </button>
               )}
               {reportData.length > 0 && (
-                <button
-                  onClick={handleExportExcel}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[11px] font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/20"
-                >
-                  Export Excel
-                </button>
+                <PermissionGuard permission="Billing.Reports.AMSTicketingUserYearlyReport.ExportReportToExcel">
+                  <button
+                    onClick={handleExportExcel}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[11px] font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/20"
+                  >
+                    Export Excel
+                  </button>
+                </PermissionGuard>
               )}
               <button
                 onClick={handleGetReport}

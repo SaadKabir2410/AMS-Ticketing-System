@@ -195,6 +195,10 @@ export default function SettingsPage() {
     workingHoursFrom: "",
     workingHoursTo: "",
     specificTicketsCommissionPercentage: "",
+    serviceDemandTicketsMaximumClosedHours: "",
+    dailyGoalMinutes: "",
+    weeklyGoalMinutes: "",
+    monthlyGoalMinutes: "",
   });
 
   // Fetch email settings on mount
@@ -240,6 +244,10 @@ export default function SettingsPage() {
           workingHoursFrom: data.workingHoursFrom ?? "",
           workingHoursTo: data.workingHoursTo ?? "",
           specificTicketsCommissionPercentage: data.specificTicketsCommissionPercentage ?? "",
+          serviceDemandTicketsMaximumClosedHours: data.serviceDemandTicketsMaximumClosedHours ?? "",
+          dailyGoalMinutes: data.dailyGoalMinutes ?? "",
+          weeklyGoalMinutes: data.weeklyGoalMinutes ?? "",
+          monthlyGoalMinutes: data.monthlyGoalMinutes ?? "",
         });
       } catch (error) {
         console.error("Failed to fetch system settings:", error);
@@ -518,6 +526,38 @@ export default function SettingsPage() {
                       type="number"
                       name="specificTicketsCommissionPercentage"
                       value={systemSettings.specificTicketsCommissionPercentage}
+                      onChange={handleSystemChange}
+                    />
+                    <InputField
+                      label="Service Demand Tickets Maximum Closed Hours"
+                      required
+                      type="number"
+                      name="serviceDemandTicketsMaximumClosedHours"
+                      value={systemSettings.serviceDemandTicketsMaximumClosedHours}
+                      onChange={handleSystemChange}
+                    />
+                    <InputField
+                      label="Daily Goal (Minutes)"
+                      required
+                      type="number"
+                      name="dailyGoalMinutes"
+                      value={systemSettings.dailyGoalMinutes}
+                      onChange={handleSystemChange}
+                    />
+                    <InputField
+                      label="Weekly Goal (Minutes)"
+                      required
+                      type="number"
+                      name="weeklyGoalMinutes"
+                      value={systemSettings.weeklyGoalMinutes}
+                      onChange={handleSystemChange}
+                    />
+                    <InputField
+                      label="Monthly Goal (Minutes)"
+                      required
+                      type="number"
+                      name="monthlyGoalMinutes"
+                      value={systemSettings.monthlyGoalMinutes}
                       onChange={handleSystemChange}
                     />
                     <div className="pt-3">

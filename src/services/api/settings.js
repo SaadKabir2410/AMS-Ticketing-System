@@ -41,6 +41,10 @@ const SettingsService = {
       baseNumberOfTicketsForAfterOfficeHours: "Billing.BaseNumberOfTicketsForAfterOfficeHours",
       jobsheetCanBeModifiedUpToDays: "Billing.EditableJobsheetDays",
       specificTicketsCommissionPercentage: "Billing.AMSTicketCommissionPercentage",
+      serviceDemandTicketsMaximumClosedHours: "Billing.ServiceDemandTicketsMaximumClosedHours",
+      dailyGoalMinutes: "Billing.DailyGoalMinutes",
+      weeklyGoalMinutes: "Billing.WeeklyGoalMinutes",
+      monthlyGoalMinutes: "Billing.MonthlyGoalMinutes",
     };
 
     const entries = await Promise.all(
@@ -63,6 +67,10 @@ const SettingsService = {
       baseNumberOfTicketsForAfterOfficeHours: "Billing.BaseNumberOfTicketsForAfterOfficeHours",
       jobsheetCanBeModifiedUpToDays: "Billing.EditableJobsheetDays",
       specificTicketsCommissionPercentage: "Billing.AMSTicketCommissionPercentage",
+      serviceDemandTicketsMaximumClosedHours: "Billing.ServiceDemandTicketsMaximumClosedHours",
+      dailyGoalMinutes: "Billing.DailyGoalMinutes",
+      weeklyGoalMinutes: "Billing.WeeklyGoalMinutes",
+      monthlyGoalMinutes: "Billing.MonthlyGoalMinutes",
     };
 
     await Promise.all(

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContextHook";
 import { useToast } from "../component/common/ToastContext";
+import { PermissionGuard } from "../component/common/PermissionGuard";
 import { ArrowLeft, ArrowLeftRight, RotateCcw, MoreVertical } from "lucide-react";
 import {
   Autocomplete,
@@ -671,13 +672,15 @@ export default function AMSTicketsReportPage() {
                 {loading ? "Loading..." : "Get Report"}
               </button>
 
-              <button
-                onClick={() => handleGetReport(true)}
-                disabled={loading}
-                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-[11px] transition-all active:scale-95 shadow-sm focus:outline-none"
-              >
-                {loading ? "Exporting..." : "Excel Report"}
-              </button>
+              <PermissionGuard permission="Billing.Reports.AMSTicketsReport.ExportReportToExcel">
+                <button
+                  onClick={() => handleGetReport(true)}
+                  disabled={loading}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-[11px] transition-all active:scale-95 shadow-sm focus:outline-none"
+                >
+                  {loading ? "Exporting..." : "Excel Report"}
+                </button>
+              </PermissionGuard>
 
               <button
                 onClick={handleCompareTicket}

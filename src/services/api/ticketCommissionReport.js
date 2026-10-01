@@ -31,7 +31,8 @@ export const ticketCommissionReportApi = {
     // Remove undefined/null/empty values
     const cleanParams = Object.fromEntries(
       Object.entries(queryParams).filter(
-        ([_, v]) => v !== undefined && v !== null && v !== "",
+        ([, value]) =>
+          value !== undefined && value !== null && value !== "",
       ),
     );
 
