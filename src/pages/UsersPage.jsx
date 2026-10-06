@@ -369,6 +369,9 @@ export default function UsersPage() {
     const [orgType, setOrgType] = useState("");
     const [sites, setSites] = useState([]);
     const [selectedSite, setSelectedSite] = useState(null);
+    const organizationTypeOptions = ORGANIZATION_TYPES.filter(
+      (organizationType) => organizationType.value > 0,
+    );
 
     useEffect(() => {
       apiClient
@@ -449,15 +452,23 @@ export default function UsersPage() {
     }, [userData?.siteId, sites]);
 
     const toggleRole = (role) => {
-      setSelectedRoles((prev) => {
-        const found = prev.find(
-          (r) =>
-            typeof r === "string" &&
-            typeof role === "string" &&
-            r.toLowerCase() === role.toLowerCase()
-        );
-        return found ? prev.filter((r) => r !== found) : [...prev, role];
-      });
+      const found = selectedRoles.find(
+        (selectedRole) =>
+          typeof selectedRole === "string" &&
+          typeof role === "string" &&
+          selectedRole.toLowerCase() === role.toLowerCase(),
+      );
+      const nextRoles = found
+        ? selectedRoles.filter((selectedRole) => selectedRole !== found)
+        : [...selectedRoles, role];
+
+      setSelectedRoles(nextRoles);
+      if (nextRoles.length > 0) {
+        setValidationErrors((currentErrors) => ({
+          ...currentErrors,
+          roles: null,
+        }));
+      }
     };
 
     if (!open) return null;
@@ -490,10 +501,13 @@ export default function UsersPage() {
       if (orgType === "1" && !selectedSite) {
         errors.siteId = "Site is required for Customer organization type";
       }
+      if (!item && selectedRoles.length === 0) {
+        errors.roles = "At least one role is required when creating a user";
+      }
 
       if (Object.keys(errors).length > 0) {
         setValidationErrors(errors);
-        setTabIndex(0);
+        setTabIndex(errors.roles && Object.keys(errors).length === 1 ? 1 : 0);
         return;
       }
 
@@ -602,7 +616,7 @@ export default function UsersPage() {
 
               {/* TAB 1: USER INFORMATION */}
               <div style={{ display: tabIndex === 0 ? "block" : "none" }}>
-                <div className="flex flex-col gap-2 mb-4">
+                <div className="flex flex-col gap-5 mb-6">
                   <div>
                     <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                       User name *
@@ -612,7 +626,7 @@ export default function UsersPage() {
                         name="userName"
                         autoComplete="new-password"
                         defaultValue={userData?.userName || ""}
-                        className={`w-full px-3 py-2.5 bg-transparent border-2 ${validationErrors.userName
+                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 ${validationErrors.userName
                           ? "border-red-500 focus:ring-red-500/20"
                           : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
@@ -635,7 +649,7 @@ export default function UsersPage() {
                       <input
                         name="name"
                         defaultValue={userData?.name || ""}
-                        className={`w-full px-3 py-2.5 bg-transparent border-2 ${validationErrors.name
+                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 ${validationErrors.name
                           ? "border-red-500 focus:ring-red-500/20"
                           : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
@@ -658,7 +672,7 @@ export default function UsersPage() {
                       <input
                         name="surname"
                         defaultValue={userData?.surname || ""}
-                        className="w-full px-3 py-2.5 bg-transparent border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
+                        className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
                       />
                       <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <X size={14} />
@@ -674,7 +688,7 @@ export default function UsersPage() {
                         name="password"
                         autoComplete="new-password"
                         type={showPassword ? "text" : "password"}
-                        className={`w-full px-3 py-2.5 bg-transparent border-2 ${validationErrors.password
+                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 ${validationErrors.password
                           ? "border-red-500 focus:ring-red-500/20"
                           : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-12 transition-all duration-200 font-medium`}
@@ -702,7 +716,7 @@ export default function UsersPage() {
                         name="email"
                         type="email"
                         defaultValue={userData?.email || ""}
-                        className="w-full px-3 py-2.5 bg-transparent border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
+                        className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
                       />
                       <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <X size={14} />
@@ -717,7 +731,7 @@ export default function UsersPage() {
                       <input
                         name="phoneNumber"
                         defaultValue={userData?.phoneNumber || ""}
-                        className={`w-full px-3 py-2.5 bg-transparent border-2 ${validationErrors.phoneNumber
+                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 ${validationErrors.phoneNumber
                           ? "border-red-500 focus:ring-red-500/20"
                           : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
@@ -733,35 +747,112 @@ export default function UsersPage() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-1 gap-5">
                     <div className="w-full">
                       <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
                         Organization Type *
                       </label>
-                      <select
-                        name="organizationType"
-                        value={orgType}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setOrgType(val);
-                          if (val !== "1") {
+                      <Autocomplete
+                        size="small"
+                        options={organizationTypeOptions}
+                        getOptionLabel={(option) => option.label}
+                        isOptionEqualToValue={(option, value) => option.value === value?.value}
+                        value={
+                          organizationTypeOptions.find(
+                            (organizationType) => String(organizationType.value) === orgType,
+                          ) || null
+                        }
+                        onChange={(event, newValue) => {
+                          const value = newValue ? String(newValue.value) : "";
+                          setOrgType(value);
+                          if (value !== "1") {
                             setSelectedSite(null);
                           }
+                          setValidationErrors((currentErrors) => ({
+                            ...currentErrors,
+                            organizationType: null,
+                          }));
                         }}
-                        className={`w-full px-3 py-2.5 bg-transparent border-2 ${validationErrors.organizationType
-                          ? "border-red-500 focus:ring-red-500/20"
-                          : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
-                          } rounded-lg outline-none focus:ring-2 text-sm transition-all duration-200 font-bold`}
-                      >
-                        <option value="" disabled className="dark:bg-slate-900 dark:text-slate-200 text-slate-800">
-                          Select an option
-                        </option>
-                        {ORGANIZATION_TYPES.map((org) => (
-                          <option key={org.value} value={org.value} className="dark:bg-slate-900 dark:text-slate-200 text-slate-800">
-                            {org.label}
-                          </option>
-                        ))}
-                      </select>
+                        slotProps={{
+                          popper: { placement: "bottom-start" },
+                          paper: {
+                            sx: {
+                              mt: 1,
+                              borderRadius: "14px",
+                              border: isDark
+                                ? "1px solid rgba(148, 163, 184, 0.2)"
+                                : "1px solid #e2e8f0",
+                              bgcolor: isDark ? "#0f172a" : "#ffffff",
+                              color: isDark ? "#e2e8f0" : "#334155",
+                              boxShadow: "0 18px 45px -18px rgba(15, 23, 42, 0.45)",
+                              overflow: "hidden",
+                            },
+                          },
+                        }}
+                        ListboxProps={{
+                          sx: {
+                            p: 0.75,
+                            "& .MuiAutocomplete-option": {
+                              minHeight: 40,
+                              borderRadius: "10px",
+                              px: 1.5,
+                              fontSize: "0.8125rem",
+                              fontWeight: 700,
+                              "&[aria-selected='true']": {
+                                bgcolor: isDark ? "rgba(148, 163, 184, 0.16)" : "#f1f5f9",
+                                color: isDark ? "#e2e8f0" : "#475569",
+                              },
+                              "&.Mui-focused": {
+                                bgcolor: isDark ? "rgba(255,255,255,0.06)" : "#f8fafc",
+                              },
+                            },
+                          },
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            placeholder="Select organization type"
+                            error={!!validationErrors.organizationType}
+                            sx={{
+                              "& .MuiOutlinedInput-root": {
+                                minHeight: "44px",
+                                borderRadius: "12px",
+                                px: "10px !important",
+                                bgcolor: isDark ? "#1e293b" : "#f1f5f9",
+                                fontSize: "0.875rem",
+                                fontWeight: 700,
+                                color: isDark ? "#f1f5f9" : "#334155",
+                                transition: "all 0.2s ease",
+                                "& fieldset": {
+                                  borderWidth: "2px",
+                                  borderColor: validationErrors.organizationType
+                                    ? "#ef4444"
+                                    : isDark ? "#64748b" : "#94a3b8",
+                                },
+                                "&:hover fieldset": {
+                                  borderColor: validationErrors.organizationType ? "#ef4444" : "#64748b",
+                                },
+                                "&.Mui-focused": {
+                                  boxShadow: validationErrors.organizationType
+                                    ? "0 0 0 4px rgba(239, 68, 68, 0.1)"
+                                    : "0 0 0 4px rgba(100, 116, 139, 0.14)",
+                                },
+                                "&.Mui-focused fieldset": {
+                                  borderWidth: "2px",
+                                  borderColor: validationErrors.organizationType ? "#ef4444" : "#64748b",
+                                },
+                              },
+                              "& .MuiInputBase-input::placeholder": {
+                                color: isDark ? "#64748b" : "#94a3b8",
+                                opacity: 1,
+                              },
+                              "& .MuiSvgIcon-root": {
+                                color: isDark ? "#94a3b8" : "#64748b",
+                              },
+                            }}
+                          />
+                        )}
+                      />
                       {validationErrors.organizationType && (
                         <p className="text-red-500 text-[9px] mt-1 ml-1">
                           {validationErrors.organizationType}
@@ -803,7 +894,7 @@ export default function UsersPage() {
                                 border: "1px solid #e2e8f0",
                                 ".dark &": {
                                   border: "1px solid rgba(255,255,255,0.1)",
-                                  backgroundColor: "slate-900",
+                                  backgroundColor: "#0f172a",
                                 },
                               },
                             },
@@ -820,6 +911,17 @@ export default function UsersPage() {
                                 borderRadius: "0.5rem",
                                 padding: "6px 12px",
                                 minHeight: "auto",
+                                color: isDark ? "#e2e8f0" : "#475569",
+                                "&[aria-selected='true']": {
+                                  backgroundColor: isDark
+                                    ? "rgba(148, 163, 184, 0.16)"
+                                    : "#f1f5f9",
+                                },
+                                "&.Mui-focused": {
+                                  backgroundColor: isDark
+                                    ? "rgba(255,255,255,0.06)"
+                                    : "#f8fafc",
+                                },
                               },
                             },
                           }}
@@ -833,7 +935,8 @@ export default function UsersPage() {
                                   fontSize: "0.875rem",
                                   padding: "0px 9px !important",
                                   minHeight: "42px",
-                                  backgroundColor: "transparent",
+                                  backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
+                                  color: isDark ? "#f1f5f9" : "#334155",
                                   transition: "all 0.2s",
                                   "& fieldset": {
                                     borderWidth: "2px",
@@ -845,8 +948,16 @@ export default function UsersPage() {
                                   },
                                   "&.Mui-focused fieldset": {
                                     borderWidth: "2px",
-                                    borderColor: validationErrors.siteId ? "#ef4444" : "#94a3b8",
+                                    borderColor: validationErrors.siteId ? "#ef4444" : "#64748b",
                                   },
+                                  "&.Mui-focused": {
+                                    boxShadow: validationErrors.siteId
+                                      ? "0 0 0 4px rgba(239, 68, 68, 0.1)"
+                                      : "0 0 0 4px rgba(100, 116, 139, 0.14)",
+                                  },
+                                },
+                                "& .MuiSvgIcon-root": {
+                                  color: isDark ? "#94a3b8" : "#64748b",
                                 },
                               }}
                             />
@@ -870,7 +981,7 @@ export default function UsersPage() {
                       type="number"
                       step="0.01"
                       defaultValue={userData?.baseRateFirstHourAfterWorkingHours || ""}
-                      className="w-full px-3 py-2.5 bg-transparent border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
+                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
                     />
                   </div>
                   <div>
@@ -882,13 +993,13 @@ export default function UsersPage() {
                       type="number"
                       step="0.01"
                       defaultValue={userData?.baseRateAfterFirstHourAfterWorkingHours || ""}
-                      className="w-full px-3 py-2.5 bg-transparent border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
+                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
                     />
                   </div>
                 </div>
 
                 {/* Checkboxes */}
-                <div className="flex flex-col gap-2 bg-transparent rounded-xl p-3 border border-slate-200 dark:border-slate-700">
+                <div className="flex flex-col gap-3 bg-transparent rounded-xl p-4 border border-slate-200 dark:border-slate-700">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -945,8 +1056,16 @@ export default function UsersPage() {
               <div style={{ display: tabIndex === 1 ? "block" : "none" }}>
                 <div className="flex flex-col gap-2 w-full p-4 py-6">
                   <p className="text-[11px] text-slate-400 font-bold mb-6 text-center uppercase tracking-wider">
-                    Assign Roles to User
+                    Assign Roles to User {!item && <span className="text-red-500">*</span>}
                   </p>
+                  {validationErrors.roles && (
+                    <div
+                      role="alert"
+                      className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-[11px] font-bold text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400"
+                    >
+                      {validationErrors.roles}
+                    </div>
+                  )}
                   {availableRoles
                     .slice((rolesPage - 1) * rolesPerPage, rolesPage * rolesPerPage)
                     .map((roleObj) => {

@@ -18,7 +18,6 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Edit2, Power, PowerOff, Loader2, Plus, Code2, Search, MoreVertical, X, ChevronLeft, ChevronsLeft, ChevronsRight, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContextHook";
 import { ActionsMenu } from "../component/common/ResourcePage";
 
 import codesApi from "../services/api/Code";
@@ -59,7 +58,7 @@ function SkeletonRow() {
 }
 
 // ── Sortable row ──────────────────────────────────────────────────
-function SortableRow({ row, index, onEdit, onDisable, onEnable, isAdmin, searchTerm }) {
+function SortableRow({ row, index, onEdit, onDisable, onEnable, onAuditLog, searchTerm }) {
   const navigate = useNavigate();
   const {
     attributes,
@@ -104,7 +103,7 @@ function SortableRow({ row, index, onEdit, onDisable, onEnable, isAdmin, searchT
       <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">
         {!row.isSystemIndicator && (
           <ActionsMenu
-            onAuditLog={isAdmin ? () => navigate(`/audit-logs?primaryKey=${row.id}&entityName=Lookup`) : null}
+            onAuditLog={onAuditLog}
             onEdit={() => onEdit(row)}
             onDisable={row.isActive ? () => onDisable(row) : null}
             onEnable={!row.isActive ? () => onEnable(row) : null}
@@ -117,9 +116,10 @@ function SortableRow({ row, index, onEdit, onDisable, onEnable, isAdmin, searchT
 
 // ── Main Page ─────────────────────────────────────────────────────
 export default function CodePage() {
-  const { user } = useAuth();
-  const isAdmin = user?.role?.toLowerCase().includes("admin");
   const canCreate = usePermission("Billing.Lookups.Create");
+  const canEdit = usePermission("Billing.Lookups.Edit");
+  const canDelete = usePermission("Billing.Lookups.Delete");
+  const canViewAuditLog = usePermission("Billing.Lookups.ViewAuditLog");
   const { toast } = useToast();
   const { data, loading: resourceLoading, refetch } = useResource(codesApi, { perPage: 1000 });
 
@@ -375,7 +375,15 @@ export default function CodePage() {
             </div>
           ) : (
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar">
-              <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px]">
+              <table className="w-full table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
+                <colgroup>
+                  <col style={{ width: '16.66%' }} />
+                  <col style={{ width: '16.66%' }} />
+                  <col style={{ width: '16.66%' }} />
+                  <col style={{ width: '16.66%' }} />
+                  <col style={{ width: '16.66%' }} />
+                  <col style={{ width: '16.66%' }} />
+                </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
                     <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">Lookup Code</th>
@@ -403,20 +411,20 @@ export default function CodePage() {
                             row={row}
                             index={idx}
                             searchTerm={searchTerm}
-                            onEdit={(r) => {
+                            onEdit={canEdit ? (r) => {
                               setActionItem(r);
                               setActionType("edit");
                               setModalOpen(true);
-                            }}
-                            onDisable={(r) => {
+                            } : undefined}
+                            onDisable={canDelete ? (r) => {
                               setActionItem(r);
                               setActionType("disable");
-                            }}
-                            onEnable={(r) => {
+                            } : undefined}
+                            onEnable={canDelete ? (r) => {
                               setActionItem(r);
                               setActionType("enable");
-                            }}
-                            isAdmin={isAdmin}
+                            } : undefined}
+                            onAuditLog={canViewAuditLog ? (r) => navigate(`/audit-logs?primaryKey=${r.id}&entityName=Lookup`) : undefined}
                           />
                         ))}
                       </AnimatePresence>

@@ -82,7 +82,10 @@ function SkeletonRow({ delay = 0 }) {
 export default function CodeDetailsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const canCreate = usePermission("Billing.Lookups.Create");
+  const canCreate = usePermission("Billing.LookupDetails.Create");
+  const canEdit = usePermission("Billing.LookupDetails.Edit");
+  const canDelete = usePermission("Billing.LookupDetails.Delete");
+  const canViewAuditLog = usePermission("Billing.LookupDetails.ViewAuditLog");
 
   const [parentCodes, setParentCodes] = useState([]);
   const [selectedParent, setSelectedParent] = useState(null);
@@ -131,7 +134,7 @@ export default function CodeDetailsPage() {
     setLoadingDetails(true);
     try {
       const data = await codeDetailsApi.getAll({
-        lookupId: selectedParent.id,
+        lookupCode: selectedParent.lookupCode,
       });
       setCodeDetails(data);
     } catch (err) {
@@ -416,20 +419,20 @@ export default function CodeDetailsPage() {
           <div className="flex justify-end items-center h-full">
             <ActionsMenu
               onEdit={
-                row.isActive && !row.isDeleted
+                canEdit && row.isActive && !row.isDeleted
                   ? () => {
                     setActionItem(row);
                     setActionType("edit");
                   }
                   : undefined
               }
-              onAuditLog={() =>
+              onAuditLog={canViewAuditLog ? () =>
                 navigate(
                   `/audit-logs?primaryKey=${row.id}&entityName=${codeDetailsApi.entityName}`,
                 )
-              }
+              : undefined}
               onDisable={
-                row.isActive && !row.isDeleted
+                canDelete && row.isActive && !row.isDeleted
                   ? () => {
                     setActionItem(row);
                     setActionType("disable");
@@ -437,7 +440,7 @@ export default function CodeDetailsPage() {
                   : undefined
               }
               onEnable={
-                !row.isActive || row.isDeleted
+                canDelete && (!row.isActive || row.isDeleted)
                   ? () => {
                     setActionItem(row);
                     setActionType("enable");

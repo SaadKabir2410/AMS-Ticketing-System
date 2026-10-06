@@ -6,6 +6,7 @@ import { ActionsMenu } from "../component/common/ResourcePage";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Search, X } from "lucide-react";
 import SiteModal from "../component/common/SiteModal";
 import SiteDetailModal, { SiteDetailContent } from "../component/common/SiteDetailModal";
+import { usePermission } from "../hooks/usePermission";
 
 // Highlighter component for Search term
 const HighlightText = ({ text, searchTerm }) => {
@@ -28,6 +29,9 @@ const HighlightText = ({ text, searchTerm }) => {
 export default function SitesPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const canCreate = usePermission("Billing.Sites.Create");
+  const canEdit = usePermission("Billing.Sites.Edit");
+  const canViewAuditLog = usePermission("Billing.Sites.ViewAuditLog");
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -189,13 +193,13 @@ export default function SitesPage() {
                 )}
               </div>
 
-              <button
+              {canCreate && <button
                 onClick={handleNew}
                 className="w-full sm:w-auto inline-flex justify-center items-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
               >
                 <Plus size={16} className="mr-2" strokeWidth={3} />
                 Create Site
-              </button>
+              </button>}
             </div>
           </div>
         </div>
@@ -212,10 +216,17 @@ export default function SitesPage() {
             </div>
           ) : (
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar text-slate-900 dark:text-white">
-              <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px]">
+              <table className="w-full table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
+                <colgroup>
+                  <col style={{width: '20%'}} />
+                  <col style={{width: '20%'}} />
+                  <col style={{width: '20%'}} />
+                  <col style={{width: '20%'}} />
+                  <col style={{width: '20%'}} />
+                </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">
-                    <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">NAME</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">NAME</th>
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">OCN</th>
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">COUNTRY</th>
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">ADDRESS</th>
@@ -230,7 +241,7 @@ export default function SitesPage() {
                         key={row.id || idx}
                         className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
                       >
-                        <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[12px]">
+                        <td className="px-5 rounded-l-2xl h-[60px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[12px]">
                           <HighlightText text={row.name} searchTerm={debouncedSearch} />
                         </td>
                         <td className="px-5 h-[60px] text-left transition-colors text-slate-900 dark:text-white">
@@ -246,8 +257,9 @@ export default function SitesPage() {
                         </td>
                         <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors text-slate-900 dark:text-white">
                           <ActionsMenu
-                            onEdit={() => handleEdit(row)}
+                            onEdit={canEdit ? () => handleEdit(row) : undefined}
                             onDetail={() => handleDetail(row)}
+                            onAuditLog={canViewAuditLog ? () => navigate(`/audit-logs?primaryKey=${row.id}&entityName=Site`) : undefined}
                           />
                         </td>
                       </tr>

@@ -22,6 +22,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      "/ams-ticket-detail-hub": {
+        target: "https://sureze.ddns.net:3333",
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
       "/get-list-by-lookup-code": {
         target: "https://sureze.ddns.net:3333",
         changeOrigin: true,
@@ -38,28 +44,41 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Core React runtime — changes rarely, gets cached aggressively
-          "vendor-react": ["react", "react-dom", "react-router-dom"],
-          // MUI — very large, worth its own cache bucket
-          "vendor-mui": [
-            "@mui/material",
-            "@mui/icons-material",
-            "@mui/x-data-grid",
-            "@mui/x-tree-view",
-            "@emotion/react",
-            "@emotion/styled",
-          ],
-          // Charts — only loaded on pages that use them
-          "vendor-charts": ["recharts"],
-          // Utility libraries
-          "vendor-utils": ["axios", "qs", "clsx", "tailwind-merge", "framer-motion"],
-          // Drag-and-drop
-          "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
-          // Excel/export — only needed for export actions
-          "vendor-excel": ["exceljs", "file-saver", "xlsx"],
-          // Date pickers
-          "vendor-dates": ["flatpickr", "react-flatpickr"],
+        manualChunks(id) {
+          const normalizedId = id.replaceAll("\\", "/");
+          const chunkGroups = {
+            // Core React runtime — changes rarely, gets cached aggressively
+            "vendor-react": ["react", "react-dom", "react-router-dom"],
+            // MUI — very large, worth its own cache bucket
+            "vendor-mui": [
+              "@mui/material",
+              "@mui/icons-material",
+              "@mui/x-data-grid",
+              "@mui/x-tree-view",
+              "@emotion/react",
+              "@emotion/styled",
+            ],
+            // Charts — only loaded on pages that use them
+            "vendor-charts": ["recharts"],
+            // Utility libraries
+            "vendor-utils": ["axios", "qs", "clsx", "tailwind-merge", "framer-motion"],
+            // Drag-and-drop
+            "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
+            // Excel/export — only needed for export actions
+            "vendor-excel": ["exceljs", "file-saver", "xlsx"],
+            // Date pickers
+            "vendor-dates": ["flatpickr", "react-flatpickr"],
+          };
+
+          for (const [chunkName, packages] of Object.entries(chunkGroups)) {
+            if (packages.some((packageName) =>
+              normalizedId.includes(`/node_modules/${packageName}/`),
+            )) {
+              return chunkName;
+            }
+          }
+
+          return undefined;
         },
       },
     },

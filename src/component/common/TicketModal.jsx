@@ -24,7 +24,10 @@ import { useAuth } from "../../context/AuthContextHook";
 
 import { usersApi } from "../../services/api/users";
 import { sitesApi } from "../../services/api/sites";
-import { amsTicketApi } from "../../services/api/amsTicketApi";
+import {
+  amsTicketApi,
+  TICKET_INCOMING_CHANNEL_OPTIONS,
+} from "../../services/api/amsTicketApi";
 import codeDetailsApi from "../../services/api/CodeDetails";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.css";
@@ -69,6 +72,29 @@ const isEqual = (v1, v2) => {
   if (v1 == null || v2 == null) return v1 === v2;
   return String(v1).toLowerCase().trim() === String(v2).toLowerCase().trim();
 };
+
+function getActivityDurationMinutes(activity) {
+  const storedMinutes = Number(activity?.durationMinutes);
+  if (Number.isFinite(storedMinutes) && storedMinutes > 0) {
+    return storedMinutes;
+  }
+
+  const storedHours = Number(activity?.durationHours);
+  if (Number.isFinite(storedHours) && storedHours > 0) {
+    return storedHours * 60;
+  }
+
+  const start = new Date(activity?.startDate);
+  const end = new Date(activity?.endDate);
+  const duration = end.getTime() - start.getTime();
+
+  return Number.isFinite(duration) && duration > 0
+    ? duration / (1000 * 60)
+    : 0;
+}
+
+const isEmailIncomingChannel = (value) =>
+  String(value).trim().toLowerCase() === "email" || Number(value) === 3;
 
 function Combobox({
   value,
@@ -307,7 +333,7 @@ const EMPTY = {
   issueDescription: "",
   possibleRootCause: "",
   notes: "",
-  totalDuration: "",
+  totalDuration: "0.00",
   pre: false,
   ticketResolutionVerifiedBy: "",
   ticketResolutionVerifiedOn: "",
@@ -342,6 +368,7 @@ export default function TicketModal({
   ticket = null,
   submitting = false,
   viewMode = false,
+  canCloseTicket = false,
 }) {
   const onSubmit = onSave || onSubmitProp;
   const isEdit = !!ticket;
@@ -690,10 +717,9 @@ export default function TicketModal({
           .filter(Boolean)
           .sort((a, b) => a.localeCompare(b));
 
-        const incomingChannels = (lookupsRes["TicketIncomingChannel"] || [])
-          .map((item) => item.description || item.newCode)
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b));
+        const incomingChannels = TICKET_INCOMING_CHANNEL_OPTIONS.map(
+          ({ label }) => label,
+        );
 
         const itsUsersArr = Array.isArray(itsUsersRes)
           ? itsUsersRes
@@ -780,15 +806,7 @@ export default function TicketModal({
 
               ].sort((a, b) => a.localeCompare(b)),
           incomingChannels:
-            incomingChannels.length > 0
-              ? incomingChannels
-              : [
-                "Phone Call",
-                "Email",
-                "Whatsapp/viber",
-                "Teams"].sort((a, b) =>
-                  a.localeCompare(b)
-                ),
+            incomingChannels,
         }));
       })
       .catch((err) => {
@@ -868,16 +886,10 @@ export default function TicketModal({
   // ── Auto-compute total duration ────────────────────────────────────────────
   useEffect(() => {
     const activities = form.activities || [];
-    if (activities.length === 0) {
-      // Avoid unnecessary updates if already empty/zero
-      setForm((prev) => (prev.totalDuration !== "0.00" && prev.totalDuration !== "" ? { ...prev, totalDuration: "0.00" } : prev));
-      return;
-    }
-
-    let totalMinutes = 0;
-    for (const act of activities) {
-      totalMinutes += parseFloat(act.durationMinutes) || 0;
-    }
+    const totalMinutes = activities.reduce(
+      (total, activity) => total + getActivityDurationMinutes(activity),
+      0,
+    );
 
     const totalHours = totalMinutes / 60;
     const computedDuration = totalHours > 0 ? totalHours.toFixed(2) : "0.00";
@@ -1078,9 +1090,7 @@ export default function TicketModal({
     if (!form.ticketIncomingChannel) {
       newErrors.ticketIncomingChannel = "Channel is required";
     } else if (
-      (String(form.ticketIncomingChannel).toLowerCase().includes("email") ||
-        form.ticketIncomingChannel === 2 ||
-        form.ticketIncomingChannel === "2") &&
+      isEmailIncomingChannel(form.ticketIncomingChannel) &&
       !form.incomingChannelEmail
     ) {
       newErrors.incomingChannelEmail = "Email Address is required";
@@ -1190,7 +1200,7 @@ export default function TicketModal({
                 </div>
 
                 <div className="flex px-6 gap-8">
-                  {["Ticket", "Activities", "Ticket Verification"].map(
+                  {["Ticket", "Activities", ...(viewMode || canCloseTicket ? ["Ticket Verification"] : [])].map(
                     (tab) => (
                       <button
                         key={tab}
@@ -1583,12 +1593,8 @@ export default function TicketModal({
                               error={errors.ticketForwardedBy}
                             />
                           </Field>
-                          {console.log("channel at render:", form.ticketIncomingChannel, typeof form.ticketIncomingChannel)}
-
                           {form.ticketIncomingChannel &&
-                            (String(form.ticketIncomingChannel).toLowerCase().includes("email") ||
-                              form.ticketIncomingChannel === 2 ||
-                              form.ticketIncomingChannel === "2") && (
+                            isEmailIncomingChannel(form.ticketIncomingChannel) && (
 
                               <div className="animate-in fade-in zoom-in duration-200">
                                 <Field
@@ -1875,7 +1881,7 @@ export default function TicketModal({
                                           : "—"}
                                       </td>
                                       <td className="px-6 py-4 text-[11px] font-bold text-slate-900 dark:text-white text-center">
-                                        {act.durationMinutes || "0"}m
+                                        {Math.round(getActivityDurationMinutes(act))}m
                                       </td>
                                       <td className="px-6 py-4 text-[11px] font-medium text-slate-700 dark:text-slate-300">
                                         {act.workDoneCode || "—"}

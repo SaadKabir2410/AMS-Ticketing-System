@@ -86,11 +86,26 @@ function Layout({ collapsed, setCollapsed }) {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Dashboard / Home */}
-              <Route path="/" element={<Dashboard />} />
+              <Route
+                path="/"
+                element={
+                  <PermissionGuard permission="Billing.Dashboards">
+                    <Dashboard />
+                  </PermissionGuard>
+                }
+              />
 
               {/* Main Menu */}
               <Route
                 path="/ams-tickets"
+                element={
+                  <PermissionGuard permission="Billing.AMSTickets">
+                    <AMSTicketsPage />
+                  </PermissionGuard>
+                }
+              />
+              <Route
+                path="/ams-tickets/:ticketNumber"
                 element={
                   <PermissionGuard permission="Billing.AMSTickets">
                     <AMSTicketsPage />
@@ -194,7 +209,7 @@ function Layout({ collapsed, setCollapsed }) {
               <Route
                 path="/codes"
                 element={
-                  <PermissionGuard permission="Billing.Lookups.Create">
+                  <PermissionGuard permission="Billing.Lookups">
                     <CodePage />
                   </PermissionGuard>
                 }
@@ -202,7 +217,7 @@ function Layout({ collapsed, setCollapsed }) {
               <Route
                 path="/code-details"
                 element={
-                  <PermissionGuard permission="Billing.Lookups.Create">
+                  <PermissionGuard permission="Billing.LookupDetails">
                     <CodeDetailsPage />
                   </PermissionGuard>
                 }
@@ -210,7 +225,7 @@ function Layout({ collapsed, setCollapsed }) {
               <Route
                 path="/task-category-projects"
                 element={
-                  <PermissionGuard permission="Billing.TaskCategoryProjects.Create">
+                  <PermissionGuard permission="Billing.TaskCategoryProjects">
                     <TaskCategoryProjectsPage />
                   </PermissionGuard>
                 }
@@ -236,7 +251,7 @@ function Layout({ collapsed, setCollapsed }) {
               <Route
                 path="/settings"
                 element={
-                  <PermissionGuard permission={["SettingManagement.Emailing", "AbpSettingManagement.Emailing"]}>
+                  <PermissionGuard permission={["SettingManagement.Emailing", "AbpSettingManagement.Emailing", "SettingManagement.Settings.SystemSettings"]}>
                     <SettingsPage />
                   </PermissionGuard>
                 }
@@ -244,7 +259,14 @@ function Layout({ collapsed, setCollapsed }) {
 
               {/* Common / Self-Service */}
               <Route path="/my-account" element={<MyAccountPage />} />
-              <Route path="/audit-logs" element={<AuditLogsPage />} />
+              <Route
+                path="/audit-logs"
+                element={
+                  <PermissionGuard permission="Billing.AuditLogs">
+                    <AuditLogsPage />
+                  </PermissionGuard>
+                }
+              />
 
               {/* Catch-all */}
               <Route path="*" element={<Navigate to="/" replace />} />

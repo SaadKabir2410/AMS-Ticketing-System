@@ -14,6 +14,8 @@ export default function TaskCategoryProjectsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const canCreate = usePermission("Billing.TaskCategoryProjects.Create");
+  const canEdit = usePermission("Billing.TaskCategoryProjects.Edit");
+  const canDelete = usePermission("Billing.TaskCategoryProjects.Delete");
 
   const [projects, setProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
@@ -200,10 +202,14 @@ export default function TaskCategoryProjectsPage() {
             </div>
           ) : (
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar">
-              <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px]">
+              <table className="w-full table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
+                <colgroup>
+                  <col style={{ width: '80%' }} />
+                  <col style={{ width: '20%' }} />
+                </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
-                    <th className="min-w-[250px] px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">Project Name</th>
+                    <th className="px-5 pl-10 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">Project Name</th>
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Actions</th>
                   </tr>
                 </thead>
@@ -215,18 +221,18 @@ export default function TaskCategoryProjectsPage() {
                         key={row.projectId || idx}
                         className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
                       >
-                        <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
+                        <td className="px-5 pl-10 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
                           <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200">
                             {row.projectDescription || row.description || "—"}
                           </div>
                         </td>
                         <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">
                           <ActionsMenu
-                            onEdit={() => handleEdit(row)}
-                            onDelete={() => {
+                            onEdit={canEdit ? () => handleEdit(row) : undefined}
+                            onDelete={canDelete ? () => {
                               setActionItem(row);
                               setActionType("delete");
-                            }}
+                            } : undefined}
                           />
                         </td>
                       </tr>

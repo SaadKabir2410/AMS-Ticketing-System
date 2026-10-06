@@ -48,7 +48,7 @@ const columns = [
   cellClassName: 'text-[11px] text-slate-600 text-center flex items-center justify-center',
 }));
 
-export default function UnclosedTicketsModal({ open, onClose }) {
+export default function UnclosedTicketsModal({ open, onClose, onTicketSelect }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -114,6 +114,7 @@ export default function UnclosedTicketsModal({ open, onClose }) {
             hideFooter={true} /* We use our custom pagination */
             disableRowSelectionOnClick
             disableColumnMenu
+            onRowDoubleClick={(params) => onTicketSelect?.(params.row)}
             autoHeight={true}
             getRowHeight={() => 'auto'}
             getEstimatedRowHeight={() => 45}

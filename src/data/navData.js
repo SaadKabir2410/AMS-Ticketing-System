@@ -6,14 +6,14 @@ import {
   Database,
   Shield,
   Settings,
+  Activity,
 } from "lucide-react";
 
 export const NAV_GROUPS = [
   {
     title: "Main Menu",
     links: [
-      // Dashboard — no permission required, visible to all authenticated users
-      { id: "main-dashboard", name: "Dashboard", href: "/", icon: Home },
+      { id: "main-dashboard", name: "Dashboard", href: "/", icon: Home, permission: "Billing.Dashboards" },
       {
         id: "main-tickets",
         name: "AMS Tickets",
@@ -162,6 +162,13 @@ export const NAV_GROUPS = [
         href: "/settings",
         //  Support both permission key variants
         permission: ["SettingManagement.Emailing", "AbpSettingManagement.Emailing"],
+      },
+      {
+        id: "set-audit-logs",
+        name: "Audit Logs",
+        icon: Activity,
+        href: "/audit-logs",
+        permission: "Billing.AuditLogs",
       },
     ],
   },

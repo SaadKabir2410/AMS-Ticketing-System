@@ -672,7 +672,7 @@ export default function AMSTicketsReportPage() {
                 {loading ? "Loading..." : "Get Report"}
               </button>
 
-              <PermissionGuard permission="Billing.Reports.AMSTicketsReport.ExportReportToExcel">
+              <PermissionGuard permission="Billing.AMSTickets.ExportReportToExcel">
                 <button
                   onClick={() => handleGetReport(true)}
                   disabled={loading}

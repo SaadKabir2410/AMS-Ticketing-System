@@ -85,11 +85,15 @@ const ticketTypeMap = {
 };
 
 const ticketIncomingChannelMap = {
-    "Phone Call": 1,
-    "Email": 2,
-    "Whatsapp/viber": 3,
+    "Whatsapp/Viber/Zalo": 1,
+    "Phone Call": 2,
+    "Email": 3,
     "Teams": 4,
 };
+
+export const TICKET_INCOMING_CHANNEL_OPTIONS = Object.entries(ticketIncomingChannelMap)
+    .sort(([, leftValue], [, rightValue]) => leftValue - rightValue)
+    .map(([label, value]) => ({ label, value }));
 
 const servicePlannedTypeMap = {
     "Report": 1,
@@ -487,10 +491,10 @@ export const amsTicketApi = {
             });
     },
 
-    update: (id, data) => {
+    update: (id, data, { setNewSettings = false } = {}) => {
         const payload = buildTicketPayload(data);
         console.log("AMS update payload:", JSON.stringify(payload, null, 2));
-        return apiClient.put(`${BASE}/${id}`, payload)
+        return apiClient.put(`${BASE}/${id}`, payload, { params: { setNewSettings } })
             .then((r) => r.data)
             .catch((error) => {
                 console.error("AMS update error:", JSON.stringify(error.response?.data, null, 2));
@@ -563,8 +567,8 @@ export const amsTicketApi = {
             });
     },
 
-    isAnyOpen: (data) =>
-        apiClient.post(`${BASE}/is-any-tickets-open`, data).then((r) => r.data),
+    isAnyOpen: () =>
+        apiClient.post(`${BASE}/is-any-tickets-open`).then((r) => r.data),
 
     getIdByTicketNumber: (params) =>
         apiClient.get(`${BASE}/id-by-ticket-number`, { params }).then((r) => r.data),
@@ -582,10 +586,14 @@ export const amsTicketApi = {
         apiClient.post("/api/app/AMSTicket/CompareTickets", data).then((r) => r.data),
 
     isSettingsSameAfterReOpening: (data) =>
-        apiClient.post(`${BASE}/is-settings-same-after-re-opening-ticket`, data).then((r) => r.data),
+        apiClient.post(`${BASE}/is-settings-same-after-re-opening-ticket`, buildTicketPayload(data)).then((r) => r.data),
 
-    isActivityDuringWorkingHours: (data) =>
-        apiClient.post(`${BASE}/is-activity-during-working-hours`, data).then((r) => r.data),
+    isActivityDuringWorkingHours: ({ startDate, endDate, startTimeSpan, endTimeSpan, performedByUserIds = [] }) =>
+        apiClient.post(
+            `${BASE}/is-activity-during-working-hours`,
+            performedByUserIds,
+            { params: { startDate, endDate, startTimeSpan, endTimeSpan } },
+        ).then((r) => r.data),
 
     // ── FIX: uploadViaPDF ─────────────────────────────────────────────────────
     // Swagger contract for POST /api/app/a-mSTicket/ticket-via-pDF:

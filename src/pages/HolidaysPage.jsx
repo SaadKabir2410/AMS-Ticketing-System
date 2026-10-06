@@ -105,9 +105,8 @@ export default function HolidaysPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const canEdit = usePermission("Billing.Holidays.Edit");
-  const canDelete = usePermission("Billing.Holidays.Delete");
-  const canViewAuditLog = usePermission("Billing.Holidays.ViewAuditLog");
+  const canDisable = usePermission("Billing.Disable");
+  const canEnable = usePermission("Billing.Enable");
 
   const [filters, setFilters] = useState({
     name: "",
@@ -420,12 +419,8 @@ export default function HolidaysPage() {
                         </td>
                         <td className="w-[120px] px-5 rounded-r-2xl h-[60px] text-center transition-colors">
                           <ActionsMenu
-                            onAuditLog={canViewAuditLog ? () =>
-                              navigate(`/audit-logs?primaryKey=${row.id}&entityName=Holiday`)
-                              : undefined
-                            }
-                            onDisable={!row.isDeleted ? () => handleDisable(row) : undefined}
-                            onEnable={row.isDeleted ? () => handleEnable(row) : undefined}
+                            onDisable={canDisable && !row.isDeleted ? () => handleDisable(row) : undefined}
+                            onEnable={canEnable && row.isDeleted ? () => handleEnable(row) : undefined}
                           />
                         </td>
                       </tr>

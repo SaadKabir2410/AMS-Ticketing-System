@@ -1,10 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { Check, AlertCircle, X } from "lucide-react";
 import { jobsheetsApi } from "../../services/api/jobsheets";
+import { ActionsMenu } from "./ResourcePage";
 
 import { usersApi } from "../../services/api/users";
 import codeDetailsApi from "../../services/api/CodeDetails";
 import { taskCategoryProjectsApi } from "../../services/api/taskCategoryProjects";
+import { useAuth } from "../../context/AuthContextHook";
+import {
+  JOBSHEET_SIGNALR_EVENTS,
+  normalizeTicketDetailsUpdate,
+  processTicketDetailsUpdate,
+  subscribeToJobsheetEvent,
+} from "../../services/jobsheetSignalR";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.css";
 import "flatpickr/dist/themes/dark.css";
@@ -43,15 +51,131 @@ const emptyDetail = {
   jobsheetDetailUserIds: [],
 };
 
+const TIME_OVERLAP_MESSAGE =
+  "This time range overlaps with an existing jobsheet record. Please select a different start and end time.";
+
 // ─── Helpers ──────────────────────────────────────────────────────
-// HH:mm → 100-nanosecond ticks (TimeSpan format expected by API)
-function timeToTicks(timeStr) {
-  if (!timeStr) return 0;
-  const [h, m] = timeStr.split(":").map(Number);
-  return (h * 3600 + m * 60) * 10_000_000;
+function dateToTimeString(value) {
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) return "";
+  return `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
 }
 
-function buildPayload(date, attendanceStatus, details, concurrencyStamp) {
+function timeTo12Hour(timeStr) {
+  if (!timeStr) return "";
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return timeStr;
+  const period = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  return `${String(displayHours).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${period}`;
+}
+
+function timeToMinutes(timeStr) {
+  if (!timeStr) return null;
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+  return (hours * 60) + minutes;
+}
+
+function hasTimeRangeOverlap(candidate, records, excludedIndex = null) {
+  const candidateStart = timeToMinutes(candidate.startTimeDisplay);
+  const candidateEnd = timeToMinutes(candidate.endTimeDisplay);
+
+  if (candidateStart === null || candidateEnd === null || candidateStart >= candidateEnd) {
+    return false;
+  }
+
+  return records.some((record, index) => {
+    if (index === excludedIndex) return false;
+    if (candidate.id && record.id === candidate.id) return false;
+    const recordStart = timeToMinutes(record.startTimeDisplay);
+    const recordEnd = timeToMinutes(record.endTimeDisplay);
+    if (recordStart === null || recordEnd === null) return false;
+
+    // End-to-start boundaries are allowed; intersecting ranges are not.
+    return candidateStart < recordEnd && candidateEnd > recordStart;
+  });
+}
+
+function dateToLocalDateString(value) {
+  if (!value) return "";
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+  return String(value).split("T")[0];
+}
+
+function formatDisplayDate(value) {
+  const [year, month, day] = dateToLocalDateString(value).split("-");
+  return year && month && day ? `${day}/${month}/${year}` : "";
+}
+
+function mapJobsheetDetails(items = []) {
+  return items.map((item) => ({
+    ...item,
+    startTimeDisplay: item.startTime?.substring(0, 5) || "",
+    endTimeDisplay: item.endTime?.substring(0, 5) || "",
+    _taskCategoryName: item.taskCategoryName,
+    _subTaskCategoryName: item.subTaskCategoryName,
+    _projectName: item.projectName,
+    _statusName: item.statusName,
+  }));
+}
+
+function getTicketDetailItems(response) {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.items)) return response.items;
+  if (Array.isArray(response?.jobsheetDetails)) return response.jobsheetDetails;
+  return [];
+}
+
+function selectedDateParameter(selectedDate) {
+  // AMS activity timestamps are saved without a timezone suffix. Sending Z
+  // converts the value to UTC on the server and can move the lookup outside
+  // the intended local activity date.
+  return `${selectedDate}T00:00:00`;
+}
+
+// The overlap endpoint uses the same JobsheetDetailDto as create/update.
+// Although Swagger renders TimeSpan as an object, the ASP.NET JSON converter
+// accepts it in the HH:mm:ss string format used by the working save endpoint.
+function buildOverlapPayload(details) {
+  return details.map((d) => {
+    const overlapDetail = {
+      taskCategoryId: d.taskCategoryId,
+      projectId: d.projectId,
+      startTime: d.startTimeDisplay ? `${d.startTimeDisplay}:00` : "00:00:00",
+      endTime: d.endTimeDisplay ? `${d.endTimeDisplay}:00` : "00:00:00",
+      statusId: d.statusId,
+      remarks: d.remarks,
+      amsTicketDetailId: d.amsTicketDetailId || null,
+      workingHoursFlag: d.workingHoursFlag ?? 0,
+      taskCategoryName: d.taskCategoryName || d._taskCategoryName || null,
+      subTaskCategoryName: d.subTaskCategoryName || d._subTaskCategoryName || null,
+      statusName: d.statusName || d._statusName || null,
+      cmsNextTicketNo: d.cmsNextTicketNo || null,
+      concurrencyStamp: d.concurrencyStamp || null,
+      projectName: d.projectName || d._projectName || null,
+      hasSubTaskCategory: d.hasSubTaskCategory ?? Boolean(d.subTaskCategoryId),
+      isCollaboratorsRequired: d.isCollaboratorsRequired ?? false,
+      jobsheetDetailUserIds: d.jobsheetDetailUserIds || [],
+      jobsheetDetailUsers: d.jobsheetDetailUsers || [],
+    };
+
+    if (d.subTaskCategoryId) overlapDetail.subTaskCategoryId = d.subTaskCategoryId;
+
+    // Existing record identifiers let the backend exclude the same detail
+    // while checking an update. New records do not have these values yet.
+    if (d.id) overlapDetail.id = d.id;
+    if (d.jobsheetId) overlapDetail.jobsheetId = d.jobsheetId;
+
+    return overlapDetail;
+  });
+}
+
+function buildPayload(date, attendanceStatus, details, jobsheet) {
   const payload = {
     date: date ? new Date(date).toISOString() : null,
     attendanceStatus: Number(attendanceStatus),
@@ -67,6 +191,19 @@ function buildPayload(date, attendanceStatus, details, concurrencyStamp) {
       };
       if (d.subTaskCategoryId) detail.subTaskCategoryId = d.subTaskCategoryId;
       if (d.amsTicketDetailId) detail.amsTicketDetailId = d.amsTicketDetailId;
+
+      // Child identifiers are essential on update. Without them the backend
+      // cannot match an edited row or determine which existing row was removed.
+      if (d.id) detail.id = d.id;
+      if (d.jobsheetId || jobsheet?.id) {
+        detail.jobsheetId = d.jobsheetId || jobsheet.id;
+      }
+      if (d.concurrencyStamp) detail.concurrencyStamp = d.concurrencyStamp;
+      if (d.workingHoursFlag !== undefined && d.workingHoursFlag !== null) {
+        detail.workingHoursFlag = d.workingHoursFlag;
+      }
+      if (d.id) detail.isDeleted = Boolean(d.isDeleted);
+
       return detail;
     }),
   };
@@ -75,8 +212,9 @@ function buildPayload(date, attendanceStatus, details, concurrencyStamp) {
   // against the DB value. Omitting it entirely (not just sending null) is
   // treated as a stale/mismatched entity and throws
   // SA:ConcurrencyErrorMessage on every update, not just real conflicts.
-  if (concurrencyStamp) {
-    payload.concurrencyStamp = concurrencyStamp;
+  if (jobsheet?.id) payload.id = jobsheet.id;
+  if (jobsheet?.concurrencyStamp) {
+    payload.concurrencyStamp = jobsheet.concurrencyStamp;
   }
 
   return payload;
@@ -233,6 +371,7 @@ function CollaboratorPicker({ users, selected, onChange, loading, disabled = fal
 
 // ─── Main component ───────────────────────────────────────────────
 export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly = false, jobsheet = null }) {
+  const { user } = useAuth();
   // ── Dark mode detection ──
   const isDark = document.documentElement.classList.contains("dark");
   const styles = getStyles(isDark);
@@ -242,11 +381,13 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
   const [attendanceStatus, setAttendanceStatus] = useState("");
   const [detail, setDetail] = useState(emptyDetail);
   const [details, setDetails] = useState([]);
+  const [deletedDetails, setDeletedDetails] = useState([]);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
   const [allowedCategoryIds, setAllowedCategoryIds] = useState(null); // Filtered by Project
   const [editingIndex, setEditingIndex] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [hasExistingJobsheet, setHasExistingJobsheet] = useState(false);
   const [confirmation, setConfirmation] = useState(null); // { type, message, confirmLabel, cancelLabel }
 
   const isDirty = useMemo(() => {
@@ -259,6 +400,11 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     return false;
   }, [date, attendanceStatus, details, detail, viewOnly]);
 
+  const currentTimeOverlap = useMemo(
+    () => hasTimeRangeOverlap(detail, details, editingIndex),
+    [detail, details, editingIndex],
+  );
+
   // ── Fully reset the form back to a clean slate ──
   // Called whenever the modal is exited/closed or a jobsheet is successfully
   // created, so the next time it opens the user never sees stale data.
@@ -267,12 +413,14 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     setAttendanceStatus("");
     setDetail(emptyDetail);
     setDetails([]);
+    setDeletedDetails([]);
     setEditingIndex(null);
     setError("");
     setFieldErrors({});
     setAllowedCategoryIds(null);
     setSubTaskCategories([]);
     setFetchError("");
+    setHasExistingJobsheet(false);
     setConfirmation(null);
   };
 
@@ -351,6 +499,38 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     fetchAll();
   }, [open]);
 
+  // Notify the user when the selected date already has a different jobsheet.
+  // Passing the current jobsheet id makes the same check safe during updates.
+  useEffect(() => {
+    if (!open || !date || viewOnly) {
+      setHasExistingJobsheet(false);
+      return;
+    }
+
+    let ignoreResult = false;
+    const selectedDate = dateToLocalDateString(date);
+
+    const checkForExistingJobsheet = async () => {
+      try {
+        const exists = await jobsheetsApi.checkExists({
+          date: `${selectedDate}T00:00:00.000Z`,
+          id: jobsheet?.id || undefined,
+        });
+        if (!ignoreResult) setHasExistingJobsheet(Boolean(exists));
+      } catch (err) {
+        console.error("Failed to check for an existing jobsheet:", err);
+        if (!ignoreResult) setHasExistingJobsheet(false);
+      }
+    };
+
+    setHasExistingJobsheet(false);
+    checkForExistingJobsheet();
+
+    return () => {
+      ignoreResult = true;
+    };
+  }, [open, date, jobsheet?.id, viewOnly]);
+
   // ── Fetch allowed task categories when project changes ──
   // NOTE: This effect ONLY fetches the allowed-category list for whatever
   // project is currently selected. It intentionally does NOT clear
@@ -419,29 +599,18 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
   // ── Reset form or populate from jobsheet when modal opens ──
   useEffect(() => {
     if (open) {
+      setDeletedDetails([]);
       if (jobsheet) {
-        // Populate for View mode
+        // Populate the jobsheet header and table, but leave the detail editor
+        // empty until the user chooses a specific row from Actions.
         setDate(jobsheet.date ? jobsheet.date.split("T")[0] : "");
         setAttendanceStatus(jobsheet.attendanceStatus ?? "");
 
         // Map details from API response
-        const mappedDetails = (jobsheet.jobsheetDetails || []).map(d => ({
-          ...d,
-          startTimeDisplay: d.startTime ? d.startTime.substring(0, 5) : "",
-          endTimeDisplay: d.endTime ? d.endTime.substring(0, 5) : "",
-          // Ensure display names are available for the table
-          _taskCategoryName: d.taskCategoryName,
-          _subTaskCategoryName: d.subTaskCategoryName,
-          _projectName: d.projectName,
-          _statusName: d.statusName,
-        }));
+        const mappedDetails = mapJobsheetDetails(jobsheet.jobsheetDetails || []);
         setDetails(mappedDetails);
-        // Load first detail into the entry form for visibility
-        if (mappedDetails.length > 0) {
-          setDetail(mappedDetails[0]);
-        } else {
-          setDetail(emptyDetail);
-        }
+        setDetail(emptyDetail);
+        setEditingIndex(null);
       } else {
 
         // Clear for Create mode
@@ -452,9 +621,109 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
         setEditingIndex(null);
       }
       setError("");
+      setFieldErrors({});
       setFetchError("");
     }
   }, [open, jobsheet]);
+
+  // A ticket may have been created before this modal was opened. When the
+  // user chooses its activity date, load those AMS rows immediately instead
+  // of relying only on a future SignalR notification.
+  useEffect(() => {
+    if (!open || !date || !user?.id || jobsheet?.id) return undefined;
+
+    const selectedDate = dateToLocalDateString(date);
+    let disposed = false;
+
+    const loadExistingTicketDetails = async () => {
+      try {
+        const ticketDetails = await jobsheetsApi.getTicketDetails({
+          date: selectedDateParameter(selectedDate),
+          userId: user.id,
+        });
+
+        if (disposed) return;
+
+        const automaticDetails = mapJobsheetDetails(
+          getTicketDetailItems(ticketDetails),
+        );
+
+        setDetails((currentDetails) => [
+          ...currentDetails.filter((item) => !item.amsTicketDetailId),
+          ...automaticDetails,
+        ].sort((left, right) =>
+          (left.startTimeDisplay || "").localeCompare(right.startTimeDisplay || ""),
+        ));
+      } catch (err) {
+        console.error("Failed to load AMS ticket details for the selected date:", err);
+      }
+    };
+
+    loadExistingTicketDetails();
+
+    return () => {
+      disposed = true;
+    };
+  }, [open, date, jobsheet?.id, user?.id]);
+
+  // Keep AMS-generated rows in an open jobsheet in sync while preserving any
+  // manual rows the user is currently drafting in the modal.
+  useEffect(() => {
+    if (!open || !date || !user?.id) return undefined;
+
+    const selectedDate = dateToLocalDateString(date);
+    let disposed = false;
+
+    const handleTicketDetailsUpdated = async (firstArgument, secondArgument) => {
+      const { affectedDates, affectedUserIds } = normalizeTicketDetailsUpdate(
+        firstArgument,
+        secondArgument,
+      );
+      const affectsSelectedDate = affectedDates.some(
+        (affectedDate) => dateToLocalDateString(affectedDate) === selectedDate,
+      );
+      const affectsCurrentUser = affectedUserIds.length === 0 || affectedUserIds.some(
+        (affectedUserId) => String(affectedUserId).toLowerCase() === String(user.id).toLowerCase(),
+      );
+      if (!affectsSelectedDate || !affectsCurrentUser) return;
+
+      try {
+        await processTicketDetailsUpdate(firstArgument, secondArgument);
+
+        const refreshedDetails = jobsheet?.id
+          ? (await jobsheetsApi.getById(jobsheet.id))?.jobsheetDetails
+          : await jobsheetsApi.getTicketDetails({
+            date: selectedDateParameter(selectedDate),
+            userId: user.id,
+          });
+
+        if (disposed) return;
+
+        const automaticDetails = mapJobsheetDetails(
+          getTicketDetailItems(refreshedDetails).filter((item) => item.amsTicketDetailId),
+        );
+
+        setDetails((currentDetails) => [
+          ...currentDetails.filter((item) => !item.amsTicketDetailId),
+          ...automaticDetails,
+        ].sort((left, right) =>
+          (left.startTimeDisplay || "").localeCompare(right.startTimeDisplay || ""),
+        ));
+      } catch (err) {
+        console.error("Failed to refresh AMS jobsheet details:", err);
+      }
+    };
+
+    const unsubscribe = subscribeToJobsheetEvent(
+      JOBSHEET_SIGNALR_EVENTS.updateTicketDetails,
+      handleTicketDetailsUpdated,
+    );
+
+    return () => {
+      disposed = true;
+      unsubscribe();
+    };
+  }, [open, date, jobsheet?.id, user?.id]);
 
 
   if (!open) return null;
@@ -502,6 +771,8 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     if (detail.startTimeDisplay && detail.endTimeDisplay) {
       if (detail.startTimeDisplay >= detail.endTimeDisplay) {
         errors.endTimeDisplay = "End time must be after start time";
+      } else if (hasTimeRangeOverlap(detail, details, editingIndex)) {
+        errors.endTimeDisplay = TIME_OVERLAP_MESSAGE;
       }
     }
 
@@ -557,8 +828,29 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
   };
 
 
-  const handleRemoveDetail = (idx) =>
+  const handleRemoveDetail = (idx) => {
+    const removedDetail = details[idx];
+
+    // Existing child records must remain in the aggregate update payload with
+    // the soft-delete flag set. Omitting them only leaves them unchanged in DB.
+    if (removedDetail?.id) {
+      setDeletedDetails((prev) => {
+        if (prev.some((item) => item.id === removedDetail.id)) return prev;
+        return [...prev, { ...removedDetail, isDeleted: true }];
+      });
+    }
+
     setDetails((prev) => prev.filter((_, i) => i !== idx));
+
+    if (editingIndex === idx || (detail.id && removedDetail?.id === detail.id)) {
+      setDetail(emptyDetail);
+      setEditingIndex(null);
+      setFieldErrors({});
+      setError("");
+    } else if (editingIndex !== null && editingIndex > idx) {
+      setEditingIndex((prev) => prev - 1);
+    }
+  };
 
   const handleCreate = async () => {
     const errors = {};
@@ -571,9 +863,27 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
       return;
     }
 
-    // If no records have been added yet, validate + add current form as first record
+    // Apply a row currently being edited even if the user goes directly to the
+    // main save button instead of clicking "Update Record" first.
     let finalDetails = details;
-    if (details.length === 0) {
+    if (editingIndex !== null) {
+      if (!validateDetail()) {
+        setError("Please correct the jobsheet detail fields before updating.");
+        return;
+      }
+
+      const updatedDetail = {
+        ...detail,
+        _taskCategoryName: nameOf(taskCategories, detail.taskCategoryId),
+        _subTaskCategoryName: nameOf(subTaskCategories, detail.subTaskCategoryId),
+        _projectName: nameOf(projects, detail.projectId),
+        _statusName: nameOf(statuses, detail.statusId),
+      };
+      finalDetails = [...details];
+      finalDetails[editingIndex] = updatedDetail;
+    } else if (details.length === 0 && !jobsheet?.id) {
+      // A new jobsheet still requires its first detail. During an update an
+      // empty array is intentional and allows the last existing row to delete.
       if (!validateDetail()) {
         setError("Please fill in all required detail fields or add at least one record.");
         return;
@@ -591,8 +901,22 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     setError("");
     setSubmitting(true);
     try {
-      const payload = buildPayload(date, attendanceStatus, finalDetails, jobsheet?.concurrencyStamp);
+      const detailsToSave = jobsheet?.id
+        ? [...finalDetails, ...deletedDetails]
+        : finalDetails;
+      const payload = buildPayload(date, attendanceStatus, detailsToSave, jobsheet);
       console.log("Submitting jobsheet payload:", JSON.stringify(payload, null, 2));
+
+      const hasOverlap = finalDetails.length > 0
+        ? await jobsheetsApi.hasOverlappingJobsheetDetails(buildOverlapPayload(finalDetails))
+        : false;
+
+      if (hasOverlap) {
+        setError(
+          "One or more jobsheet records have overlapping time ranges. Please correct the start and end times before saving.",
+        );
+        return;
+      }
 
       let result;
       if (jobsheet && jobsheet.id) {
@@ -652,6 +976,14 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
 
         {fetchError && <div style={styles.warningBanner}>{fetchError}</div>}
         {error && <div style={styles.errorBanner}>{error}</div>}
+        {hasExistingJobsheet && (
+          <div style={styles.existingJobsheetCard} role="status">
+            <AlertCircle size={20} strokeWidth={2} />
+            <span>
+              Another Jobsheet exists on this Date: &apos;{formatDisplayDate(date)}&apos;.
+            </span>
+          </div>
+        )}
 
         {/* Date + Attendance Status */}
         <div style={styles.row}>
@@ -660,7 +992,10 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
             <div style={styles.inputWrapper}>
               <Flatpickr
                 value={date}
-                onChange={([d]) => setDate(d)}
+                onChange={([d]) => {
+                  setDate(dateToLocalDateString(d));
+                  setFieldErrors(prev => ({ ...prev, date: null }));
+                }}
                 disabled={viewOnly}
                 options={{
                   dateFormat: "Y-m-d",
@@ -721,7 +1056,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 onChange={handleProjectChange}
                 options={projects}
                 loading={loadingOptions}
-                disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
+                disabled={viewOnly}
                 hasError={!!fieldErrors.projectId}
                 styles={styles}
               />
@@ -739,7 +1074,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 }}
                 options={filteredTaskCategories}
                 loading={loadingOptions}
-                disabled={viewOnly || !detail.projectId || (jobsheet && jobsheet.id && editingIndex === null)}
+                disabled={viewOnly || !detail.projectId}
                 hasError={!!fieldErrors.taskCategoryId}
                 styles={styles}
               />
@@ -760,7 +1095,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                   options={subTaskCategories}
                   loading={loadingSubCats}
                   placeholder={loadingSubCats ? "Fetching..." : "Choose Sub Category"}
-                  disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
+                  disabled={viewOnly}
                   styles={styles}
                 />
 
@@ -769,42 +1104,66 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
 
             <div>
               <label style={styles.label}>Start Time <span style={styles.req}>*</span></label>
-              <input
-                type="time"
-                name="startTimeDisplay"
-                value={detail.startTimeDisplay}
-                onChange={(e) => {
-                  handleDetailChange(e);
+              <Flatpickr
+                value={timeTo12Hour(detail.startTimeDisplay)}
+                onChange={([selectedTime]) => {
+                  setDetail((prev) => ({
+                    ...prev,
+                    startTimeDisplay: dateToTimeString(selectedTime),
+                  }));
                   setFieldErrors(prev => ({ ...prev, startTimeDisplay: null }));
                 }}
-                disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
+                disabled={viewOnly}
+                options={{
+                  enableTime: true,
+                  noCalendar: true,
+                  dateFormat: "h:i K",
+                  time_24hr: false,
+                  allowInput: true,
+                  disableMobile: true,
+                  clickOpens: !viewOnly,
+                }}
                 style={{
                   ...styles.input,
-                  border: fieldErrors.startTimeDisplay ? "1px solid #ff4d4f" : styles.input.border,
-                  colorScheme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+                  border: (fieldErrors.startTimeDisplay || currentTimeOverlap) ? "1px solid #ff4d4f" : styles.input.border,
                 }}
+                placeholder="Select Start Time"
               />
               {fieldErrors.startTimeDisplay && <span style={styles.errorText}>{fieldErrors.startTimeDisplay}</span>}
             </div>
 
             <div>
               <label style={styles.label}>End Time <span style={styles.req}>*</span></label>
-              <input
-                type="time"
-                name="endTimeDisplay"
-                value={detail.endTimeDisplay}
-                onChange={(e) => {
-                  handleDetailChange(e);
+              <Flatpickr
+                value={timeTo12Hour(detail.endTimeDisplay)}
+                onChange={([selectedTime]) => {
+                  setDetail((prev) => ({
+                    ...prev,
+                    endTimeDisplay: dateToTimeString(selectedTime),
+                  }));
                   setFieldErrors(prev => ({ ...prev, endTimeDisplay: null }));
                 }}
-                disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
+                disabled={viewOnly}
+                options={{
+                  enableTime: true,
+                  noCalendar: true,
+                  dateFormat: "h:i K",
+                  time_24hr: false,
+                  allowInput: true,
+                  disableMobile: true,
+                  clickOpens: !viewOnly,
+                }}
                 style={{
                   ...styles.input,
-                  border: fieldErrors.endTimeDisplay ? "1px solid #ff4d4f" : styles.input.border,
-                  colorScheme: document.documentElement.classList.contains('dark') ? 'dark' : 'light',
+                  border: (fieldErrors.endTimeDisplay || currentTimeOverlap) ? "1px solid #ff4d4f" : styles.input.border,
                 }}
+                placeholder="Select End Time"
               />
-              {fieldErrors.endTimeDisplay && <span style={styles.errorText}>{fieldErrors.endTimeDisplay}</span>}
+              {(fieldErrors.endTimeDisplay || currentTimeOverlap) && (
+                <span style={styles.errorText}>
+                  {fieldErrors.endTimeDisplay || TIME_OVERLAP_MESSAGE}
+                </span>
+              )}
             </div>
 
             <div>
@@ -818,7 +1177,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 }}
                 options={statuses}
                 loading={loadingOptions}
-                disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
+                disabled={viewOnly}
                 hasError={!!fieldErrors.statusId}
                 styles={styles}
               />
@@ -835,7 +1194,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                   setFieldErrors(prev => ({ ...prev, jobsheetDetailUserIds: null }));
                 }}
                 loading={loadingOptions}
-                disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
+                disabled={viewOnly}
                 fieldErrors={fieldErrors}
                 styles={styles}
               />
@@ -853,7 +1212,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 handleDetailChange(e);
                 setFieldErrors(prev => ({ ...prev, remarks: null }));
               }}
-              disabled={viewOnly || (jobsheet && jobsheet.id && editingIndex === null)}
+              disabled={viewOnly}
             />
             {fieldErrors.remarks && <span style={styles.errorText}>{fieldErrors.remarks}</span>}
           </div>
@@ -872,12 +1231,12 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
               <button
                 style={{
                   ...styles.createBtn,
-                  opacity: (jobsheet && jobsheet.id && editingIndex === null) ? 0.5 : 1,
-                  cursor: (jobsheet && jobsheet.id && editingIndex === null) ? "not-allowed" : "pointer"
+                  opacity: currentTimeOverlap ? 0.5 : 1,
+                  cursor: currentTimeOverlap ? "not-allowed" : "pointer"
                 }}
                 onClick={handleAddDetail}
-                disabled={jobsheet && jobsheet.id && editingIndex === null}
-                title={jobsheet && jobsheet.id && editingIndex === null ? "Cannot add new records during update" : ""}
+                disabled={currentTimeOverlap}
+                title={currentTimeOverlap ? TIME_OVERLAP_MESSAGE : ""}
               >
                 {editingIndex !== null ? "Update Record" : "Add Record"}
               </button>
@@ -893,7 +1252,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
           <table style={styles.table}>
             <thead>
               <tr>
-                {["Task Category", "Sub Task Category", "Project", "Start Time", "End Time", "Collaborators", "Status", "CMS Next Ticket No", "Remarks", ""].map((h, i) => (
+                {["Task Category", "Sub Task Category", "Project", "Start Time", "End Time", "Collaborators", "Status", "CMS Next Ticket No", "Remarks", "Actions"].map((h, i) => (
                   <th key={i} style={styles.th}>{h.toUpperCase()}</th>
                 ))}
               </tr>
@@ -909,18 +1268,18 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                     <td style={styles.td}>{d._taskCategoryName || nameOf(taskCategories, d.taskCategoryId)}</td>
                     <td style={styles.td}>{d._subTaskCategoryName || nameOf(subTaskCategories, d.subTaskCategoryId)}</td>
                     <td style={styles.td}>{d._projectName || nameOf(projects, d.projectId)}</td>
-                    <td style={styles.td}>{d.startTimeDisplay}</td>
-                    <td style={styles.td}>{d.endTimeDisplay}</td>
+                    <td style={styles.td}>{timeTo12Hour(d.startTimeDisplay)}</td>
+                    <td style={styles.td}>{timeTo12Hour(d.endTimeDisplay)}</td>
                     <td style={styles.td}>{usersOf(d.jobsheetDetailUserIds)}</td>
                     <td style={styles.td}>{d._statusName || nameOf(statuses, d.statusId)}</td>
                     <td style={styles.td}>{d.cmsNextTicketNo || "—"}</td>
                     <td style={styles.td}>{d.remarks}</td>
                     <td style={styles.td}>
-                      {!viewOnly && (
-                        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                          <button style={styles.editBtn} onClick={() => handleEditDetail(i)}>✎</button>
-                          <button style={styles.removeBtn} onClick={() => handleRemoveDetail(i)}>✕</button>
-                        </div>
+                      {!viewOnly && !d.amsTicketDetailId && (
+                        <ActionsMenu
+                          onEdit={() => handleEditDetail(i)}
+                          onDelete={() => handleRemoveDetail(i)}
+                        />
                       )}
                     </td>
 
@@ -1060,6 +1419,14 @@ function getStyles(isDark) {
       borderRadius: 8, padding: "10px 16px",
       color: isDark ? "#fcd34d" : "#ad6800", fontSize: 13, marginBottom: 18,
     },
+    existingJobsheetCard: {
+      display: "flex", alignItems: "center", gap: 10,
+      backgroundColor: isDark ? "#422006" : "#fff7ed",
+      border: `1px solid ${isDark ? "#92400e" : "#fdba74"}`,
+      borderRadius: 8, padding: "12px 16px",
+      color: isDark ? "#fcd34d" : "#9a3412",
+      fontSize: 13, fontWeight: 600, marginBottom: 18,
+    },
     row: { display: "flex", gap: 16, marginBottom: 16 },
     fieldGroup: { flex: 1 },
     label: { fontSize: 12.5, fontWeight: 600, color: textMuted, display: "block", marginBottom: 5 },
@@ -1121,7 +1488,7 @@ function getStyles(isDark) {
     },
     createBtn: {
       padding: "7px 18px", borderRadius: 6, border: "none",
-      backgroundColor: "#3b5bdb", fontSize: 13, cursor: "pointer",
+      backgroundColor: "#ec4899", fontSize: 13, cursor: "pointer",
       color: "#fff", fontWeight: 600,
     },
     tableWrapper: {
@@ -1138,14 +1505,6 @@ function getStyles(isDark) {
     },
     td: { padding: "8px 10px", color: isDark ? "#cbd5e1" : "#444", whiteSpace: "nowrap" },
     emptyCell: { textAlign: "center", padding: "24px", color: textSubtle, fontSize: 13 },
-    removeBtn: {
-      background: "none", border: "none", color: "#e74c3c",
-      cursor: "pointer", fontSize: 13, fontWeight: 700,
-    },
-    editBtn: {
-      background: "none", border: "none", color: "#3b5bdb",
-      cursor: "pointer", fontSize: 14, fontWeight: 700,
-    },
     errorText: {
       color: "#ff4d4f", fontSize: 11, marginTop: 4, display: "block"
     },

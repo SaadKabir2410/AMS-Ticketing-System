@@ -5,7 +5,7 @@ import { useToast } from "../component/common/ToastContext";
 import { ActionsMenu } from "../component/common/ResourcePage";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Search, X, Filter } from "lucide-react";
 import WorkCodeModal from "../component/common/WorkCodeModal";
-import { useAuth } from "../context/AuthContextHook";
+import { usePermission } from "../hooks/usePermission";
 
 // Highlighter component for Search term
 const HighlightText = ({ text, searchTerm }) => {
@@ -28,12 +28,9 @@ const HighlightText = ({ text, searchTerm }) => {
 export default function WorkCodesPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const isAdmin = useMemo(() => user?.role?.toLowerCase().includes("admin"), [user]);
-
-  // Using simple defaults since explicit permissions were not provided
-  const canEdit = true;
-  const canViewAuditLog = isAdmin;
+  const canCreate = usePermission("Billing.WorkDoneCodes.Create");
+  const canEdit = usePermission("Billing.WorkDoneCodes.Edit");
+  const canViewAuditLog = usePermission("Billing.WorkDoneCodes.ViewAuditLog");
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -109,10 +106,10 @@ export default function WorkCodesPage() {
 
   const filteredData = useMemo(() => {
     return data.filter(d => {
-      const globalMatch = debouncedSearch 
+      const globalMatch = debouncedSearch
         ? (d.code || "").toLowerCase().includes(debouncedSearch.toLowerCase())
         : true;
-      const matchCode = debouncedAdvSearchCode 
+      const matchCode = debouncedAdvSearchCode
         ? (d.code || "").toLowerCase().includes(debouncedAdvSearchCode.toLowerCase())
         : true;
       const matchDesc = debouncedAdvSearchDesc
@@ -198,13 +195,13 @@ export default function WorkCodesPage() {
               >
                 <Filter size={16} />
               </button>
-              <button
+              {canCreate && <button
                 onClick={handleNew}
                 className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
               >
                 <Plus size={16} className="mr-2" strokeWidth={3} />
                 Add New
-              </button>
+              </button>}
             </div>
           </div>
         </div>
@@ -221,7 +218,12 @@ export default function WorkCodesPage() {
             </div>
           ) : (
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar">
-              <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px]">
+              <table className="w-full table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
+                <colgroup>
+                  <col style={{ width: '15%' }} />
+                  <col style={{ width: '100%' }} />
+                  <col style={{ width: '15%' }} />
+                </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
                     <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">Code</th>
@@ -403,5 +405,3 @@ export default function WorkCodesPage() {
     </div>
   );
 }
-
-

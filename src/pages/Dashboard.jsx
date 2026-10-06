@@ -133,9 +133,10 @@ export default function Dashboard() {
   const loadAvailableUsers = useCallback(async () => {
     try {
       const users = await usersApi.getUsersList({ mustCompleteJobsheet: true });
-      setAvailableUsers(users || []);
+      return Array.isArray(users) ? users : users?.items || users?.data || [];
     } catch (e) {
       console.error("Failed to load users", e);
+      return [];
     }
   }, []);
 
@@ -159,10 +160,23 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (isAdmin) {
-      loadAvailableUsers();
-      // Admin dashboard stays empty until users are selected
-      setLoading(false);
+      setLoading(true);
+      loadAvailableUsers().then((users) => {
+        if (cancelled) return;
+
+        const allUserIds = users.map((availableUser) => availableUser.id).filter(Boolean);
+        setAvailableUsers(users);
+        setSelectedUserIds(allUserIds);
+
+        if (allUserIds.length > 0) {
+          loadDashboardData(allUserIds);
+        } else {
+          setLoading(false);
+        }
+      });
     } else {
       // Non-admin auto-loads their own dashboard
       if (user?.id) {
@@ -170,6 +184,10 @@ export default function Dashboard() {
         loadDashboardData([user.id]);
       }
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [isAdmin, user?.id, loadAvailableUsers, loadDashboardData]);
 
   useEffect(() => {
@@ -215,6 +233,11 @@ export default function Dashboard() {
     setUserSearch("");
   };
 
+  const selectAllUsers = () => {
+    updateSelectedUsers(availableUsers.map((availableUser) => availableUser.id));
+    setUserSearch("");
+  };
+
   const removeUser = (userId) => {
     const nextUserIds = selectedUserIds.filter(
       (selectedId) => String(selectedId) !== String(userId),
@@ -233,7 +256,14 @@ export default function Dashboard() {
       (selectedId) => String(selectedId) === String(availableUser.id),
     ),
   );
+  const allUsersSelected = availableUsers.length > 0 &&
+    availableUsers.every((availableUser) =>
+      selectedUserIds.some(
+        (selectedId) => String(selectedId) === String(availableUser.id),
+      ),
+    );
   const normalizedSearch = userSearch.trim().toLowerCase();
+  const showAllUsersOption = "all users".includes(normalizedSearch);
   const filteredUsers = availableUsers.filter((availableUser) =>
     [
       getUserLabel(availableUser),
@@ -470,7 +500,22 @@ export default function Dashboard() {
                   }`}
                   onClick={() => setIsUserPickerOpen(true)}
                 >
-                  {selectedUsers.map((selectedUser) => (
+                  {allUsersSelected ? (
+                    <span className="flex h-8 items-center gap-1.5 rounded-lg bg-blue-700 px-3 text-xs font-semibold text-white">
+                      All Users
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          clearSelectedUsers();
+                        }}
+                        className="rounded p-0.5 hover:bg-white/15"
+                        aria-label="Clear all users"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  ) : selectedUsers.map((selectedUser) => (
                     <span
                       key={selectedUser.id}
                       className="flex h-8 items-center gap-1.5 rounded-lg bg-blue-700 px-3 text-xs font-semibold text-white"
@@ -507,6 +552,26 @@ export default function Dashboard() {
 
                 {isUserPickerOpen && (
                   <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+                    {showAllUsersOption && availableUsers.length > 0 && (
+                      <label
+                        className={`flex cursor-pointer items-center gap-3 border-b border-slate-200 px-4 py-2.5 text-sm font-semibold transition dark:border-slate-700 ${
+                          allUsersSelected
+                            ? "bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"
+                            : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/70"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={allUsersSelected}
+                          onChange={() => {
+                            if (allUsersSelected) clearSelectedUsers();
+                            else selectAllUsers();
+                          }}
+                          className="h-4 w-4 rounded border-slate-300 accent-pink-500"
+                        />
+                        <span>All Users</span>
+                      </label>
+                    )}
                     {filteredUsers.length > 0 ? (
                       filteredUsers.map((availableUser) => {
                         const isSelected = selectedUserIds.some(
@@ -531,11 +596,11 @@ export default function Dashboard() {
                           </label>
                         );
                       })
-                    ) : (
+                    ) : !showAllUsersOption ? (
                       <div className="px-4 py-5 text-center text-sm text-slate-500">
                         No users match your search.
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>
@@ -553,7 +618,11 @@ export default function Dashboard() {
 
             <div className="mt-10 flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
               <Users className="h-5 w-5" />
-              <span>{selectedUserIds.length} {selectedUserIds.length === 1 ? "user" : "users"} selected</span>
+              <span>
+                {allUsersSelected
+                  ? `All ${selectedUserIds.length} users selected`
+                  : `${selectedUserIds.length} ${selectedUserIds.length === 1 ? "user" : "users"} selected`}
+              </span>
               {loading && <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />}
             </div>
           </div>

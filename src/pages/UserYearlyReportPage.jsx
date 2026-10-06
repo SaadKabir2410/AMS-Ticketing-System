@@ -273,7 +273,7 @@ export default function UserYearlyReportPage() {
                 </button>
               )}
               {reportData.length > 0 && (
-                <PermissionGuard permission="Billing.Reports.AMSTicketingUserYearlyReport.ExportReportToExcel">
+                <PermissionGuard permission="Billing.AMSTickets.ExportReportToExcel">
                   <button
                     onClick={handleExportExcel}
                     className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[11px] font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/20"

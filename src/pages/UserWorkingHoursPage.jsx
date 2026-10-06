@@ -26,6 +26,7 @@ export default function UserWorkingHoursPage() {
 
   const canEdit = usePermission("Billing.UserWorkingHours.Edit");
   const canViewAuditLog = usePermission("Billing.UserWorkingHours.ViewAuditLog");
+  const canCreate = usePermission("Billing.UserWorkingHours.Create");
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -116,13 +117,13 @@ export default function UserWorkingHoursPage() {
               User Working Hours
             </h1>
             <div className="flex items-center gap-4">
-              <button
+              {canCreate && <button
                 onClick={handleNew}
                 className="inline-flex items-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white"
               >
                 <Plus size={16} className="mr-2" strokeWidth={3} />
                 New Working Hour
-              </button>
+              </button>}
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -36,6 +36,7 @@ import TicketModal from "../component/common/TicketModal";
 import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import UnclosedTicketsModal from "../component/common/UnclosedTicketsModal";
 import { ActionsMenu } from "../component/common/ResourcePage";
+import { usePermission } from "../hooks/usePermission";
 
 // ── Animation variants ────────────────────────────────────────────
 const containerVariants = {
@@ -120,7 +121,7 @@ const getInitials = (name) => {
   return name.charAt(0).toUpperCase();
 };
 
-const RowActions = ({ row, onUpdateData, onVoid, onAuditLog, onReopen, isAdmin }) => {
+const RowActions = ({ row, onUpdateData, onVoid, onAuditLog, onReopen }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
   const handleClick = (e) => {
@@ -152,24 +153,26 @@ const RowActions = ({ row, onUpdateData, onVoid, onAuditLog, onReopen, isAdmin }
             }}
           >
             <Box sx={{ py: 0.5 }}>
-              {!isAdmin && onUpdateData && (
+              {onUpdateData && (
                 <MenuItem onClick={() => { handleClose(); onUpdateData(); }}>
                   <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
-              {!isAdmin && row?.status !== 2 && onVoid && (
+              {row?.status !== 2 && onVoid && (
                 <MenuItem onClick={() => { handleClose(); onVoid(); }}>
                   <ListItemText primary="Void" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
-              {!isAdmin && row?.status === 2 && onReopen && (
+              {row?.status === 2 && onReopen && (
                 <MenuItem onClick={() => { handleClose(); onReopen(); }}>
                   <ListItemText primary="Reopen Ticket" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
-              <MenuItem onClick={() => { handleClose(); onAuditLog(); }}>
-                <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-              </MenuItem>
+              {onAuditLog && (
+                <MenuItem onClick={() => { handleClose(); onAuditLog(); }}>
+                  <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                </MenuItem>
+              )}
             </Box>
           </Paper>
         </Popper>
@@ -182,7 +185,14 @@ export default function AMSTicketsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { ticketNumber } = useParams();
   const isAdmin = user?.role?.toLowerCase().includes("admin");
+  const canCreate = usePermission("Billing.AMSTickets.Create") && !isAdmin;
+  const canEdit = usePermission("Billing.AMSTickets.Edit") && !isAdmin;
+  const canVoid = usePermission("Billing.AMSTickets.VoidAMSTicket") && !isAdmin;
+  const canReopen = usePermission("Billing.AMSTickets.ReOpenAMSTicket") && !isAdmin;
+  const canViewAuditLog = usePermission("Billing.AMSTickets.ViewAuditLog");
+  const canClose = usePermission("Billing.AMSTickets.CloseAMSTicket") && !isAdmin;
 
   // --- States ---
   const [tickets, setTickets] = useState([]);
@@ -191,6 +201,7 @@ export default function AMSTicketsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [isUnclosedModalOpen, setIsUnclosedModalOpen] = useState(false);
+  const openedTicketNumberRef = useRef(null);
   const [sortKey, setSortKey] = useState("status");
   const [sortDir, setSortDir] = useState("asc");
 
@@ -320,6 +331,51 @@ export default function AMSTicketsPage() {
     }, 400);
     return () => clearTimeout(timer);
   }, [search, currentPage, pageSize, sortKey, sortDir, filterStatus, filterIsPRE, filterIsVerified, filterCreatedBy, filterTicketDelayed]);
+
+  useEffect(() => {
+    if (ticketNumber) return;
+    if (sessionStorage.getItem("hasSeenUnclosedTicketsModal") === "true") return;
+
+    let cancelled = false;
+    sessionStorage.setItem("hasSeenUnclosedTicketsModal", "true");
+    amsTicketApi.isAnyOpen()
+      .then((hasOpenTickets) => {
+        if (!cancelled && hasOpenTickets) setIsUnclosedModalOpen(true);
+      })
+      .catch((error) => console.error("Failed to check for open tickets:", error));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ticketNumber]);
+
+  useEffect(() => {
+    if (!ticketNumber || openedTicketNumberRef.current === ticketNumber) return;
+    openedTicketNumberRef.current = ticketNumber;
+
+    let cancelled = false;
+    const openLinkedTicket = async () => {
+      try {
+        const ticketId = await amsTicketApi.getIdByTicketNumber({
+          ticketNumber: decodeURIComponent(ticketNumber),
+        });
+        const ticket = await amsTicketApi.getById(ticketId);
+        if (cancelled) return;
+        setActionItem(ticket);
+        setActionType(canEdit ? "edit" : "detail");
+      } catch (error) {
+        if (!cancelled) {
+          toast("The linked ticket could not be opened.", "error");
+          navigate("/ams-tickets", { replace: true });
+        }
+      }
+    };
+
+    openLinkedTicket();
+    return () => {
+      cancelled = true;
+    };
+  }, [ticketNumber, canEdit, navigate, toast]);
 
   const fetchTickets = async () => {
     setLoading(true);
@@ -555,7 +611,7 @@ export default function AMSTicketsPage() {
                 )}
               </button>
 
-              {!isAdmin && (
+              {canCreate && (
                 <button
                   onClick={() => { setActionItem(null); setActionType("create"); }}
                   className="inline-flex items-center px-4 py-2 rounded-lg text-xs font-medium shadow-sm transition-all bg-pink-500 hover:bg-pink-600 text-white"
@@ -891,11 +947,10 @@ export default function AMSTicketsPage() {
                               ) : col.key === "actions" ? (
                                 <RowActions
                                   row={row}
-                                  isAdmin={isAdmin}
-                                  onUpdateData={() => { setActionItem(row); setActionType("edit"); }}
-                                  onVoid={() => { setActionItem(row); setActionType("delete"); }}
-                                  onReopen={() => { setActionItem(row); setActionType("reopen"); }}
-                                  onAuditLog={() => navigate(`/audit-logs?primaryKey=${row.id}&entityName=AMSTicket`)}
+                                  onUpdateData={canEdit ? () => { setActionItem(row); setActionType("edit"); } : undefined}
+                                  onVoid={canVoid ? () => { setActionItem(row); setActionType("delete"); } : undefined}
+                                  onReopen={canReopen ? () => { setActionItem(row); setActionType("reopen"); } : undefined}
+                                  onAuditLog={canViewAuditLog ? () => navigate(`/audit-logs?primaryKey=${row.id}&entityName=AMSTicket`) : undefined}
                                 />
                               ) : (
                                 "—"
@@ -993,6 +1048,7 @@ export default function AMSTicketsPage() {
       {/* Modals */}
       <TicketModal
         open={actionType === "create"}
+        canCloseTicket={canClose}
         onClose={() => setActionType("")}
         onSave={async (payload) => {
           try {
@@ -1026,6 +1082,7 @@ export default function AMSTicketsPage() {
               setActionItem(null);
             }}
             ticket={actionItem}
+            canCloseTicket={canClose}
             onSave={async (payload) => {
               const { activeTab, ...dataToSave } = payload;
               try {
@@ -1033,7 +1090,13 @@ export default function AMSTicketsPage() {
                   await amsTicketApi.close(actionItem.id, dataToSave);
                   toast("Ticket closed successfully");
                 } else {
-                  await amsTicketApi.update(actionItem.id, dataToSave);
+                  const settingsAreUnchanged = await amsTicketApi.isSettingsSameAfterReOpening(dataToSave);
+                  const setNewSettings = settingsAreUnchanged
+                    ? false
+                    : window.confirm(
+                      "Ticket settings changed after this ticket was reopened. Apply the current settings to this ticket?",
+                    );
+                  await amsTicketApi.update(actionItem.id, dataToSave, { setNewSettings });
                   toast("Ticket updated successfully");
                 }
                 setActionType("");
@@ -1080,6 +1143,16 @@ export default function AMSTicketsPage() {
           />
         </>
       )}
+
+      <UnclosedTicketsModal
+        open={isUnclosedModalOpen}
+        onClose={() => setIsUnclosedModalOpen(false)}
+        onTicketSelect={(ticket) => {
+          setIsUnclosedModalOpen(false);
+          setActionItem(ticket);
+          setActionType(canEdit ? "edit" : "detail");
+        }}
+      />
 
     </motion.div>
   );

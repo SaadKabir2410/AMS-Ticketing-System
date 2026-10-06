@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom"; // Add this
 import ResourcePage from "../component/common/ResourcePage";
 
 import { jobsheetsApi } from "../services/api/jobsheets";
+import {
+  JOBSHEET_SIGNALR_EVENTS,
+  processTicketDetailsUpdate,
+  subscribeToJobsheetEvent,
+} from "../services/jobsheetSignalR";
 import { usersApi } from "../services/api/users";
 import codeDetailsApi from "../services/api/CodeDetails";
 import {
@@ -27,6 +32,7 @@ import "flatpickr/dist/themes/dark.css";
 import { useAuth } from "../context/AuthContextHook";
 import JobsheetModal from "../component/common/JobsheetModal";
 import { ActionsMenu } from "../component/common/ResourcePage";
+import { usePermission } from "../hooks/usePermission";
 
 
 
@@ -35,6 +41,9 @@ export default function JobsheetsPage() {
   const { user } = useAuth();
   const navigate = useNavigate(); // Add this
   const isAdmin = user?.role?.toLowerCase().includes("admin");
+  const canCreate = usePermission("Billing.Jobsheets.Create") && !isAdmin;
+  const canEdit = usePermission("Billing.Jobsheets.Edit");
+  const canViewAuditLog = usePermission("Billing.Jobsheets.ViewAuditLog");
 
 
 
@@ -140,6 +149,34 @@ export default function JobsheetsPage() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedJobsheet, setSelectedJobsheet] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // AMS ticket activities are converted to jobsheet rows by the backend.
+  // Refresh this grid as soon as that transaction broadcasts its completion.
+  useEffect(() => {
+    const refreshJobsheets = () => setRefreshTrigger((value) => value + 1);
+    const updateTicketDetails = async (firstArgument, secondArgument) => {
+      try {
+        await processTicketDetailsUpdate(firstArgument, secondArgument);
+      } catch (error) {
+        console.error("Failed to synchronize AMS ticket jobsheet details:", error);
+      } finally {
+        refreshJobsheets();
+      }
+    };
+    const unsubscribeReload = subscribeToJobsheetEvent(
+      JOBSHEET_SIGNALR_EVENTS.reloadJobsheets,
+      refreshJobsheets,
+    );
+    const unsubscribeTicketDetails = subscribeToJobsheetEvent(
+      JOBSHEET_SIGNALR_EVENTS.updateTicketDetails,
+      updateTicketDetails,
+    );
+
+    return () => {
+      unsubscribeReload();
+      unsubscribeTicketDetails();
+    };
+  }, []);
 
 
 
@@ -638,7 +675,7 @@ export default function JobsheetsPage() {
         {reportDownloading ? "Generating..." : "Get Report"}
       </button>
 
-      {!user?.role?.toLowerCase().includes("admin") && (
+      {canCreate && (
         <button
           type="button"
           className="btn-flagship border-pink-200 dark:border-pink-500/20 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-500/5 flex items-center gap-2"
@@ -669,17 +706,17 @@ export default function JobsheetsPage() {
   const customActions = [
     {
       key: "view",
-      label: "View / Update",
+      label: canEdit ? "View / Update" : "View",
       onClick: (row) => handleAction("view", row),
       className: "text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-bold",
     },
-    {
+    canViewAuditLog ? {
       key: "audit",
       label: "Audit Log",
       onClick: (row) => handleAction("audit", row),
       className: "text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-bold",
-    },
-  ];
+    } : null,
+  ].filter(Boolean);
 
 
   const [page, setPage] = useState(1);
@@ -941,6 +978,7 @@ export default function JobsheetsPage() {
           setSelectedJobsheet(null);
         }}
         jobsheet={selectedJobsheet}
+        viewOnly={!canEdit}
         onSave={() => {
           setRefreshTrigger(prev => prev + 1);
         }}
