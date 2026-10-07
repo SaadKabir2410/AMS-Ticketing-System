@@ -595,7 +595,7 @@ export default function CodeDetailsPage() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setModalOpen(true)}
-                className="inline-flex items-center px-5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white uppercase tracking-tight"
+                className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs uppercase tracking-tight"
               >
                 New Code Detail
               </motion.button>

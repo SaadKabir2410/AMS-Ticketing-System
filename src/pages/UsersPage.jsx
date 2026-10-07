@@ -562,6 +562,7 @@ export default function UsersPage() {
             boxShadow: "0 25px 50px -12px rgba(59, 130, 246, 0.15)",
             bgcolor: isDark ? "#0f172a" : "#ffffff",
             backgroundImage: "none",
+            colorScheme: isDark ? "dark" : "light",
           },
         }}
       >
@@ -588,10 +589,20 @@ export default function UsersPage() {
           noValidate
           autoComplete="off"
         >
-          <DialogContent dividers sx={{ minHeight: "400px", p: 0, position: "relative" }}>
+          <DialogContent
+            dividers
+            sx={{
+              minHeight: "400px",
+              p: 0,
+              position: "relative",
+              bgcolor: isDark ? "#0f172a" : "#ffffff",
+              color: isDark ? "#e2e8f0" : "#334155",
+              borderColor: isDark ? "#1e293b" : "#e2e8f0",
+            }}
+          >
             {isLoadingData && (
               <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-slate-900/80">
-                <p className="text-sm text-slate-500 animate-pulse">Loading user details...</p>
+                <p className="text-sm text-slate-500 dark:text-slate-300 animate-pulse">Loading user details...</p>
               </div>
             )}
             <Box sx={{ borderBottom: 1, borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", px: 3, pt: 1, bgcolor: isDark ? "#0f172a" : "#f8fafc" }}>
@@ -600,12 +611,12 @@ export default function UsersPage() {
                 onChange={(e, val) => setTabIndex(val)}
                 TabIndicatorProps={{ style: { backgroundColor: '#ec4899', height: 3, borderRadius: '3px 3px 0 0' } }}
               >
-                <Tab label="User Information" sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', color: isDark ? '#64748b' : '#94a3b8', '&.Mui-selected': { color: '#ec4899' } }} />
-                <Tab label="Roles" sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', color: isDark ? '#64748b' : '#94a3b8', '&.Mui-selected': { color: '#ec4899' } }} />
+                <Tab label="User Information" sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', color: isDark ? '#94a3b8' : '#64748b', '&.Mui-selected': { color: '#ec4899' } }} />
+                <Tab label="Roles" sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', color: isDark ? '#94a3b8' : '#64748b', '&.Mui-selected': { color: '#ec4899' } }} />
               </Tabs>
             </Box>
 
-            <div className="p-4">
+            <div className="p-4 bg-white dark:bg-[#0f172a]">
               {submitError && (
                 <PremiumErrorAlert
                   open={!!submitError}
@@ -618,7 +629,7 @@ export default function UsersPage() {
               <div style={{ display: tabIndex === 0 ? "block" : "none" }}>
                 <div className="flex flex-col gap-5 mb-6">
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
+                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
                       User name *
                     </label>
                     <div className="relative group">
@@ -626,9 +637,9 @@ export default function UsersPage() {
                         name="userName"
                         autoComplete="new-password"
                         defaultValue={userData?.userName || ""}
-                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 ${validationErrors.userName
+                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 ${validationErrors.userName
                           ? "border-red-500 focus:ring-red-500/20"
-                          : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
+                          : "border-slate-400 dark:border-slate-600 focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
                       />
                       <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -642,16 +653,16 @@ export default function UsersPage() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
+                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
                       Name *
                     </label>
                     <div className="relative group">
                       <input
                         name="name"
                         defaultValue={userData?.name || ""}
-                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 ${validationErrors.name
+                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 ${validationErrors.name
                           ? "border-red-500 focus:ring-red-500/20"
-                          : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
+                          : "border-slate-400 dark:border-slate-600 focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
                       />
                       <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -665,14 +676,14 @@ export default function UsersPage() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
+                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
                       Surname
                     </label>
                     <div className="relative group">
                       <input
                         name="surname"
                         defaultValue={userData?.surname || ""}
-                        className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
+                        className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 border-slate-400 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
                       />
                       <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <X size={14} />
@@ -680,7 +691,7 @@ export default function UsersPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
+                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
                       Password {item ? "(Leave blank to keep)" : "*"}
                     </label>
                     <div className="relative group">
@@ -688,9 +699,9 @@ export default function UsersPage() {
                         name="password"
                         autoComplete="new-password"
                         type={showPassword ? "text" : "password"}
-                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 ${validationErrors.password
+                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 ${validationErrors.password
                           ? "border-red-500 focus:ring-red-500/20"
-                          : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
+                          : "border-slate-400 dark:border-slate-600 focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-12 transition-all duration-200 font-medium`}
                       />
                       <button
@@ -708,7 +719,7 @@ export default function UsersPage() {
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
+                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
                       Email Address
                     </label>
                     <div className="relative group">
@@ -716,7 +727,7 @@ export default function UsersPage() {
                         name="email"
                         type="email"
                         defaultValue={userData?.email || ""}
-                        className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
+                        className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 border-slate-400 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
                       />
                       <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <X size={14} />
@@ -724,16 +735,16 @@ export default function UsersPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
+                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
                       Phone Number *
                     </label>
                     <div className="relative group">
                       <input
                         name="phoneNumber"
                         defaultValue={userData?.phoneNumber || ""}
-                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 ${validationErrors.phoneNumber
+                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 ${validationErrors.phoneNumber
                           ? "border-red-500 focus:ring-red-500/20"
-                          : "border-slate-400 dark:border-slate-500 focus:ring-blue-500/20"
+                          : "border-slate-400 dark:border-slate-600 focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
                       />
                       <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -749,7 +760,7 @@ export default function UsersPage() {
 
                   <div className="grid grid-cols-1 gap-5">
                     <div className="w-full">
-                      <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
+                      <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
                         Organization Type *
                       </label>
                       <Autocomplete
@@ -862,7 +873,7 @@ export default function UsersPage() {
 
                     {orgType === "1" && (
                       <div className="w-full">
-                        <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
+                        <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
                           Site *
                         </label>
                         <Autocomplete
@@ -891,11 +902,11 @@ export default function UsersPage() {
                                 borderRadius: "0.75rem",
                                 boxShadow:
                                   "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-                                border: "1px solid #e2e8f0",
-                                ".dark &": {
-                                  border: "1px solid rgba(255,255,255,0.1)",
-                                  backgroundColor: "#0f172a",
-                                },
+                                border: isDark
+                                  ? "1px solid rgba(148, 163, 184, 0.2)"
+                                  : "1px solid #e2e8f0",
+                                backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                                color: isDark ? "#e2e8f0" : "#334155",
                               },
                             },
                           }}
@@ -973,7 +984,7 @@ export default function UsersPage() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
+                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
                       Rate First Hour After Working Hours
                     </label>
                     <input
@@ -981,11 +992,11 @@ export default function UsersPage() {
                       type="number"
                       step="0.01"
                       defaultValue={userData?.baseRateFirstHourAfterWorkingHours || ""}
-                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
+                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 border-slate-400 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500 mb-1 ml-1 font-bold">
+                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
                       Rate After First Hour (Each 15 Min) After Working Hours
                     </label>
                     <input
@@ -993,7 +1004,7 @@ export default function UsersPage() {
                       type="number"
                       step="0.01"
                       defaultValue={userData?.baseRateAfterFirstHourAfterWorkingHours || ""}
-                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-200 text-slate-900 dark:text-slate-900 border-2 border-slate-400 dark:border-slate-500 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
+                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 border-slate-400 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
                     />
                   </div>
                 </div>
@@ -1175,14 +1186,14 @@ export default function UsersPage() {
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 border border-slate-200 dark:border-slate-700 h-[38px] text-[11px] text-slate-500 hover:bg-slate-50 dark:hover:bg-white/5 font-bold rounded-xl transition-all duration-200"
+              className="flex-1 border border-slate-200 dark:border-slate-700 h-[38px] text-[11px] text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 font-bold rounded-xl transition-all duration-200"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold h-[38px] text-[11px] rounded-xl transition-all duration-200 shadow-md shadow-pink-500/10 active:scale-95 disabled:opacity-60 disabled:pointer-events-none"
+              className="app-primary-button flex-1 h-[38px] text-[11px]"
             >
               {loading ? "Wait..." : item ? "Save" : "Create"}
             </button>
@@ -1325,7 +1336,7 @@ export default function UsersPage() {
               {canCreate && (
                 <button
                   onClick={handleCreateOpen}
-                  className="inline-flex items-center px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white active:scale-95"
+                  className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs"
                 >
                   New User
                 </button>
@@ -1793,7 +1804,7 @@ export default function UsersPage() {
           <button
             onClick={handleSavePermissions}
             disabled={loadingPermissions}
-            className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold h-[38px] text-[11px] rounded-xl transition-all duration-200 shadow-md shadow-pink-500/10 active:scale-95 disabled:opacity-50"
+            className="app-primary-button flex-1 h-[38px] text-[11px]"
           >
             {loadingPermissions ? "Wait..." : "Save Changes"}
           </button>

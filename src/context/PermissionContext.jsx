@@ -72,9 +72,6 @@ export const PermissionProvider = ({ children }) => {
     } catch (error) {
       console.error("[PermissionContext] Failed to fetch permissions:", error);
       setPermissions({});
-      if (error.response?.status === 401) {
-        window.dispatchEvent(new CustomEvent("auth:expired"));
-      }
     } finally {
       setIsLoading(false);
     }

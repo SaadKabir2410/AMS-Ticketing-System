@@ -208,14 +208,13 @@ export default function AfterWorkingHoursReportPage() {
       <style>{`
         *::-webkit-scrollbar { display: none !important; }
         * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
-        td, tr { overflow: visible !important; }
-
-        .custom-scrollbar::-webkit-scrollbar:horizontal { height: 8px; display: block !important; }
-        .custom-scrollbar::-webkit-scrollbar:vertical { display: none !important; width: 0 !important; }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; display: block !important; }
         .custom-scrollbar { scrollbar-width: thin !important; }
-        .custom-scrollbar::-webkit-scrollbar-track:horizontal { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #cbd5e1; border-radius: 20px; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #475569; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #ec4899; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #475569; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #ec4899; }
       `}</style>
 
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
@@ -247,7 +246,7 @@ export default function AfterWorkingHoursReportPage() {
               {reportData.length > 0 && (
                 <button
                   onClick={handleExportExcel}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[11px] font-bold transition-all active:scale-95 shadow-lg shadow-emerald-500/20"
+                  className="app-primary-button flex items-center gap-2 px-3 py-1.5 text-[11px]"
                 >
                   Export Excel
                 </button>
@@ -256,7 +255,7 @@ export default function AfterWorkingHoursReportPage() {
               <button
                 onClick={handleGetReport}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-1.5 bg-pink-500 hover:bg-pink-600 disabled:opacity-50 text-white rounded-lg text-[11px] font-black transition-all active:scale-95 shadow-lg shadow-pink-500/25"
+                className="app-primary-button flex items-center gap-2 px-4 py-1.5 text-[11px]"
               >
                 {loading ? "Processing..." : "Get Report"}
               </button>
@@ -276,7 +275,7 @@ export default function AfterWorkingHoursReportPage() {
                     onChange={(e) => setFilters({ ...filters, user: e.target.value })}
                     className={filterInputClass}
                   >
-                    <option value="">All Users</option>
+                    <option value="">Choose An Option</option>
                     {usersList.map((u) => (
                       <option key={u.id} value={u.id}>
                         {u.userName}
@@ -364,15 +363,15 @@ export default function AfterWorkingHoursReportPage() {
 
           {reportData.length > 0 ? (
             <div className="flex flex-col w-full h-auto relative">
-              <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar">
-                <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px]">
-                  <thead className="sticky top-0 z-10">
+              <div className="isolate max-h-[580px] overflow-auto px-4 pb-4 bg-white dark:bg-slate-900 custom-scrollbar">
+                <table className="relative z-0 w-full text-left border-separate border-spacing-0 min-w-max text-[11px]">
+                  <thead className="sticky top-0 z-40 bg-slate-50 dark:bg-slate-900">
                     {table.getHeaderGroups().map((headerGroup) => (
                       <tr key={headerGroup.id} className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
                         {headerGroup.headers.map((header, colIdx) => (
                           <th
                             key={header.id}
-                            className={`px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 ${colIdx === 0 ? "pl-8" : ""}`}
+                            className={`sticky top-0 z-50 bg-slate-50 dark:bg-slate-900 px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 shadow-[0_1px_0_#e2e8f0] dark:shadow-[0_1px_0_#1e293b] ${colIdx === 0 ? "pl-8" : ""}`}
                             onClick={header.column.getToggleSortingHandler()}
                           >
                             <div className="flex items-center gap-1">
@@ -388,7 +387,7 @@ export default function AfterWorkingHoursReportPage() {
                       </tr>
                     ))}
                   </thead>
-                  <tbody>
+                  <tbody className="relative z-0">
                     {table.getRowModel().rows.map((row, idx) => {
                       const isEven = idx % 2 === 0;
                       return (

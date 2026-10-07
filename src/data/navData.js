@@ -6,7 +6,6 @@ import {
   Database,
   Shield,
   Settings,
-  Activity,
 } from "lucide-react";
 
 export const NAV_GROUPS = [
@@ -162,13 +161,6 @@ export const NAV_GROUPS = [
         href: "/settings",
         //  Support both permission key variants
         permission: ["SettingManagement.Emailing", "AbpSettingManagement.Emailing"],
-      },
-      {
-        id: "set-audit-logs",
-        name: "Audit Logs",
-        icon: Activity,
-        href: "/audit-logs",
-        permission: "Billing.AuditLogs",
       },
     ],
   },

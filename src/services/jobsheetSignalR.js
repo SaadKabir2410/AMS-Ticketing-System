@@ -4,6 +4,7 @@ import {
   LogLevel,
 } from "@microsoft/signalr";
 import { jobsheetsApi } from "./api/jobsheets";
+import { getValidAccessToken } from "./tokenAuth";
 
 const HUB_URL = "/ams-ticket-detail-hub";
 
@@ -70,11 +71,14 @@ export function processTicketDetailsUpdate(firstArgument, secondArgument) {
   return pendingTicketUpdates.get(updateKey);
 }
 
-function getAccessToken() {
+async function getAccessToken() {
   try {
-    return JSON.parse(localStorage.getItem("tokenAuth:session"))?.access_token || "";
-  } catch {
-    return "";
+    return (await getValidAccessToken()) || "";
+  } catch (error) {
+    if (error.status) {
+      window.dispatchEvent(new CustomEvent("auth:expired"));
+    }
+    throw error;
   }
 }
 

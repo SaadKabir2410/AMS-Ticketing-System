@@ -122,6 +122,33 @@ body {
     opacity: 0.3;
     cursor: not-allowed;
   }
+
+  /* Shared primary action design — matches the New User button. */
+  .app-primary-button {
+    background-image: linear-gradient(to right, #ec4899, #f43f5e) !important;
+    background-color: transparent !important;
+    border-color: transparent !important;
+    border-radius: 0.75rem !important;
+    color: #fff !important;
+    font-weight: 700 !important;
+    box-shadow: 0 10px 15px -3px rgba(236, 72, 153, 0.2),
+      0 4px 6px -4px rgba(236, 72, 153, 0.2) !important;
+    transition: all 200ms ease !important;
+  }
+
+  .app-primary-button:hover {
+    background-image: linear-gradient(to right, #db2777, #e11d48) !important;
+  }
+
+  .app-primary-button:active {
+    transform: scale(0.95);
+  }
+
+  .app-primary-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
 }
 
 /* ─── Flatpickr Custom Input Styling ─────────────────────────────── */

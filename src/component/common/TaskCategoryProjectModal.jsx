@@ -326,7 +326,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
         <button
           onClick={handleSave}
           disabled={submitting || loading}
-          className="h-[30px] px-8 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-lg text-[10.5px] font-black uppercase shadow-lg shadow-pink-500/20 transition-all active:scale-95 disabled:opacity-50"
+          className="app-primary-button h-[30px] px-8 text-[10.5px] uppercase"
         >
           {submitting ? "Processing..." : "Save"}
         </button>

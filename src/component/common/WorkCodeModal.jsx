@@ -264,7 +264,7 @@ export default function WorkCodeModal({
         <button
           onClick={handleSubmit}
           disabled={loading || checkingCode || !!errors.code}
-          className="px-8 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-xl text-sm font-bold flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-pink-500/20 dark:shadow-none transition-all active:scale-95"
+          className="app-primary-button px-8 py-2.5 text-sm flex items-center justify-center min-w-[120px]"
         >
           {loading ? "Loading..." : isEdit ? (
             "Update"
@@ -276,7 +276,6 @@ export default function WorkCodeModal({
     </Dialog>
   );
 }
-
 
 
 

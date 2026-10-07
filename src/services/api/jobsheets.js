@@ -71,15 +71,13 @@ export const jobsheetsApi = {
       ? filters.collaborator.filter(isGuid)
       : filters.collaborator && isGuid(filters.collaborator) ? [filters.collaborator] : [];
 
-    const allUserIds = [...new Set([...userIds, ...collabIds])];
-
     const params = {
-      "JobsheetSearch.CurrentUserId": currentUserId && isGuid(currentUserId) ? currentUserId : undefined,
-      "JobsheetSearch.UserIdsSearchValues": allUserIds.length > 0 ? allUserIds : undefined,
-      "JobsheetSearch.JobsheetDetailUserIdsSearchValues": allUserIds.length > 0 ? allUserIds : undefined,
-      "JobsheetSearch.ProjectIdSearchValue": filters.project && isGuid(filters.project) ? filters.project : undefined,
-      "JobsheetSearch.DateFrom": filters.dateFrom ? formatDateStart(filters.dateFrom) : undefined,
-      "JobsheetSearch.DateTo": filters.dateTo ? formatDateEnd(filters.dateTo) : undefined,
+      CurrentUserId: currentUserId && isGuid(currentUserId) ? currentUserId : undefined,
+      UserIdsSearchValues: userIds.length > 0 ? userIds : undefined,
+      JobsheetDetailUserIdsSearchValues: collabIds.length > 0 ? collabIds : undefined,
+      ProjectIdSearchValue: filters.project && isGuid(filters.project) ? filters.project : undefined,
+      DateFrom: filters.dateFrom ? formatDateStart(filters.dateFrom) : undefined,
+      DateTo: filters.dateTo ? formatDateEnd(filters.dateTo) : undefined,
     };
 
     return apiClient.get("/api/app/jobsheet/jobsheet-report", {

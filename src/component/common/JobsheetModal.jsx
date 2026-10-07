@@ -1318,10 +1318,10 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
             <div style={{ color: "#ec4899", marginBottom: 16 }}>
               <AlertCircle size={48} strokeWidth={1.5} />
             </div>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", marginBottom: 8, textAlign: "center" }}>
+            <h3 style={styles.confirmTitle}>
               {confirmation.message}
             </h3>
-            <p style={{ fontSize: 14, color: "#64748b", marginBottom: 24, textAlign: "center" }}>
+            <p style={styles.confirmMessage}>
               {confirmation.type === "EXIT" ? "You have unsaved changes. Choose how you would like to proceed." : "Your current form entries will be cleared."}
             </p>
             <div style={{ display: "flex", gap: 12, width: "100%" }}>
@@ -1525,6 +1525,16 @@ function getStyles(isDark) {
       display: "flex", flexDirection: "column", alignItems: "center",
       boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
       border: `1px solid ${border}`,
+    },
+    confirmTitle: {
+      fontSize: 18, fontWeight: 700,
+      color: isDark ? "#f8fafc" : "#1e293b",
+      marginBottom: 8, textAlign: "center",
+    },
+    confirmMessage: {
+      fontSize: 14,
+      color: isDark ? "#cbd5e1" : "#64748b",
+      marginBottom: 24, textAlign: "center",
     },
     exitBtn: {
       backgroundColor: "#fee2e2", color: "#ef4444", border: "1px solid #fecaca",

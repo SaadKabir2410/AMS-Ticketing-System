@@ -22,7 +22,7 @@ function PasswordField({ label, value, onChange, name }) {
         <button
           type="button"
           onClick={() => setShow((p) => !p)}
-          className="px-4 py-2.5 bg-[#6c5ce7] hover:bg-[#5f51cd] text-white rounded-r flex items-center justify-center transition-colors"
+          className="px-4 py-2.5 bg-pink-500 hover:bg-pink-600 dark:bg-pink-500 dark:hover:bg-pink-600 text-white rounded-r flex items-center justify-center transition-colors"
         >
           {show ? <Eye size={18} strokeWidth={2} /> : <EyeOff size={18} strokeWidth={2} />}
         </button>
@@ -201,8 +201,8 @@ export default function MyAccountPage() {
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`w-full text-left px-5 py-3 rounded-lg text-[14px] font-medium transition-colors ${isActive
-                      ? "bg-[#ffebf3] dark:bg-pink-500/10 text-[#ec4899]"
-                      : "bg-[#f8f9fa] dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      ? "bg-pink-500 text-white shadow-sm shadow-pink-500/20"
+                      : "bg-pink-50/70 dark:bg-pink-500/5 text-pink-600 dark:text-pink-400 hover:bg-pink-100 dark:hover:bg-pink-500/15"
                     }`}
                 >
                   {tab}
@@ -259,7 +259,7 @@ export default function MyAccountPage() {
                     <button
                       onClick={handlePasswordSubmit}
                       disabled={passwordLoading}
-                      className="px-6 py-2.5 bg-[#3b82f6] hover:bg-blue-600 text-white rounded font-semibold text-[14px] tracking-wide active:scale-95 transition-all outline-none disabled:opacity-60"
+                      className="app-primary-button px-6 py-2.5 text-[14px] tracking-wide outline-none"
                     >
                       {passwordLoading ? "Saving..." : "Submit"}
                     </button>
@@ -302,7 +302,7 @@ export default function MyAccountPage() {
                         <button
                           type="button"
                           onClick={handleRemoveProfilePic}
-                          className="text-[11px] font-bold uppercase tracking-wider text-red-500 hover:text-red-600 transition-colors bg-red-50 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 px-3 py-1.5 rounded-md"
+                          className="text-[11px] font-bold uppercase tracking-wider text-pink-600 hover:text-white transition-colors bg-pink-50 hover:bg-pink-600 dark:bg-pink-500/10 dark:text-pink-400 dark:hover:bg-pink-600 dark:hover:text-white px-3 py-1.5 rounded-md"
                         >
                           Remove picture
                         </button>
@@ -361,7 +361,7 @@ export default function MyAccountPage() {
                     <button
                       onClick={handleProfileSubmit}
                       disabled={profileLoading}
-                      className="px-6 py-2.5 bg-[#3b82f6] hover:bg-blue-600 text-white rounded font-semibold text-[14px] tracking-wide active:scale-95 transition-all outline-none disabled:opacity-60"
+                      className="app-primary-button px-6 py-2.5 text-[14px] tracking-wide outline-none"
                     >
                       {profileLoading ? "Saving..." : "Submit"}
                     </button>

@@ -393,7 +393,7 @@ export default function CodeDetailsModal({
         <button
           onClick={handleSubmitInternal}
           disabled={submitting}
-          className="h-[30px] px-8 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white rounded-lg text-[10.5px] font-black uppercase shadow-lg shadow-pink-500/20 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="app-primary-button h-[30px] px-8 text-[10.5px] uppercase"
         >
           {submitting ? "Processing..." : isEdit ? "Update Code" : "Save"}
         </button>
@@ -406,7 +406,6 @@ export default function CodeDetailsModal({
     </Dialog>
   );
 }
-
 
 
 

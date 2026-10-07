@@ -1370,15 +1370,15 @@ export default function TicketModal({
                                 options={{
                                   defaultDate: form.receivedAt || undefined,
                                   enableTime: true,
-                                  dateFormat: "Y-m-d h:i K",
-                                  time_24hr: false,
+                                  dateFormat: "Y-m-d H:i",
+                                  time_24hr: true,
                                   allowInput: true,
                                 }}
                                 className={`${inputClass} !pr-10 ${errors.receivedAt
                                   ? "border-rose-500 text-rose-600"
                                   : ""
                                   }`}
-                                placeholder="YYYY-MM-DD hh:mm AM/PM"
+                                placeholder="YYYY-MM-DD HH:mm"
                               />
                               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-pink-500 transition-colors pointer-events-none">
                                 <svg
@@ -1649,15 +1649,15 @@ export default function TicketModal({
                                 options={{
                                   defaultDate: form.cmsTicketAddedOn || undefined,
                                   enableTime: true,
-                                  dateFormat: "Y-m-d h:i K",
-                                  time_24hr: false,
+                                  dateFormat: "Y-m-d H:i",
+                                  time_24hr: true,
                                   allowInput: true,
                                 }}
                                 className={`${inputClass} !pr-10 ${errors.cmsTicketAddedOn
                                   ? "border-rose-500 text-rose-600"
                                   : ""
                                   }`}
-                                placeholder="YYYY-MM-DD hh:mm AM/PM"
+                                placeholder="YYYY-MM-DD HH:mm"
                               />
                               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-pink-500 transition-colors pointer-events-none">
                                 <svg
@@ -1963,12 +1963,12 @@ export default function TicketModal({
                               options={{
                                 defaultDate: form.ticketResolutionVerifiedOn || undefined,
                                 enableTime: true,
-                                dateFormat: "Y-m-d h:i K",
-                                time_24hr: false,
+                                dateFormat: "Y-m-d H:i",
+                                time_24hr: true,
                                 allowInput: true,
                               }}
                               className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
-                              placeholder="YYYY-MM-DD hh:mm AM/PM"
+                              placeholder="YYYY-MM-DD HH:mm"
                             />
                           </div>
                         </Field>
@@ -2016,12 +2016,12 @@ export default function TicketModal({
                               options={{
                                 defaultDate: form.cmsTicketClosedOn || undefined,
                                 enableTime: true,
-                                dateFormat: "Y-m-d h:i K",
-                                time_24hr: false,
+                                dateFormat: "Y-m-d H:i",
+                                time_24hr: true,
                                 allowInput: true,
                               }}
                               className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
-                              placeholder="YYYY-MM-DD hh:mm AM/PM"
+                              placeholder="YYYY-MM-DD HH:mm"
                             />
                           </div>
                         </Field>
@@ -2048,12 +2048,12 @@ export default function TicketModal({
                               options={{
                                 defaultDate: form.serviceClosedDate || undefined,
                                 enableTime: true,
-                                dateFormat: "Y-m-d h:i K",
-                                time_24hr: false,
+                                dateFormat: "Y-m-d H:i",
+                                time_24hr: true,
                                 allowInput: true,
                               }}
                               className="w-full bg-transparent text-sm h-10 px-4 outline-none text-slate-700 dark:text-slate-200"
-                              placeholder="YYYY-MM-DD hh:mm AM/PM"
+                              placeholder="YYYY-MM-DD HH:mm"
                             />
                           </div>
                         </Field>

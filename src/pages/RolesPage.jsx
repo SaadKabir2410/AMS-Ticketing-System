@@ -459,7 +459,7 @@ export default function RolesPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={handleCreateOpen}
-                className="inline-flex items-center px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-pink-500/20 transition-all bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white active:scale-95"
+                className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs"
               >
                 New Role
               </button>
@@ -820,7 +820,7 @@ export default function RolesPage() {
           <button
             onClick={handleSavePermissions}
             disabled={loadingPermissions}
-            className="flex-1 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold h-[38px] text-[11px] rounded-xl transition-all duration-200 shadow-md shadow-pink-500/10 active:scale-95 disabled:opacity-50"
+            className="app-primary-button flex-1 h-[38px] text-[11px]"
           >
             {loadingPermissions ? "Wait..." : "Save Changes"}
           </button>

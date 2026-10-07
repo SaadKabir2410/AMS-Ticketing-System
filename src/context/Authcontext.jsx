@@ -1,8 +1,8 @@
-import { createContext, useState, useEffect, useRef } from "react";
+import { createContext, useState, useEffect } from "react";
 import {
   loginWithPassword,
   clearSession,
-  getAuthState,
+  getValidAccessToken,
 } from "../services/tokenAuth";
 import apiClient from "../services/apiClient";
 
@@ -12,7 +12,6 @@ export const AuthContext = createContext();
 const USER_KEY = "spike_users";
 const SESSION_KEY = "spike_session";
 const LOGIN_TIME_KEY = "spike_login_time";
-const MAX_SESSION_MS = 9 * 60 * 60 * 1000; // 9 hours in milliseconds
 const DEFAULT_USER = {
   id: 1,
   name: "Admin User",
@@ -59,69 +58,51 @@ export function AuthProvider({ children }) {
     }
   });
 
-  const sessionTimerRef = useRef(null);
-
-  // Perform a clean logout without needing the logout() closure
-  const _doAutoLogout = () => {
-    console.log("[Auth] 9-hour session limit reached — logging out.");
-    localStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(LOGIN_TIME_KEY);
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("spike_session");
-    clearSession();
-    setUser(null);
-    window.location.href = "/login";
-  };
-
-  // Schedule (or immediately trigger) auto-logout when 9-hour limit is hit
-  const _scheduleSessionExpiry = () => {
-    // Clear any existing timer first
-    if (sessionTimerRef.current) {
-      clearTimeout(sessionTimerRef.current);
-      sessionTimerRef.current = null;
-    }
-
-    const loginTime = parseInt(localStorage.getItem(LOGIN_TIME_KEY), 10);
-    if (!loginTime) return; // No login time recorded; nothing to schedule
-
-    const elapsed = Date.now() - loginTime;
-    const remaining = MAX_SESSION_MS - elapsed;
-
-    if (remaining <= 0) {
-      // Already exceeded 9 hours — logout immediately
-      _doAutoLogout();
-    } else {
-      // Schedule logout for when remaining time elapses
-      sessionTimerRef.current = setTimeout(() => {
-        _doAutoLogout();
-      }, remaining);
-    }
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    // Sync with manual login session; also set up the 9-hour expiry timer
-    const { isAuthenticated: isManualAuth } = getAuthState();
-    if (!isManualAuth && user) {
-      // Token gone but React state still has a user — clear it
-      setUser(null);
-      localStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem(LOGIN_TIME_KEY);
-      return;
-    }
+    let active = true;
 
-    if (user) {
-      _scheduleSessionExpiry();
-    }
-
-    return () => {
-      if (sessionTimerRef.current) {
-        clearTimeout(sessionTimerRef.current);
+    const restoreSession = async () => {
+      if (!user) {
+        if (active) setLoading(false);
+        return;
       }
+
+      try {
+        const accessToken = await getValidAccessToken();
+        if (!accessToken && active) {
+          localStorage.removeItem(SESSION_KEY);
+          setUser(null);
+        }
+      } catch (sessionError) {
+        // Do not log users out merely because the server/network is briefly
+        // unavailable. The next API request will retry token renewal.
+        console.warn("[Auth] Could not validate the saved session:", sessionError);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    restoreSession();
+    return () => {
+      active = false;
     };
   }, [user]);
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  useEffect(() => {
+    const handleExpiredSession = () => {
+      clearSession();
+      localStorage.removeItem(SESSION_KEY);
+      localStorage.removeItem(LOGIN_TIME_KEY);
+      setUser(null);
+    };
+
+    window.addEventListener("auth:expired", handleExpiredSession);
+    return () => window.removeEventListener("auth:expired", handleExpiredSession);
+  }, []);
+
   const clearError = () => setError("");
 
   // Register
@@ -230,8 +211,6 @@ export function AuthProvider({ children }) {
         permissions: permissionsMap,
       };
 
-      // Record the exact login timestamp for the 9-hour session limit
-      localStorage.setItem(LOGIN_TIME_KEY, Date.now().toString());
       localStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
       setUser(userProfile);
       setLoading(false);
@@ -249,25 +228,19 @@ export function AuthProvider({ children }) {
     try {
       console.log("[Auth] User-initiated logout.");
 
-      // 1. Cancel the 9-hour auto-logout timer
-      if (sessionTimerRef.current) {
-        clearTimeout(sessionTimerRef.current);
-        sessionTimerRef.current = null;
-      }
-
-      // 2. Clear ALL storage keys related to auth
+      // Clear ALL storage keys related to auth
       localStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(LOGIN_TIME_KEY);
       localStorage.removeItem("auth_token");
       localStorage.removeItem("spike_session");
 
-      // 3. Clear manual password-token session (from tokenAuth.js)
+      // Clear manual password-token session (from tokenAuth.js)
       clearSession();
 
-      // 4. Clear reactive state
+      // Clear reactive state
       setUser(null);
 
-      // 5. Redirect to login
+      // Redirect to login
       window.location.href = "/login";
     } catch (err) {
       console.error("[Auth] Logout error fallback:", err);

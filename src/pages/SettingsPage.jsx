@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Home, ArrowLeft, Settings as SettingsIcon, X, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import SettingsService from "../services/api/settings";
@@ -44,136 +44,11 @@ const InputField = ({ label, required, value, name, onChange, type = "text", pla
 };
 
 
-// ─── Features Modal ───────────────────────────────────────────────────────────
-const FeaturesModal = ({ onClose }) => {
-  const [features, setFeatures] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const { showToast } = useToast();
-
-  React.useEffect(() => {
-    const fetchFeatures = async () => {
-      setLoading(true);
-      try {
-        const data = await SettingsService.getFeatures();
-        setFeatures(data.features ?? []);
-      } catch (error) {
-        console.error("Failed to fetch features:", error);
-        showToast("Failed to load features", "error");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchFeatures();
-  }, []);
-
-  const handleToggle = (name) => {
-    setFeatures((prev) =>
-      prev.map((f) =>
-        f.name === name ? { ...f, value: f.value === "true" ? "false" : "true" } : f
-      )
-    );
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await SettingsService.updateFeatures(
-        features.map((f) => ({ name: f.name, value: f.value }))
-      );
-      showToast("Features saved successfully", "success");
-
-      onClose();
-    } catch (error) {
-      console.error("Failed to save features:", error);
-      showToast("Failed to save features", "error");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-          <h2 className="text-base font-bold text-slate-800 dark:text-white">Features</h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {loading ? (
-            <div className="flex items-center justify-center h-32 text-slate-400 text-sm">
-              Loading features...
-            </div>
-          ) : features.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-slate-400 text-sm">
-              There isn't any available feature.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {features.map((feature) => (
-                <div
-                  key={feature.name}
-                  className="flex items-center justify-between py-3 px-4 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700"
-                >
-                  <div>
-                    <p className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">
-                      {feature.displayName}
-                    </p>
-                    {feature.description && (
-                      <p className="text-[11px] text-slate-400 mt-0.5">{feature.description}</p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleToggle(feature.name)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${feature.value === "true" ? "btn-flagship" : "bg-slate-300 dark:bg-slate-600"
-                      }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition duration-200 ${feature.value === "true" ? "translate-x-4" : "translate-x-0"
-                        }`}
-                    />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {!loading && features.length > 0 && (
-          <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
-            <button
-              onClick={onClose}
-              className="flex-1 btn-flagship h-[38px]! text-[11px]! border-slate-200! dark:border-slate-700! text-slate-500! hover:bg-slate-50! dark:hover:bg-white/5!"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-1 btn-flagship h-[38px]! text-[11px]!"
-            >
-              {saving ? "Saving..." : "Save"}
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-// ─────────────────────────────────────────────────────────────────────────────
-
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("Emailing");
   const [loading, setLoading] = useState(false);
   const [testEmailLoading, setTestEmailLoading] = useState(false);
   const [systemLoading, setSystemLoading] = useState(false);
-  const [showFeaturesModal, setShowFeaturesModal] = useState(false);
   const { showToast } = useToast();
   const navigate = useNavigate();
 
@@ -322,11 +197,6 @@ export default function SettingsPage() {
         * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
       `}</style>
 
-      {/* Features Modal */}
-      {showFeaturesModal && (
-        <FeaturesModal onClose={() => setShowFeaturesModal(false)} />
-      )}
-
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
         {/* Header */}
         <div className="flex flex-col gap-2 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50">
@@ -346,7 +216,7 @@ export default function SettingsPage() {
 
           {/* Sidebar */}
           <div className="w-full md:w-64 flex flex-col gap-1 pr-6 shrink-0 border-r border-slate-100 dark:border-slate-800/50 mb-8 md:mb-0">
-            {["Emailing", "Feature management", "System Settings"].map((tab) => (
+            {["Emailing", "System Settings"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -460,22 +330,6 @@ export default function SettingsPage() {
                     {loading ? "Saving..." : "Save"}
                   </button>
                 </div>
-              </div>
-            )}
-
-            {/* Feature Management Tab */}
-            {activeTab === "Feature management" && (
-              <div className="animate-in fade-in duration-300 pt-2">
-                <p className="text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-6">
-                  You can manage the host side features by clicking the following button.
-                </p>
-                <button
-                  onClick={() => setShowFeaturesModal(true)}
-                  className="btn-flagship"
-                >
-                  <SettingsIcon size={14} strokeWidth={2.5} />
-                  Manage host features
-                </button>
               </div>
             )}
 

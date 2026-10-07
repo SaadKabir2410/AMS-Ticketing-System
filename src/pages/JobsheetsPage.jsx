@@ -22,6 +22,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Loader2,
+  Plus,
 } from "lucide-react";
 
 
@@ -93,13 +95,125 @@ export default function JobsheetsPage() {
         ? filters
         : { ...filters, user: [user?.id].filter(Boolean) };
 
+      const selectedUserIds = finalFilters.user?.length > 0
+        ? finalFilters.user
+        : undefined;
+      const selectedCollaboratorIds = finalFilters.collaborator?.length > 0
+        ? finalFilters.collaborator
+        : undefined;
+
+      // Check the jobsheet records themselves. A valid jobsheet may have no
+      // detail rows yet, but it must still be allowed to produce a report.
+      const availability = await jobsheetsApi.getAll({
+        page: 1,
+        perPage: 1,
+        FromDate: finalFilters.dateFrom,
+        ToDate: finalFilters.dateTo,
+        Project: finalFilters.project,
+        UserIdsSearchValues: selectedUserIds,
+        JobsheetDetailUserIdsSearchValues: selectedCollaboratorIds,
+        CurrentUserId: user?.id,
+      });
+      const availableItems = Array.isArray(availability)
+        ? availability
+        : availability?.items || availability?.data || [];
+      const availableCount = availability?.totalCount;
+      const hasJobsheets = availableCount != null && Number.isFinite(Number(availableCount))
+        ? Number(availableCount) > 0
+        : availableItems.length > 0;
+
+      if (!hasJobsheets) {
+        setReportError("No jobsheets are available for the selected filters.");
+        return;
+      }
+
       const response = await jobsheetsApi.getReport({
         filters: finalFilters,
         currentUserId: user?.id,
       });
 
-      // The API always returns JSON report data — build the Excel file here
-      const reportData = response.data;
+      // Normalize both camelCase and PascalCase payloads. Some deployments
+      // wrap application-service responses in a `result` property.
+      const reportData = response.data?.result || response.data || {};
+      const rawReportRows = reportData.jobsheetDetails || reportData.JobsheetDetails || [];
+
+      const formatCollaborators = (value) => {
+        if (typeof value === "string") return value;
+        if (!Array.isArray(value)) return "";
+        return value
+          .map((entry) =>
+            typeof entry === "string"
+              ? entry
+              : entry?.userName ||
+                entry?.UserName ||
+                entry?.name ||
+                entry?.Name ||
+                entry?.userId ||
+                entry?.UserId ||
+                "",
+          )
+          .filter(Boolean)
+          .join(", ");
+      };
+
+      const normalizeRow = (row = {}, jobsheet = {}) => ({
+        date: row.date || row.Date || jobsheet.date || jobsheet.Date || "",
+        userName:
+          row.userName || row.UserName || jobsheet.userName || jobsheet.UserName || "",
+        taskCategoryName: row.taskCategoryName || row.TaskCategoryName || "",
+        subTaskCategoryName: row.subTaskCategoryName || row.SubTaskCategoryName || "",
+        projectName: row.projectName || row.ProjectName || "",
+        startTime: row.startTime || row.StartTime || "",
+        endTime: row.endTime || row.EndTime || "",
+        statusName: row.statusName || row.StatusName || "",
+        remarks: row.remarks || row.Remarks || "",
+        jobsheetDetailUsers: formatCollaborators(
+          row.jobsheetDetailUsers || row.JobsheetDetailUsers,
+        ),
+      });
+
+      let reportRows = Array.isArray(rawReportRows)
+        ? rawReportRows.map((row) => normalizeRow(row))
+        : [];
+
+      // The report DTO should normally contain detail rows. If an older
+      // backend returns only jobsheet records, flatten their details locally;
+      // a jobsheet without details still gets a visible summary row.
+      if (reportRows.length === 0) {
+        const fallbackPageSize = Math.min(
+          Math.max(Number(availableCount) || availableItems.length || 1, 1),
+          10000,
+        );
+        const fallbackResult = await jobsheetsApi.getAll({
+          page: 1,
+          perPage: fallbackPageSize,
+          FromDate: finalFilters.dateFrom,
+          ToDate: finalFilters.dateTo,
+          Project: finalFilters.project,
+          UserIdsSearchValues: selectedUserIds,
+          JobsheetDetailUserIdsSearchValues: selectedCollaboratorIds,
+          CurrentUserId: user?.id,
+        });
+        const fetchedJobsheets = Array.isArray(fallbackResult)
+          ? fallbackResult
+          : fallbackResult?.items || fallbackResult?.data || [];
+        const fallbackJobsheets = fetchedJobsheets.length > 0
+          ? fetchedJobsheets
+          : availableItems;
+
+        reportRows = fallbackJobsheets.flatMap((jobsheet) => {
+          const details = jobsheet.jobsheetDetails || jobsheet.JobsheetDetails || [];
+          if (Array.isArray(details) && details.length > 0) {
+            return details.map((detail) => normalizeRow(detail, jobsheet));
+          }
+          return [
+            normalizeRow(
+              { remarks: "No detail entries" },
+              jobsheet,
+            ),
+          ];
+        });
+      }
 
       const ExcelJS = await import("exceljs");
       const { saveAs } = await import("file-saver");
@@ -108,6 +222,8 @@ export default function JobsheetsPage() {
       const sheet = workbook.addWorksheet("Jobsheet Report");
 
       sheet.columns = [
+        { header: "Date", key: "date", width: 14 },
+        { header: "User", key: "userName", width: 22 },
         { header: "Task Category", key: "taskCategoryName", width: 20 },
         { header: "Sub Task Category", key: "subTaskCategoryName", width: 20 },
         { header: "Project", key: "projectName", width: 20 },
@@ -115,15 +231,16 @@ export default function JobsheetsPage() {
         { header: "End Time", key: "endTime", width: 12 },
         { header: "Status", key: "statusName", width: 15 },
         { header: "Remarks", key: "remarks", width: 30 },
+        { header: "Collaborators", key: "jobsheetDetailUsers", width: 24 },
       ];
 
-      (reportData.jobsheetDetails || []).forEach((d) => sheet.addRow(d));
+      reportRows.forEach((d) => sheet.addRow(d));
 
       sheet.addRow({});
-      sheet.addRow({ taskCategoryName: "Total Duration (Hrs):", subTaskCategoryName: reportData.totalDurationHours });
-      sheet.addRow({ taskCategoryName: "Total Payout:", subTaskCategoryName: reportData.totalPayout });
-      sheet.addRow({ taskCategoryName: "Generated By:", subTaskCategoryName: reportData.generatedBy });
-      sheet.addRow({ taskCategoryName: "Generated On:", subTaskCategoryName: reportData.generatedOn });
+      sheet.addRow({ taskCategoryName: "Total Duration (Hrs):", subTaskCategoryName: reportData.totalDurationHours ?? reportData.TotalDurationHours ?? "" });
+      sheet.addRow({ taskCategoryName: "Total Payout:", subTaskCategoryName: reportData.totalPayout ?? reportData.TotalPayout ?? "" });
+      sheet.addRow({ taskCategoryName: "Generated By:", subTaskCategoryName: reportData.generatedBy ?? reportData.GeneratedBy ?? "" });
+      sheet.addRow({ taskCategoryName: "Generated On:", subTaskCategoryName: reportData.generatedOn ?? reportData.GeneratedOn ?? "" });
 
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -656,34 +773,44 @@ export default function JobsheetsPage() {
 
 
   const headerActions = (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
       {reportError && (
-        <div className="text-red-500 text-xs flex items-center bg-red-50 dark:bg-red-500/10 px-3 py-2 rounded-xl">
+        <div className="flex w-full items-center rounded-xl bg-red-50 px-3 py-2 text-xs text-red-500 dark:bg-red-500/10 sm:w-auto">
           <AlertTriangle size={14} className="mr-1.5" />
-          {reportError}
-          <button onClick={clearReportError} className="ml-2 text-red-700 hover:text-red-900">
+          <span className="min-w-0 flex-1">{reportError}</span>
+          <button type="button" onClick={clearReportError} className="ml-2 shrink-0 text-red-700 hover:text-red-900">
             <X size={12} />
           </button>
         </div>
       )}
 
-      <button
-        onClick={handleGetReport}
-        disabled={reportDownloading}
-        className="btn-flagship bg-[#ec4899] text-white hover:bg-[#db2777] dark:bg-[#ec4899] dark:hover:bg-[#db2777] flex items-center gap-2 disabled:opacity-50"      >
-        <FileText size={16} />
-        {reportDownloading ? "Generating..." : "Get Report"}
-      </button>
-
-      {canCreate && (
+      <div className="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:flex sm:w-auto">
         <button
           type="button"
-          className="btn-flagship border-pink-200 dark:border-pink-500/20 text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-500/5 flex items-center gap-2"
-          onClick={() => setShowModal(true)}
+          onClick={handleGetReport}
+          disabled={reportDownloading}
+          aria-busy={reportDownloading}
+          className="app-primary-button btn-flagship-solid w-full min-w-[124px] gap-2 whitespace-nowrap sm:w-auto"
         >
-          New Jobsheet
+          {reportDownloading ? (
+            <Loader2 size={15} className="animate-spin" aria-hidden="true" />
+          ) : (
+            <FileText size={15} aria-hidden="true" />
+          )}
+          <span>{reportDownloading ? "Generating..." : "Get Report"}</span>
         </button>
-      )}
+
+        {canCreate && (
+          <button
+            type="button"
+            className="app-primary-button btn-flagship w-full min-w-[124px] gap-2 whitespace-nowrap sm:w-auto"
+            onClick={() => setShowModal(true)}
+          >
+            <Plus size={15} aria-hidden="true" />
+            <span>New Jobsheet</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -808,7 +935,7 @@ export default function JobsheetsPage() {
                 Jobsheets
               </h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex w-full items-center gap-3 sm:w-auto">
               {headerActions}
             </div>
           </div>

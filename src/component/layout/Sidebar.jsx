@@ -129,16 +129,18 @@ export default function Sidebar({
               </span>
             </div>
           )}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="text-slate-300 hover:text-white transition-colors p-2 shrink-0"
-          >
-            {collapsed ? (
-              <ChevronRight size={18} strokeWidth={2.5} />
-            ) : (
-              <ChevronLeft size={18} strokeWidth={2.5} />
-            )}
-          </button>
+          {!isMobile && (
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="text-slate-300 hover:text-white transition-colors p-2 shrink-0"
+            >
+              {collapsed ? (
+                <ChevronRight size={18} strokeWidth={2.5} />
+              ) : (
+                <ChevronLeft size={18} strokeWidth={2.5} />
+              )}
+            </button>
+          )}
         </div>
 
         {!collapsed && (

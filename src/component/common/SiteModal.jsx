@@ -440,7 +440,7 @@ export default function SiteModal({
           type="button"
           onClick={handleSubmit}
           disabled={loading || ocnChecking}
-          className="px-8 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold rounded-xl text-sm flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-pink-500/20 transition-all"
+          className="app-primary-button px-8 py-2.5 text-sm flex items-center justify-center min-w-[120px]"
         >
           {loading || ocnChecking ? "Wait..." : isEdit ? (
             "Update"
@@ -452,7 +452,6 @@ export default function SiteModal({
     </Dialog>
   );
 }
-
 
 
 

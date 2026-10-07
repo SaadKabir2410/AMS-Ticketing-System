@@ -1,5 +1,6 @@
 import axios from "axios";
 import qs from "qs";
+import { getSession, getValidAccessToken } from "./tokenAuth.js";
 
 const apiClient = axios.create({
   baseURL: "",
@@ -17,16 +18,19 @@ const apiClient = axios.create({
   },
 });
 
-apiClient.interceptors.request.use((config) => {
-  const manualKey = "tokenAuth:session";
-
+apiClient.interceptors.request.use(async (config) => {
+  let accessToken;
   try {
-    const manualSession = JSON.parse(localStorage.getItem(manualKey));
-    if (manualSession?.access_token) {
-      config.headers.Authorization = `Bearer ${manualSession.access_token}`;
+    accessToken = await getValidAccessToken();
+  } catch (error) {
+    if (error.status) {
+      window.dispatchEvent(new CustomEvent("auth:expired"));
     }
-  } catch (e) {
-    console.error("Failed to parse auth user:", e);
+    throw error;
+  }
+
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
   }
 
   // Add tenant header for ABP Framework
@@ -60,8 +64,36 @@ apiClient.interceptors.response.use(
     }
 
     if (error.response?.status === 401) {
-      // Trigger event for App.jsx to handle redirect
-      window.dispatchEvent(new CustomEvent("auth:expired"));
+      if (config && !config._authRetry) {
+        config._authRetry = true;
+        const sessionWasActive = Boolean(getSession());
+
+        try {
+          const accessToken = await getValidAccessToken({ forceRefresh: true });
+          if (accessToken) {
+            config.headers.Authorization = `Bearer ${accessToken}`;
+            return apiClient(config);
+          }
+
+          // A valid access token can receive a 401 from an individual endpoint
+          // for reasons unrelated to token expiry. Do not destroy the whole
+          // login when the server did not provide a refresh token.
+          if (sessionWasActive) return Promise.reject(error);
+        } catch (refreshError) {
+          // Keep the user signed in during temporary connectivity failures.
+          if (!refreshError.status) return Promise.reject(error);
+
+          // The token endpoint explicitly rejected the refresh token.
+          window.dispatchEvent(new CustomEvent("auth:expired"));
+          return Promise.reject(error);
+        }
+      }
+
+      // Only end the session if there is no longer a usable token. A second
+      // 401 after a successful refresh may simply be endpoint authorization.
+      if (!getSession()) {
+        window.dispatchEvent(new CustomEvent("auth:expired"));
+      }
     }
     return Promise.reject(error);
   },

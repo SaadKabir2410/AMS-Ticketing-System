@@ -525,7 +525,7 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-8 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl bg-pink-600 text-white shadow-lg shadow-pink-500/20 transition-all flex items-center justify-center min-w-[140px]"
+                className="app-primary-button px-8 py-2.5 text-[10px] uppercase tracking-widest flex items-center justify-center min-w-[140px]"
               >
                 {isEdit ? "Update Activity" : "Create Activity"}
               </button>

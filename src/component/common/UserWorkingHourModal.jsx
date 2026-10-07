@@ -344,7 +344,7 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
             <button
               type="submit"
               disabled={loading}
-              className="flex-[2] px-4 py-2 text-white rounded-xl text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 shadow-lg shadow-pink-500/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="app-primary-button flex-[2] px-4 py-2 text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -361,7 +361,6 @@ export default function UserWorkingHourModal({ open, onClose, onSave, item }) {
     </Dialog>
   );
 }
-
 
 
 

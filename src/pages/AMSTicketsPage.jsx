@@ -614,7 +614,7 @@ export default function AMSTicketsPage() {
               {canCreate && (
                 <button
                   onClick={() => { setActionItem(null); setActionType("create"); }}
-                  className="inline-flex items-center px-4 py-2 rounded-lg text-xs font-medium shadow-sm transition-all bg-pink-500 hover:bg-pink-600 text-white"
+                  className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs"
                 >
                   <Plus size={16} className="mr-1.5" />
                   New Ticket

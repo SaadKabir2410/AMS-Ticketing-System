@@ -179,7 +179,7 @@ export default function CountryModal({
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="px-8 py-2.5 bg-pink-600 hover:bg-pink-700 dark:bg-pink-500 dark:hover:bg-pink-600 text-white rounded-xl text-sm flex items-center justify-center min-w-[120px] disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-all"
+          className="app-primary-button px-8 py-2.5 text-sm flex items-center justify-center min-w-[120px]"
         >
           {loading ? "Saving..." : isEdit ? "Update" : "Create"}
         </button>
@@ -187,7 +187,6 @@ export default function CountryModal({
     </Dialog>
   );
 }
-
 
 
 

@@ -626,13 +626,55 @@ export default function AMSTicketsReportPage() {
     "px-3 py-2 text-xs bg-white dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-xl outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all placeholder:text-slate-400 w-full shadow-sm";
 
   return (
-    <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
+    <div className="ams-ticket-report-page min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
       <style>{`
-        *::-webkit-scrollbar { display: none !important; }
-        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+        .ams-ticket-report-page,
+        .ams-ticket-report-page * {
+          scrollbar-width: auto;
+          scrollbar-color: #94a3b8 #e2e8f0;
+        }
+
+        .dark .ams-ticket-report-page,
+        .dark .ams-ticket-report-page * {
+          scrollbar-color: #64748b #1e293b;
+        }
+
+        .ams-ticket-report-page *::-webkit-scrollbar {
+          display: block !important;
+          width: 10px;
+          height: 10px;
+        }
+
+        .ams-ticket-report-page *::-webkit-scrollbar-track {
+          background: #e2e8f0;
+          border-radius: 999px;
+        }
+
+        .ams-ticket-report-page *::-webkit-scrollbar-thumb {
+          background: #94a3b8;
+          border: 2px solid #e2e8f0;
+          border-radius: 999px;
+        }
+
+        .ams-ticket-report-page *::-webkit-scrollbar-thumb:hover {
+          background: #ec4899;
+        }
+
+        .dark .ams-ticket-report-page *::-webkit-scrollbar-track {
+          background: #1e293b;
+        }
+
+        .dark .ams-ticket-report-page *::-webkit-scrollbar-thumb {
+          background: #64748b;
+          border-color: #1e293b;
+        }
+
+        .dark .ams-ticket-report-page *::-webkit-scrollbar-thumb:hover {
+          background: #ec4899;
+        }
       `}</style>
 
-      <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-auto">
+      <div className="flex-1 min-h-0 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-hidden">
         <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50 shrink-0">
           <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
             <span
@@ -667,7 +709,7 @@ export default function AMSTicketsReportPage() {
               <button
                 onClick={() => handleGetReport(false)}
                 disabled={loading}
-                className="flex items-center gap-1.5 px-4 py-2 disabled:opacity-50 bg-pink-600 hover:bg-pink-700 text-white rounded-lg text-[11px] transition-all active:scale-95 shadow-sm focus:outline-none"
+                className="app-primary-button flex items-center gap-1.5 px-4 py-2 text-[11px] focus:outline-none"
               >
                 {loading ? "Loading..." : "Get Report"}
               </button>
@@ -676,7 +718,7 @@ export default function AMSTicketsReportPage() {
                 <button
                   onClick={() => handleGetReport(true)}
                   disabled={loading}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg text-[11px] transition-all active:scale-95 shadow-sm focus:outline-none"
+                  className="app-primary-button flex items-center gap-1.5 px-4 py-2 text-[11px] focus:outline-none"
                 >
                   {loading ? "Exporting..." : "Excel Report"}
                 </button>
@@ -685,7 +727,7 @@ export default function AMSTicketsReportPage() {
               <button
                 onClick={handleCompareTicket}
                 disabled={loading}
-                className="flex items-center gap-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white rounded-lg text-[11px] transition-all active:scale-95 shadow-sm focus:outline-none"
+                className="app-primary-button flex items-center gap-1.5 px-4 py-2 text-[11px] focus:outline-none"
               >
                 <ArrowLeftRight size={14} />
                 Compare Ticket
@@ -962,25 +1004,33 @@ export default function AMSTicketsReportPage() {
         </div>
 
         {/* Table */}
-        <div className="flex-1 min-h-0 border-t border-slate-100 dark:border-slate-800/50 flex flex-col relative overflow-hidden bg-white dark:bg-slate-900">
+        <div className="h-[580px] min-h-[580px] shrink-0 border-t border-slate-100 dark:border-slate-800/50 flex flex-col relative overflow-hidden bg-white dark:bg-slate-900">
           <DataGrid
+            className="ams-ticket-report-grid"
             rows={reportData}
             columns={columns}
             getRowId={(row) => row.id || row.ticketNo || row.ticket || Math.random().toString()}
             disableRowSelectionOnClick
             loading={loading}
-            getRowHeight={() => "auto"}
-            getEstimatedRowHeight={() => 44}
+            rowHeight={52}
             columnHeaderHeight={48}
             hideFooter
             showColumnVerticalBorder={true}
             showCellVerticalBorder={true}
             sx={{
+              height: "100%",
+              minHeight: 0,
               border: "none",
               color: "inherit",
+              "& .MuiDataGrid-main": {
+                isolation: "isolate",
+              },
               "& .MuiDataGrid-columnHeaders": {
                 bgcolor: "rgba(248, 250, 252, 1)",
                 borderBottom: "1px solid rgba(226, 232, 240, 1)",
+                position: "sticky",
+                top: 0,
+                zIndex: 10,
                 "& .MuiDataGrid-columnHeaderTitle": {
                   fontWeight: 800,
                   fontSize: "10px",
@@ -997,6 +1047,10 @@ export default function AMSTicketsReportPage() {
                 whiteSpace: "normal",
                 wordBreak: "break-word",
                 padding: "8px",
+              },
+              "& .MuiDataGrid-virtualScroller": {
+                position: "relative",
+                zIndex: 1,
               },
               "& .MuiDataGrid-row:hover": {
                 bgcolor: "rgba(244, 114, 182, 0.05)",
