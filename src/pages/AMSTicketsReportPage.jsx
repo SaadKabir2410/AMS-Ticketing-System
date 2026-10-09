@@ -1,15 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContextHook";
-import { useToast } from "../component/common/ToastContext";
 import { PermissionGuard } from "../component/common/PermissionGuard";
-import { ArrowLeft, ArrowLeftRight, RotateCcw, MoreVertical } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import {
   Autocomplete,
   TextField,
-  Menu,
-  MenuItem,
-  IconButton,
 } from "@mui/material";
 import apiClient from "../services/apiClient";
 import countriesApi from "../services/api/countries";
@@ -24,6 +19,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
+import { buildDateRangeReportFileName } from "../utils/reportFileName";
 
 const TICKET_TYPE_OPTIONS = [
   { value: "ServicePlanned", label: "Service Planned" },
@@ -47,11 +43,244 @@ const STATUS_OPTIONS = [
   { value: "Void", label: "Void" },
 ];
 
+const STATUS_API_VALUES = { Opened: 1, Closed: 2, Void: 3 };
+const TICKET_TYPE_API_VALUES = {
+  ServicePlanned: 1,
+  ServiceDemand: 2,
+  Complaint: 3,
+  Inquiry: 4,
+};
+const SERVICE_PLANNED_TYPE_API_VALUES = {
+  Report: 1,
+  Rule: 2,
+  Installation: 3,
+  Configuration: 4,
+  TBS: 5,
+  Other: 6,
+};
+
+const normalizeSpreadsheetHeader = (value) =>
+  String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const TICKET_SPREADSHEET_HEADERS = new Set([
+  "ticket",
+  "tickets",
+  "ticketnumber",
+  "ticketno",
+  "ticketid",
+  "cmsticket",
+  "cmsticketnumber",
+  "cmsticketno",
+  "cmsnextticketno",
+]);
+
+const extractSpreadsheetTicketNumbers = (workbook) => {
+  const ticketNumbers = [];
+
+  workbook.SheetNames.forEach((sheetName) => {
+    const worksheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(worksheet, {
+      header: 1,
+      defval: "",
+      raw: false,
+    });
+
+    const headerRowIndex = rows.findIndex((row) =>
+      row.some((cell) =>
+        TICKET_SPREADSHEET_HEADERS.has(normalizeSpreadsheetHeader(cell))
+      )
+    );
+    if (headerRowIndex < 0) return;
+
+    const headerRow = rows[headerRowIndex];
+    const ticketColumnIndex = headerRow.findIndex((cell) =>
+      TICKET_SPREADSHEET_HEADERS.has(normalizeSpreadsheetHeader(cell))
+    );
+
+    rows.slice(headerRowIndex + 1).forEach((row) => {
+      String(row[ticketColumnIndex] ?? "")
+        .split(/[;,\r\n]+/)
+        .map((ticketNumber) => ticketNumber.trim())
+        .filter(Boolean)
+        .forEach((ticketNumber) => ticketNumbers.push(ticketNumber));
+    });
+  });
+
+  return [...new Set(ticketNumbers)];
+};
+
+const REPORT_GRID_COLUMNS = [
+  { field: "countryName", header: "Country", keys: ["countryName", "country"] },
+  { field: "customerName", header: "Customer Name", keys: ["customerName", "customer"] },
+  { field: "cmsNextTicketNo", header: "Ticket", keys: ["cmsNextTicketNo", "cMSNextTicketNo", "ticketNo", "ticketNumber", "ticket"] },
+  { field: "issueDescription", header: "Summary Description", keys: ["issueDescription", "issueDiscription", "summaryDescription", "ticketNotes"] },
+  { field: "ticketType", header: "Type", keys: ["ticketType", "ticketTypeStr", "type"] },
+  { field: "ticketStatus", header: "Status", keys: ["ticketStatus", "status"] },
+  { field: "ticketReceivedDate", header: "Receipt Date", keys: ["ticketReceivedDate", "receiptDate", "creationTime", "receivedAt"] },
+  { field: "cmsTicketClosedOn", header: "Close Date", keys: ["cmsTicketClosedOn", "cMSTicketClosedOn", "serviceClosedDate", "closeDate", "ticketCloseDate"] },
+  { field: "workDoneCode", header: "Work Done Code", keys: ["workDoneCode", "workDoneCodeName"] },
+  { field: "workDoneDescription", header: "Work Done Description", keys: ["workDoneDescription", "workDoneCodeDescription"] },
+  { field: "activityType", header: "Activity Type", keys: ["activityType", "activityTypeName"] },
+  { field: "startTime", header: "Start Time", keys: ["startTime", "startDate", "startTimeUTC_8"] },
+  { field: "endTime", header: "End Time", keys: ["endTime", "endDate", "endTimeUTC_8"] },
+  { field: "duration", header: "Total Duration (Minutes)", keys: ["duration", "totalDurationMinutes", "totalDuration", "activityTotalDuration", "totalDurationInMinutes"] },
+  { field: "totalMinutesSpendInsideOfWorkingHours", header: "Office Hours Duration (Minutes)", keys: ["totalMinutesSpendInsideOfWorkingHours", "totalMinutesOfficeHoursWholeTicket", "officeHoursDurationMinutes", "officeHoursDuration", "officeHours"] },
+  { field: "totalMinutesSpendOutsideOfWorkingHours", header: "After Office Hours Duration (Minutes)", keys: ["totalMinutesSpendOutsideOfWorkingHours", "totalMinutesAfterOfficeHoursWholeTicket", "afterOfficeHoursDurationMinutes", "afterOfficeHoursDuration", "afterOfficeHours"] },
+  { field: "performedBy", header: "Performed By", keys: ["performedBy", "performedByName", "ticketClosedBy", "ticketAssignedToName", "performer"] },
+  { field: "isWorkingHours", header: "Working Hours", keys: ["isWorkingHours", "isActivityDuringWorkingHours", "workingHours", "hoursType", "startWithinBusinessHours"] },
+];
+
+const getReportValue = (row, keys) => {
+  for (const key of keys) {
+    const matchingKey = Object.keys(row).find(
+      (rowKey) => rowKey.toLowerCase() === key.toLowerCase(),
+    );
+    if (matchingKey && row[matchingKey] !== null && row[matchingKey] !== undefined) {
+      return row[matchingKey];
+    }
+  }
+  return null;
+};
+
+const getBackendResponseText = (responseData) => {
+  if (typeof responseData === "string") return responseData;
+  if (!responseData || typeof responseData !== "object") return "";
+
+  const messages = [];
+  const addMessage = (value) => {
+    if (typeof value === "string" && value.trim()) messages.push(value.trim());
+  };
+  const readContainer = (container) => {
+    if (!container) return;
+    if (typeof container === "string") {
+      addMessage(container);
+      return;
+    }
+
+    addMessage(container.message);
+    addMessage(container.details);
+    addMessage(container.detail);
+    addMessage(container.title);
+    addMessage(container.error_description);
+
+    if (Array.isArray(container.validationErrors)) {
+      container.validationErrors.forEach((validationError) =>
+        addMessage(
+          typeof validationError === "string"
+            ? validationError
+            : validationError?.message,
+        ),
+      );
+    }
+
+    if (container.errors && typeof container.errors === "object") {
+      Object.values(container.errors).flat().forEach(addMessage);
+    }
+  };
+
+  readContainer(responseData);
+  readContainer(responseData.error);
+  readContainer(responseData.result);
+  readContainer(responseData.data);
+
+  if (messages.length > 0) return [...new Set(messages)].join("\n");
+  return "";
+};
+
+const getBackendErrorText = (error) =>
+  getBackendResponseText(error?.response?.data);
+
+const fetchBackendApplicationConfig = () =>
+  apiClient.get("/api/abp/application-configuration", {
+    params: { IncludeLocalizationResources: true },
+  }).then((response) => response.data).catch(() => null);
+
+const getBackendLocalizationText = (applicationConfig, key) => {
+  const resources = applicationConfig?.localization?.values;
+  if (!resources || typeof resources !== "object") return "";
+
+  const billingText = resources.Billing?.[key];
+  if (typeof billingText === "string" && billingText.trim()) {
+    return billingText.trim();
+  }
+
+  for (const resource of Object.values(resources)) {
+    const localizedText = resource?.[key];
+    if (typeof localizedText === "string" && localizedText.trim()) {
+      return localizedText.trim();
+    }
+  }
+
+  return "";
+};
+
+const formatBackendLocalizationText = (text, ...values) =>
+  text.replace(/\{(\d+)\}/g, (placeholder, index) =>
+    values[Number(index)] ?? placeholder
+  );
+
+const getBackendErrorFallbackKey = (error) => {
+  if (!error?.response) return "InternetConnectionInfo";
+
+  switch (error.response.status) {
+    case 400:
+      return "ValidationErrorMessage";
+    case 401:
+      return "DefaultErrorMessage401";
+    case 403:
+      return "DefaultErrorMessage403";
+    case 404:
+      return "DefaultErrorMessage404";
+    case 500:
+    case 501:
+    case 502:
+    case 503:
+      return "InternalServerErrorMessage";
+    default:
+      return "DefaultErrorMessage";
+  }
+};
+
+const formatLocalDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getDefaultFilters = () => {
+  const today = new Date();
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  return {
+    cmsNextTicketNo: "",
+    dateFrom: formatLocalDate(firstDayOfMonth),
+    dateTo: formatLocalDate(today),
+    status: "Closed",
+    country: "",
+    ticketType: "",
+    servicePlannedType: "",
+    customer: "",
+    workDoneCode: "",
+    performed: "",
+    compareFile: null,
+  };
+};
+
+const formatFilterDateTime = (value, defaultTime, endOfMinute = false) => {
+  if (!value) return undefined;
+  if (value.includes("T")) return value;
+
+  const [date, selectedTime] = value.trim().split(/\s+/);
+  const seconds = endOfMinute ? "59.999" : "00.000";
+  return `${date}T${selectedTime || defaultTime}:${seconds}Z`;
+};
+
 
 // Helper: strip nested objects/arrays from a row
 const sanitizeRow = (row) => {
   return Object.fromEntries(
-    Object.entries(row).filter(([_, v]) => {
+    Object.entries(row).filter(([, v]) => {
       if (v === null || v === undefined) return true;
       return typeof v !== "object" && !Array.isArray(v);
     })
@@ -60,19 +289,7 @@ const sanitizeRow = (row) => {
 
 export default function AMSTicketsReportPage() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState({
-    cmsNextTicketNo: "",
-    dateFrom: "",
-    dateTo: "",
-    status: "",
-    country: "",
-    ticketType: "",
-    servicePlannedType: "",
-    customer: "",
-    workDoneCode: "",
-    performed: "",
-    compareFile: null,
-  });
+  const [filters, setFilters] = useState(getDefaultFilters);
 
   const [countriesList, setCountriesList] = useState([]);
   const [customersList, setCustomersList] = useState([]);
@@ -80,95 +297,33 @@ export default function AMSTicketsReportPage() {
   const [performedList, setPerformedList] = useState([]);
 
   const [reportData, setReportData] = useState([]);
+  const [showDataGrid, setShowDataGrid] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [excelLoading, setExcelLoading] = useState(false);
   const [formError, setFormError] = useState("");
-  const [anchorEl, setAnchorEl] = useState(null);
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const isAdmin = user?.role?.toLowerCase().includes("admin");
+  const [applicationConfig, setApplicationConfig] = useState(null);
   const fileInputRef = useRef(null);
 
-  const [selectedRow, setSelectedRow] = useState(null);
-  const [compareResultDialog, setCompareResultDialog] = useState({ open: false, message: "", isSuccess: true }); // ← ADD THIS LINE
-
-
-  const handleActionClick = (event, row) => {
-    event.stopPropagation();
-    setAnchorEl(event.currentTarget);
-    setSelectedRow(row);
-  };
-
-  const handleActionClose = () => {
-    setAnchorEl(null);
-    setSelectedRow(null);
-  };
-
-  const handleStatusUpdate = async (action) => {
-    const row = selectedRow;
-    handleActionClose();
-    if (!row) return;
-
-    try {
-      setLoading(true);
-      const ticketId = row.id || row.ticketNo;
-
-      let fullTicket = row;
-      try {
-        if (ticketId) {
-          fullTicket = await amsTicketApi.getById(ticketId);
-        }
-      } catch (e) {
-        console.warn("Could not fetch full ticket by id, using row data as fallback.", e);
-      }
-
-      switch (action) {
-        case "Close":
-          await amsTicketApi.close(ticketId, fullTicket);
-          toast("Ticket closed successfully");
-          break;
-        case "Open":
-        case "Re-Open":
-          await amsTicketApi.reOpen(ticketId, fullTicket);
-          toast("Ticket re-opened successfully");
-          break;
-        case "Void":
-          await amsTicketApi.delete(ticketId, fullTicket);
-          toast("Ticket voided successfully");
-          break;
-        case "Re-Open":
-          await amsTicketApi.reOpen(ticketId, fullTicket);
-          break;
-        default:
-          break;
-      }
-
-      handleGetReport(false);
-    } catch (error) {
-      console.error("Failed to update status:", error);
-      toast(error.message || "Failed to update status", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAuditLog = () => {
-    const row = selectedRow;
-    handleActionClose();
-    if (!row) return;
-
-    navigate(`/audit-logs?primaryKey=${row.id || row.ticketNo}&entityName=AMSTicket`);
-  };
+  const [compareResultDialog, setCompareResultDialog] = useState({
+    open: false,
+    title: "",
+    message: "",
+    actionText: "",
+    isSuccess: true,
+  });
 
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
-        const [countriesData, customersData, workCodesData, vendorUsersData, itsUsersData] =
+        const [countriesData, customersData, workCodesData, vendorUsersData, itsUsersData, applicationConfig] =
           await Promise.all([
             countriesApi.getAll().catch(() => ({ items: [] })),
             usersApi.getCustomerList().catch(() => ({ items: [] })),
             workCodesApi.getAll().catch(() => ({ items: [] })),
             usersApi.getUsersList({ organizationTypes: [2, 3] }).catch(() => ({ items: [] })),
             usersApi.getUsersList({ isITS: true }).catch(() => ({ items: [] })),
+            fetchBackendApplicationConfig(),
           ]);
 
         setCountriesList(countriesData?.items || countriesData || []);
@@ -184,9 +339,10 @@ export default function AMSTicketsReportPage() {
         // Deduplicate users by id
         const uniquePerformed = Array.from(new Map(allPerformed.map(u => [u.id, u])).values());
         setPerformedList(uniquePerformed);
+        setApplicationConfig(applicationConfig);
 
       } catch (error) {
-        console.error("Failed to load dropdown data:", error);
+        console.error(error);
       }
     };
     fetchDropdownData();
@@ -194,32 +350,12 @@ export default function AMSTicketsReportPage() {
 
   const handleClear = () => {
     setFormError("");
-    setFilters({
-      cmsNextTicketNo: "",
-      dateFrom: "",
-      dateTo: "",
-      status: "",
-      country: "",
-      ticketType: "",
-      servicePlannedType: "",
-      customer: "",
-      workDoneCode: "",
-      performed: "",
-      compareFile: null,
-    });
+    setFilters(getDefaultFilters());
     setReportData([]);
+    setShowDataGrid(false);
   };
 
   const buildParams = () => {
-    const formatDateStart = (d) => {
-      if (!d) return undefined;
-      return d.includes("T") ? d : `${d}T00:00:00.000Z`;
-    };
-    const formatDateEnd = (d) => {
-      if (!d) return undefined;
-      return d.includes("T") ? d : `${d}T23:59:59.999Z`;
-    };
-
     const rawParams = {
       "AMSTicketSearch.UserId": "",
       "AMSTicketSearch.SiteName": "",
@@ -245,28 +381,23 @@ export default function AMSTicketsReportPage() {
         ? [filters.performed]
         : undefined,
       "AMSTicketSearch.CompressedTicketNumbers": "",
-      "AMSTicketSearch.DateFrom": formatDateStart(filters.dateFrom) || "",
-      "AMSTicketSearch.DateTo": formatDateEnd(filters.dateTo) || "",
+      "AMSTicketSearch.DateFrom": formatFilterDateTime(filters.dateFrom, "00:00") || "",
+      "AMSTicketSearch.DateTo": formatFilterDateTime(filters.dateTo, "23:59", true) || "",
     };
 
     return Object.fromEntries(
       Object.entries(rawParams).filter(
-        ([_, v]) => v !== "" && v !== null && v !== undefined
+        ([, v]) => v !== "" && v !== null && v !== undefined
       )
     );
   };
 
   const handleGetReport = async (asFile = false) => {
+    const setRequestLoading = asFile ? setExcelLoading : setReportLoading;
     try {
-      setLoading(true);
+      setRequestLoading(true);
       setFormError("");
-
-      // DateFrom and DateTo are always required
-      if (!filters.dateFrom || !filters.dateTo) {
-        setFormError("Date From and Date To are required.");
-        setLoading(false);
-        return;
-      }
+      if (!asFile) setShowDataGrid(false);
 
       const params = buildParams();
 
@@ -276,6 +407,7 @@ export default function AMSTicketsReportPage() {
       );
 
       const data = response.data;
+      const backendResponseText = getBackendResponseText(data);
       let items = [];
 
       if (Array.isArray(data)) {
@@ -292,7 +424,7 @@ export default function AMSTicketsReportPage() {
         // If still not an array, search for the first array property in the object
         if (!Array.isArray(items)) {
           const arrayValues = Object.values(data).filter(Array.isArray);
-          items = arrayValues.length > 0 ? arrayValues[0] : [data];
+          items = arrayValues.length > 0 ? arrayValues[0] : [];
         }
       }
 
@@ -301,10 +433,24 @@ export default function AMSTicketsReportPage() {
         ? items.map(sanitizeRow)
         : [];
 
+      let backendConfig = applicationConfig;
+      let emptyResultText = backendResponseText || getBackendLocalizationText(
+        backendConfig,
+        "NoReportFound",
+      );
+      if (dataArray.length === 0 && !emptyResultText) {
+        backendConfig = await fetchBackendApplicationConfig();
+        emptyResultText = getBackendLocalizationText(
+          backendConfig,
+          "NoReportFound",
+        );
+        if (backendConfig) setApplicationConfig(backendConfig);
+      }
+
       if (asFile) {
         if (dataArray.length === 0) {
-          setFormError("No data available to export.");
-          setLoading(false);
+          setFormError(emptyResultText);
+          setRequestLoading(false);
           return;
         }
 
@@ -335,47 +481,57 @@ export default function AMSTicketsReportPage() {
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(
           new Blob([buffer]),
-          `AMS_Tickets_Report_${new Date().toISOString().split("T")[0]}.xlsx`
+          buildDateRangeReportFileName(
+            "AMSTicket",
+            filters.dateFrom,
+            filters.dateTo,
+          ),
         );
       } else {
-        if (dataArray.length === 0) {
-          setFormError("No data available for the selected filters.");
-        }
         setReportData(dataArray);
+        setFormError(dataArray.length === 0 ? emptyResultText : "");
+        setShowDataGrid(dataArray.length > 0);
       }
 
-      setLoading(false);
+      setRequestLoading(false);
     } catch (error) {
-      setLoading(false);
-      console.error("Failed to get report:", error);
-      let errorMessage = "Failed to retrieve report.";
-      if (error.response?.data?.error?.validationErrors) {
-        errorMessage = error.response.data.error.validationErrors
-          .map((e) => e.message)
-          .join("\n");
-      } else if (error.response?.data?.error?.message) {
-        errorMessage = error.response.data.error.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      setFormError(errorMessage);
+      setRequestLoading(false);
+      console.error(error);
+      const backendConfig = applicationConfig || await fetchBackendApplicationConfig();
+      if (backendConfig && !applicationConfig) setApplicationConfig(backendConfig);
+      setFormError(
+        getBackendErrorText(error) ||
+        getBackendLocalizationText(backendConfig, getBackendErrorFallbackKey(error))
+      );
     }
   };
 
-  const handleCompareTicket = async () => {
+  const handleCompareTicket = async (compareFile) => {
     try {
       setLoading(true);
       setFormError("");
+      setShowDataGrid(false);
 
-      // DateFrom and DateTo are always required
-      if (!filters.dateFrom || !filters.dateTo) {
-        setFormError("Date From and Date To are required.");
+      const buffer = await compareFile.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+      const uploadedTicketNumbers = extractSpreadsheetTicketNumbers(workbook);
+
+      if (uploadedTicketNumbers.length === 0) {
+        const backendConfig = applicationConfig || await fetchBackendApplicationConfig();
+        if (backendConfig && !applicationConfig) setApplicationConfig(backendConfig);
+        setFormError(
+          getBackendLocalizationText(backendConfig, "NoReportFound")
+        );
         setLoading(false);
         return;
       }
 
-      const formatDateStart = (d) => (d ? (d.includes("T") ? d : `${d}T00:00:00.000Z`) : null);
-      const formatDateEnd = (d) => (d ? (d.includes("T") ? d : `${d}T23:59:59.999Z`) : null);
+      const filterTicketNumbers = filters.cmsNextTicketNo
+        ? filters.cmsNextTicketNo.split(";").map((value) => value.trim()).filter(Boolean)
+        : [];
+      const cmsNextTicketNumbers = [
+        ...new Set([...uploadedTicketNumbers, ...filterTicketNumbers]),
+      ];
 
       const amsTicketSearch = {
         siteName: "",
@@ -383,129 +539,74 @@ export default function AMSTicketsReportPage() {
         ticketIncomingChannel: 0,
         ticketForwardedBy: "",
         cmsNextTicketNo: filters.cmsNextTicketNo || "",
-        cmsNextTicketNumbers: filters.cmsNextTicketNo
-          ? filters.cmsNextTicketNo.split(";").map((s) => s.trim()).filter(Boolean)
-          : [],
+        cmsNextTicketNumbers,
         issueDiscription: "",
-        status: filters.status || 0,
-        ticketType: filters.ticketType || 0,
-        servicePlannedType: 0,
-        servicePlannedTypes: [],
+        status: STATUS_API_VALUES[filters.status] || 0,
+        ticketType: TICKET_TYPE_API_VALUES[filters.ticketType] || 0,
+        servicePlannedType:
+          SERVICE_PLANNED_TYPE_API_VALUES[filters.servicePlannedType] || 0,
+        servicePlannedTypes: filters.servicePlannedType
+          ? [SERVICE_PLANNED_TYPE_API_VALUES[filters.servicePlannedType]]
+          : [],
         workDoneCodeIds: filters.workDoneCode ? [filters.workDoneCode] : [],
         performedByUsers: filters.performed ? [filters.performed] : [],
-        dateFrom: formatDateStart(filters.dateFrom),
-        dateTo: formatDateEnd(filters.dateTo),
+        dateFrom: formatFilterDateTime(filters.dateFrom, "00:00"),
+        dateTo: formatFilterDateTime(filters.dateTo, "23:59", true),
         ...(filters.country ? { countryId: filters.country } : {}),
         ...(filters.customer ? { customerUserId: filters.customer } : {}),
       };
 
-      // ── Parse the uploaded Excel file into rows matching abbottReportTickets schema ──
-      // ── Parse the uploaded Excel file into rows matching abbottReportTickets schema ──
-      let abbottReportTickets = [];
-      if (filters.compareFile) {
-        const workbook = new ExcelJS.Workbook();
-        const buffer = await filters.compareFile.arrayBuffer();
-        await workbook.xlsx.load(buffer);
-        const worksheet = workbook.worksheets[0];
+      const response = await amsTicketApi.compareTickets(amsTicketSearch);
 
-        const headerRow = worksheet.getRow(1).values.slice(1).map((h) => String(h).trim());
-
-        const headerToField = {
-          "Country": "country",
-          "Instrument": "instrument",
-          "Customer Name": "customer",
-          "Serial Number": "serialNumber",
-          "Ticket": "ticket",
-          "Summary Description": "summaryDescription",
-          "Ticket Type": "ticketType",
-          "Ticket Status": "ticketStatus",
-          "Receipt Date": "receiptDate",
-          "Service Close Date": "serviceCloseDate",
-          "Ticket Close Date": "ticketCloseDate",
-          "Workdone Start Date (UTC)": "startDate",
-          "Workdone End Date (UTC)": "endDate",
-          "Start Time (UTC + 8)": "startTimeUTC_8",
-          "End Time (UTC + 8)": "endTimeUTC_8",
-          "Performed By": "performedBy",
-          "Performer": "performer",
-          "Start within Business Hours?": "hoursType",
-        };
-
-        worksheet.eachRow((row, rowNumber) => {
-          if (rowNumber === 1) return; // skip header row
-          const values = row.values.slice(1);
-          const obj = {};
-
-          headerRow.forEach((header, i) => {
-            const field = headerToField[header];
-            if (field) {
-              let val = values[i];
-              // Dates in ExcelJS come through as JS Date objects — convert to ISO string
-              if (val instanceof Date) {
-                val = val.toISOString();
-              } else if (val === undefined || val === null) {
-                val = "";
-              } else {
-                val = String(val);
-              }
-              obj[field] = val;
-            }
-          });
-
-          // Ensure every DTO field exists even if a column was missing/blank
-          abbottReportTickets.push({
-            country: obj.country || "",
-            instrument: obj.instrument || "",
-            customer: obj.customer || "",
-            serialNumber: obj.serialNumber || "",
-            ticket: obj.ticket || "",
-            summaryDescription: obj.summaryDescription || "",
-            ticketType: obj.ticketType || "",
-            ticketStatus: obj.ticketStatus || "",
-            receiptDate: obj.receiptDate || "",
-            serviceCloseDate: obj.serviceCloseDate || "",
-            ticketCloseDate: obj.ticketCloseDate || "",
-            startTimeUTC_8: obj.startTimeUTC_8 || "",
-            endTimeUTC_8: obj.endTimeUTC_8 || "",
-            performedBy: obj.performedBy || "",
-            performer: obj.performer || "",
-            hoursType: obj.hoursType || "",
-            startDate: obj.startDate || null,
-            endDate: obj.endDate || null,
-          });
-        });
-      }
-      const body = {
-        ticketsWithTimeDifferencesDto: {
-          amsTicketSearch,
-          abbottReportTickets,
-        },
-      };
-
-      const response = await amsTicketApi.compareTickets(body);
-
-      const existInInternalOnly = response?.ticketNumbersExistInInternalSystemOnly || [];
-      const existInAbbottOnly = response?.ticketNumbersExistInAbbottReportOnly || [];
+      const existInInternalOnly = response?.ticketNumbersExistInSystemOnly ||
+        response?.ticketNumbersExistInInternalSystemOnly || [];
+      const existInAbbottOnly = response?.ticketNumbersExistInExternalReportOnly ||
+        response?.ticketNumbersExistInAbbottReportOnly || [];
       const wdcDifferences = response?.ticketNumbersWithWDCDifferences || [];
 
+      const backendConfig = applicationConfig || await fetchBackendApplicationConfig();
+      if (backendConfig && !applicationConfig) setApplicationConfig(backendConfig);
+      const internalOnlyText = getBackendLocalizationText(
+        backendConfig,
+        "TicketNumbersExistInSystemOnly",
+      );
+      const externalOnlyText = getBackendLocalizationText(
+        backendConfig,
+        "TicketNumbersExistInExternalReportOnly",
+      );
+
       const dataArray = [
-        ...existInInternalOnly.map((t) => ({ ticketNo: t, difference: "Exists in Internal System Only" })),
-        ...existInAbbottOnly.map((t) => ({ ticketNo: t, difference: "Exists in Abbott Report Only" })),
+        ...existInInternalOnly.map((t) => ({ ticketNo: t, difference: internalOnlyText })),
+        ...existInAbbottOnly.map((t) => ({ ticketNo: t, difference: externalOnlyText })),
         ...wdcDifferences.map((t) => ({ ticketNo: t, difference: "WDC Difference" })),
       ];
 
       setReportData(dataArray);
+      setShowDataGrid(dataArray.length > 0);
 
       if (dataArray.length === 0) {
         setCompareResultDialog({
           open: true,
-          message: "All the tickets from Abbott Report exist in the ticketing system.",
+          title: getBackendLocalizationText(backendConfig, "OperationSuccessfull"),
+          message: getBackendResponseText(response) || getBackendLocalizationText(
+            backendConfig,
+            "AllTheTicketsExistsInTheSystem",
+          ),
+          actionText: getBackendLocalizationText(backendConfig, "Ok"),
           isSuccess: true,
         });
       } else {
+        const comparisonMessages = [
+          existInInternalOnly.length > 0 ? internalOnlyText : "",
+          existInAbbottOnly.length > 0 ? externalOnlyText : "",
+        ].filter(Boolean);
         setCompareResultDialog({
           open: true,
-          message: "Some tickets do not exist or have differences. Please review the details in the table.",
+          title: getBackendLocalizationText(backendConfig, "CompareTickets"),
+          message: getBackendResponseText(response) ||
+            comparisonMessages.join("\n") ||
+            getBackendLocalizationText(backendConfig, "CompareTickets"),
+          actionText: getBackendLocalizationText(backendConfig, "Ok"),
           isSuccess: false,
         });
       }
@@ -513,25 +614,49 @@ export default function AMSTicketsReportPage() {
       setLoading(false);
     } catch (error) {
       setLoading(false);
-      console.error("Failed to compare tickets:", error);
-      let errorMessage = "Failed to compare tickets.";
-      if (error.response?.data?.error?.validationErrors) {
-        errorMessage = error.response.data.error.validationErrors
-          .map((e) => e.message)
-          .join("\n");
-      } else if (error.response?.data?.error?.message) {
-        errorMessage = error.response.data.error.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      setFormError(errorMessage);
+      console.error(error);
+      const backendConfig = applicationConfig || await fetchBackendApplicationConfig();
+      if (backendConfig && !applicationConfig) setApplicationConfig(backendConfig);
+      setFormError(
+        getBackendErrorText(error) ||
+        getBackendLocalizationText(backendConfig, getBackendErrorFallbackKey(error))
+      );
     }
   };
 
-  const columns = useMemo(() => {
-    if (reportData.length === 0) return [];
+  const handleCompareFileChange = async (event) => {
+    const file = event.target.files?.[0] || null;
+    setFormError("");
 
-    const dataKeys = Object.keys(reportData[0]);
+    if (!file) {
+      setFilters((current) => ({ ...current, compareFile: null }));
+      return;
+    }
+
+    const extension = file.name.split(".").pop()?.toLowerCase();
+    if (extension !== "xlsx" && extension !== "xls") {
+      setFilters((current) => ({ ...current, compareFile: null }));
+      event.target.value = "";
+      const backendConfig = applicationConfig || await fetchBackendApplicationConfig();
+      if (backendConfig && !applicationConfig) setApplicationConfig(backendConfig);
+      setFormError(
+        formatBackendLocalizationText(
+          getBackendLocalizationText(
+            backendConfig,
+            "ThisFieldOnlyAcceptsFilesWithTheFollowingExtensions:{0}",
+          ),
+          ".xlsx, .xls",
+        ),
+      );
+      return;
+    }
+
+    setFilters((current) => ({ ...current, compareFile: file }));
+    await handleCompareTicket(file);
+  };
+
+  const columns = useMemo(() => {
+    const dataKeys = reportData.length > 0 ? Object.keys(reportData[0]) : [];
     const isCompareResult = dataKeys.includes("difference");
 
     let finalColumns = [];
@@ -555,40 +680,13 @@ export default function AMSTicketsReportPage() {
           },
         }));
     } else {
-      const desiredColumns = [
-        { header: "Country", keys: ["countryName", "countryId", "country"] },
-        { header: "Customer Name", keys: ["customerName", "customerUserId", "customer"] },
-        { header: "Ticket", keys: ["cmsNextTicketNo", "cMSNextTicketNo", "ticketNo", "ticketNumber", "ticket"] },
-        { header: "Summary Description", keys: ["issueDescription", "issueDiscription", "summaryDescription", "ticketNotes"] },
-        { header: "Type", keys: ["ticketType", "ticketTypeStr", "type"] },
-        { header: "Status", keys: ["status", "ticketStatus"] },
-        { header: "Receipt Date", keys: ["ticketReceivedDate", "receiptDate", "creationTime", "receivedAt"] },
-        { header: "Close Date", keys: ["cmsTicketClosedOn", "cMSTicketClosedOn", "serviceClosedDate", "closeDate", "ticketCloseDate"] },
-        { header: "Work Done Code", keys: ["workDoneCodeName", "workDoneCode", "workDoneCodeIds"] },
-        { header: "Work Done Description", keys: ["workDoneCodeDescription", "workDoneDescription"] },
-        { header: "Activity Type", keys: ["activityTypeName", "activityType"] },
-        { header: "Start Time", keys: ["startDate", "startTime", "startTimeUTC_8"] },
-        { header: "End Time", keys: ["endDate", "endTime", "endTimeUTC_8"] },
-        { header: "Total Duration (Minutes)", keys: ["activityTotalDuration", "totalDurationMinutes", "totalDuration", "duration", "totalDurationInMinutes"] },
-        { header: "Office Hours Duration (Minutes)", keys: ["totalMinutesOfficeHoursWholeTicket", "officeHoursDurationMinutes", "activityTotalDurationForSpecificUser", "officeHoursDuration", "officeHours", "durationDuringOfficeHours"] },
-        { header: "After Office Hours Duration (Minutes)", keys: ["totalMinutesAfterOfficeHoursWholeTicket", "afterWorkingHoursActivityTotalDurationForSpecificUser", "afterOfficeHoursDurationMinutes", "afterOfficeHours", "afterOfficeHoursDuration", "durationAfterOfficeHours", "afterWorkingHoursActivityTotalDuration"] },
-        { header: "Performed By", keys: ["performedByName", "performedBy", "ticketClosedBy", "ticketAssignedToName", "performer"] },
-        { header: "Working Hours", keys: ["isWorkingHours", "isActivityDuringWorkingHours", "workingHours", "hoursType", "startWithinBusinessHours"] }
-      ];
-
-      finalColumns = desiredColumns.map((col) => {
-        // Case-insensitive find
-        const matchingKey = col.keys.reduce((found, k) => {
-          if (found) return found;
-          const match = dataKeys.find(dk => dk.toLowerCase() === k.toLowerCase());
-          return match || null;
-        }, null) || col.keys[0];
-
+      finalColumns = REPORT_GRID_COLUMNS.map((column) => {
         return {
-          field: matchingKey,
-          headerName: col.header.toUpperCase(),
+          field: column.field,
+          headerName: column.header,
           minWidth: 150,
           flex: 1,
+          valueGetter: (_value, row) => getReportValue(row, column.keys),
           renderCell: (params) => {
             const val = params.value;
             if (typeof val === "boolean") return val ? "Yes" : "No";
@@ -599,27 +697,7 @@ export default function AMSTicketsReportPage() {
       });
     }
 
-    return [
-      {
-        field: "actions",
-        headerName: "ACTIONS",
-        width: 80,
-        sortable: false,
-        filterable: false,
-        renderCell: (params) => (
-          <div className="flex justify-center items-center w-full h-full">
-            <IconButton
-              size="small"
-              onClick={(e) => handleActionClick(e, params.row)}
-              className="hover:bg-pink-50 text-slate-400 hover:text-pink-600 transition-colors"
-            >
-              <MoreVertical size={14} />
-            </IconButton>
-          </div>
-        ),
-      },
-      ...finalColumns,
-    ];
+    return finalColumns;
   }, [reportData]);
 
   const filterInputClass =
@@ -708,30 +786,21 @@ export default function AMSTicketsReportPage() {
               </button>
               <button
                 onClick={() => handleGetReport(false)}
-                disabled={loading}
+                disabled={reportLoading}
                 className="app-primary-button flex items-center gap-1.5 px-4 py-2 text-[11px] focus:outline-none"
               >
-                {loading ? "Loading..." : "Get Report"}
+                {reportLoading ? "Loading..." : "Get Report"}
               </button>
 
               <PermissionGuard permission="Billing.AMSTickets.ExportReportToExcel">
                 <button
                   onClick={() => handleGetReport(true)}
-                  disabled={loading}
+                  disabled={excelLoading}
                   className="app-primary-button flex items-center gap-1.5 px-4 py-2 text-[11px] focus:outline-none"
                 >
-                  {loading ? "Exporting..." : "Excel Report"}
+                  {excelLoading ? "Exporting..." : "Excel Report"}
                 </button>
               </PermissionGuard>
-
-              <button
-                onClick={handleCompareTicket}
-                disabled={loading}
-                className="app-primary-button flex items-center gap-1.5 px-4 py-2 text-[11px] focus:outline-none"
-              >
-                <ArrowLeftRight size={14} />
-                Compare Ticket
-              </button>
             </div>
           </div>
         </div>
@@ -739,7 +808,7 @@ export default function AMSTicketsReportPage() {
         {/* Filter Section */}
         <div className="px-4 md:px-8 py-4 space-y-4">
           {formError && (
-            <div className="p-3 bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 rounded-lg text-xs flex items-center gap-2">
+            <div className="p-3 bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 rounded-lg text-xs flex items-center gap-2 whitespace-pre-line">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
@@ -984,7 +1053,8 @@ export default function AMSTicketsReportPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  onChange={(e) => setFilters({ ...filters, compareFile: e.target.files[0] })}
+                  accept=".xlsx,.xls"
+                  onChange={handleCompareFileChange}
                   className={`${filterInputClass} p-1 file:mr-4 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-pink-50 dark:file:bg-pink-900/30 file:text-pink-700 dark:file:text-pink-400 hover:file:bg-pink-100 dark:hover:file:bg-pink-900/50 cursor-pointer pr-8`}
                 />
                 {filters.compareFile && (
@@ -1004,14 +1074,15 @@ export default function AMSTicketsReportPage() {
         </div>
 
         {/* Table */}
-        <div className="h-[580px] min-h-[580px] shrink-0 border-t border-slate-100 dark:border-slate-800/50 flex flex-col relative overflow-hidden bg-white dark:bg-slate-900">
-          <DataGrid
+        {showDataGrid && (
+          <div className="h-[580px] min-h-[580px] shrink-0 border-t border-slate-100 dark:border-slate-800/50 flex flex-col relative overflow-hidden bg-white dark:bg-slate-900">
+            <DataGrid
             className="ams-ticket-report-grid"
             rows={reportData}
             columns={columns}
             getRowId={(row) => row.id || row.ticketNo || row.ticket || Math.random().toString()}
             disableRowSelectionOnClick
-            loading={loading}
+            loading={loading || reportLoading}
             rowHeight={52}
             columnHeaderHeight={48}
             hideFooter
@@ -1036,6 +1107,9 @@ export default function AMSTicketsReportPage() {
                   fontSize: "10px",
                   color: "rgb(71, 85, 105)",
                   letterSpacing: "0.05em",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
                 },
               },
               "& .MuiDataGrid-cell": {
@@ -1044,9 +1118,15 @@ export default function AMSTicketsReportPage() {
                 color: "rgb(71, 85, 105)",
                 display: "flex",
                 alignItems: "center",
-                whiteSpace: "normal",
-                wordBreak: "break-word",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
                 padding: "8px",
+              },
+              "& .MuiDataGrid-cellContent": {
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               },
               "& .MuiDataGrid-virtualScroller": {
                 position: "relative",
@@ -1056,8 +1136,9 @@ export default function AMSTicketsReportPage() {
                 bgcolor: "rgba(244, 114, 182, 0.05)",
               },
             }}
-          />
-        </div>
+            />
+          </div>
+        )}
       </div>
 
       {/* Compare Result Dialog (Card) */}
@@ -1075,75 +1156,30 @@ export default function AMSTicketsReportPage() {
                 </div>
               )}
               <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
-                {compareResultDialog.isSuccess ? "Success" : "Notice"}
+                {compareResultDialog.title}
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed whitespace-pre-line">
                 {compareResultDialog.message}
               </p>
             </div>
             <div className="flex justify-center mt-4">
               <button
-                onClick={() => setCompareResultDialog({ open: false, message: "", isSuccess: true })}
+                onClick={() => setCompareResultDialog({
+                  open: false,
+                  title: "",
+                  message: "",
+                  actionText: "",
+                  isSuccess: true,
+                })}
                 className="w-full px-5 py-3 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95 outline-none focus:ring-4 focus:ring-slate-400/20"
               >
-                Got it
+                {compareResultDialog.actionText}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Actions Context Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleActionClose}
-        disableScrollLock={true}
-        PaperProps={{
-          sx: {
-            borderRadius: "0.75rem",
-            boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-            minWidth: 160,
-          },
-        }}
-      >
-        {!isAdmin &&
-          ["Close", "Open", "Void", "Re-Open"]
-            .filter((action) => {
-              if (!selectedRow) return false;
-              const status = String(
-                selectedRow.status || selectedRow.ticketStatus || selectedRow.Status || ""
-              ).toLowerCase();
-
-              if (status.includes("close") || status === "2") {
-                return action === "Re-Open";
-              }
-              if (status.includes("open") || status.includes("new") || status === "1" || status === "0") {
-                return action === "Close" || action === "Void";
-              }
-              if (status.includes("void") || status === "3") {
-                return action === "Re-Open" || action === "Open";
-              }
-              return true; // Fallback if status is unknown
-            })
-            .map((action) => (
-              <MenuItem
-                key={action}
-                onClick={() => handleStatusUpdate(action)}
-                sx={{ fontSize: "12px", fontWeight: 600 }}
-              >
-                {action}
-              </MenuItem>
-            ))}
-        {isAdmin && (
-          <MenuItem
-            onClick={handleAuditLog}
-            sx={{ fontSize: "12px", fontWeight: 600, color: "primary.main", borderTop: "1px solid", borderColor: "divider" }}
-          >
-            Audit Log
-          </MenuItem>
-        )}
-      </Menu>
     </div>
   );
 }

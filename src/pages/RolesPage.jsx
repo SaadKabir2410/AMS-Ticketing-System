@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useTheme } from "../context/ThemeContext";
 import { rolesApi } from "../services/api/roles";
 import { useToast } from "../component/common/ToastContext";
+import { usePermissionContext } from "../context/PermissionContext";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
 import { X, ShieldCheck, ChevronDown, ChevronRight, Search, RefreshCw, ArrowLeft, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react";
 import IconButton from "@mui/material/IconButton";
@@ -30,6 +31,11 @@ const rowVariants = {
 };
 
 const ROW_HEIGHT = "h-[60px]";
+
+const getPermissionDisplayName = (permission) =>
+  permission.name === "Billing.AMSTickets"
+    ? "Viewing AMS Tickets"
+    : permission.displayName || permission.name;
 
 const PermissionTree = ({
   permissions,
@@ -66,7 +72,7 @@ const PermissionTree = ({
                   : isDark ? 'text-slate-200 font-semibold' : 'text-slate-700 font-semibold'
               }`}
             >
-              {perm.displayName || perm.name}
+              {getPermissionDisplayName(perm)}
             </label>
           </div>
           <PermissionTree
@@ -84,6 +90,7 @@ const PermissionTree = ({
 
 export default function RolesPage() {
   const { toast } = useToast();
+  const { refetchPermissions } = usePermissionContext();
   const { dark } = useTheme();
   const isDark = dark === "dark";
 
@@ -345,7 +352,7 @@ export default function RolesPage() {
     setCheckedPerms(updated);
   };
 
-  const handleSavePermissions = () => {
+  const handleSavePermissions = async () => {
     setLoadingPermissions(true);
     const payload = {
       permissions: Object.entries(checkedPerms).map(([name, isGranted]) => ({
@@ -354,16 +361,19 @@ export default function RolesPage() {
       })),
     };
 
-    rolesApi
-      .updatePermissions("R", permissionRole.name, payload)
-      .then(() => {
-        toast(`Permissions for ${permissionRole.name} updated successfully`);
-        handleClosePermissions();
-      })
-      .catch((err) => {
-        toast(`Failed to save permissions: ${err.message}`, "error");
-        setLoadingPermissions(false);
-      });
+    try {
+      await rolesApi.updatePermissions("R", permissionRole.name, payload);
+
+      // The application configuration is user-specific. Refresh it after a
+      // role change so the current user's buttons react without another login.
+      await refetchPermissions();
+
+      toast(`Permissions for ${permissionRole.name} updated successfully`);
+      handleClosePermissions();
+    } catch (err) {
+      toast(`Failed to save permissions: ${err.message}`, "error");
+      setLoadingPermissions(false);
+    }
   };
 
   const handleSelectAllGroup = (groupName, isChecked) => {

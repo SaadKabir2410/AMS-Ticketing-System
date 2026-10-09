@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-table";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+import { buildReportFileName } from "../utils/reportFileName";
 import apiClient from "../services/apiClient";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
 
@@ -135,7 +136,7 @@ export default function GeneralReportPage() {
       // Generate buffer
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      saveAs(blob, `General_Report_${filters.year}_${new Date().getTime()}.xlsx`);
+      saveAs(blob, buildReportFileName("General Report"));
     } catch (error) {
       console.error("Export failed:", error);
       setFormError("Failed to export Excel file.");

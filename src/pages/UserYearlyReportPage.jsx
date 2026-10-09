@@ -5,6 +5,7 @@ import apiClient from "../services/apiClient";
 import { PermissionGuard } from "../component/common/PermissionGuard";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+import { buildReportFileName } from "../utils/reportFileName";
 import {
   useReactTable,
   getCoreRowModel,
@@ -129,7 +130,7 @@ export default function UserYearlyReportPage() {
       const buffer = await workbook.xlsx.writeBuffer();
       saveAs(
         new Blob([buffer]),
-        `User_Yearly_Report_${filters.year}.xlsx`
+        buildReportFileName("User Yearly Report"),
       );
     } catch (error) {
       console.error(error);

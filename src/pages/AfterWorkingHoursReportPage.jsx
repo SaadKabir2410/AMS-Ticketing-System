@@ -14,6 +14,7 @@ import "flatpickr/dist/flatpickr.css";
 import "flatpickr/dist/themes/dark.css";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+import { buildReportFileName } from "../utils/reportFileName";
 import usersApi from "../services/api/users";
 import afterWorkingHoursReportApi from "../services/api/afterWorkingHoursReport";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
@@ -162,7 +163,7 @@ export default function AfterWorkingHoursReportPage() {
       worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEC4899' } };
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      saveAs(blob, `After_Hours_Report_${new Date().getTime()}.xlsx`);
+      saveAs(blob, buildReportFileName("After Working Hours Report"));
     } catch (error) {
       console.error("Export failed:", error);
       setFormError("Failed to export Excel file.");

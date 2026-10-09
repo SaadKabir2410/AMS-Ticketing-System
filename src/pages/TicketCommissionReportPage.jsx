@@ -15,6 +15,7 @@ import "flatpickr/dist/flatpickr.css";
 import "flatpickr/dist/themes/dark.css";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
+import { buildReportFileName } from "../utils/reportFileName";
 import ticketCommissionReportApi from "../services/api/ticketCommissionReport";
 import usersApi from "../services/api/users";
 import { useAuth } from "../context/AuthContextHook";
@@ -166,7 +167,7 @@ export default function TicketCommissionReportPage() {
       worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEC4899' } };
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      saveAs(blob, `Ticket_Commission_Report_${new Date().getTime()}.xlsx`);
+      saveAs(blob, buildReportFileName("Ticket Commission Report"));
     } catch (err) {
       console.error("Export failed:", err);
       setError("Failed to export Excel file.");

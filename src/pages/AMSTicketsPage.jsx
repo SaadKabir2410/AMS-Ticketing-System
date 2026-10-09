@@ -121,7 +121,7 @@ const getInitials = (name) => {
   return name.charAt(0).toUpperCase();
 };
 
-const RowActions = ({ row, onUpdateData, onVoid, onAuditLog, onReopen }) => {
+const RowActions = ({ row, onView, onUpdateData, onVoid, onAuditLog, onReopen }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
   const handleClick = (e) => {
@@ -153,6 +153,11 @@ const RowActions = ({ row, onUpdateData, onVoid, onAuditLog, onReopen }) => {
             }}
           >
             <Box sx={{ py: 0.5 }}>
+              {onView && (
+                <MenuItem onClick={() => { handleClose(); onView(); }}>
+                  <ListItemText primary="View" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                </MenuItem>
+              )}
               {onUpdateData && (
                 <MenuItem onClick={() => { handleClose(); onUpdateData(); }}>
                   <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
@@ -187,8 +192,9 @@ export default function AMSTicketsPage() {
   const navigate = useNavigate();
   const { ticketNumber } = useParams();
   const isAdmin = user?.role?.toLowerCase().includes("admin");
-  const canCreate = usePermission("Billing.AMSTickets.Create") && !isAdmin;
-  const canEdit = usePermission("Billing.AMSTickets.Edit") && !isAdmin;
+  const canCreate = usePermission("Billing.AMSTickets.Create");
+  const canEdit = usePermission("Billing.AMSTickets.Edit");
+  const canView = usePermission("Billing.AMSTickets");
   const canVoid = usePermission("Billing.AMSTickets.VoidAMSTicket") && !isAdmin;
   const canReopen = usePermission("Billing.AMSTickets.ReOpenAMSTicket") && !isAdmin;
   const canViewAuditLog = usePermission("Billing.AMSTickets.ViewAuditLog");
@@ -947,6 +953,7 @@ export default function AMSTicketsPage() {
                               ) : col.key === "actions" ? (
                                 <RowActions
                                   row={row}
+                                  onView={canView ? () => { setActionItem(row); setActionType("detail"); } : undefined}
                                   onUpdateData={canEdit ? () => { setActionItem(row); setActionType("edit"); } : undefined}
                                   onVoid={canVoid ? () => { setActionItem(row); setActionType("delete"); } : undefined}
                                   onReopen={canReopen ? () => { setActionItem(row); setActionType("reopen"); } : undefined}

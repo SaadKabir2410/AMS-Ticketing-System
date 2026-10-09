@@ -35,6 +35,7 @@ import { useAuth } from "../context/AuthContextHook";
 import JobsheetModal from "../component/common/JobsheetModal";
 import { ActionsMenu } from "../component/common/ResourcePage";
 import { usePermission } from "../hooks/usePermission";
+import { buildReportFileName } from "../utils/reportFileName";
 
 
 
@@ -244,7 +245,7 @@ export default function JobsheetsPage() {
 
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      saveAs(blob, "Jobsheet_Report.xlsx");
+      saveAs(blob, buildReportFileName("Jobsheets"));
 
     } catch (error) {
       console.error("Failed to generate jobsheet report:", error);
