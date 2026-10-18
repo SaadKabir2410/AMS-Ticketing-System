@@ -3,7 +3,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContextHook";
 import { Menu as MenuIcon, Moon, Sun, User, LogOut, Globe, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import apiClient from "../../services/apiClient";
+import { loadApplicationConfig } from "../../services/applicationConfigCache";
 
 function IconBtn({ children, className = "", badge = false, onClick, title = "" }) {
   return (
@@ -38,10 +38,7 @@ export default function Navbar({ setMobileOpen }) {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await apiClient.get("/api/abp/application-configuration", {
-          params: { IncludeLocalizationResources: true },
-        });
-        const data = response.data;
+        const data = await loadApplicationConfig();
 
         // Current active culture
         const culture = data?.localization?.currentCulture?.cultureName;

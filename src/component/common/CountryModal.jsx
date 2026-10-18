@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog, IconButton } from "@mui/material";
 import { Check, X } from "lucide-react";
 import PremiumErrorAlert from "./PremiumErrorAlert";
+import { getApiErrorMessage } from "../../utils/apiError";
 const EMPTY = { name: "", code: "" };
 
 export default function CountryModal({
@@ -11,10 +12,12 @@ export default function CountryModal({
   item = null,
   loading = false,
   submitError = null,
+  onSubmitErrorClose,
 }) {
   const isEdit = !!item;
   const [form, setForm] = useState(EMPTY);
-  const [errors, setErrors] = useState({});
+  const [backendError, setBackendError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const [prevOpen, setPrevOpen] = useState(open);
   const [prevItem, setPrevItem] = useState(item);
@@ -23,30 +26,13 @@ export default function CountryModal({
     setPrevOpen(open);
     setPrevItem(item);
     if (open) {
-      setErrors({});
+      setBackendError("");
       setForm(item ? { name: item.name || "", code: item.code || "" } : EMPTY);
     }
   }
 
-  const validate = () => {
-    const errs = {};
-    if (!form.name.trim()) errs.name = "Country name is required";
-    else if (form.name.length > 100)
-      errs.name = "Name cannot exceed 100 characters";
-
-    if (!form.code.trim()) errs.code = "Country code is required";
-    else if (form.code.length > 3)
-      errs.code = "Code cannot exceed 3 characters";
-    return errs;
-  };
-
   const handleSubmit = async (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) {
-      setErrors(errs);
-      return;
-    }
 
     const payload = {
       name: form.name.trim(),
@@ -54,22 +40,20 @@ export default function CountryModal({
     };
 
     try {
+      setSubmitting(true);
+      setBackendError("");
       const finalPayload = isEdit ? { ...item, ...payload } : payload;
       await onSubmit(finalPayload);
     } catch (err) {
-      const msg =
-        err.response?.data?.error?.message ||
-        err.response?.data?.message ||
-        err.message;
-      setErrors((prev) => ({ ...prev, server: msg }));
+      setBackendError(getApiErrorMessage(err));
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const inputClasses = (error, isValid) =>
+  const inputClasses = (isValid) =>
     `w-full px-4 py-2.5 rounded-xl border outline-none transition-all text-sm ` +
-    (error
-      ? `bg-red-50/50 border-red-400 text-red-900 placeholder:text-red-300 dark:bg-red-500/10 dark:border-red-500/50 dark:text-red-200`
-      : isValid
+    (isValid
         ? `bg-green-50/50 border-green-500 focus:border-green-600 text-green-900 dark:bg-green-500/10 dark:border-green-500/50 dark:text-green-200`
         : `bg-slate-50 border-slate-200 hover:border-slate-300 focus:bg-white focus:border-blue-500 text-slate-700 placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:focus:border-blue-500`);
 
@@ -98,73 +82,56 @@ export default function CountryModal({
       </div>
 
       <div className="px-6 py-2 space-y-5">
-        {(submitError || errors.server) && (
-          <PremiumErrorAlert 
-            open={!!(submitError || errors.server)} 
-            message={submitError || errors.server} 
-            onClose={() => setErrors(prev => ({ ...prev, server: null }))}
+        {(submitError || backendError) && (
+          <PremiumErrorAlert
+            open={!!(submitError || backendError)}
+            message={submitError || backendError}
+            onClose={() => {
+              setBackendError("");
+              onSubmitErrorClose?.();
+            }}
           />
         )}
         <div>
           <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">
-            Country Name <span className="text-red-500">*</span>
+            Country Name <span className="required-asterisk">*</span>
           </label>
           <div className="relative">
             <input
               type="text"
-              maxLength={100}
               placeholder="Enter Country Name"
               value={form.name}
-              onChange={(e) => {
-                setForm((f) => ({ ...f, name: e.target.value }));
-                if (errors.name) setErrors((errs) => ({ ...errs, name: "" }));
-              }}
-              className={inputClasses(
-                errors.name,
-                form.name.length > 0 && !errors.name,
-              )}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              className={inputClasses(form.name.length > 0)}
             />
-            {form.name.length > 0 && !errors.name && (
+            {form.name.length > 0 && (
               <Check
                 size={16}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500"
               />
             )}
           </div>
-          {errors.name && (
-            <p className="text-red-500 text-xs mt-1.5">{errors.name}</p>
-          )}
         </div>
 
         <div>
           <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">
-            Country Code <span className="text-red-500">*</span>
+            Country Code <span className="required-asterisk">*</span>
           </label>
           <div className="relative">
             <input
               type="text"
-              maxLength={3}
               placeholder="Enter Country Code"
               value={form.code}
-              onChange={(e) => {
-                setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }));
-                if (errors.code) setErrors((errs) => ({ ...errs, code: "" }));
-              }}
-              className={inputClasses(
-                errors.code,
-                form.code.length > 0 && !errors.code,
-              )}
+              onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))}
+              className={inputClasses(form.code.length > 0)}
             />
-            {form.code.length > 0 && !errors.code && (
+            {form.code.length > 0 && (
               <Check
                 size={16}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500"
               />
             )}
           </div>
-          {errors.code && (
-            <p className="text-red-500 text-xs mt-1.5">{errors.code}</p>
-          )}
         </div>
       </div>
 
@@ -178,15 +145,12 @@ export default function CountryModal({
         </button>
         <button
           onClick={handleSubmit}
-          disabled={loading}
+          disabled={loading || submitting}
           className="app-primary-button px-8 py-2.5 text-sm flex items-center justify-center min-w-[120px]"
         >
-          {loading ? "Saving..." : isEdit ? "Update" : "Create"}
+          {loading || submitting ? "Saving..." : isEdit ? "Update" : "Create"}
         </button>
       </div>
     </Dialog>
   );
 }
-
-
-

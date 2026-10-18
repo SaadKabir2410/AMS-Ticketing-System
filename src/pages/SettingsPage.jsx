@@ -13,7 +13,7 @@ const InputField = ({ label, required, value, name, onChange, type = "text", pla
   return (
     <div className="mb-5 max-w-2xl">
       <label className="block text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-1.5 leading-none">
-        {label} {required && <span className="text-red-500">*</span>}
+        {label} {required && <span className="required-asterisk">*</span>}
       </label>
       <div className="relative max-w-lg">
         <input

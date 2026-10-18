@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import AppSelect from "./AppSelect";
 import { Dialog, DialogContent, DialogTitle, IconButton } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { X, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from "lucide-react";
@@ -166,7 +167,7 @@ export default function UnclosedTicketsModal({ open, onClose, onTicketSelect }) 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2.5">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Page Size:</span>
-              <select
+              <AppSelect
                 value={pageSize}
                 onChange={(e) => {
                   setPageSize(Number(e.target.value));
@@ -179,7 +180,7 @@ export default function UnclosedTicketsModal({ open, onClose, onTicketSelect }) 
                     {s}
                   </option>
                 ))}
-              </select>
+              </AppSelect>
             </div>
 
             <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200">

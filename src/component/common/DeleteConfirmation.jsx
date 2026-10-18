@@ -12,6 +12,7 @@ export default function DeleteConfirmModal({
   title = "Confirm Delete",
   message = "Are you sure you want to proceed with this action?",
   confirmText = "Delete Now",
+  blurBackdrop = true,
 }) {
   const activeItem = item || ticket || site;
   if (!open || !activeItem) return null;
@@ -30,7 +31,7 @@ export default function DeleteConfirmModal({
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center p-4" style={{ zIndex: 9999 }}>
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className={`absolute inset-0 bg-black/40 ${blurBackdrop ? "backdrop-blur-sm" : ""}`}
         onClick={onClose}
       />
       <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl animate-fade-in p-8 pt-12 text-center font-[Arial]">

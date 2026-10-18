@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { Dialog, IconButton } from "@mui/material";
+import { Autocomplete, Dialog, IconButton, TextField } from "@mui/material";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import codeDetailsApi from "../../services/api/CodeDetails";
 import { taskCategoryProjectsApi } from "../../services/api/taskCategoryProjects";
 import { useToast } from "./ToastContext";
+import { getApiErrorMessage } from "../../utils/apiError";
+import PremiumErrorAlert from "./PremiumErrorAlert";
 
 export default function TaskCategoryProjectModal({ open, onClose, onSave, preSelectedProject }) {
   const { toast } = useToast();
@@ -14,10 +16,11 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
   const [selectedCategories, setSelectedCategories] = useState([]);  // array of UUIDs
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [backendError, setBackendError] = useState("");
 
   // --- Category Pagination ---
   const [catPage, setCatPage] = useState(1);
-  const [catPageSize, setCatPageSize] = useState(9);
+  const catPageSize = 9;
 
   const [existingRecord, setExistingRecord] = useState(null);
   const [isHandoffEdit, setIsHandoffEdit] = useState(false);
@@ -25,6 +28,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
   // Mark if we started in edit mode (from table actions)
   useEffect(() => {
     if (open) {
+      setBackendError("");
       setIsHandoffEdit(!!preSelectedProject);
     }
   }, [open, preSelectedProject]);
@@ -61,7 +65,8 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
           setSelectedCategories([]);
         }
       } catch (err) {
-        console.error("Failed to fetch existing mapping", err);
+        const message = getApiErrorMessage(err);
+        if (message) setBackendError(message);
       } finally {
         setLoading(false);
       }
@@ -69,7 +74,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
 
     fetchExisting();
     setCatPage(1); // Reset page when project changes
-  }, [projectId, open, isHandoffEdit]);
+  }, [projectId, open, isHandoffEdit, toast]);
 
   // Initial Data Load (Projects & Categories)
   useEffect(() => {
@@ -97,7 +102,8 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
         const cDetails = await codeDetailsApi.getAll({ lookupCode: "TSK" });
         setCategories(cDetails.map((d) => ({ id: d.id, name: d.description || d.newCode })));
       } catch (err) {
-        toast("Error loading projects/categories", "error");
+        const message = getApiErrorMessage(err);
+        if (message) setBackendError(message);
       } finally {
         setLoading(false);
       }
@@ -118,18 +124,10 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
   const totalCatCount = categories.length;
 
   const handleSave = async () => {
-    if (!projectId) {
-      toast("Please select a project", "error");
-      return;
-    }
-    if (selectedCategories.length === 0) {
-      toast("Please select at least one category", "error");
-      return;
-    }
-
+    setBackendError("");
     setSubmitting(true);
     try {
-      if (existingRecord) {
+      if (isHandoffEdit && existingRecord) {
         // Update existing record
         await taskCategoryProjectsApi.update({
           id: existingRecord.id,
@@ -150,8 +148,8 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
       if (onSave) onSave();
       onClose();
     } catch (err) {
-      const errorMsg = err.response?.data?.error?.message || "Failed to save mappings";
-      toast(errorMsg, "error");
+      const message = getApiErrorMessage(err);
+      if (message) setBackendError(message);
     } finally {
       setSubmitting(false);
     }
@@ -160,7 +158,11 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={(_event, reason) => {
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        onClose();
+      }}
+      disableEscapeKeyDown
       maxWidth="xs"
       fullWidth
       PaperProps={{
@@ -175,6 +177,13 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
         },
       }}
     >
+      {backendError && (
+        <PremiumErrorAlert
+          open={!!backendError}
+          message={backendError}
+          onClose={() => setBackendError("")}
+        />
+      )}
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         <h2 className="text-[18px] font-black text-slate-800 dark:text-slate-100 tracking-tighter uppercase leading-none">
@@ -188,36 +197,82 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
       </div>
 
       <div className="px-5 py-2">
-        {/* Project Select */}
+        {/* Project Combobox */}
         <div className="mb-4 mt-2">
           <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-            Project <span className="text-red-500">*</span>
+            Project <span className="required-asterisk">*</span>
           </label>
-          <div className="relative">
-            <select
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              disabled={loading || submitting || isHandoffEdit}
-              className={`w-full appearance-none bg-slate-50 border border-slate-200 dark:bg-slate-900 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs rounded-lg pl-3 pr-8 py-2.5 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10 transition-all shadow-sm
-                ${isHandoffEdit ? "cursor-not-allowed opacity-70 bg-slate-100 dark:bg-slate-800" : "cursor-pointer font-bold"}
-              `}
-            >
-              <option value="" disabled className="text-slate-400">Choose An Option</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </div>
-          </div>
+          <Autocomplete
+            options={projects}
+            getOptionLabel={(option) => option.name || ""}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            value={projects.find((project) => project.id === projectId) || null}
+            onChange={(_event, selectedProject) => setProjectId(selectedProject?.id || "")}
+            disabled={loading || submitting || isHandoffEdit}
+            loading={loading}
+            autoHighlight
+            openOnFocus
+            noOptionsText="No projects found"
+            loadingText="Loading projects..."
+            slotProps={{
+              paper: {
+                sx: {
+                  mt: 0.75,
+                  borderRadius: "12px",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  boxShadow: "0 16px 40px rgba(15, 23, 42, 0.16)",
+                  backgroundImage: "none",
+                },
+              },
+              listbox: {
+                sx: {
+                  p: 0.75,
+                  "& .MuiAutocomplete-option": {
+                    minHeight: "36px",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                  },
+                },
+              },
+            }}
+            sx={{
+              opacity: isHandoffEdit ? 0.7 : 1,
+              "& .MuiOutlinedInput-root": {
+                minHeight: "42px",
+                borderRadius: "10px",
+                padding: "2px 8px !important",
+                backgroundColor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(15, 23, 42, 0.025)",
+                color: "text.primary",
+                transition: "all 0.2s ease",
+                "& fieldset": { borderColor: "#ec4899" },
+                "&:hover fieldset": { borderColor: "#db2777" },
+                "&.Mui-focused fieldset": {
+                  borderColor: "#ec4899",
+                  boxShadow: "0 0 0 3px rgba(236, 72, 153, 0.10)",
+                },
+              },
+              "& .MuiInputBase-input": {
+                fontSize: "12px",
+                fontWeight: 700,
+              },
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Search or select a project..."
+              />
+            )}
+          />
         </div>
 
         {/* Category Checkbox List */}
         <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-          Select Categories <span className="text-red-500">*</span>
+          Select Categories <span className="required-asterisk">*</span>
         </label>
         <div className="space-y-1.5 pr-1 max-h-[300px] overflow-y-auto no-scrollbar py-1">
           {loading ? (

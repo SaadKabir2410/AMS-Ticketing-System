@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import AppSelect from "./AppSelect";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContextHook";
 import { usePermissionContext } from "../../context/PermissionContext";
@@ -20,6 +21,9 @@ export function ActionsMenu({
   customActions = [],
   deleteButtonText = "Delete",
   actionButtonText = "Actions",
+  editButtonText = "Update Data",
+  permissionButtonText = "Permissions",
+  auditLogButtonText = "Audit Log",
   className = "text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider bg-transparent hover:border-pink-500 shadow-sm",
 }) {
 
@@ -84,17 +88,17 @@ export function ActionsMenu({
 
               {onAuditLog && (
                 <MenuItem onClick={() => { onAuditLog(); handleClose(); }} sx={menuItemHover}>
-                  <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                  <ListItemText primary={auditLogButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
               {showPermissions && (
                 <MenuItem onClick={() => { onPermissions(); handleClose(); }} sx={menuItemHover}>
-                  <ListItemText primary="Permissions" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                  <ListItemText primary={permissionButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
               {onEdit && (
                 <MenuItem onClick={() => { onEdit(); handleClose(); }} sx={menuItemHover}>
-                  <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                  <ListItemText primary={editButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
               {onDisable && (
@@ -487,7 +491,7 @@ export default function ResourcePage({
       return (
         <div className={baseClass} title={str}>
           {str.slice(0, idx)}
-          <mark className="bg-yellow-200 dark:bg-yellow-500/30 text-yellow-900 dark:text-yellow-100 rounded-[2px] px-[2px] ">
+          <mark className="bg-pink-200 dark:bg-pink-500/40 text-pink-900 dark:text-pink-100 rounded-[2px] px-[2px] ">
             {str.slice(idx, idx + searchTerm.length)}
           </mark>
           {str.slice(idx + searchTerm.length)}
@@ -848,7 +852,7 @@ export default function ResourcePage({
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2.5">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Page Size:</span>
-                    <select
+                    <AppSelect
                       value={pageSize}
                       onChange={(e) => {
                         setPageSize(Number(e.target.value));
@@ -861,7 +865,7 @@ export default function ResourcePage({
                           {s}
                         </option>
                       ))}
-                    </select>
+                    </AppSelect>
                   </div>
 
                   <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">

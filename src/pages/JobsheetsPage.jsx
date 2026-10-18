@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import AppSelect from "../component/common/AppSelect";
+import SearchTextHighlight from "../component/common/SearchTextHighlight";
 import { useNavigate } from "react-router-dom"; // Add this
 import ResourcePage from "../component/common/ResourcePage";
 
@@ -545,7 +547,7 @@ export default function JobsheetsPage() {
         <div className="flex flex-col gap-1">
           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Project</label>
           <div className="relative">
-            <select
+            <AppSelect
               value={filters.project}
               onChange={(e) => setFilters({ ...filters, project: e.target.value })}
               className={`${filterInputClass} appearance-none cursor-pointer pr-8`}
@@ -555,7 +557,7 @@ export default function JobsheetsPage() {
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
-            </select>
+            </AppSelect>
             {filters.project && (
               <button
                 className={clearButtonClass}
@@ -643,7 +645,7 @@ export default function JobsheetsPage() {
               )}
             </div>
             {showUserDropdown && (
-              <div className="absolute top-[105%] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 max-h-56 overflow-y-auto no-scrollbar">
+              <div className="app-modern-dropdown-menu absolute top-[105%] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 max-h-56 overflow-y-auto no-scrollbar">
                 {isLoadingUsers ? (
                   <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-black uppercase tracking-widest">Loading...</div>
                 ) : userResults.length > 0 ? (
@@ -666,9 +668,14 @@ export default function JobsheetsPage() {
                         </div>
                         <div className="flex flex-col gap-0.5">
                           <span className="font-bold text-[11px] text-slate-800 dark:text-white uppercase tracking-tight group-hover:text-[#ec4899] transition-colors">
-                            {u.name} {u.surname}
+                            <SearchTextHighlight
+                              text={`${u.name || ""} ${u.surname || ""}`.trim()}
+                              query={userSearch}
+                            />
                           </span>
-                          <span className="text-[9px] text-slate-400 lowercase">{u.email || "no email"}</span>
+                          <span className="text-[9px] text-slate-400 lowercase">
+                            <SearchTextHighlight text={u.email || "no email"} query={userSearch} />
+                          </span>
                         </div>
                       </div>
                     );
@@ -709,7 +716,7 @@ export default function JobsheetsPage() {
             )}
           </div>
           {showCollaboratorDropdown && (
-            <div className="absolute top-[105%] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 max-h-56 overflow-y-auto no-scrollbar">
+            <div className="app-modern-dropdown-menu absolute top-[105%] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 max-h-56 overflow-y-auto no-scrollbar">
               {isLoadingCollaborators ? (
                 <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-black uppercase tracking-widest">Loading...</div>
               ) : collaboratorResults.length > 0 ? (
@@ -732,9 +739,14 @@ export default function JobsheetsPage() {
                       </div>
                       <div className="flex flex-col gap-0.5">
                         <span className="font-bold text-[11px] text-slate-800 dark:text-white uppercase tracking-tight group-hover:text-[#ec4899] transition-colors">
-                          {u.name} {u.surname}
+                          <SearchTextHighlight
+                            text={`${u.name || ""} ${u.surname || ""}`.trim()}
+                            query={collaboratorSearch}
+                          />
                         </span>
-                        <span className="text-[9px] text-slate-400 lowercase">{u.email || "no email"}</span>
+                        <span className="text-[9px] text-slate-400 lowercase">
+                          <SearchTextHighlight text={u.email || "no email"} query={collaboratorSearch} />
+                        </span>
                       </div>
                     </div>
                   );
@@ -1009,7 +1021,7 @@ export default function JobsheetsPage() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2.5">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-                <select
+                <AppSelect
                   value={pageSize}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
                   className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
@@ -1017,7 +1029,7 @@ export default function JobsheetsPage() {
                   {[10, 14, 25, 50, 100].map((s) => (
                     <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
                   ))}
-                </select>
+                </AppSelect>
               </div>
 
               <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">

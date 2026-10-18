@@ -11,6 +11,7 @@ import {
   ThemeProvider as MuiThemeProvider,
   createTheme,
 } from "@mui/material/styles";
+import SearchTextHighlight from "./component/common/SearchTextHighlight";
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -60,6 +61,21 @@ function MuiThemeWrapper({ children }) {
           },
         },
         components: {
+          MuiAutocomplete: {
+            defaultProps: {
+              renderOption: (props, option, state, ownerState) => {
+                const { key, ...optionProps } = props;
+                return (
+                  <li key={key} {...optionProps}>
+                    <SearchTextHighlight
+                      text={ownerState.getOptionLabel(option)}
+                      query={state.inputValue}
+                    />
+                  </li>
+                );
+              },
+            },
+          },
           MuiButton: {
             styleOverrides: {
               root: {
@@ -110,5 +126,4 @@ createRoot(document.getElementById("root")).render(
     </ErrorBoundary>
   </StrictMode>
 );
-
 

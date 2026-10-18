@@ -8,6 +8,7 @@ import { usersApi } from "../../services/api/users";
 import { workCodesApi } from "../../services/api/workCodes";
 import codeDetailsApi from "../../services/api/CodeDetails";
 import { amsTicketApi } from "../../services/api/amsTicketApi";
+import SearchTextHighlight from "./SearchTextHighlight";
 
 function Field({ label, error, children }) {
   return (
@@ -17,7 +18,7 @@ function Field({ label, error, children }) {
           {label.includes("*") ? (
             <>
               {label.split("*")[0]}
-              <span className="text-rose-500 animate-pulse">*</span>
+              <span className="required-asterisk animate-pulse">*</span>
             </>
           ) : (
             label
@@ -77,7 +78,7 @@ function Combobox({
     <div className="relative w-full" ref={containerRef}>
       <div
         onClick={() => !disabled && setOpen(!open)}
-        className={`${inputClass} flex items-center justify-between cursor-pointer ${disabled
+        className={`${inputClass} app-combobox-trigger flex items-center justify-between cursor-pointer ${disabled
           ? "opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/30"
           : ""
           } ${error ? "border-rose-500" : ""}`}
@@ -105,7 +106,7 @@ function Combobox({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute z-[100] mt-2 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[300px]"
+            className="app-combobox-menu absolute z-[100] mt-2 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[300px]"
           >
             <div className="p-3 border-b border-slate-100/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50">
               <div className="relative">
@@ -154,7 +155,9 @@ function Combobox({
                           : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/80 hover:text-black dark:hover:text-white"
                           }`}
                       >
-                        <span className="truncate">{label}</span>
+                        <span className="truncate">
+                          <SearchTextHighlight text={label} query={search} />
+                        </span>
                         {value === val && (
                           <motion.div
                             layoutId="active-check"

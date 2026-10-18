@@ -21,11 +21,13 @@ import ActivityModal from "./ActivityModal";
 import { ActionsMenu } from "./ResourcePage";
 import { useToast } from "./ToastContext";
 import { useAuth } from "../../context/AuthContextHook";
+import SearchTextHighlight from "./SearchTextHighlight";
 
 import { usersApi } from "../../services/api/users";
 import { sitesApi } from "../../services/api/sites";
 import {
   amsTicketApi,
+  SERVICE_PLANNED_TYPE_OPTIONS,
   TICKET_INCOMING_CHANNEL_OPTIONS,
 } from "../../services/api/amsTicketApi";
 import codeDetailsApi from "../../services/api/CodeDetails";
@@ -40,7 +42,7 @@ function Field({ label, error, children }) {
           {label.includes("*") ? (
             <>
               {label.split("*")[0]}
-              <span className="text-rose-500 animate-pulse">*</span>
+              <span className="required-asterisk animate-pulse">*</span>
             </>
           ) : (
             label
@@ -172,7 +174,7 @@ function Combobox({
         onClick={() => {
           if (!disabled && !open) setOpen(true);
         }}
-        className={`${inputClass} flex items-center justify-between ${disabled
+        className={`${inputClass} app-combobox-trigger flex items-center justify-between ${disabled
           ? "opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/30"
           : "cursor-text"
           } ${error ? "border-rose-500" : ""}`}
@@ -237,7 +239,7 @@ function Combobox({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute z-[100] mt-2 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[300px]"
+            className="app-combobox-menu absolute z-[100] mt-2 w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-xl border border-slate-200/60 dark:border-slate-800/60 rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[300px]"
           >
             <div className="p-3 border-b border-slate-100/50 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50">
               <div className="relative">
@@ -292,7 +294,9 @@ function Combobox({
                           : "text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/80 hover:text-black dark:hover:text-white"
                           }`}
                       >
-                        <span className="truncate">{label}</span>
+                        <span className="truncate">
+                          <SearchTextHighlight text={label} query={search} />
+                        </span>
                         {isSelected && (
                           <motion.div
                             layoutId="active-check"
@@ -686,11 +690,7 @@ export default function TicketModal({
         }),
       codeDetailsApi
         .getListByLookupCodes({
-          lookupCodes: [
-            "TicketType",
-            "TicketIncomingChannel",
-            "ServicePlannedType",
-          ],
+          lookupCodes: ["TicketType", "TicketIncomingChannel"],
         })
         .catch((err) => {
           console.error("[TicketModal] Failed to fetch lookups:", err);
@@ -712,10 +712,9 @@ export default function TicketModal({
           .filter(Boolean)
           .sort((a, b) => a.localeCompare(b));
 
-        const servicePlannedTypes = (lookupsRes["ServicePlannedType"] || [])
-          .map((item) => item.description || item.newCode)
-          .filter(Boolean)
-          .sort((a, b) => a.localeCompare(b));
+        const servicePlannedTypes = SERVICE_PLANNED_TYPE_OPTIONS.filter(
+          (item) => item.apiValue > 0,
+        );
 
         const incomingChannels = TICKET_INCOMING_CHANNEL_OPTIONS.map(
           ({ label }) => label,
@@ -793,18 +792,7 @@ export default function TicketModal({
                 "Complaint",
                 "Inquiry",
               ].sort((a, b) => a.localeCompare(b)),
-          servicePlannedTypes:
-            servicePlannedTypes.length > 0
-              ? servicePlannedTypes
-              : [
-                "Report",
-                "Rule",
-                "Installation",
-                "Configuration",
-                "TBS",
-                "Other"
-
-              ].sort((a, b) => a.localeCompare(b)),
+          servicePlannedTypes,
           incomingChannels:
             incomingChannels,
         }));
@@ -2160,7 +2148,7 @@ export default function TicketModal({
               {/* Name */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                  Name <span className="text-rose-500 animate-pulse">*</span>
+                  Name <span className="required-asterisk animate-pulse">*</span>
                 </label>
                 <input
                   type="text"
@@ -2175,7 +2163,7 @@ export default function TicketModal({
               {/* Phone */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                  Phone Number <span className="text-rose-500 animate-pulse">*</span>
+                  Phone Number <span className="required-asterisk animate-pulse">*</span>
                 </label>
                 <input
                   type="tel"

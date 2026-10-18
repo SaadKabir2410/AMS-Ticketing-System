@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useToast } from "../component/common/ToastContext";
 import { usersApi } from "../services/api/users";
 import { rolesApi } from "../services/api/roles";
@@ -16,6 +17,10 @@ import Box from "@mui/material/Box";
 import Autocomplete from "@mui/material/Autocomplete";
 import TextField from "@mui/material/TextField";
 import apiClient from "../services/apiClient";
+import {
+  getCachedApplicationConfig,
+  loadApplicationConfig,
+} from "../services/applicationConfigCache";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -37,16 +42,23 @@ import { Menu, MenuItem, ListItemText, Popper, Paper, ClickAwayListener, MenuLis
 import { usePermission } from "../hooks/usePermission";
 import { useAuth } from "../context/AuthContextHook";
 
+const getPermissionParentName = (permission) =>
+  permission.parentName?.trim() || null;
+
 const PermissionTree = ({
   permissions,
   parentName,
   checkedPerms,
+  lockedPerms,
   onToggle,
 }) => {
-  const children = permissions.filter((p) => {
-    if (p.parentName !== parentName) return false;
-    if (parentName !== null && !checkedPerms[parentName]) return false;
-    return true;
+  const permissionNames = new Set(permissions.map((permission) => permission.name));
+  const children = permissions.filter((permission) => {
+    const backendParentName = getPermissionParentName(permission);
+    const resolvedParentName = backendParentName && permissionNames.has(backendParentName)
+      ? backendParentName
+      : null;
+    return resolvedParentName === parentName;
   });
   if (children.length === 0) return null;
 
@@ -54,31 +66,37 @@ const PermissionTree = ({
     <div
       className={`space-y-2 ${parentName ? "ml-6 mt-2 border-l-2 border-slate-200 dark:border-slate-700/50 pl-4" : "mt-2"}`}
     >
-      {children.map((perm) => (
-        <div key={perm.name} className="flex flex-col">
-          <div className="flex items-center gap-3">
+      {children.map((perm) => {
+        const isLocked = !!lockedPerms[perm.name];
+
+        return (
+          <div key={perm.name} className="flex flex-col">
+            <div className="flex items-center gap-3">
             <input
               type="checkbox"
               id={perm.name}
               checked={!!checkedPerms[perm.name]}
-              onChange={(e) => onToggle(perm, e.target.checked)}
-              className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500"
+              disabled={isLocked}
+              onChange={(event) => onToggle(perm, event.target.checked)}
+              className={`w-4 h-4 rounded ring-offset-0 focus:ring-0 accent-pink-500 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500 disabled:opacity-70 ${isLocked ? "cursor-not-allowed" : "cursor-pointer"}`}
             />
             <label
               htmlFor={perm.name}
-              className={`text-sm cursor-pointer ${parentName ? "text-slate-600 dark:text-slate-400" : "text-slate-800 dark:text-slate-200 font-bold"}`}
+              className={`text-sm ${isLocked ? "cursor-not-allowed" : "cursor-pointer"} ${parentName ? "text-slate-600 dark:text-slate-400" : "text-slate-800 dark:text-slate-200 font-bold"}`}
             >
-              {perm.displayName || perm.name}
+              {perm.displayName}
             </label>
+            </div>
+            <PermissionTree
+              permissions={permissions}
+              parentName={perm.name}
+              checkedPerms={checkedPerms}
+              lockedPerms={lockedPerms}
+              onToggle={onToggle}
+            />
           </div>
-          <PermissionTree
-            permissions={permissions}
-            parentName={perm.name}
-            checkedPerms={checkedPerms}
-            onToggle={onToggle}
-          />
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -98,10 +116,50 @@ const rowVariants = {
 
 const ROW_HEIGHT = "h-[60px]";
 
+const getLocalizationValue = (applicationConfig, key) => {
+  const resources = applicationConfig?.localization?.values;
+  if (!resources || typeof resources !== "object") return key;
+
+  const identityValue = resources.AbpIdentity?.[key];
+  if (typeof identityValue === "string" && identityValue.trim()) {
+    return identityValue.trim();
+  }
+
+  for (const resource of Object.values(resources)) {
+    const value = resource?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  return key;
+};
+
 export default function UsersPage() {
   const { toast } = useToast();
   const { dark } = useTheme();
+  const { user } = useAuth();
   const isDark = dark === "dark";
+  const isAdmin = String(user?.role || "")
+    .split(",")
+    .some((role) => role.trim().toLowerCase() === "admin");
+  const [applicationConfig, setApplicationConfig] = useState(
+    getCachedApplicationConfig,
+  );
+  const localize = (key) => getLocalizationValue(applicationConfig, key);
+
+  useEffect(() => {
+    let isCurrent = true;
+    loadApplicationConfig()
+      .then((config) => {
+        if (isCurrent) setApplicationConfig(config);
+      })
+      .catch((error) => {
+        console.error("Failed to load user form localization:", error);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   // Data State
   const [users, setUsers] = useState([]);
@@ -126,9 +184,14 @@ export default function UsersPage() {
   const [permissionsData, setPermissionsData] = useState(null);
   const [loadingPermissions, setLoadingPermissions] = useState(false);
   const [checkedPerms, setCheckedPerms] = useState({});
+  const [lockedPerms, setLockedPerms] = useState({});
   const [expandedGroups, setExpandedGroups] = useState({});
 
   const canCreate = usePermission("AbpIdentity.Users.Create");
+  const canUpdate = usePermission("AbpIdentity.Users.Update");
+  const canDelete = usePermission("AbpIdentity.Users.Delete");
+  const canManagePermissions = usePermission("AbpIdentity.Users.ManagePermissions");
+  const canManageUserRoles = usePermission("AbpIdentity.Roles");
 
   // Filter Toggles State
   const [filters, setFilters] = useState({
@@ -197,28 +260,23 @@ export default function UsersPage() {
     setPermissionUser(user);
     setLoadingPermissions(true);
     try {
-      // Step 1 — get permission structure for display
       const userPerms = await usersApi.getPermissions(user.id);
       setPermissionsData(userPerms);
 
-      // Step 2 — get user's role (keep it if needed for saving)
-      const userRolesObj = await usersApi.getUserRoles(user.id);
-      const userRoles = userRolesObj?.items || [];
-      const roleName = userRoles[0]?.name || null;
-      setPermissionUser(prev => ({ ...prev, roleName }));
-
-      // Step 3 — fetch user permissions and use them as checked state
       const initial = {};
+      const locked = {};
 
       userPerms.groups?.forEach((g) => {
         g.permissions.forEach((p) => {
           initial[p.name] = p.isGranted || false;
+          locked[p.name] = p.isGranted === true;
         });
       });
 
       setCheckedPerms(initial);
+      setLockedPerms(locked);
     } catch (err) {
-      toast(`Failed to load permissions: ${err.message}`, "error");
+      toast(err.message || localize("DefaultErrorMessage"), "error");
     } finally {
       setLoadingPermissions(false);
     }
@@ -227,15 +285,18 @@ export default function UsersPage() {
     setPermissionUser(null);
     setPermissionsData(null);
     setCheckedPerms({});
+    setLockedPerms({});
     setExpandedGroups({});
   };
 
   const handleGrantAll = (isChecked) => {
-    if (!permissionsData || !permissionsData.groups) return;
+    if (!permissionsData?.groups) return;
     const updated = { ...checkedPerms };
-    permissionsData.groups.forEach((g) => {
-      g.permissions.forEach((p) => {
-        updated[p.name] = isChecked;
+    permissionsData.groups.forEach((group) => {
+      group.permissions.forEach((permission) => {
+        if (!lockedPerms[permission.name]) {
+          updated[permission.name] = isChecked;
+        }
       });
     });
     setCheckedPerms(updated);
@@ -245,74 +306,93 @@ export default function UsersPage() {
     setLoadingPermissions(true);
     try {
       const payload = {
-        permissions: Object.entries(checkedPerms).map(([name, isGranted]) => ({
-          name,
-          isGranted: !!isGranted,
-        })),
+        permissions: Object.entries(checkedPerms)
+          .filter(([name]) => !lockedPerms[name])
+          .map(([name, isGranted]) => ({
+            name,
+            isGranted: !!isGranted,
+          })),
       };
 
       await usersApi.updatePermissions(permissionUser.id, payload);
-      toast(`Permissions updated successfully`);
+      toast(localize("SavedSuccessfully"));
       handleClosePermissions();
     } catch (err) {
-      toast(`Failed to save permissions: ${err.message}`, "error");
+      toast(err.message || localize("DefaultErrorMessage"), "error");
     } finally {
       setLoadingPermissions(false);
     }
   };
 
   const handleSelectAllGroup = (groupName, isChecked) => {
-    const group = permissionsData.groups.find((g) => g.name === groupName);
+    const group = permissionsData?.groups?.find((item) => item.name === groupName);
     if (!group) return;
     const updated = { ...checkedPerms };
-    group.permissions.forEach((p) => {
-      updated[p.name] = isChecked;
+    group.permissions.forEach((permission) => {
+      if (!lockedPerms[permission.name]) {
+        updated[permission.name] = isChecked;
+      }
     });
     setCheckedPerms(updated);
   };
 
-  const handleTogglePerm = (perm, isChecked) => {
+  const handleTogglePerm = (permission, isChecked) => {
+    if (lockedPerms[permission.name]) return;
+
     const updated = { ...checkedPerms };
-    updated[perm.name] = isChecked;
+    const allPermissions = permissionsData.groups.flatMap(
+      (group) => group.permissions || [],
+    );
+    updated[permission.name] = isChecked;
+
+    const uncheckDescendants = (parentName) => {
+      allPermissions
+        .filter((item) => getPermissionParentName(item) === parentName)
+        .forEach((childPermission) => {
+          if (!lockedPerms[childPermission.name]) {
+            updated[childPermission.name] = false;
+          }
+          uncheckDescendants(childPermission.name);
+        });
+    };
 
     if (isChecked) {
-      // Auto-check parents
-      const allPerms = permissionsData.groups.flatMap((g) => g.permissions);
-      let currentParentName = perm.parentName;
+      let currentParentName = getPermissionParentName(permission);
       while (currentParentName) {
         updated[currentParentName] = true;
-        const parentObj = allPerms.find((p) => p.name === currentParentName);
-        currentParentName = parentObj ? parentObj.parentName : null;
+        const parentPermission = allPermissions.find(
+          (item) => item.name === currentParentName,
+        );
+        currentParentName = parentPermission
+          ? getPermissionParentName(parentPermission)
+          : null;
       }
     } else {
-      // Auto-uncheck children
-      const allPerms = permissionsData.groups.flatMap((g) => g.permissions);
-      const uncheckChildren = (parentName) => {
-        const kids = allPerms.filter((p) => p.parentName === parentName);
-        kids.forEach((k) => {
-          updated[k.name] = false;
-          uncheckChildren(k.name);
-        });
-      };
-      uncheckChildren(perm.name);
+      uncheckDescendants(permission.name);
     }
 
     setCheckedPerms(updated);
   };
 
   const handleCreateOpen = () => {
+    if (!canCreate) return;
+
     setActiveItem(null);
     setSubmitError("");
     setIsModalOpen(true);
   };
 
   const handleEditOpen = (row) => {
+    if (!canUpdate) return;
+
     setActiveItem(row);
     setSubmitError("");
     setIsModalOpen(true);
   };
 
   const handleDelete = (row) => {
+    if (!canDelete) return;
+
     if (row.userName?.toLowerCase() === "admin") {
       toast("Error: The Admin user cannot be deleted.", "error");
       return;
@@ -333,6 +413,8 @@ export default function UsersPage() {
   };
 
   const handleModalSubmit = async (payload) => {
+    if ((activeItem && !canUpdate) || (!activeItem && !canCreate)) return;
+
     try {
       setModalLoading(true);
       if (activeItem) {
@@ -387,10 +469,15 @@ export default function UsersPage() {
         setValidationErrors({});
         setShowPassword(false);
 
-        usersApi
-          .getAssignableRoles()
-          .then((res) => setAvailableRoles(res.items || res || []))
-          .catch((e) => console.error("Error fetching assignable roles", e));
+        if (canManageUserRoles) {
+          usersApi
+            .getAssignableRoles()
+            .then((res) => setAvailableRoles(res.items || res || []))
+            .catch((e) => console.error("Error fetching assignable roles", e));
+        } else {
+          setAvailableRoles([]);
+          setSelectedRoles([]);
+        }
 
         if (item) {
           setIsLoadingData(true);
@@ -399,10 +486,12 @@ export default function UsersPage() {
               console.error("Error fetching getById:", e);
               return null;
             }),
-            usersApi.getUserRoles(item.id).catch((e) => {
-              console.error("Error fetching getUserRoles:", e);
-              return null;
-            }),
+            canManageUserRoles
+              ? usersApi.getUserRoles(item.id).catch((e) => {
+                console.error("Error fetching getUserRoles:", e);
+                return null;
+              })
+              : Promise.resolve(null),
           ])
             .then(([userRes, rolesRes]) => {
               const loadedUser = userRes || item;
@@ -419,7 +508,7 @@ export default function UsersPage() {
               let rolesArray = [];
               if (rolesRes) {
                 rolesArray = rolesRes.items || rolesRes || [];
-              } else if (item.roleNames) {
+              } else if (canManageUserRoles && item.roleNames) {
                 rolesArray = item.roleNames;
               }
               setSelectedRoles(rolesArray.map((r) => r.name || r));
@@ -501,7 +590,7 @@ export default function UsersPage() {
       if (orgType === "1" && !selectedSite) {
         errors.siteId = "Site is required for Customer organization type";
       }
-      if (!item && selectedRoles.length === 0) {
+      if (canManageUserRoles && !item && selectedRoles.length === 0) {
         errors.roles = "At least one role is required when creating a user";
       }
 
@@ -522,16 +611,23 @@ export default function UsersPage() {
         organizationType: Number(orgType),
         siteId: orgType === "1" && selectedSite ? selectedSite.id : null,
         isPrimary: formData.get("isPrimary") === "on",
-        mustCompleteJobsheet: formData.get("mustCompleteJobsheet") === "on",
         isITS: formData.get("isITS") === "on",
         isActive: formData.get("isActive") === "on",
         lockoutEnabled: formData.get("lockoutEnabled") === "on",
-        baseRateFirstHourAfterWorkingHours:
-          parseFloat(data.baseRateFirstHourAfterWorkingHours) || 0,
-        baseRateAfterFirstHourAfterWorkingHours:
-          parseFloat(data.baseRateAfterFirstHourAfterWorkingHours) || 0,
-        roleNames: selectedRoles,
       };
+
+      if (isAdmin) {
+        payload.mustCompleteJobsheet =
+          formData.get("mustCompleteJobsheet") === "on";
+        payload.baseRateFirstHourAfterWorkingHours =
+          parseFloat(data.baseRateFirstHourAfterWorkingHours) || 0;
+        payload.baseRateAfterFirstHourAfterWorkingHours =
+          parseFloat(data.baseRateAfterFirstHourAfterWorkingHours) || 0;
+      }
+
+      if (canManageUserRoles) {
+        payload.roleNames = selectedRoles;
+      }
 
       if (data.password?.trim()) {
         payload.password = data.password.trim();
@@ -552,7 +648,7 @@ export default function UsersPage() {
             onClose();
           }
         }}
-        maxWidth="sm"
+        maxWidth="xs"
         fullWidth
         scroll="body"
         PaperProps={{
@@ -572,7 +668,9 @@ export default function UsersPage() {
             <div className="w-10 h-10 rounded-2xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-500 mr-3 shadow-inner shadow-pink-500/20">
               <ShieldCheck size={20} strokeWidth={2.5} />
             </div>
-            {item ? "Edit User Profile" : "Create New User"}
+            {item
+              ? `${localize("Edit")} ${localize("User")}`
+              : localize("NewUser")}
           </h2>
           <button
             type="button"
@@ -612,7 +710,9 @@ export default function UsersPage() {
                 TabIndicatorProps={{ style: { backgroundColor: '#ec4899', height: 3, borderRadius: '3px 3px 0 0' } }}
               >
                 <Tab label="User Information" sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', color: isDark ? '#94a3b8' : '#64748b', '&.Mui-selected': { color: '#ec4899' } }} />
-                <Tab label="Roles" sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', color: isDark ? '#94a3b8' : '#64748b', '&.Mui-selected': { color: '#ec4899' } }} />
+                {canManageUserRoles && (
+                  <Tab label="Roles" sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', color: isDark ? '#94a3b8' : '#64748b', '&.Mui-selected': { color: '#ec4899' } }} />
+                )}
               </Tabs>
             </Box>
 
@@ -630,16 +730,16 @@ export default function UsersPage() {
                 <div className="flex flex-col gap-5 mb-6">
                   <div>
                     <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      User name *
+                      {localize("DisplayName:UserName")} <span className="required-asterisk">*</span>
                     </label>
                     <div className="relative group">
                       <input
                         name="userName"
                         autoComplete="new-password"
                         defaultValue={userData?.userName || ""}
-                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 ${validationErrors.userName
-                          ? "border-red-500 focus:ring-red-500/20"
-                          : "border-slate-400 dark:border-slate-600 focus:ring-blue-500/20"
+                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 ${validationErrors.userName
+                          ? "focus:ring-red-500/20"
+                          : "focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
                       />
                       <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -654,15 +754,15 @@ export default function UsersPage() {
                   </div>
                   <div>
                     <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      Name *
+                      {localize("DisplayName:Name")} <span className="required-asterisk">*</span>
                     </label>
                     <div className="relative group">
                       <input
                         name="name"
                         defaultValue={userData?.name || ""}
-                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 ${validationErrors.name
-                          ? "border-red-500 focus:ring-red-500/20"
-                          : "border-slate-400 dark:border-slate-600 focus:ring-blue-500/20"
+                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 ${validationErrors.name
+                          ? "focus:ring-red-500/20"
+                          : "focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
                       />
                       <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -677,13 +777,13 @@ export default function UsersPage() {
                   </div>
                   <div>
                     <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      Surname
+                      {localize("DisplayName:Surname")}
                     </label>
                     <div className="relative group">
                       <input
                         name="surname"
                         defaultValue={userData?.surname || ""}
-                        className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 border-slate-400 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
+                        className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
                       />
                       <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <X size={14} />
@@ -692,16 +792,16 @@ export default function UsersPage() {
                   </div>
                   <div>
                     <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      Password {item ? "(Leave blank to keep)" : "*"}
+                      {localize("DisplayName:Password")} {!item && <span className="required-asterisk">*</span>}
                     </label>
                     <div className="relative group">
                       <input
                         name="password"
                         autoComplete="new-password"
                         type={showPassword ? "text" : "password"}
-                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 ${validationErrors.password
-                          ? "border-red-500 focus:ring-red-500/20"
-                          : "border-slate-400 dark:border-slate-600 focus:ring-blue-500/20"
+                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 ${validationErrors.password
+                          ? "focus:ring-red-500/20"
+                          : "focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-12 transition-all duration-200 font-medium`}
                       />
                       <button
@@ -720,14 +820,14 @@ export default function UsersPage() {
                   </div>
                   <div>
                     <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      Email Address
+                      {localize("DisplayName:Email")}
                     </label>
                     <div className="relative group">
                       <input
                         name="email"
                         type="email"
                         defaultValue={userData?.email || ""}
-                        className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 border-slate-400 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
+                        className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
                       />
                       <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <X size={14} />
@@ -736,15 +836,15 @@ export default function UsersPage() {
                   </div>
                   <div>
                     <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      Phone Number *
+                      {localize("DisplayName:PhoneNumber")} <span className="required-asterisk">*</span>
                     </label>
                     <div className="relative group">
                       <input
                         name="phoneNumber"
                         defaultValue={userData?.phoneNumber || ""}
-                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 ${validationErrors.phoneNumber
-                          ? "border-red-500 focus:ring-red-500/20"
-                          : "border-slate-400 dark:border-slate-600 focus:ring-blue-500/20"
+                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 ${validationErrors.phoneNumber
+                          ? "focus:ring-red-500/20"
+                          : "focus:ring-blue-500/20"
                           } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
                       />
                       <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
@@ -761,7 +861,7 @@ export default function UsersPage() {
                   <div className="grid grid-cols-1 gap-5">
                     <div className="w-full">
                       <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                        Organization Type *
+                        {localize("DisplayName:OrganizationType")} <span className="required-asterisk">*</span>
                       </label>
                       <Autocomplete
                         size="small"
@@ -790,9 +890,7 @@ export default function UsersPage() {
                             sx: {
                               mt: 1,
                               borderRadius: "14px",
-                              border: isDark
-                                ? "1px solid rgba(148, 163, 184, 0.2)"
-                                : "1px solid #e2e8f0",
+                              border: "none",
                               bgcolor: isDark ? "#0f172a" : "#ffffff",
                               color: isDark ? "#e2e8f0" : "#334155",
                               boxShadow: "0 18px 45px -18px rgba(15, 23, 42, 0.45)",
@@ -835,13 +933,10 @@ export default function UsersPage() {
                                 color: isDark ? "#f1f5f9" : "#334155",
                                 transition: "all 0.2s ease",
                                 "& fieldset": {
-                                  borderWidth: "2px",
-                                  borderColor: validationErrors.organizationType
-                                    ? "#ef4444"
-                                    : isDark ? "#64748b" : "#94a3b8",
+                                  border: "none",
                                 },
                                 "&:hover fieldset": {
-                                  borderColor: validationErrors.organizationType ? "#ef4444" : "#64748b",
+                                  border: "none",
                                 },
                                 "&.Mui-focused": {
                                   boxShadow: validationErrors.organizationType
@@ -849,8 +944,7 @@ export default function UsersPage() {
                                     : "0 0 0 4px rgba(100, 116, 139, 0.14)",
                                 },
                                 "&.Mui-focused fieldset": {
-                                  borderWidth: "2px",
-                                  borderColor: validationErrors.organizationType ? "#ef4444" : "#64748b",
+                                  border: "none",
                                 },
                               },
                               "& .MuiInputBase-input::placeholder": {
@@ -874,7 +968,7 @@ export default function UsersPage() {
                     {orgType === "1" && (
                       <div className="w-full">
                         <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                          Site *
+                        {localize("DisplayName:SiteId")} <span className="required-asterisk">*</span>
                         </label>
                         <Autocomplete
                           size="small"
@@ -902,9 +996,7 @@ export default function UsersPage() {
                                 borderRadius: "0.75rem",
                                 boxShadow:
                                   "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-                                border: isDark
-                                  ? "1px solid rgba(148, 163, 184, 0.2)"
-                                  : "1px solid #e2e8f0",
+                                border: "none",
                                 backgroundColor: isDark ? "#0f172a" : "#ffffff",
                                 color: isDark ? "#e2e8f0" : "#334155",
                               },
@@ -950,16 +1042,13 @@ export default function UsersPage() {
                                   color: isDark ? "#f1f5f9" : "#334155",
                                   transition: "all 0.2s",
                                   "& fieldset": {
-                                    borderWidth: "2px",
-                                    borderColor: validationErrors.siteId ? "#ef4444" : "#94a3b8", // slate-400
+                                    border: "none",
                                   },
                                   "&:hover fieldset": {
-                                    borderWidth: "2px",
-                                    borderColor: validationErrors.siteId ? "#ef4444" : "#64748b", // slate-500
+                                    border: "none",
                                   },
                                   "&.Mui-focused fieldset": {
-                                    borderWidth: "2px",
-                                    borderColor: validationErrors.siteId ? "#ef4444" : "#64748b",
+                                    border: "none",
                                   },
                                   "&.Mui-focused": {
                                     boxShadow: validationErrors.siteId
@@ -983,34 +1072,38 @@ export default function UsersPage() {
                     )}
                   </div>
 
-                  <div>
-                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      Rate First Hour After Working Hours
-                    </label>
-                    <input
-                      name="baseRateFirstHourAfterWorkingHours"
-                      type="number"
-                      step="0.01"
-                      defaultValue={userData?.baseRateFirstHourAfterWorkingHours || ""}
-                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 border-slate-400 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      Rate After First Hour (Each 15 Min) After Working Hours
-                    </label>
-                    <input
-                      name="baseRateAfterFirstHourAfterWorkingHours"
-                      type="number"
-                      step="0.01"
-                      defaultValue={userData?.baseRateAfterFirstHourAfterWorkingHours || ""}
-                      className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-2 border-slate-400 dark:border-slate-600 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
-                    />
-                  </div>
+                  {isAdmin && (
+                    <>
+                      <div>
+                        <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
+                          {localize("DisplayName:BaseRateFirstHourAfterWorkingHours")}
+                        </label>
+                        <input
+                          name="baseRateFirstHourAfterWorkingHours"
+                          type="number"
+                          step="0.01"
+                          defaultValue={userData?.baseRateFirstHourAfterWorkingHours || ""}
+                          className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
+                          {localize("DisplayName:BaseRateAfterFirstHourAfterWorkingHours")}
+                        </label>
+                        <input
+                          name="baseRateAfterFirstHourAfterWorkingHours"
+                          type="number"
+                          step="0.01"
+                          defaultValue={userData?.baseRateAfterFirstHourAfterWorkingHours || ""}
+                          className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Checkboxes */}
-                <div className="flex flex-col gap-3 bg-transparent rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                <div className="flex flex-col gap-3 bg-transparent rounded-xl p-4">
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
@@ -1018,7 +1111,9 @@ export default function UsersPage() {
                       defaultChecked={userData?.isPrimary}
                       className="w-4 h-4 rounded text-blue-600 border-slate-300"
                     />
-                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">Primary</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
+                      {localize("DisplayName:IsPrimary")}
+                    </span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -1027,47 +1122,54 @@ export default function UsersPage() {
                       defaultChecked={userData?.isITS}
                       className="w-4 h-4 rounded text-blue-600 border-slate-300"
                     />
-                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">ITS</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
+                      {localize("DisplayName:IsITS")}
+                    </span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
                       name="isActive"
-                      defaultChecked={userData ? userData.isActive : false}
+                      defaultChecked={userData ? userData.isActive : true}
                       className="w-4 h-4 rounded text-blue-600 border-slate-300"
                     />
-                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">Active</span>
+                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
+                      {localize("DisplayName:IsActive")}
+                    </span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
                       name="lockoutEnabled"
-                      defaultChecked={userData ? userData.lockoutEnabled : false}
+                      defaultChecked={userData ? userData.lockoutEnabled : true}
                       className="w-4 h-4 rounded text-blue-600 border-slate-300"
                     />
                     <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
-                      Account lockout
+                      {localize("DisplayName:LockoutEnabled")}
                     </span>
                   </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="mustCompleteJobsheet"
-                      defaultChecked={userData?.mustCompleteJobsheet}
-                      className="w-4 h-4 rounded text-blue-600 border-slate-300"
-                    />
-                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
-                      Must Complete JobSheet
-                    </span>
-                  </label>
+                  {isAdmin && (
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="mustCompleteJobsheet"
+                        defaultChecked={userData?.mustCompleteJobsheet}
+                        className="w-4 h-4 rounded text-blue-600 border-slate-300"
+                      />
+                      <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
+                        {localize("DisplayName:MustCompleteJobsheet")}
+                      </span>
+                    </label>
+                  )}
                 </div>
               </div>
 
               {/* TAB 2: ROLES */}
-              <div style={{ display: tabIndex === 1 ? "block" : "none" }}>
-                <div className="flex flex-col gap-2 w-full p-4 py-6">
+              {canManageUserRoles && (
+                <div style={{ display: tabIndex === 1 ? "block" : "none" }}>
+                  <div className="flex flex-col gap-2 w-full p-4 py-6">
                   <p className="text-[11px] text-slate-400 font-bold mb-6 text-center uppercase tracking-wider">
-                    Assign Roles to User {!item && <span className="text-red-500">*</span>}
+                    Assign Roles to User {!item && <span className="required-asterisk">*</span>}
                   </p>
                   {validationErrors.roles && (
                     <div
@@ -1177,8 +1279,9 @@ export default function UsersPage() {
                       </button>
                     </div>
                   </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </DialogContent>
 
@@ -1195,7 +1298,11 @@ export default function UsersPage() {
               disabled={loading}
               className="app-primary-button flex-1 h-[38px] text-[11px]"
             >
-              {loading ? "Wait..." : item ? "Save" : "Create"}
+              {loading
+                ? localize("SavingWithThreeDot")
+                : item
+                  ? localize("Save")
+                  : localize("Permission:Create")}
             </button>
           </div>
         </form>
@@ -1208,9 +1315,6 @@ export default function UsersPage() {
     const open = Boolean(anchorEl);
 
     const { user } = useAuth();
-    const canUpdate = usePermission("AbpIdentity.Users.Update");
-    const canDelete = usePermission("AbpIdentity.Users.Delete");
-    const canManagePermissions = usePermission("AbpIdentity.Users.ManagePermissions");
     const isTicketing = user?.role?.toLowerCase().includes("ticketing");
     const showPermissions = canUpdate && canManagePermissions && !isTicketing;
 
@@ -1228,7 +1332,7 @@ export default function UsersPage() {
             }}
             className={`text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider  shadow-sm ${open ? 'bg-pink-50 dark:bg-pink-950/30 border-pink-500' : 'bg-transparent border-pink-500/20'}`}
           >
-            Actions <ChevronDown size={10} strokeWidth={2.5} className="transition-transform group-hover:rotate-90" />
+            {localize("Actions")} <ChevronDown size={10} strokeWidth={2.5} className="transition-transform group-hover:rotate-90" />
           </button>
           <Popper
             open={open}
@@ -1258,7 +1362,7 @@ export default function UsersPage() {
                     }}
                     sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
                   >
-                    <ListItemText primary="Edit" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                    <ListItemText primary={localize("Edit")} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                   </MenuItem>
                 )}
                 {showPermissions && (
@@ -1270,7 +1374,7 @@ export default function UsersPage() {
                     }}
                     sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
                   >
-                    <ListItemText primary="Permission" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                    <ListItemText primary={localize("Permissions")} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                   </MenuItem>
                 )}
                 {canDelete && row.userName?.toLowerCase() !== "admin" && (
@@ -1283,7 +1387,7 @@ export default function UsersPage() {
                     sx={{ py: 1, "&:hover": { bgcolor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)" } }}
                   >
                     <ListItemText
-                      primary="Delete"
+                      primary={localize("Delete")}
                       primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "error.main" }}
                     />
                   </MenuItem>
@@ -1329,7 +1433,7 @@ export default function UsersPage() {
             <div className="flex items-center gap-4">
 
               <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
-                Users
+                {localize("Users")}
               </h1>
             </div>
             <div className="flex items-center gap-3">
@@ -1338,7 +1442,7 @@ export default function UsersPage() {
                   onClick={handleCreateOpen}
                   className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs"
                 >
-                  New User
+                  {localize("NewUser")}
                 </button>
               )}
             </div>
@@ -1430,7 +1534,7 @@ export default function UsersPage() {
                     Primary
                   </th>
                   <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 text-right pr-8">
-                    Actions
+                    {localize("Actions")}
                   </th>
                 </tr>
               </thead>
@@ -1514,7 +1618,7 @@ export default function UsersPage() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-bold text-slate-400 tracking-wider">Rows per page:</span>
-                  <select
+                  <AppSelect
                     value={pageSize}
                     onChange={(e) => {
                       setPageSize(Number(e.target.value));
@@ -1527,7 +1631,7 @@ export default function UsersPage() {
                         {size}
                       </option>
                     ))}
-                  </select>
+                  </AppSelect>
                 </div>
                 <div className="text-[11px] font-bold text-slate-400 tracking-wider">
                   Showing <span className="text-pink-500">{(page - 1) * pageSize + 1}</span> to{" "}
@@ -1646,13 +1750,13 @@ export default function UsersPage() {
                 onClick={() => setDeleteUser(null)}
                 className="flex-1 font-bold text-[12px] h-[42px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-all"
               >
-                Cancel
+                {localize("Cancel")}
               </button>
               <button
                 onClick={confirmDelete}
                 className="flex-1 font-bold text-[12px] h-[42px] bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition-all shadow-md shadow-rose-500/20 active:scale-95"
               >
-                Delete
+                {localize("Delete")}
               </button>
             </div>
           </div>
@@ -1677,7 +1781,7 @@ export default function UsersPage() {
       >
         <DialogTitle className="flex items-center justify-between px-6 pt-5 pb-2">
           <span className="text-lg font-bold text-slate-800 dark:text-slate-200">
-            Permissions - {permissionUser?.userName}
+            {localize("Permissions")} - {permissionUser?.userName}
           </span>
           <button
             type="button"
@@ -1694,43 +1798,38 @@ export default function UsersPage() {
             </div>
           ) : (
             <div className="text-sm text-slate-600 dark:text-slate-400 space-y-3">
-              <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
-                <p>
-                  Control what <strong className="text-slate-800 dark:text-slate-200">{permissionUser?.userName}</strong> can do.
-                </p>
-
-                {/* Grant All Checkbox */}
-                {permissionsData?.groups && (
+              {permissionsData?.groups && (
+                <div className="flex justify-end items-center mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
                   <div className="flex items-center gap-2 px-3 py-2">
                     <input
                       type="checkbox"
                       id="grant-all-permissions"
                       checked={
-                        permissionsData.groups.flatMap((g) => g.permissions)
+                        permissionsData.groups.flatMap((group) => group.permissions)
                           .length > 0 &&
                         permissionsData.groups
-                          .flatMap((g) => g.permissions)
-                          .every((p) => checkedPerms[p.name])
+                          .flatMap((group) => group.permissions)
+                          .every((permission) => checkedPerms[permission.name])
                       }
-                      onChange={(e) => handleGrantAll(e.target.checked)}
+                      onChange={(event) => handleGrantAll(event.target.checked)}
                       className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500"
                     />
                     <label
                       htmlFor="grant-all-permissions"
                       className="text-sm text-slate-700 dark:text-slate-200 cursor-pointer font-medium"
                     >
-                      Grant all
+                      {localize("SelectAllInAllTabs")}
                     </label>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Render permissions if available */}
               {permissionsData?.groups?.map((group, idx) => {
                 const groupPerms = group.permissions;
                 const isAllChecked =
                   groupPerms.length > 0 &&
-                  groupPerms.every((p) => checkedPerms[p.name]);
+                  groupPerms.every((permission) => checkedPerms[permission.name]);
                 const isExpanded = !!expandedGroups[group.name];
 
                 return (
@@ -1748,17 +1847,17 @@ export default function UsersPage() {
                           <ChevronDown size={18} className="text-slate-500 group-hover:text-[#ec4899]" />
                         </div>
                         <h4 className="text-slate-800 dark:text-slate-200 text-[14px] font-bold uppercase tracking-wider">
-                          {group.displayName || group.name}
+                          {group.displayName}
                         </h4>
                       </div>
 
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
                         <input
                           type="checkbox"
                           id={`select-all-${group.name}`}
                           checked={isAllChecked}
-                          onChange={(e) =>
-                            handleSelectAllGroup(group.name, e.target.checked)
+                          onChange={(event) =>
+                            handleSelectAllGroup(group.name, event.target.checked)
                           }
                           className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-white dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500"
                         />
@@ -1766,7 +1865,7 @@ export default function UsersPage() {
                           htmlFor={`select-all-${group.name}`}
                           className="text-[10px] text-slate-500 uppercase font-black tracking-widest cursor-pointer hover:text-[#ec4899] transition-colors"
                         >
-                          Select all
+                          {localize("SelectAllInThisTab")}
                         </label>
                       </div>
                     </div>
@@ -1778,6 +1877,7 @@ export default function UsersPage() {
                           permissions={groupPerms}
                           parentName={null}
                           checkedPerms={checkedPerms}
+                          lockedPerms={lockedPerms}
                           onToggle={handleTogglePerm}
                         />
                       </div>
@@ -1788,7 +1888,7 @@ export default function UsersPage() {
 
               {!permissionsData?.groups?.length && (
                 <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 text-center text-slate-500 dark:text-slate-400">
-                  No specific permissions defined.
+                  {localize("NoDataAvailableInDatatable")}
                 </div>
               )}
             </div>
@@ -1799,14 +1899,16 @@ export default function UsersPage() {
             onClick={() => handleClosePermissions()}
             className={`flex-1 border h-[38px] text-[11px] font-bold rounded-xl transition-all duration-200 ${isDark ? 'border-slate-700 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
           >
-            Cancel
+            {localize("Cancel")}
           </button>
           <button
             onClick={handleSavePermissions}
             disabled={loadingPermissions}
             className="app-primary-button flex-1 h-[38px] text-[11px]"
           >
-            {loadingPermissions ? "Wait..." : "Save Changes"}
+            {loadingPermissions
+              ? localize("SavingWithThreeDot")
+              : localize("Save")}
           </button>
         </DialogActions>
       </Dialog>

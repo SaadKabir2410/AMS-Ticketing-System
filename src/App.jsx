@@ -1,6 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import clsx from "clsx";
-import { useAuth } from "./context/AuthContextHook";
 
 import { usePermissionContext } from "./context/PermissionContext";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
@@ -35,6 +34,18 @@ const TaskCategoryProjectsPage = lazy(() => import("./pages/TaskCategoryProjects
 const CodeDetailsPage = lazy(() => import("./pages/CodeDetailsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const MyAccountPage = lazy(() => import("./pages/MyAccountPage"));
+
+const AUDIT_LOG_PERMISSIONS = [
+  "Billing.AMSTickets.ViewAuditLog",
+  "Billing.Sites.ViewAuditLog",
+  "Billing.WorkDoneCodes.ViewAuditLog",
+  "Billing.Countries.ViewAuditLog",
+  "Billing.Holidays.ViewAuditLog",
+  "Billing.Lookups.ViewAuditLog",
+  "Billing.Jobsheets.ViewAuditLog",
+  "Billing.LookupDetails.ViewAuditLog",
+  "Billing.UserWorkingHours.ViewAuditLog",
+];
 
 // Lightweight page-level loading fallback
 function PageLoader() {
@@ -262,7 +273,7 @@ function Layout({ collapsed, setCollapsed }) {
               <Route
                 path="/audit-logs"
                 element={
-                  <PermissionGuard permission="Billing.AuditLogs">
+                  <PermissionGuard permission={AUDIT_LOG_PERMISSIONS}>
                     <AuditLogsPage />
                   </PermissionGuard>
                 }

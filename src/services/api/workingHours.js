@@ -1,32 +1,36 @@
 import apiClient from "../apiClient";
 
+const SORT_FIELD_MAP = {
+  UserName: "IdentityUser.UserName",
+  WeekDay: "WeekDay",
+  StartTime: "StartTime",
+  EndTime: "EndTime",
+};
+
 export const workingHoursApi = {
-  getAll: ({ page = 1, perPage = 100, search, ...extraParams } = {}) => {
+  getPagedList: ({
+    page = 1,
+    perPage = 100,
+    search,
+    userId,
+    weekDay,
+    sortField = "WeekDay",
+    sortDirection = "asc",
+  } = {}) => {
+    const backendSortField = SORT_FIELD_MAP[sortField] || SORT_FIELD_MAP.WeekDay;
+    const backendSortDirection = sortDirection === "desc" ? "Desc" : "Asc";
     const params = {
       SkipCount: (page - 1) * perPage,
       MaxResultCount: perPage,
-      "UserWorkingHourSearch.UserId":
-        extraParams.UserId || extraParams.userId || undefined,
-      "UserWorkingHourSearch.WeekDay":
-        extraParams.WeekDay || extraParams.weekDay || undefined,
+      "UserWorkingHourSearch.UserId": userId || undefined,
+      "UserWorkingHourSearch.WeekDay": weekDay || undefined,
       Filter: search || undefined,
-      Sorting: "WeekDay asc",
+      Sorting: `${backendSortField} ${backendSortDirection}, Id Asc`,
     };
-    console.log(
-      "[DB.workingHours] Fetching:",
-      "/api/app/user-working-hour/paged-list",
-      params,
-    );
+
     return apiClient
       .get("/api/app/user-working-hour/paged-list", { params })
-      .then((r) => {
-        console.log("[DB.workingHours] Response:", r.data);
-        return r.data;
-      })
-      .catch((err) => {
-        console.error("[DB.workingHours] Error:", err);
-        throw err;
-      });
+      .then((response) => response.data);
   },
 
   getById: (id) =>

@@ -35,7 +35,7 @@ function InputField({ label, value, onChange, name, required = false }) {
   return (
     <div className="mb-6">
       <label className="block text-[13px] text-slate-500 font-medium mb-1.5 ml-0.5">
-        {label} {required && <span>*</span>}
+        {label} {required && <span className="required-asterisk">*</span>}
       </label>
       <input
         type="text"

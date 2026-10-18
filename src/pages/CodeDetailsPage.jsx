@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
@@ -24,11 +25,6 @@ import { ActionsMenu } from "../component/common/ResourcePage";
 import { usePermission } from "../hooks/usePermission";
 
 // ── Animation variants ────────────────────────────────────────────
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.015 } },
-};
-
 const rowVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: {
@@ -50,7 +46,7 @@ const HighlightText = ({ text, term }) => {
   return (
     <>
       {str.slice(0, index)}
-      <mark className="bg-yellow-200 dark:bg-yellow-500/30 text-yellow-900 dark:text-yellow-100 px-0.5 rounded-[1px] border border-yellow-300 dark:border-yellow-500/30">
+      <mark className="bg-pink-200 dark:bg-pink-500/40 text-pink-900 dark:text-pink-100 px-0.5 rounded-[1px] border border-pink-300 dark:border-pink-500/30">
         {str.slice(index, index + term.length)}
       </mark>
       {str.slice(index + term.length)}
@@ -61,7 +57,7 @@ const HighlightText = ({ text, term }) => {
 // ── Skeleton row ──────────────────────────────────────────────────
 function SkeletonRow({ delay = 0 }) {
   return (
-    <motion.tr
+    <Motion.tr
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay }}
@@ -75,7 +71,7 @@ function SkeletonRow({ delay = 0 }) {
           />
         </td>
       ))}
-    </motion.tr>
+    </Motion.tr>
   );
 }
 
@@ -90,7 +86,7 @@ export default function CodeDetailsPage() {
   const [parentCodes, setParentCodes] = useState([]);
   const [selectedParent, setSelectedParent] = useState(null);
   const [loadingParents, setLoadingParents] = useState(false);
-  const [resetKey, setResetKey] = useState(0);
+  const [, setResetKey] = useState(0);
 
   const [codeDetails, setCodeDetails] = useState([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -117,39 +113,41 @@ export default function CodeDetailsPage() {
   });
   const [parentSearch, setParentSearch] = useState("");
 
-  const loadParentCodes = async () => {
+  const loadParentCodes = useCallback(async () => {
     setLoadingParents(true);
     try {
       const data = await codesApi.getAll();
       setParentCodes(data);
-    } catch (err) {
+    } catch {
       toast("Failed to load lookup codes", "error");
     } finally {
       setLoadingParents(false);
     }
-  };
+  }, [toast]);
 
-  const fetchCodeDetails = async () => {
+  const fetchCodeDetails = useCallback(async () => {
     if (!selectedParent) return;
     setLoadingDetails(true);
     try {
       const data = await codeDetailsApi.getAll({
+        lookupId: selectedParent.id,
         lookupCode: selectedParent.lookupCode,
+        IsDeleted: true,
       });
       setCodeDetails(data);
-    } catch (err) {
+    } catch {
       toast("Failed to load code details", "error");
     } finally {
       setLoadingDetails(false);
     }
-  };
+  }, [selectedParent, toast]);
 
   useEffect(() => {
     loadParentCodes();
-  }, []);
+  }, [loadParentCodes]);
   useEffect(() => {
     fetchCodeDetails();
-  }, [selectedParent, filters]);
+  }, [fetchCodeDetails]);
 
   const handleClearAll = () => {
     setSelectedParent(null);
@@ -193,34 +191,26 @@ export default function CodeDetailsPage() {
   }, [filters]);
 
   const handleCreate = async (payload) => {
-    try {
-      const finalPayload = {
-        ...payload,
-        lookupId: selectedParent?.id,
-        lookupCode: selectedParent?.lookupCode,
-      };
-      await codeDetailsApi.create(finalPayload);
-      toast("Code detail created !successfully");
-      setModalOpen(false);
-      fetchCodeDetails();
-    } catch (err) {
-      throw err;
-    }
+    const finalPayload = {
+      ...payload,
+      lookupId: selectedParent?.id,
+      lookupCode: selectedParent?.lookupCode,
+    };
+    await codeDetailsApi.create(finalPayload);
+    toast("Code detail created !successfully");
+    setModalOpen(false);
+    await fetchCodeDetails();
   };
 
   const handleUpdate = async (id, payload) => {
-    try {
-      await codeDetailsApi.update(id, {
-        ...payload,
-        lookupId: selectedParent?.id,
-      });
-      toast("Code detail updated !successfully");
-      setActionItem(null);
-      setActionType("");
-      fetchCodeDetails();
-    } catch (err) {
-      throw err;
-    }
+    await codeDetailsApi.update(id, {
+      ...payload,
+      lookupId: selectedParent?.id,
+    });
+    toast("Code detail updated !successfully");
+    setActionItem(null);
+    setActionType("");
+    await fetchCodeDetails();
   };
 
   // ── Confirm disable/enable (same pattern as CodePage.jsx) ──────────────────
@@ -235,7 +225,7 @@ export default function CodeDetailsPage() {
         await codeDetailsApi.enable(actionItem.id);
         toast("Record enabled !successfully");
       }
-      fetchCodeDetails();
+      await fetchCodeDetails();
     } catch (err) {
       const msg =
         err.response?.data?.error?.message ||
@@ -345,8 +335,8 @@ export default function CodeDetailsPage() {
     },
     {
       key: "isSystemIndicator",
-      label: "SYS",
-      width: 50,
+      label: "SYSTEM INDICATOR",
+      width: 120,
       align: "center",
       render: (val) => (
         <span
@@ -414,12 +404,11 @@ export default function CodeDetailsPage() {
       width: 100,
       align: "right",
       render: (val, row) => {
-        if (row.isSystemIndicator) return null;
         return (
           <div className="flex justify-end items-center h-full">
             <ActionsMenu
               onEdit={
-                canEdit && row.isActive && !row.isDeleted
+                canEdit && !row.isSystemIndicator
                   ? () => {
                     setActionItem(row);
                     setActionType("edit");
@@ -432,7 +421,7 @@ export default function CodeDetailsPage() {
                 )
               : undefined}
               onDisable={
-                canDelete && row.isActive && !row.isDeleted
+                canDelete && !row.isSystemIndicator && row.isActive && !row.isDeleted
                   ? () => {
                     setActionItem(row);
                     setActionType("disable");
@@ -440,7 +429,7 @@ export default function CodeDetailsPage() {
                   : undefined
               }
               onEnable={
-                canDelete && (!row.isActive || row.isDeleted)
+                canDelete && !row.isSystemIndicator && (!row.isActive || row.isDeleted)
                   ? () => {
                     setActionItem(row);
                     setActionType("enable");
@@ -454,8 +443,6 @@ export default function CodeDetailsPage() {
     },
   ];
 
-  const breadcrumb = ["Home", "Management", "Lookups", "Code Details"];
-
   const filterRow = (
     <div className="bg-slate-50/50 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800/60 transition-all overflow-x-auto no-scrollbar">
       <div className="flex px-4 min-w-max relative group">
@@ -468,7 +455,7 @@ export default function CodeDetailsPage() {
           { label: "Sub", key: "hasSubCategory", w: 50, isCombo: false },
           { label: "Seq", key: "sequence", w: 50, isCombo: false },
           { label: "Def", key: "isDefaultIndicator", w: 50, isCombo: false },
-          { label: "Sys", key: "isSystemIndicator", w: 50, isCombo: false },
+          { label: "System Indicator", key: "isSystemIndicator", w: 120, isCombo: false },
           { label: "Ext", key: "hasExtraDescription", w: 50, isCombo: false },
           {
             label: "Extra Label",
@@ -526,7 +513,7 @@ export default function CodeDetailsPage() {
   );
 
   return (
-    <motion.div
+    <Motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -547,7 +534,7 @@ export default function CodeDetailsPage() {
       `}</style>
 
       {/* ── Unified Full-Screen Card ── */}
-      <motion.div
+      <Motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -573,7 +560,7 @@ export default function CodeDetailsPage() {
                   Code Details
                   <AnimatePresence>
                     {(loadingParents || loadingDetails || actionLoading) && (
-                      <motion.span
+                      <Motion.span
                         initial={{ opacity: 0, scale: 0.7 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.7 }}
@@ -583,7 +570,7 @@ export default function CodeDetailsPage() {
                           size={15}
                           className="animate-spin text-indigo-400"
                         />
-                      </motion.span>
+                      </Motion.span>
                     )}
                   </AnimatePresence>
                 </h1>
@@ -591,14 +578,14 @@ export default function CodeDetailsPage() {
             </div>
 
             {selectedParent && canCreate && (
-              <motion.button
+              <Motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => setModalOpen(true)}
                 className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs uppercase tracking-tight"
               >
                 New Code Detail
-              </motion.button>
+              </Motion.button>
             )}
           </div>
 
@@ -606,7 +593,7 @@ export default function CodeDetailsPage() {
           <div className="w-full max-w-2xl">
             <div className="flex flex-col gap-2">
               <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none px-1">
-                Select Lookup Code <span className="text-pink-500">*</span>
+                Select Lookup Code <span className="required-asterisk">*</span>
               </label>
               <Autocomplete
                 fullWidth
@@ -739,7 +726,7 @@ export default function CodeDetailsPage() {
                         colSpan={columns.length}
                         className="py-24 text-center"
                       >
-                        <motion.div
+                        <Motion.div
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           className="flex flex-col items-center gap-3"
@@ -753,7 +740,7 @@ export default function CodeDetailsPage() {
                           <p className="text-sm text-slate-400 dark:text-slate-600 uppercase font-black tracking-widest">
                             Please select a lookup code first
                           </p>
-                        </motion.div>
+                        </Motion.div>
                       </td>
                     </tr>
                   ) : (
@@ -764,7 +751,7 @@ export default function CodeDetailsPage() {
                           colSpan={columns.length}
                           className="py-24 text-center"
                         >
-                          <motion.div
+                          <Motion.div
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             className="flex flex-col items-center gap-3"
@@ -778,7 +765,7 @@ export default function CodeDetailsPage() {
                             <p className="text-sm text-slate-400 dark:text-slate-600">
                               No records found for the selected criteria.
                             </p>
-                          </motion.div>
+                          </Motion.div>
                         </td>
                       </tr>
                     )
@@ -794,7 +781,7 @@ export default function CodeDetailsPage() {
                             : "bg-gray-200/50 dark:bg-white/[0.03]";
 
                         return (
-                          <motion.tr
+                          <Motion.tr
                             key={row.id}
                             layout
                             variants={rowVariants}
@@ -822,7 +809,7 @@ export default function CodeDetailsPage() {
                                 </div>
                               </td>
                             ))}
-                          </motion.tr>
+                          </Motion.tr>
                         );
                       })}
                     </AnimatePresence>
@@ -842,7 +829,7 @@ export default function CodeDetailsPage() {
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                     Page Size:
                   </span>
-                  <select
+                  <AppSelect
                     value={pageSize}
                     onChange={(e) => {
                       setPageSize(Number(e.target.value));
@@ -855,7 +842,7 @@ export default function CodeDetailsPage() {
                         {s}
                       </option>
                     ))}
-                  </select>
+                  </AppSelect>
                 </div>
 
                 <div className="hidden sm:flex items-center gap-2 border-l border-slate-200 dark:border-slate-800 pl-4">
@@ -936,7 +923,7 @@ export default function CodeDetailsPage() {
             </div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </Motion.div>
 
       {/* Create Modal */}
       {modalOpen && (
@@ -979,6 +966,6 @@ export default function CodeDetailsPage() {
           onConfirm={confirmAction}
         />
       )}
-    </motion.div>
+    </Motion.div>
   );
 }

@@ -51,24 +51,7 @@ export const auditLogsApi = {
         params: sp,
         paramsSerializer: (p) => p.toString(),
       })
-      .then((r) => {
-        const data = r.data || {};
-        if (data.items) {
-          data.items = data.items.filter((item) => {
-            if (!item || item.operationType === 3) return false;
-            const hasOld =
-              (item.oldValuesDic &&
-                Object.keys(item.oldValuesDic).length > 0) ||
-              (item.oldValues &&
-                item.oldValues !== "{}" &&
-                item.oldValues !== "null");
-            if (extraParams.operationType == 1) return !hasOld;
-            if (extraParams.operationType == 2) return hasOld;
-            return true;
-          });
-        }
-        return data;
-      });
+      .then((r) => r.data || {});
   },
 };
 

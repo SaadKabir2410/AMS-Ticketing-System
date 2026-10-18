@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Filter, Search, X, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -134,7 +135,6 @@ export default function AuditLogsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const activeFilterCount = [
     operationType !== "all" ? operationType : "",
-    userNameSearch !== "" ? userNameSearch : "",
     datePreset !== "all" ? datePreset : ""
   ].filter(v => v !== "").length;
 
@@ -217,23 +217,42 @@ export default function AuditLogsPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setShowFilters(v => !v)}
-                className={`relative inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${showFilters || activeFilterCount > 0
-                  ? "bg-pink-50 border-pink-300 text-pink-600 dark:bg-pink-500/10 dark:border-pink-500/40 dark:text-pink-400"
-                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-pink-500 hover:border-pink-300"
-                  }`}
-              >
-                <Filter size={13} />
-                Advanced Filter
-                {activeFilterCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-pink-500 text-white text-[9px] font-black flex items-center justify-center">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-3 mt-2 border-t border-slate-100 dark:border-slate-800/50">
+            <div className="relative w-full sm:max-w-md">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={14} className={userNameSearch ? "text-pink-500" : "text-slate-400"} />
+              </div>
+              <input
+                type="text"
+                placeholder="Search by username..."
+                value={userNameSearch}
+                onChange={(e) => { setUserNameSearch(e.target.value); setPage(1); }}
+                className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-xs outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
+              />
+              {userNameSearch && (
+                <button onClick={() => { setUserNameSearch(""); setPage(1); }} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-pink-500">
+                  <X size={12} />
+                </button>
+              )}
             </div>
+            <button
+              onClick={() => setShowFilters(v => !v)}
+              aria-expanded={showFilters}
+              className={`relative inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${showFilters || activeFilterCount > 0
+                ? "bg-pink-50 border-pink-300 text-pink-600 dark:bg-pink-500/10 dark:border-pink-500/40 dark:text-pink-400"
+                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-pink-500 hover:border-pink-300"
+                }`}
+            >
+              <Filter size={14} />
+              Advanced Search
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-pink-500 text-white text-[9px] font-black flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
           </div>
 
           <AnimatePresence>
@@ -246,28 +265,7 @@ export default function AuditLogsPage() {
                 className="overflow-hidden"
               >
                 <div className="flex flex-wrap items-center gap-3 py-3 border-t border-slate-100 dark:border-slate-800/50 mt-2">
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Search size={13} className="text-slate-400" />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Username..."
-                      value={userNameSearch}
-                      onChange={(e) => { setUserNameSearch(e.target.value); setPage(1); }}
-                      className="pl-8 pr-7 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400 min-w-[200px]"
-                    />
-                    {userNameSearch && (
-                      <button
-                        onClick={() => { setUserNameSearch(""); setPage(1); }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500"
-                      >
-                        <X size={11} />
-                      </button>
-                    )}
-                  </div>
-
-                  <select
+                  <AppSelect
                     value={operationType}
                     onChange={(e) => { setOperationType(e.target.value); setPage(1); }}
                     className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
@@ -275,9 +273,9 @@ export default function AuditLogsPage() {
                     <option value="all">Operation Type</option>
                     <option value="1">CREATE</option>
                     <option value="2">UPDATE</option>
-                  </select>
+                  </AppSelect>
 
-                  <select
+                  <AppSelect
                     value={datePreset}
                     onChange={(e) => { setDatePreset(e.target.value); setPage(1); }}
                     className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
@@ -288,7 +286,7 @@ export default function AuditLogsPage() {
                     <option value="month">This Month</option>
                     <option value="year">This Year</option>
                     <option value="custom">Custom</option>
-                  </select>
+                  </AppSelect>
 
                   {datePreset === "custom" && (
                     <div className="flex items-center gap-2">
@@ -310,7 +308,7 @@ export default function AuditLogsPage() {
 
                   {(activeFilterCount > 0) && (
                     <button
-                      onClick={() => { setOperationType("all"); setUserNameSearch(""); setDatePreset("all"); setPage(1); }}
+                      onClick={() => { setOperationType("all"); setDatePreset("all"); setPage(1); }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-rose-200 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
                     >
                       <X size={11} />
@@ -341,7 +339,7 @@ export default function AuditLogsPage() {
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">
                 Show
               </span>
-              <select
+              <AppSelect
                 value={pageSize}
                 onChange={(e) => {
                   setPageSize(Number(e.target.value));
@@ -354,7 +352,7 @@ export default function AuditLogsPage() {
                     {v}
                   </option>
                 ))}
-              </select>
+              </AppSelect>
             </div>
 
             <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
@@ -439,5 +437,3 @@ export default function AuditLogsPage() {
     </motion.div>
   );
 }
-
-

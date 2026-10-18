@@ -3,7 +3,7 @@ import apiClient from "../apiClient";
 const getVerificationToken = () => {
   const match = document.cookie
     .split(";")
-    .find((c) => c.trim().startsWith("XSRF-TOKEN="));
+    .find((cookie) => cookie.trim().startsWith("XSRF-TOKEN="));
   return match ? decodeURIComponent(match.split("=")[1]) : "";
 };
 
@@ -138,7 +138,6 @@ export const usersApi = {
       isActive: data.isActive ?? true,
       lockoutEnabled: data.lockoutEnabled ?? false,
       twoFactorEnabled: false,
-      roleNames: data.roleNames ?? [],
       concurrencyStamp: freshUser.concurrencyStamp, // always fresh from GET
 
       // ✅ FIX: These must be TOP-LEVEL, NOT inside extraProperties
@@ -147,13 +146,35 @@ export const usersApi = {
       organizationType: Number(data.organizationType) || 0,
       siteId: data.siteId ?? null,
       isPrimary: data.isPrimary ?? false,
-      mustCompleteJobsheet: data.mustCompleteJobsheet ?? false,
+      mustCompleteJobsheet:
+        data.mustCompleteJobsheet === undefined
+          ? Boolean(
+            freshUser.mustCompleteJobsheet ??
+              freshUser.extraProperties?.mustCompleteJobsheet,
+          )
+          : Boolean(data.mustCompleteJobsheet),
       isITS: data.isITS ?? false,
       baseRateFirstHourAfterWorkingHours:
-        Number(data.baseRateFirstHourAfterWorkingHours) || 0,
+        data.baseRateFirstHourAfterWorkingHours === undefined
+          ? Number(
+            freshUser.baseRateFirstHourAfterWorkingHours ??
+              freshUser.extraProperties?.baseRateFirstHourAfterWorkingHours,
+          ) || 0
+          : Number(data.baseRateFirstHourAfterWorkingHours) || 0,
       baseRateAfterFirstHourAfterWorkingHours:
-        Number(data.baseRateAfterFirstHourAfterWorkingHours) || 0,
+        data.baseRateAfterFirstHourAfterWorkingHours === undefined
+          ? Number(
+            freshUser.baseRateAfterFirstHourAfterWorkingHours ??
+              freshUser.extraProperties?.baseRateAfterFirstHourAfterWorkingHours,
+          ) || 0
+          : Number(data.baseRateAfterFirstHourAfterWorkingHours) || 0,
     };
+
+    // Omit roleNames when the current operator cannot manage roles so an edit
+    // cannot accidentally clear the user's existing backend role assignments.
+    if (Array.isArray(data.roleNames)) {
+      payload.roleNames = data.roleNames;
+    }
 
     // Step 3: Only include password if user typed a new one
     if (data.password?.trim()) {
@@ -162,7 +183,6 @@ export const usersApi = {
 
     try {
       // Step 4: Update the user
-      // `roleNames` array is mapped properly in `payload`, ABP identity will naturally update the user's roles!
       await apiClient.put(`/api/identity/users/${id}`, payload);
 
       return { success: true };
@@ -196,6 +216,7 @@ export const usersApi = {
         validateStatus: (status) => status === 204 || status === 200,
       })
       .then((r) => r.data),
+
 };
 
 export default usersApi;

@@ -1,6 +1,7 @@
 import axios from "axios";
 import qs from "qs";
 import { getSession, getValidAccessToken } from "./tokenAuth.js";
+import { normalizeApiErrorForDisplay } from "../utils/apiError.js";
 
 const apiClient = axios.create({
   baseURL: "",
@@ -78,14 +79,18 @@ apiClient.interceptors.response.use(
           // A valid access token can receive a 401 from an individual endpoint
           // for reasons unrelated to token expiry. Do not destroy the whole
           // login when the server did not provide a refresh token.
-          if (sessionWasActive) return Promise.reject(error);
+          if (sessionWasActive) {
+            return Promise.reject(normalizeApiErrorForDisplay(error));
+          }
         } catch (refreshError) {
           // Keep the user signed in during temporary connectivity failures.
-          if (!refreshError.status) return Promise.reject(error);
+          if (!refreshError.status) {
+            return Promise.reject(normalizeApiErrorForDisplay(error));
+          }
 
           // The token endpoint explicitly rejected the refresh token.
           window.dispatchEvent(new CustomEvent("auth:expired"));
-          return Promise.reject(error);
+          return Promise.reject(normalizeApiErrorForDisplay(error));
         }
       }
 
@@ -95,7 +100,7 @@ apiClient.interceptors.response.use(
         window.dispatchEvent(new CustomEvent("auth:expired"));
       }
     }
-    return Promise.reject(error);
+    return Promise.reject(normalizeApiErrorForDisplay(error));
   },
 );
 

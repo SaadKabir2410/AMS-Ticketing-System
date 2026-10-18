@@ -211,7 +211,7 @@ export default function CodeDetailsModal({
         {/* FULL WIDTH COMBO BOXES IN REQUESTED SEQUENCE */}
         <form onSubmit={handleSubmitInternal} className="flex flex-col gap-4">
           <div>
-            <label style={labelStyle}>Code <span className="text-rose-500">*</span></label>
+            <label style={labelStyle}>Code <span className="required-asterisk">*</span></label>
             <input
               type="text"
               name="newCode"
@@ -250,7 +250,7 @@ export default function CodeDetailsModal({
           </div>
 
           <div>
-            <label style={labelStyle}>Description <span className="text-rose-500">*</span></label>
+            <label style={labelStyle}>Description <span className="required-asterisk">*</span></label>
             <input
               type="text"
               name="description"
@@ -312,7 +312,7 @@ export default function CodeDetailsModal({
           </div>
 
           <div>
-            <label style={labelStyle}>Sequence <span className="text-rose-500">*</span></label>
+            <label style={labelStyle}>Sequence <span className="required-asterisk">*</span></label>
             <input
               type="number"
               name="sequence"
@@ -406,6 +406,5 @@ export default function CodeDetailsModal({
     </Dialog>
   );
 }
-
 
 

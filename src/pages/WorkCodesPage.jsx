@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
 import { workCodesApi } from "../services/api/workCodes";
 import { useToast } from "../component/common/ToastContext";
@@ -6,6 +7,7 @@ import { ActionsMenu } from "../component/common/ResourcePage";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Search, X, Filter } from "lucide-react";
 import WorkCodeModal from "../component/common/WorkCodeModal";
 import { usePermission } from "../hooks/usePermission";
+import { getApiErrorMessage } from "../utils/apiError";
 
 // Highlighter component for Search term
 const HighlightText = ({ text, searchTerm }) => {
@@ -55,7 +57,8 @@ export default function WorkCodesPage() {
       const allData = Array.isArray(resp) ? resp : (resp?.items || []);
       setData(allData);
     } catch (err) {
-      toast("Failed to load work done codes", "error");
+      const message = getApiErrorMessage(err);
+      if (message) toast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -86,20 +89,16 @@ export default function WorkCodesPage() {
   };
 
   const handleModalSubmit = async (payload) => {
-    try {
-      if (editItem) {
-        await workCodesApi.update(editItem.id, payload);
-        toast("Work code updated");
-      } else {
-        await workCodesApi.create(payload);
-        toast("Work code created");
-      }
-      setModalOpen(false);
-      setEditItem(null);
-      fetchData();
-    } catch (err) {
-      throw err;
+    if (editItem) {
+      await workCodesApi.update(editItem.id, payload);
+      toast("Work code updated");
+    } else {
+      await workCodesApi.create(payload);
+      toast("Work code created");
     }
+    setModalOpen(false);
+    setEditItem(null);
+    fetchData();
   };
 
   const breadcrumb = ["Home", "Management", "Lookups", "Work Done Codes"];
@@ -163,12 +162,22 @@ export default function WorkCodesPage() {
               </span>
             ))}
           </nav>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
               Work Done Codes
             </h1>
-            <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-              <div className="relative w-full sm:w-64 group">
+            {canCreate && <button
+              onClick={handleNew}
+              className="app-primary-button w-full sm:w-auto inline-flex items-center justify-center px-5 py-2.5 text-xs"
+            >
+              <Plus size={16} className="mr-2" strokeWidth={3} />
+              Add New
+            </button>}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="relative w-full sm:max-w-md group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search size={14} className={search ? "text-pink-500" : "text-slate-400 dark:text-slate-500 transition-colors"} />
                 </div>
@@ -190,19 +199,46 @@ export default function WorkCodesPage() {
               </div>
               <button
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className={`p-2 rounded-xl border transition-all ${showAdvanced ? "bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-500/10 dark:border-pink-500/30 dark:text-pink-400" : "bg-white text-slate-500 border-slate-200/60 dark:bg-slate-900/50 dark:border-slate-800/50 dark:text-slate-400 hover:text-pink-600"}`}
-                title="Advanced Filter"
+                className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all ${showAdvanced ? "bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-500/10 dark:border-pink-500/30 dark:text-pink-400" : "bg-white text-slate-500 border-slate-200/60 dark:bg-slate-900/50 dark:border-slate-800/50 dark:text-slate-400 hover:text-pink-600"}`}
+                aria-expanded={showAdvanced}
               >
-                <Filter size={16} />
+                <Filter size={14} />
+                Advanced Search
               </button>
-              {canCreate && <button
-                onClick={handleNew}
-                className="app-primary-button w-full sm:w-auto inline-flex items-center justify-center px-5 py-2.5 text-xs"
-              >
-                <Plus size={16} className="mr-2" strokeWidth={3} />
-                Add New
-              </button>}
             </div>
+
+            {showAdvanced && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800/50">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Filter by code..."
+                    value={advSearchCode}
+                    onChange={(e) => setAdvSearchCode(e.target.value)}
+                    className="w-full pl-3 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-700/50 bg-white dark:bg-slate-900 text-[11px] outline-none transition-all focus:border-pink-500 focus:ring-2 focus:ring-pink-500/10 font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
+                  />
+                  {advSearchCode && (
+                    <button onClick={() => setAdvSearchCode("")} className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-pink-500 transition-colors">
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Filter by description..."
+                    value={advSearchDesc}
+                    onChange={(e) => setAdvSearchDesc(e.target.value)}
+                    className="w-full pl-3 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-700/50 bg-white dark:bg-slate-900 text-[11px] outline-none transition-all focus:border-pink-500 focus:ring-2 focus:ring-pink-500/10 font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
+                  />
+                  {advSearchDesc && (
+                    <button onClick={() => setAdvSearchDesc("")} className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-pink-500 transition-colors">
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -230,49 +266,6 @@ export default function WorkCodesPage() {
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Description</th>
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Actions</th>
                   </tr>
-                  {showAdvanced && (
-                    <tr className="bg-slate-100/50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                      <th className="px-5 pl-5 py-2">
-                        <div className="relative w-full max-w-[250px]">
-                          <input
-                            type="text"
-                            placeholder="Filter by code..."
-                            value={advSearchCode}
-                            onChange={(e) => setAdvSearchCode(e.target.value)}
-                            className="w-full pl-3 pr-8 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-700/50 bg-white dark:bg-slate-900 text-[11px] outline-none transition-all focus:border-pink-500 focus:ring-2 focus:ring-pink-500/10 font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
-                          />
-                          {advSearchCode && (
-                            <button
-                              onClick={() => setAdvSearchCode("")}
-                              className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
-                            >
-                              <X size={12} />
-                            </button>
-                          )}
-                        </div>
-                      </th>
-                      <th className="px-5 py-2 text-center">
-                        <div className="relative w-full max-w-[250px] mx-auto">
-                          <input
-                            type="text"
-                            placeholder="Filter by description..."
-                            value={advSearchDesc}
-                            onChange={(e) => setAdvSearchDesc(e.target.value)}
-                            className="w-full pl-3 pr-8 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-700/50 bg-white dark:bg-slate-900 text-[11px] outline-none transition-all focus:border-pink-500 focus:ring-2 focus:ring-pink-500/10 font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
-                          />
-                          {advSearchDesc && (
-                            <button
-                              onClick={() => setAdvSearchDesc("")}
-                              className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
-                            >
-                              <X size={12} />
-                            </button>
-                          )}
-                        </div>
-                      </th>
-                      <th className="px-5 py-2 text-center"></th>
-                    </tr>
-                  )}
                 </thead>
                 <tbody>
                   {paginatedData.map((row, idx) => {
@@ -315,7 +308,7 @@ export default function WorkCodesPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2.5">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-              <select
+              <AppSelect
                 value={pageSize}
                 onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
                 className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
@@ -323,7 +316,7 @@ export default function WorkCodesPage() {
                 {[10, 25, 50, 100].map((s) => (
                   <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
                 ))}
-              </select>
+              </AppSelect>
             </div>
 
             <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">

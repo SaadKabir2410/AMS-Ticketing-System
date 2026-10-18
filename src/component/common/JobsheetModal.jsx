@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import AppSelect from "./AppSelect";
+import SearchTextHighlight from "./SearchTextHighlight";
 import { Check, AlertCircle, X } from "lucide-react";
 import { jobsheetsApi } from "../../services/api/jobsheets";
 import { ActionsMenu } from "./ResourcePage";
@@ -6,6 +8,7 @@ import { ActionsMenu } from "./ResourcePage";
 import { usersApi } from "../../services/api/users";
 import codeDetailsApi from "../../services/api/CodeDetails";
 import { taskCategoryProjectsApi } from "../../services/api/taskCategoryProjects";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { useAuth } from "../../context/AuthContextHook";
 import {
   JOBSHEET_SIGNALR_EVENTS,
@@ -226,7 +229,7 @@ function buildPayload(date, attendanceStatus, details, jobsheet) {
 // ─── Reusable dynamic select ──────────────────────────────────────
 function DynSelect({ name, value, onChange, options, loading, placeholder = "Choose An Option", disabled = false, hasError = false, styles }) {
   return (
-    <select
+    <AppSelect
       name={name}
       value={value}
       onChange={onChange}
@@ -244,7 +247,7 @@ function DynSelect({ name, value, onChange, options, loading, placeholder = "Cho
       {options.map((o) => (
         <option key={o.id} value={o.id}>{o.name}</option>
       ))}
-    </select>
+    </AppSelect>
   );
 }
 
@@ -356,7 +359,12 @@ function CollaboratorPicker({ users, selected, onChange, loading, disabled = fal
                   toggle(u.id);
                 }}
               >
-                <span>{u.name} {u.surname}</span>
+                <span>
+                  <SearchTextHighlight
+                    text={`${u.name || ""} ${u.surname || ""}`.trim()}
+                    query={query}
+                  />
+                </span>
                 {isSel && <Check size={14} color="#ec4899" />}
               </div>
             );
@@ -538,7 +546,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
   // projectId change, including when handleEditDetail loaded a saved
   // record into the form, which wiped out the record's task category the
   // instant you clicked "edit". Clearing on a genuine user-driven project
-  // change is now handled directly in the Project <select>'s onChange.
+  // change is now handled directly in the Project <AppSelect>'s onChange.
   useEffect(() => {
     if (!detail.projectId) {
       setAllowedCategoryIds(null);
@@ -932,13 +940,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
       onClose();
     } catch (err) {
       console.error("Failed to save jobsheet:", err, err.response?.data);
-      const data = err?.response?.data;
-      const msg = data?.error?.message ||
-        (data?.errors ? JSON.stringify(data.errors) : null) ||
-        data?.title ||
-        err?.message ||
-        "Failed to save jobsheet. Please try again.";
-      setError(msg);
+      setError(getApiErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -1013,7 +1015,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
 
           <div style={styles.fieldGroup}>
             <label style={styles.label}>Attendance Status <span style={styles.req}>*</span></label>
-            <select
+            <AppSelect
               style={{
                 ...styles.input,
                 ...styles.select,
@@ -1035,7 +1037,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
               {ATTENDANCE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
-            </select>
+            </AppSelect>
             {fieldErrors.attendanceStatus && <span style={styles.errorText}>{fieldErrors.attendanceStatus}</span>}
           </div>
         </div>
@@ -1467,12 +1469,15 @@ function getStyles(isDark) {
     dropdown: {
       position: "absolute", zIndex: 10,
       backgroundColor: dropdownBg, border: `1px solid ${dropdownBorder}`,
-      borderRadius: 6, boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-      maxHeight: 200, overflowY: "auto", width: "100%",
+      borderRadius: 12,
+      boxShadow: isDark
+        ? "0 20px 25px -5px rgba(0,0,0,0.38), 0 8px 10px -6px rgba(0,0,0,0.3)"
+        : "0 20px 25px -5px rgba(15,23,42,0.12), 0 8px 10px -6px rgba(15,23,42,0.08)",
+      maxHeight: 240, overflowY: "auto", width: "100%", padding: 6,
     },
     dropdownItem: {
-      padding: "8px 12px", fontSize: 13, cursor: "pointer", color: inputColor,
-      borderBottom: `1px solid ${sectionBorder}`,
+      padding: "9px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer", color: inputColor,
+      borderRadius: 8, margin: "2px 0",
     },
     textarea: {
       width: "100%", minHeight: 80, border: `1px solid ${border}`,

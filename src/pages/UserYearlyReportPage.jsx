@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
 import { RotateCcw, ArrowLeft, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import apiClient from "../services/apiClient";
@@ -297,7 +298,7 @@ export default function UserYearlyReportPage() {
         <div className="px-4 md:px-8 py-5 flex items-end gap-4">
           <div className="flex flex-col gap-2 w-[200px]">
             <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Year</label>
-            <select
+            <AppSelect
               value={filters.year}
               onChange={(e) => setFilters({ ...filters, year: e.target.value })}
               className="px-3 py-2 text-xs bg-white dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-xl outline-none focus:border-pink-500 transition-all w-full font-semibold text-slate-900 dark:text-white shadow-sm"
@@ -306,7 +307,7 @@ export default function UserYearlyReportPage() {
               {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() + 2 - i).map((year) => (
                 <option key={year} value={year}>{year}</option>
               ))}
-            </select>
+            </AppSelect>
           </div>
 
           {reportData.length > 0 && (
@@ -395,7 +396,7 @@ export default function UserYearlyReportPage() {
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2.5">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-                    <select
+                    <AppSelect
                       value={table.getState().pagination.pageSize}
                       onChange={(e) => table.setPageSize(Number(e.target.value))}
                       className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
@@ -403,7 +404,7 @@ export default function UserYearlyReportPage() {
                       {[5, 10, 25, 50, 100].map((s) => (
                         <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
                       ))}
-                    </select>
+                    </AppSelect>
                   </div>
 
                   <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">

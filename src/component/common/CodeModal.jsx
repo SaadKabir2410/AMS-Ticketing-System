@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { Dialog, IconButton } from "@mui/material";
 import codesApi from "../../services/api/Code";
-import PremiumErrorAlert from "./PremiumErrorAlert";
+import { getApiErrorMessage, getApiFieldErrors } from "../../utils/apiError";
 
 
 
 const EMPTY_FORM = {
   lookupCode: "",
   description: "",
-  sequence: 1,
+  sequence: 0,
 };
 
 export default function CodeModal({
@@ -22,6 +22,7 @@ export default function CodeModal({
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [fetchedRecord, setFetchedRecord] = useState(null); // Explicit separation requested by user
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
   // When modal is opened, sync provided initial state
@@ -29,6 +30,7 @@ export default function CodeModal({
   useEffect(() => {
     if (open) {
       setError(null);
+      setFieldErrors({});
       setSubmitting(false);
 
       if (isEdit && item) {
@@ -41,11 +43,11 @@ export default function CodeModal({
             setFormData({
               lookupCode: record.lookupCode || "",
               description: record.description || "",
-              sequence: record.sequence ?? 1,
+              sequence: record.sequence ?? 0,
               // Deliberately explicitly decoupled from form state per structural rule
             });
-          } catch {
-            setError("Failed to fetch record details for editing.");
+          } catch (fetchError) {
+            setError(getApiErrorMessage(fetchError));
           } finally {
             setSubmitting(false);
           }
@@ -65,7 +67,12 @@ export default function CodeModal({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
-    // Clear global error message when user starts typing
+    setFieldErrors((current) => {
+      if (!current[name]) return current;
+      const next = { ...current };
+      delete next[name];
+      return next;
+    });
     if (error) setError(null);
   };
 
@@ -73,24 +80,9 @@ export default function CodeModal({
     e.preventDefault();
     if (readOnly) return;
 
-    // Frontend strict validation
-    if (!formData.lookupCode || formData.lookupCode.trim().length !== 3) {
-      setError("Lookup Code must be exactly 3 characters.");
-      return;
-    }
-
-    if (!formData.description || !formData.description.trim()) {
-      setError("Description is required.");
-      return;
-    }
-
-    if (!formData.sequence || formData.sequence < 0) {
-      setError("Sequence is required and must be 0 or greater.");
-      return;
-    }
-
     setSubmitting(true);
     setError(null);
+    setFieldErrors({});
 
     try {
       const payload = {
@@ -105,12 +97,16 @@ export default function CodeModal({
 
       await onSubmit(payload);
     } catch (err) {
-      const apiError =
-        err?.response?.data?.error?.validationErrors?.[0]?.message ||
-        err?.response?.data?.error?.message ||
-        err?.message ||
-        "Something went wrong.";
-      setError(apiError);
+      const apiFieldErrors = getApiFieldErrors(err);
+      const nextFieldErrors = Object.fromEntries(
+        ["lookupCode", "description", "sequence"]
+          .filter((field) => apiFieldErrors[field])
+          .map((field) => [field, apiFieldErrors[field]]),
+      );
+      setFieldErrors(nextFieldErrors);
+      setError(
+        Object.keys(nextFieldErrors).length ? null : getApiErrorMessage(err),
+      );
     } finally {
       if (!isEdit) {
         setSubmitting(false); // only toggle false here if error caught or creation finished (modal manages its own unmount)
@@ -121,13 +117,16 @@ export default function CodeModal({
   };
 
   const getInputClass = (isTextarea = false) => {
-    return `w-full px-4 py-2.5 rounded-xl border outline-none text-sm transition-all bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-slate-200 dark:disabled:hover:border-white/10 ${isTextarea ? "min-h-[100px] resize-y" : ""}`;
+    return `w-full px-4 py-2.5 rounded-xl border outline-none text-sm transition-all bg-slate-50 border-slate-200 text-slate-700 hover:border-pink-500 focus:bg-white focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:border-pink-500 dark:focus:border-pink-500 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-slate-200 dark:disabled:hover:border-white/10 ${isTextarea ? "min-h-[100px] resize-y" : ""}`;
   };
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={(_event, reason) => {
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        onClose();
+      }}
       maxWidth="xs"
       fullWidth
       PaperProps={{
@@ -147,19 +146,11 @@ export default function CodeModal({
       </div>
 
       <div className="px-6 py-2">
-        {error && (
-          <PremiumErrorAlert 
-            open={!!error} 
-            message={error} 
-            onClose={() => setError(null)} 
-          />
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {/* Lookup Code */}
           <div>
             <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1.5 ml-1 font-medium">
-              Lookup Code <span className="text-red-500">*</span>
+              Lookup Code <span className="required-asterisk">*</span>
             </label>
             <input
               type="text"
@@ -167,36 +158,39 @@ export default function CodeModal({
               value={formData.lookupCode}
               onChange={handleChange}
               maxLength={3}
-              required
               className={getInputClass()}
               disabled={submitting || isEdit || readOnly}
             />
-            {!readOnly && (
-              <small style={{ color: "gray" }} className="ml-1 text-[10px]">
-                {isEdit ? "Lookup Code cannot be changed." : "Must be exactly 3 characters."}
-              </small>
+            {fieldErrors.lookupCode && (
+              <p role="alert" className="mt-1.5 whitespace-pre-line text-xs font-medium leading-relaxed text-red-600 dark:text-red-400">
+                {fieldErrors.lookupCode}
+              </p>
             )}
           </div>
 
           {/* Description */}
           <div>
             <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1.5 ml-1 font-medium">
-              Description <span className="text-red-500">*</span>
+              Description <span className="required-asterisk">*</span>
             </label>
             <textarea
               name="description"
               value={formData.description}
               onChange={handleChange}
-              required
               className={getInputClass(true)}
               disabled={submitting || readOnly}
             />
+            {fieldErrors.description && (
+              <p role="alert" className="mt-1.5 whitespace-pre-line text-xs font-medium leading-relaxed text-red-600 dark:text-red-400">
+                {fieldErrors.description}
+              </p>
+            )}
           </div>
 
           {/* Sequence */}
           <div>
             <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1.5 ml-1 font-medium">
-              Sequence <span className="text-red-500">*</span>
+              Sequence <span className="required-asterisk">*</span>
             </label>
             <input
               type="number"
@@ -206,12 +200,24 @@ export default function CodeModal({
               placeholder="Enter Sequence"
               value={formData.sequence}
               onChange={handleChange}
-              required
               className={getInputClass()}
               disabled={submitting || readOnly}
             />
+            {fieldErrors.sequence && (
+              <p role="alert" className="mt-1.5 whitespace-pre-line text-xs font-medium leading-relaxed text-red-600 dark:text-red-400">
+                {fieldErrors.sequence}
+              </p>
+            )}
           </div>
 
+          {error && (
+            <p
+              role="alert"
+              className="whitespace-pre-line text-sm font-medium leading-relaxed text-red-600 dark:text-red-400"
+            >
+              {error}
+            </p>
+          )}
         </form>
       </div>
 
@@ -220,15 +226,16 @@ export default function CodeModal({
           type="button"
           onClick={onClose}
           disabled={submitting}
-          className={`${readOnly ? "w-full" : "flex-1"} btn-flagship h-[38px]! text-[11px]! border-slate-200! dark:border-slate-700! text-slate-500! hover:bg-slate-50! dark:hover:bg-white/5!`}
+          className={`${readOnly ? "w-full" : "flex-1"} btn-flagship h-[42px]! text-[11px]! border-slate-200! dark:border-slate-700! text-slate-500! hover:bg-slate-50! dark:hover:bg-white/5!`}
         >
           {readOnly ? "Close" : "Cancel"}
         </button>
         {!readOnly && (
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="flex-1 btn-flagship h-[38px]! text-[11px]!"
+            className="app-primary-button inline-flex h-[42px] flex-1 items-center justify-center text-[11px] uppercase tracking-tight"
           >
             {submitting ? (
               <div className="w-4 h-4 border-2 border-white! border-t-transparent rounded-full animate-spin"></div>
@@ -239,7 +246,3 @@ export default function CodeModal({
     </Dialog>
   );
 }
-
-
-
-

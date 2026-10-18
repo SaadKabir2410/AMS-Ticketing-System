@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
 import { taskCategoryProjectsApi } from "../services/api/taskCategoryProjects";
-import { codesApi } from "../services/api/Code";
 import codeDetailsApi from "../services/api/CodeDetails";
 import { useToast } from "../component/common/ToastContext";
 import { ActionsMenu } from "../component/common/ResourcePage";
 import TaskCategoryProjectModal from "../component/common/TaskCategoryProjectModal";
 import DeleteConfirmModal from "../component/common/DeleteConfirmation";
+import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus } from "lucide-react";
 import { usePermission } from "../hooks/usePermission";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export default function TaskCategoryProjectsPage() {
   const { toast } = useToast();
@@ -33,20 +35,24 @@ export default function TaskCategoryProjectsPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editProject, setEditProject] = useState(null);
+  const [pageError, setPageError] = useState("");
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
+    setPageError("");
     setLoadingProjects(true);
     try {
       const details = await codeDetailsApi.getAll({ lookupCode: "PRJ" });
       setProjects(details.map((d) => ({ id: d.id, name: d.description || d.newCode })));
     } catch (err) {
-      toast("Error fetching projects", "error");
+      const message = getApiErrorMessage(err);
+      if (message) setPageError(message);
     } finally {
       setLoadingProjects(false);
     }
-  };
+  }, []);
 
   const fetchMappings = useCallback(async () => {
+    setPageError("");
     setLoadingMappings(true);
     try {
       const data = await taskCategoryProjectsApi.getAll({
@@ -57,13 +63,14 @@ export default function TaskCategoryProjectsPage() {
       setMappings(Array.isArray(data?.items) ? data.items : []);
       setTotalCount(data?.totalCount || 0);
     } catch (err) {
-      toast("Failed to load mappings", "error");
+      const message = getApiErrorMessage(err);
+      if (message) setPageError(message);
     } finally {
       setLoadingMappings(false);
     }
-  }, [selectedProjectId, page, pageSize, toast]);
+  }, [selectedProjectId, page, pageSize]);
 
-  useEffect(() => { loadProjects(); }, []);
+  useEffect(() => { loadProjects(); }, [loadProjects]);
   useEffect(() => { fetchMappings(); }, [fetchMappings]);
   useEffect(() => { setPage(1); }, [selectedProjectId]);
 
@@ -86,13 +93,15 @@ export default function TaskCategoryProjectsPage() {
 
   const handleDelete = async () => {
     if (!actionItem) return;
+    setPageError("");
     setActionLoading(true);
     try {
       await taskCategoryProjectsApi.delete(actionItem.projectId || actionItem.id);
       toast("Mapping removed !successfully");
       fetchMappings();
     } catch (err) {
-      toast("Failed to remove mapping", "error");
+      const message = getApiErrorMessage(err);
+      if (message) setPageError(message);
     } finally {
       setActionLoading(false);
       setActionItem(null);
@@ -104,6 +113,13 @@ export default function TaskCategoryProjectsPage() {
 
   return (
     <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial] text-slate-900 dark:text-white">
+      {pageError && (
+        <PremiumErrorAlert
+          open={!!pageError}
+          message={pageError}
+          onClose={() => setPageError("")}
+        />
+      )}
       <style>{`
         *::-webkit-scrollbar { display: none !important; }
         * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
@@ -157,23 +173,23 @@ export default function TaskCategoryProjectsPage() {
           </div>
 
           {/* Project Filter */}
-          <div className="flex items-end gap-3 w-full max-w-lg">
+          <div className="flex items-end gap-3 w-full max-w-3xl">
             <div className="flex flex-col gap-1 flex-1">
               <label className="text-[9.5px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none px-1">
                 Project
               </label>
               <div className="relative">
-                <select
+                <AppSelect
                   value={selectedProjectId}
                   onChange={(e) => setSelectedProjectId(e.target.value)}
                   disabled={loadingProjects}
-                  className="w-full appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold rounded-lg pl-3 pr-8 py-2 outline-none transition-all cursor-pointer shadow-sm text-slate-900 dark:text-white focus:border-pink-500"
+                  className="w-full h-10 appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold rounded-lg pl-3 pr-8 outline-none transition-all cursor-pointer shadow-sm text-slate-900 dark:text-white focus:border-pink-500"
                 >
                   <option value="">Choose An Option</option>
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
-                </select>
+                </AppSelect>
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="m6 9 6 6 6-6" />
@@ -183,7 +199,7 @@ export default function TaskCategoryProjectsPage() {
             </div>
             <button
               onClick={handleClear}
-              className="h-[34px] px-5 bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-[9.5px] font-black transition-all active:scale-95 shadow-sm uppercase shrink-0"
+              className="app-primary-button h-10 px-4 inline-flex items-center justify-center text-xs shrink-0"
             >
               Clear
             </button>
@@ -249,7 +265,7 @@ export default function TaskCategoryProjectsPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2.5">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-              <select
+              <AppSelect
                 value={pageSize}
                 onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
                 className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
@@ -257,7 +273,7 @@ export default function TaskCategoryProjectsPage() {
                 {[5, 10, 25, 50].map((s) => (
                   <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
                 ))}
-              </select>
+              </AppSelect>
             </div>
 
             <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
@@ -348,8 +364,10 @@ export default function TaskCategoryProjectsPage() {
           open={true}
           item={actionItem}
           loading={actionLoading}
-          title="Confirm Deleting"
+          title="Delete Task Category Project"
+          message="Are you sure you want to delete this task category project mapping?"
           confirmText="Delete"
+          blurBackdrop={false}
           onClose={() => { setActionItem(null); setActionType(""); }}
           onConfirm={handleDelete}
         />

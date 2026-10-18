@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import {
@@ -276,7 +277,7 @@ export default function GeneralReportPage() {
                 Year
               </label>
               <div className="relative group">
-                <select
+                <AppSelect
                   value={filters.year}
                   onChange={(e) => setFilters({ ...filters, year: e.target.value })}
                   className="w-full px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg outline-none focus:border-pink-500 transition-all appearance-none cursor-pointer shadow-sm group-hover:border-slate-400 dark:group-hover:border-slate-600 text-slate-900 dark:text-white"
@@ -285,7 +286,7 @@ export default function GeneralReportPage() {
                   {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() + 1 - i).map((year) => (
                     <option key={year} value={year}>{year}</option>
                   ))}
-                </select>
+                </AppSelect>
               </div>
             </div>
 
@@ -391,7 +392,7 @@ export default function GeneralReportPage() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2.5">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-                  <select
+                  <AppSelect
                     value={table.getState().pagination.pageSize}
                     onChange={(e) => table.setPageSize(Number(e.target.value))}
                     className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
@@ -399,7 +400,7 @@ export default function GeneralReportPage() {
                     {[5, 10, 25, 50, 100].map((s) => (
                       <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
                     ))}
-                  </select>
+                  </AppSelect>
                 </div>
                 
                 <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">

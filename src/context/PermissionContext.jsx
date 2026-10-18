@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import apiClient from "../services/apiClient";
 import { useAuth } from "./AuthContextHook";
+import { loadApplicationConfig } from "../services/applicationConfigCache";
 
 const PermissionContext = createContext({
   permissions: {},
@@ -21,6 +22,10 @@ const getAdminRoleName = (roleNames = "") =>
 const isAmsTicketPermission = (permissionName) =>
   permissionName === AMS_TICKET_PERMISSION ||
   permissionName.startsWith(`${AMS_TICKET_PERMISSION}.`);
+
+const isPolicyGranted = (value) =>
+  value === true ||
+  (typeof value === "string" && value.trim().toLowerCase() === "true");
 
 export const PermissionProvider = ({ children }) => {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
@@ -55,7 +60,15 @@ export const PermissionProvider = ({ children }) => {
     setAdminRolePermissionsLoading(true);
     try {
       const response = await apiClient.get("/api/permission-management/permissions", {
-        params: { providerName: "R", providerKey: adminRoleName },
+        params: {
+          providerName: "R",
+          providerKey: adminRoleName,
+          _permissionRefresh: Date.now(),
+        },
+        headers: {
+          "Cache-Control": "no-cache, no-store",
+          Pragma: "no-cache",
+        },
       });
       const rolePermissions = {};
       response.data?.groups?.forEach((group) => {
@@ -93,16 +106,12 @@ export const PermissionProvider = ({ children }) => {
     }
 
     if (user.permissions && Object.keys(user.permissions).length > 0) {
-      // Permissions already in the user object (fetched during login and
-      // persisted in spike_session) — use them directly, no API call needed
+      // Seed from the session to keep state stable, then refresh below so
+      // revoked backend permissions never remain visible from stale storage.
       setPermissions(user.permissions);
-      setIsLoading(false);
-    } else {
-      // Permissions missing from user object (e.g. legacy session in storage
-      // from before this fix, or register() flow that doesn't fetch them).
-      // Fall back to fetching from the API.
-      fetchPermissions();
     }
+
+    fetchPermissions();
   }, [authLoading, isAuthenticated, user?.id, user?.permissions]);
 
   // Admin ticket controls must follow grants on the Admin role itself, not a
@@ -122,8 +131,8 @@ export const PermissionProvider = ({ children }) => {
 
     setIsLoading(true);
     try {
-      const response = await apiClient.get("/api/abp/application-configuration");
-      const grantedPolicies = response.data?.auth?.grantedPolicies ?? {};
+      const applicationConfig = await loadApplicationConfig({ force: true });
+      const grantedPolicies = applicationConfig?.auth?.grantedPolicies ?? {};
       setPermissions(grantedPolicies);
 
       // Keep the cached session in sync with the freshly resolved policies.
@@ -172,9 +181,9 @@ export const PermissionProvider = ({ children }) => {
           isAmsTicketPermission(permissionName) &&
           Object.prototype.hasOwnProperty.call(adminRolePermissions, permissionName)
         ) {
-          return !!adminRolePermissions[permissionName];
+          return isPolicyGranted(adminRolePermissions[permissionName]);
         }
-        return !!permissions[permissionName];
+        return isPolicyGranted(permissions[permissionName]);
       };
 
       // Support array of keys — true if user has ANY of them

@@ -96,13 +96,25 @@ export const TICKET_INCOMING_CHANNEL_OPTIONS = Object.entries(ticketIncomingChan
     .map(([label, value]) => ({ label, value }));
 
 const servicePlannedTypeMap = {
+    "All": -1,
+    "Select An Option": 0,
     "Report": 1,
     "Rule": 2,
     "Installation": 3,
     "Configuration": 4,
-    "TBS": 5,
+    "TSB": 5,
     "Other": 6
 };
+
+export const SERVICE_PLANNED_TYPE_OPTIONS = [
+    { label: "All", value: "", apiValue: servicePlannedTypeMap.All },
+    { label: "Custom Report", value: "Report", apiValue: servicePlannedTypeMap.Report },
+    { label: "Custom Rule", value: "Rule", apiValue: servicePlannedTypeMap.Rule },
+    { label: "Installation", value: "Installation", apiValue: servicePlannedTypeMap.Installation },
+    { label: "Configuration", value: "Configuration", apiValue: servicePlannedTypeMap.Configuration },
+    { label: "TSB", value: "TSB", apiValue: servicePlannedTypeMap.TSB },
+    { label: "Other", value: "Other", apiValue: servicePlannedTypeMap.Other },
+];
 
 const activityTypeMap = {
     "Technical": 1,

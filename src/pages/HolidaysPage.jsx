@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { holidaysApi } from "../services/api/holidays";
-import HolidayModal from "../component/common/HolidayModal";
+import { countriesApi } from "../services/api/countries";
 import { useToast } from "../component/common/ToastContext";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.css";
@@ -8,9 +9,31 @@ import "flatpickr/dist/themes/dark.css";
 import { usePermission } from "../hooks/usePermission";
 import { useNavigate } from "react-router-dom";
 import { ActionsMenu } from "../component/common/ResourcePage";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Check, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check, ChevronDown } from "lucide-react";
+import { getApiErrorMessage } from "../utils/apiError";
 
-const HP_YEARS = Array.from({ length: 31 }, (_, i) => new Date().getFullYear() - 10 + i);
+const FILTER_CONTROL_CLASS =
+  "w-full h-9 min-h-9 max-h-9 box-border px-3 bg-white/80 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-lg text-[11px] leading-none outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-pink-600/10 focus:border-pink-600 transition-all text-slate-900 dark:text-white shadow-sm font-bold";
+
+const highlightComboBoxText = (value, query) => {
+  const text = String(value ?? "");
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) return text;
+
+  const escapedQuery = normalizedQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.split(new RegExp(`(${escapedQuery})`, "gi")).map((part, index) =>
+    part.toLowerCase() === normalizedQuery.toLowerCase() ? (
+      <mark
+        key={`${part}-${index}`}
+        className="rounded-sm bg-pink-200 px-0.5 text-pink-900 dark:bg-pink-500/40 dark:text-pink-100"
+      >
+        {part}
+      </mark>
+    ) : (
+      part
+    ),
+  );
+};
 
 function CompactFilterSelect({ value, onChange, options, placeholder = "Select...", getLabel, getValue }) {
   const [open, setOpen] = useState(false);
@@ -32,7 +55,7 @@ function CompactFilterSelect({ value, onChange, options, placeholder = "Select..
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-3 py-2 bg-white/80 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-lg text-[11px] outline-none transition-all text-slate-900 dark:text-white shadow-sm font-bold cursor-pointer hover:border-pink-500 focus:border-pink-600"
+        className={`${FILTER_CONTROL_CLASS} flex items-center justify-between cursor-pointer hover:border-pink-500`}
       >
         <span className={displayLabel ? "text-slate-900 dark:text-white truncate" : "text-slate-400 dark:text-slate-500"}>
           {displayLabel ?? placeholder}
@@ -40,7 +63,7 @@ function CompactFilterSelect({ value, onChange, options, placeholder = "Select..
         <ChevronDown size={12} strokeWidth={2.5} className={`shrink-0 ml-1 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute z-[9999] left-0 top-[calc(100%+3px)] w-[200px] min-w-full bg-white dark:bg-[#1e2330] border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl overflow-hidden">
+        <div className="app-modern-dropdown-menu absolute z-[9999] left-0 top-[calc(100%+3px)] w-[200px] min-w-full bg-white dark:bg-[#1e2330] border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl overflow-hidden">
           <div className="p-1.5 border-b border-slate-100 dark:border-slate-800">
             <input autoFocus type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="w-full px-2 py-1 text-[10px] rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 outline-none text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-pink-500 transition-all" />
           </div>
@@ -54,7 +77,7 @@ function CompactFilterSelect({ value, onChange, options, placeholder = "Select..
               return (
                 <li key={String(val)} onClick={() => { onChange(val); setOpen(false); setSearch(""); }}
                   className={`flex items-center justify-between px-2.5 py-1 text-[10px] cursor-pointer transition-colors ${selected ? "bg-pink-50 dark:bg-pink-500/15 text-pink-600 dark:text-pink-400 font-semibold" : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"}`}>
-                  {lbl}
+                  <span className="truncate">{highlightComboBoxText(lbl, search)}</span>
                   {selected && <Check size={10} strokeWidth={3} className="text-pink-500" />}
                 </li>
               );
@@ -65,29 +88,6 @@ function CompactFilterSelect({ value, onChange, options, placeholder = "Select..
     </div>
   );
 }
-
-const LOCAL_COUNTRIES = [
-  { id: "gb", name: "United Kingdom", code: "GB" },
-  { id: "my", name: "Malaysia", code: "MY" },
-  { id: "us", name: "United States", code: "US" },
-  { id: "au", name: "Australia", code: "AU" },
-  { id: "ca", name: "Canada", code: "CA" },
-  { id: "de", name: "Germany", code: "DE" },
-  { id: "fr", name: "France", code: "FR" },
-  { id: "in", name: "India", code: "IN" },
-  { id: "sg", name: "Singapore", code: "SG" },
-  { id: "ae", name: "United Arab Emirates", code: "AE" },
-  { id: "jp", name: "Japan", code: "JP" },
-  { id: "cn", name: "China", code: "CN" },
-  { id: "za", name: "South Africa", code: "ZA" },
-  { id: "ng", name: "Nigeria", code: "NG" },
-  { id: "pk", name: "Pakistan", code: "PK" },
-  { id: "bd", name: "Bangladesh", code: "BD" },
-  { id: "id", name: "Indonesia", code: "ID" },
-  { id: "ph", name: "Philippines", code: "PH" },
-  { id: "nz", name: "New Zealand", code: "NZ" },
-  { id: "ie", name: "Ireland", code: "IE" },
-];
 
 const highlightText = (text, query) => {
   if (!query || !text) return text;
@@ -132,9 +132,41 @@ export default function HolidaysPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [totalCount, setTotalCount] = useState(0);
+  const [yearOptions, setYearOptions] = useState([]);
+  const [countryOptions, setCountryOptions] = useState([]);
 
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
+  useEffect(() => {
+    let active = true;
+
+    const loadFilterOptions = async () => {
+      try {
+        const [holidays, countries] = await Promise.all([
+          holidaysApi.getFilterOptions(),
+          countriesApi.getAll(),
+        ]);
+        if (!active) return;
+
+        const years = [...new Set(
+          holidays
+            .map((holiday) => holiday.year ?? new Date(holiday.date).getFullYear())
+            .filter((year) => Number.isFinite(Number(year))),
+        )].map(Number).sort((a, b) => b - a);
+
+        setYearOptions(years);
+        setCountryOptions(
+          [...countries].sort((a, b) => String(a.name).localeCompare(String(b.name))),
+        );
+      } catch (error) {
+        const message = getApiErrorMessage(error);
+        if (active && message) toast(message, "error");
+      }
+    };
+
+    loadFilterOptions();
+    return () => {
+      active = false;
+    };
+  }, [toast]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -145,14 +177,14 @@ export default function HolidaysPage() {
       if (debouncedFilters.type) extraParams.Type = debouncedFilters.type;
       if (debouncedFilters.date) extraParams.Date = debouncedFilters.date;
       if (debouncedFilters.year) extraParams.Year = debouncedFilters.year;
-      if (debouncedFilters.country) extraParams.CountryName = debouncedFilters.country;
-      if (debouncedFilters.locations) extraParams.Locations = debouncedFilters.locations;
+      if (debouncedFilters.country) extraParams.CountryISOCode = debouncedFilters.country;
 
       const resp = await holidaysApi.getAll(extraParams);
       setData(resp?.items || []);
       setTotalCount(resp?.totalCount || 0);
     } catch (err) {
-      toast("Failed to load holidays", "error");
+      const message = getApiErrorMessage(err);
+      if (message) toast(message, "error");
     } finally {
       setLoading(false);
     }
@@ -168,6 +200,11 @@ export default function HolidaysPage() {
     return data.slice(start, start + pageSize);
   }, [data, page, pageSize]);
 
+  const selectedCountryName = useMemo(
+    () => countryOptions.find((country) => country.code === debouncedFilters.country)?.name || "",
+    [countryOptions, debouncedFilters.country],
+  );
+
   const handleClear = () => {
     setFilters({
       name: "",
@@ -180,27 +217,14 @@ export default function HolidaysPage() {
     });
   };
 
-  const handleCreateSubmit = async (payload) => {
-    setIsCreating(true);
-    try {
-      await holidaysApi.create(payload);
-      toast("Holiday created successfully");
-      setIsCreateOpen(false);
-      fetchData();
-    } catch (error) {
-      toast(error?.message || "Operation failed", "error");
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
   const handleDisable = async (row) => {
     try {
       await holidaysApi.disable(row);
       toast("Holiday disabled");
       fetchData();
     } catch (e) {
-      toast(e?.message || e?.Message || "Failed to disable", "error");
+      const message = getApiErrorMessage(e);
+      if (message) toast(message, "error");
     }
   };
 
@@ -210,12 +234,12 @@ export default function HolidaysPage() {
       toast("Holiday enabled");
       fetchData();
     } catch (e) {
-      toast(e?.message || e?.Message || "Failed to enable", "error");
+      const message = getApiErrorMessage(e);
+      if (message) toast(message, "error");
     }
   };
 
-  const filterInputClass =
-    "w-full px-3 py-2 bg-white/80 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-lg text-[11px] outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-pink-600/10 focus:border-pink-600 transition-all text-slate-900 dark:text-white shadow-sm font-bold";
+  const filterInputClass = FILTER_CONTROL_CLASS;
 
   const breadcrumb = ["Home", "Management", "Lookups", "Holidays"];
 
@@ -256,19 +280,10 @@ export default function HolidaysPage() {
               </span>
             ))}
           </nav>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
               Holidays
             </h1>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setIsCreateOpen(true)}
-                className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs"
-              >
-                <Plus size={16} className="mr-2" strokeWidth={3} />
-                Add Holiday
-              </button>
-            </div>
           </div>
         </div>
 
@@ -277,7 +292,7 @@ export default function HolidaysPage() {
             <div className="min-w-[1400px] flex flex-col w-full">
               {/* Custom Filter Area (Aligned with Table) */}
               <div className="w-full bg-transparent p-0 flex flex-col gap-6 border-b border-slate-100 dark:border-slate-800/50 pb-6 mb-2">
-                <div className="grid grid-cols-[12%_1fr_10%_8%_12%_12%_12%_10%_120px] items-end w-full">
+                <div className="grid grid-cols-[12%_1fr_10%_12%_12%_12%_12%_120px] items-end w-full">
                   {/* Labels */}
                   {[
                     { label: "NAME" },
@@ -287,7 +302,6 @@ export default function HolidaysPage() {
                     { label: "COUNTRY", center: true },
                     { label: "LOCATIONS", center: true },
                     { label: "HOLIDAY TYPE", center: true },
-                    { label: "DISABLED", center: true },
                   ].map((l) => (
                     <div key={l.label} className={`px-[10px] text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-1 ${l.center ? 'justify-center' : ''}`}>
                       {l.label}
@@ -313,7 +327,7 @@ export default function HolidaysPage() {
                     <CompactFilterSelect
                       value={filters.year || ""}
                       onChange={(val) => setFilters({ ...filters, year: val !== "" ? Number(val) : "" })}
-                      options={HP_YEARS}
+                      options={yearOptions}
                       placeholder="All Years"
                     />
                   </div>
@@ -322,10 +336,10 @@ export default function HolidaysPage() {
                     <CompactFilterSelect
                       value={filters.country}
                       onChange={(val) => setFilters({ ...filters, country: val })}
-                      options={LOCAL_COUNTRIES}
+                      options={countryOptions}
                       placeholder="All Countries"
                       getLabel={(o) => (typeof o === "object" ? o.name : o)}
-                      getValue={(o) => (typeof o === "object" ? o.name : o)}
+                      getValue={(o) => (typeof o === "object" ? o.code : o)}
                     />
                   </div>
 
@@ -341,12 +355,10 @@ export default function HolidaysPage() {
                     />
                   </div>
 
-                  <div className="flex justify-center items-center h-full px-[10px] w-full">
-                  </div>
                   <div className="flex justify-end px-[10px] w-full">
                     <button
                       onClick={handleClear}
-                      className="inline-flex justify-center items-center px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors w-full"
+                      className="inline-flex h-9 box-border justify-center items-center px-4 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors w-full"
                       title="Reset All Filters"
                     >
                       Clear
@@ -371,11 +383,10 @@ export default function HolidaysPage() {
                       <th className="w-[12%]">Name</th>
                       <th className="w-auto">Description</th>
                       <th className="w-[10%]">Date</th>
-                      <th className="w-[8%]">Year</th>
+                      <th className="w-[12%]">Year</th>
                       <th className="w-[12%]">Country</th>
                       <th className="w-[12%]">Locations</th>
                       <th className="w-[12%]">Holiday Type</th>
-                      <th className="w-[10%]">Disabled</th>
                       <th className="w-[120px]">Actions</th>
                     </tr>
                   </thead>
@@ -398,24 +409,17 @@ export default function HolidaysPage() {
                         <td className="w-[10%] px-5 h-[60px] text-center transition-colors">
                           {row.date ? new Date(row.date).toLocaleDateString("en-GB") : "—"}
                         </td>
-                        <td className="w-[8%] px-5 h-[60px] text-center transition-colors">
+                        <td className="w-[12%] px-5 h-[60px] text-center transition-colors">
                           {row.year || "—"}
                         </td>
                         <td className="w-[12%] px-5 h-[60px] text-center transition-colors">
-                          <div className="truncate w-full block" title={row.countryName || "Global"}>{highlightText(row.countryName || "Global", debouncedFilters.country)}</div>
+                          <div className="truncate w-full block" title={row.countryName || "Global"}>{highlightText(row.countryName || "Global", selectedCountryName)}</div>
                         </td>
                         <td className="w-[12%] px-5 h-[60px] text-center transition-colors">
                           <div className="truncate w-full block" title={row.locations}>{highlightText(row.locations || "—", debouncedFilters.locations)}</div>
                         </td>
                         <td className="w-[12%] px-5 h-[60px] text-center transition-colors">
                           <div className="truncate w-full block" title={row.type}>{highlightText(row.type || "—", debouncedFilters.type)}</div>
-                        </td>
-                        <td className="w-[10%] px-5 h-[60px] text-center transition-colors">
-                          <div className="flex justify-center w-full">
-                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${row.isDeleted ? 'bg-red-500 border-red-500 shadow-md shadow-red-500/20' : 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600'}`}>
-                              {row.isDeleted && <Check size={12} className="text-white" strokeWidth={4} />}
-                            </div>
-                          </div>
                         </td>
                         <td className="w-[120px] px-5 rounded-r-2xl h-[60px] text-center transition-colors">
                           <ActionsMenu
@@ -437,7 +441,7 @@ export default function HolidaysPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2.5">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-              <select
+              <AppSelect
                 value={pageSize}
                 onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
                 className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
@@ -445,7 +449,7 @@ export default function HolidaysPage() {
                 {[10, 25, 50, 100].map((s) => (
                   <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
                 ))}
-              </select>
+              </AppSelect>
             </div>
 
             <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
@@ -517,13 +521,6 @@ export default function HolidaysPage() {
           </div>
         </div>
       </div>
-
-      <HolidayModal
-        open={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onSubmit={handleCreateSubmit}
-        loading={isCreating}
-      />
     </div>
   );
 }

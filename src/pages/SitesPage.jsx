@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
 import { sitesApi } from "../services/api/sites";
 import { useToast } from "../component/common/ToastContext";
 import { ActionsMenu } from "../component/common/ResourcePage";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Filter, Plus, Search, X } from "lucide-react";
 import SiteModal from "../component/common/SiteModal";
-import SiteDetailModal, { SiteDetailContent } from "../component/common/SiteDetailModal";
 import { usePermission } from "../hooks/usePermission";
+import { getApiErrorMessage } from "../utils/apiError";
 
 // Highlighter component for Search term
 const HighlightText = ({ text, searchTerm }) => {
@@ -40,6 +41,16 @@ export default function SitesPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [sortKey, setSortKey] = useState("id");
+  const [sortDir, setSortDir] = useState("desc");
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [advancedSearch, setAdvancedSearch] = useState({
+    name: "",
+    ocn: "",
+    countryName: "",
+    address: "",
+  });
+  const [debouncedAdvancedSearch, setDebouncedAdvancedSearch] = useState(advancedSearch);
 
   // Modals
   const [modalOpen, setModalOpen] = useState(false);
@@ -47,18 +58,14 @@ export default function SitesPage() {
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [detailItem, setDetailItem] = useState(null);
-
-
-
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
+      setDebouncedAdvancedSearch(advancedSearch);
       setPage(1);
     }, 500);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, advancedSearch]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -67,15 +74,19 @@ export default function SitesPage() {
         page,
         perPage: pageSize,
         search: debouncedSearch,
+        sortKey,
+        sortDir,
+        advancedFilters: debouncedAdvancedSearch,
       });
       setData(resp.items || resp.data || []);
       setTotalCount(resp.totalCount || resp.total || 0);
     } catch (err) {
-      toast("Failed to load sites", "error");
+      const message = getApiErrorMessage(err);
+      if (message) toast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, debouncedSearch, toast]);
+  }, [page, pageSize, debouncedSearch, sortKey, sortDir, debouncedAdvancedSearch, toast]);
 
   useEffect(() => {
     fetchData();
@@ -107,20 +118,29 @@ export default function SitesPage() {
       setEditItem(null);
       fetchData();
     } catch (err) {
-      setSubmitError(
-        err?.response?.data?.error?.message ||
-        err?.response?.data?.message ||
-        err?.message ||
-        "Failed to save"
-      );
+      setSubmitError(getApiErrorMessage(err));
     } finally {
       setSubmitLoading(false);
     }
   };
 
-  const handleDetail = (item) => {
-    setDetailItem(item);
-    setDetailModalOpen(true);
+  const handleSort = (field) => {
+    if (sortKey === field) {
+      setSortDir((direction) => direction === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(field);
+      setSortDir("asc");
+    }
+    setPage(1);
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortKey !== field) return <ArrowUpDown size={13} />;
+    return sortDir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />;
+  };
+
+  const updateAdvancedSearch = (field, value) => {
+    setAdvancedSearch((current) => ({ ...current, [field]: value }));
   };
 
 
@@ -171,8 +191,18 @@ export default function SitesPage() {
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               Sites
             </h1>
-            <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-              <div className="relative w-full sm:w-64 group">
+            {canCreate && <button
+              onClick={handleNew}
+              className="app-primary-button w-full md:w-auto inline-flex justify-center items-center px-5 py-2.5 text-xs"
+            >
+              <Plus size={16} className="mr-2" strokeWidth={3} />
+              Create Site
+            </button>}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="relative w-full sm:w-[32rem] group">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search size={14} className={search ? "text-pink-500" : "text-slate-400 dark:text-slate-500 transition-colors"} />
                 </div>
@@ -193,14 +223,47 @@ export default function SitesPage() {
                 )}
               </div>
 
-              {canCreate && <button
-                onClick={handleNew}
-                className="app-primary-button w-full sm:w-auto inline-flex justify-center items-center px-5 py-2.5 text-xs"
+              <button
+                type="button"
+                onClick={() => setShowAdvanced((visible) => !visible)}
+                className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all ${showAdvanced ? "bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-500/10 dark:border-pink-500/30 dark:text-pink-400" : "bg-white text-slate-500 border-slate-200/60 dark:bg-slate-900/50 dark:border-slate-800/50 dark:text-slate-400 hover:text-pink-600"}`}
+                aria-expanded={showAdvanced}
               >
-                <Plus size={16} className="mr-2" strokeWidth={3} />
-                Create Site
-              </button>}
+                <Filter size={14} />
+                Advanced Search
+              </button>
             </div>
+
+            {showAdvanced && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800/50">
+                {[
+                  ["name", "Filter by site name..."],
+                  ["ocn", "Filter by OCN..."],
+                  ["countryName", "Filter by country..."],
+                  ["address", "Filter by address..."],
+                ].map(([field, placeholder]) => (
+                  <div key={field} className="relative">
+                    <input
+                      type="text"
+                      placeholder={placeholder}
+                      value={advancedSearch[field]}
+                      onChange={(event) => updateAdvancedSearch(field, event.target.value)}
+                      className="w-full pl-3 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-700/50 bg-white dark:bg-slate-900 text-[11px] outline-none transition-all focus:border-pink-500 focus:ring-2 focus:ring-pink-500/10 font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
+                    />
+                    {advancedSearch[field] && (
+                      <button
+                        type="button"
+                        onClick={() => updateAdvancedSearch(field, "")}
+                        className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
+                        aria-label={`Clear ${field} filter`}
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -226,10 +289,26 @@ export default function SitesPage() {
                 </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">NAME</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">OCN</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">COUNTRY</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">ADDRESS</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black tracking-widest text-slate-500 dark:text-slate-400 text-left">
+                      <button type="button" onClick={() => handleSort("name")} className="inline-flex items-center gap-1.5 hover:text-pink-600 dark:hover:text-pink-400" aria-label="Sort by Name">
+                        Name <SortIcon field="name" />
+                      </button>
+                    </th>
+                    <th className="px-5 h-[56px] text-[10px] font-black tracking-widest text-slate-500 dark:text-slate-400 text-left">
+                      <button type="button" onClick={() => handleSort("ocn")} className="inline-flex items-center gap-1.5 hover:text-pink-600 dark:hover:text-pink-400" aria-label="Sort by OCN">
+                        OCN <SortIcon field="ocn" />
+                      </button>
+                    </th>
+                    <th className="px-5 h-[56px] text-[10px] font-black tracking-widest text-slate-500 dark:text-slate-400 text-left">
+                      <button type="button" onClick={() => handleSort("countryName")} className="inline-flex items-center gap-1.5 hover:text-pink-600 dark:hover:text-pink-400" aria-label="Sort by Country">
+                        Country <SortIcon field="countryName" />
+                      </button>
+                    </th>
+                    <th className="px-5 h-[56px] text-[10px] font-black tracking-widest text-slate-500 dark:text-slate-400 text-left">
+                      <button type="button" onClick={() => handleSort("address")} className="inline-flex items-center gap-1.5 hover:text-pink-600 dark:hover:text-pink-400" aria-label="Sort by Address">
+                        Address <SortIcon field="address" />
+                      </button>
+                    </th>
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-center">Actions</th>
                   </tr>
                 </thead>
@@ -242,23 +321,22 @@ export default function SitesPage() {
                         className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
                       >
                         <td className="px-5 rounded-l-2xl h-[60px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[12px]">
-                          <HighlightText text={row.name} searchTerm={debouncedSearch} />
+                          <HighlightText text={row.name} searchTerm={debouncedAdvancedSearch.name || debouncedSearch} />
                         </td>
                         <td className="px-5 h-[60px] text-left transition-colors text-slate-900 dark:text-white">
                           <span className="font-mono font-bold text-[12px] text-slate-900 dark:text-white">
-                            <HighlightText text={row.ocn} searchTerm={debouncedSearch} />
+                            <HighlightText text={row.ocn} searchTerm={debouncedAdvancedSearch.ocn || debouncedSearch} />
                           </span>
                         </td>
                         <td className="px-5 h-[60px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[11px]">
-                          {row.countryName || "—"}
+                          <HighlightText text={row.countryName} searchTerm={debouncedAdvancedSearch.countryName} />
                         </td>
                         <td className="px-5 h-[60px] text-left transition-colors text-slate-700 dark:text-slate-300 font-medium text-[11px]">
-                          {row.address || "—"}
+                          <HighlightText text={row.address} searchTerm={debouncedAdvancedSearch.address} />
                         </td>
                         <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors text-slate-900 dark:text-white">
                           <ActionsMenu
                             onEdit={canEdit ? () => handleEdit(row) : undefined}
-                            onDetail={() => handleDetail(row)}
                             onAuditLog={canViewAuditLog ? () => navigate(`/audit-logs?primaryKey=${row.id}&entityName=Site`) : undefined}
                           />
                         </td>
@@ -276,7 +354,7 @@ export default function SitesPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2.5">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-              <select
+              <AppSelect
                 value={pageSize}
                 onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
                 className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
@@ -284,7 +362,7 @@ export default function SitesPage() {
                 {[10, 25, 50, 100].map((s) => (
                   <option key={s} value={s} className="font-sans">{s}</option>
                 ))}
-              </select>
+              </AppSelect>
             </div>
 
             <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
@@ -364,16 +442,8 @@ export default function SitesPage() {
         site={editItem}
         loading={submitLoading}
         submitError={submitError}
+        onSubmitErrorClose={() => setSubmitError(null)}
       />
-
-      {detailItem && (
-        <SiteDetailModal
-          open={detailModalOpen}
-          onClose={() => { setDetailModalOpen(false); setDetailItem(null); }}
-          item={detailItem}
-          SecondaryDetailComponent={SiteDetailContent}
-        />
-      )}
 
     </div>
   );

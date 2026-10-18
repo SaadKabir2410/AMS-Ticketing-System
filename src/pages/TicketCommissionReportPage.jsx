@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
 import { RotateCcw, FileText, ArrowLeft, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Autocomplete, TextField, Checkbox } from "@mui/material";
+import SearchTextHighlight from "../component/common/SearchTextHighlight";
 import {
   useReactTable,
   getCoreRowModel,
@@ -18,6 +20,7 @@ import { saveAs } from "file-saver";
 import { buildReportFileName } from "../utils/reportFileName";
 import ticketCommissionReportApi from "../services/api/ticketCommissionReport";
 import usersApi from "../services/api/users";
+import { SERVICE_PLANNED_TYPE_OPTIONS } from "../services/api/amsTicketApi";
 import { useAuth } from "../context/AuthContextHook";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
 
@@ -26,15 +29,6 @@ const STATUS_OPTIONS = [
   { label: "Open", value: "Opened" },
   { label: "Closed", value: "Closed" },
   { label: "Void", value: "Void" },
-];
-
-const SERVICE_PLANNED_TYPES = [
-  { label: "Rule", value: "Rule" },
-  { label: "Report", value: "Report" },
-  { label: "Installation", value: "Installation" },
-  { label: "Configuration", value: "Configuration" },
-  { label: "TSB", value: "TSB" },
-  { label: "Other", value: "Other" },
 ];
 
 const HEADER_FORMAT_MAPPING = {
@@ -59,6 +53,9 @@ export default function TicketCommissionReportPage() {
   });
 
   const [usersList, setUsersList] = useState([]);
+  const servicePlannedTypeOptions = SERVICE_PLANNED_TYPE_OPTIONS.filter(
+    (item) => item.apiValue > 0,
+  );
   const [reportData, setReportData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -315,12 +312,17 @@ export default function TicketCommissionReportPage() {
                   getOptionLabel={(option) => option.name || option.userName || ""}
                   value={usersList.filter((u) => filters.performedByUsers.includes(u.id))}
                   onChange={(e, newValue) => setFilters({ ...filters, performedByUsers: newValue.map((v) => v.id) })}
-                  renderOption={(props, option, { selected }) => {
+                  renderOption={(props, option, { selected, inputValue }) => {
                     const { key, ...restProps } = props;
                     return (
                       <li key={key} {...restProps} style={{ fontSize: "11px", padding: "4px 8px" }} className="hover:bg-slate-50 dark:hover:bg-slate-800">
                         <Checkbox style={{ marginRight: 8, padding: 0 }} checked={selected} size="small" sx={{ color: 'var(--tw-prose-counters)', '&.Mui-checked': { color: '#ec4899' } }} />
-                        <span className="text-slate-900 dark:text-white">{option.name || option.userName}</span>
+                        <span className="text-slate-900 dark:text-white">
+                          <SearchTextHighlight
+                            text={option.name || option.userName}
+                            query={inputValue}
+                          />
+                        </span>
                       </li>
                     );
                   }}
@@ -336,7 +338,10 @@ export default function TicketCommissionReportPage() {
                           backgroundColor: "transparent",
                           borderRadius: "0.75rem",
                           padding: "0px 4px !important",
-                          minHeight: "32px !important",
+                          height: "42px !important",
+                          minHeight: "42px !important",
+                          maxHeight: "42px !important",
+                          overflow: "hidden",
                           border: "1px solid transparent",
                           color: "inherit"
                         },
@@ -394,20 +399,22 @@ export default function TicketCommissionReportPage() {
                 size="small"
                 limitTags={1}
                 multiple
-                options={SERVICE_PLANNED_TYPES}
+                options={servicePlannedTypeOptions}
                 disableCloseOnSelect
                 componentsProps={{
                   paper: { className: "bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg" }
                 }}
                 getOptionLabel={(option) => option.label || ""}
-                value={SERVICE_PLANNED_TYPES.filter((t) => filters.servicePlannedTypes.includes(t.value))}
+                value={servicePlannedTypeOptions.filter((t) => filters.servicePlannedTypes.includes(t.value))}
                 onChange={(e, newValue) => setFilters({ ...filters, servicePlannedTypes: newValue.map((v) => v.value) })}
-                renderOption={(props, option, { selected }) => {
+                renderOption={(props, option, { selected, inputValue }) => {
                   const { key, ...restProps } = props;
                   return (
                     <li key={key} {...restProps} style={{ fontSize: "11px", padding: "4px 8px" }} className="hover:bg-slate-50 dark:hover:bg-slate-800">
                       <Checkbox style={{ marginRight: 8, padding: 0 }} checked={selected} size="small" sx={{ color: 'var(--tw-prose-counters)', '&.Mui-checked': { color: '#ec4899' } }} />
-                      <span className="text-slate-900 dark:text-white">{option.label}</span>
+                      <span className="text-slate-900 dark:text-white">
+                        <SearchTextHighlight text={option.label} query={inputValue} />
+                      </span>
                     </li>
                   );
                 }}
@@ -423,7 +430,10 @@ export default function TicketCommissionReportPage() {
                         backgroundColor: "transparent",
                         borderRadius: "0.75rem",
                         padding: "0px 4px !important",
-                        minHeight: "32px !important",
+                        height: "42px !important",
+                        minHeight: "42px !important",
+                        maxHeight: "42px !important",
+                        overflow: "hidden",
                         border: "1px solid transparent",
                         color: "inherit"
                       },
@@ -454,7 +464,7 @@ export default function TicketCommissionReportPage() {
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Status</label>
-              <select
+              <AppSelect
                 value={filters.status}
                 onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                 className={filterInputClass}
@@ -464,7 +474,7 @@ export default function TicketCommissionReportPage() {
                     {s.label}
                   </option>
                 ))}
-              </select>
+              </AppSelect>
             </div>
 
           </div>          {reportData.length > 0 && (
@@ -566,7 +576,7 @@ export default function TicketCommissionReportPage() {
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2.5">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-                    <select
+                    <AppSelect
                       value={table.getState().pagination.pageSize}
                       onChange={(e) => table.setPageSize(Number(e.target.value))}
                       className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
@@ -574,7 +584,7 @@ export default function TicketCommissionReportPage() {
                       {[5, 10, 25, 50, 100].map((s) => (
                         <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
                       ))}
-                    </select>
+                    </AppSelect>
                   </div>
 
                   <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">

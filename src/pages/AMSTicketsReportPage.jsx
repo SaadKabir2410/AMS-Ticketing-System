@@ -1,17 +1,26 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
 import { PermissionGuard } from "../component/common/PermissionGuard";
+import SearchTextHighlight from "../component/common/SearchTextHighlight";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import {
   Autocomplete,
+  Checkbox,
   TextField,
 } from "@mui/material";
 import apiClient from "../services/apiClient";
+import {
+  getCachedApplicationConfig,
+  loadApplicationConfig,
+} from "../services/applicationConfigCache";
 import countriesApi from "../services/api/countries";
 import usersApi from "../services/api/users";
 import workCodesApi from "../services/api/workCodes";
-import amsTicketApi from "../services/api/amsTicketApi";
-import Flatpickr from "react-flatpickr";
+import amsTicketApi, {
+  SERVICE_PLANNED_TYPE_OPTIONS,
+} from "../services/api/amsTicketApi";
+import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.css";
 import "flatpickr/dist/themes/dark.css";
 
@@ -28,15 +37,6 @@ const TICKET_TYPE_OPTIONS = [
   { value: "Complaint", label: "Complaint" },
 ];
 
-const SERVICE_PLANNED_TYPE_OPTIONS = [
-  { value: "Report", label: "Report" },
-  { value: "Rule", label: "Rule" },
-  { value: "Installation", label: "Installation" },
-  { value: "Configuration", label: "Configuration" },
-  { value: "TBS", label: "TBS" },
-  { value: "Other", label: "Other" },
-];
-
 const STATUS_OPTIONS = [
   { value: "Opened", label: "Open" },
   { value: "Closed", label: "Closed" },
@@ -50,15 +50,6 @@ const TICKET_TYPE_API_VALUES = {
   Complaint: 3,
   Inquiry: 4,
 };
-const SERVICE_PLANNED_TYPE_API_VALUES = {
-  Report: 1,
-  Rule: 2,
-  Installation: 3,
-  Configuration: 4,
-  TBS: 5,
-  Other: 6,
-};
-
 const normalizeSpreadsheetHeader = (value) =>
   String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 
@@ -108,6 +99,68 @@ const extractSpreadsheetTicketNumbers = (workbook) => {
 
   return [...new Set(ticketNumbers)];
 };
+
+const getWorkDoneCodeOptionLabel = (option) => {
+  if (typeof option === "string") return option;
+  const code = option?.code || "";
+  const description = option?.description || "";
+  if (code && description) return `${code} - ${description}`;
+  return code || description || option?.name || "";
+};
+
+const getPerformedByOptionLabel = (option) =>
+  option?.name || option?.userName || option?.email || option || "";
+
+function EditableFlatpickrInput({ value, onChange, className }) {
+  const inputRef = useRef(null);
+  const pickerRef = useRef(null);
+  const onChangeRef = useRef(onChange);
+  const initialValueRef = useRef(value);
+
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  useEffect(() => {
+    if (!inputRef.current) return undefined;
+
+    const picker = flatpickr(inputRef.current, {
+      allowInput: true,
+      clickOpens: true,
+      dateFormat: "Y-m-d",
+      disableMobile: true,
+      defaultDate: initialValueRef.current || undefined,
+      onChange: (_dates, dateStr) => onChangeRef.current(dateStr),
+    });
+    pickerRef.current = picker;
+
+    return () => {
+      picker.destroy();
+      pickerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const input = inputRef.current;
+    const picker = pickerRef.current;
+    if (!input || !picker || document.activeElement === input) return;
+
+    const nextValue = value || "";
+    if (input.value !== nextValue) picker.setDate(nextValue, false, "Y-m-d");
+  }, [value]);
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      value={value}
+      onChange={(event) => onChange(event.currentTarget.value)}
+      placeholder="YYYY-MM-DD"
+      autoComplete="off"
+      className={className}
+    />
+  );
+}
 
 const REPORT_GRID_COLUMNS = [
   { field: "countryName", header: "Country", keys: ["countryName", "country"] },
@@ -191,9 +244,7 @@ const getBackendErrorText = (error) =>
   getBackendResponseText(error?.response?.data);
 
 const fetchBackendApplicationConfig = () =>
-  apiClient.get("/api/abp/application-configuration", {
-    params: { IncludeLocalizationResources: true },
-  }).then((response) => response.data).catch(() => null);
+  loadApplicationConfig().catch(() => null);
 
 const getBackendLocalizationText = (applicationConfig, key) => {
   const resources = applicationConfig?.localization?.values;
@@ -261,8 +312,8 @@ const getDefaultFilters = () => {
     ticketType: "",
     servicePlannedType: "",
     customer: "",
-    workDoneCode: "",
-    performed: "",
+    workDoneCode: [],
+    performed: [],
     compareFile: null,
   };
 };
@@ -295,6 +346,7 @@ export default function AMSTicketsReportPage() {
   const [customersList, setCustomersList] = useState([]);
   const [workCodesList, setWorkCodesList] = useState([]);
   const [performedList, setPerformedList] = useState([]);
+  const servicePlannedTypeOptions = SERVICE_PLANNED_TYPE_OPTIONS;
 
   const [reportData, setReportData] = useState([]);
   const [showDataGrid, setShowDataGrid] = useState(false);
@@ -302,7 +354,7 @@ export default function AMSTicketsReportPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [excelLoading, setExcelLoading] = useState(false);
   const [formError, setFormError] = useState("");
-  const [applicationConfig, setApplicationConfig] = useState(null);
+  const [applicationConfig, setApplicationConfig] = useState(getCachedApplicationConfig);
   const fileInputRef = useRef(null);
 
   const [compareResultDialog, setCompareResultDialog] = useState({
@@ -340,7 +392,6 @@ export default function AMSTicketsReportPage() {
         const uniquePerformed = Array.from(new Map(allPerformed.map(u => [u.id, u])).values());
         setPerformedList(uniquePerformed);
         setApplicationConfig(applicationConfig);
-
       } catch (error) {
         console.error(error);
       }
@@ -374,11 +425,11 @@ export default function AMSTicketsReportPage() {
         : undefined,
       "AMSTicketSearch.CountryId": filters.country || undefined,
       "AMSTicketSearch.CustomerUserId": filters.customer || undefined,
-      "AMSTicketSearch.WorkDoneCodeIds": filters.workDoneCode
-        ? [filters.workDoneCode]
+      "AMSTicketSearch.WorkDoneCodeIds": filters.workDoneCode.length > 0
+        ? filters.workDoneCode
         : undefined,
-      "AMSTicketSearch.PerformedByUsers": filters.performed
-        ? [filters.performed]
+      "AMSTicketSearch.PerformedByUsers": filters.performed.length > 0
+        ? filters.performed
         : undefined,
       "AMSTicketSearch.CompressedTicketNumbers": "",
       "AMSTicketSearch.DateFrom": formatFilterDateTime(filters.dateFrom, "00:00") || "",
@@ -471,12 +522,61 @@ export default function AMSTicketsReportPage() {
         });
 
         dataArray.forEach((row) => {
-          worksheet.addRow(Object.values(row));
+          worksheet.addRow(headers.map((header) => row[header]));
+        });
+
+        const reportSummary = data && !Array.isArray(data) ? data : {};
+        const summaryRows = [
+          ["Generated By:", getReportValue(reportSummary, ["currentUser", "generatedBy"]) ?? ""],
+          ["Generated On:", getReportValue(reportSummary, ["currentDateTime", "generatedOn"]) ?? ""],
+          ["Total Tickets:", getReportValue(reportSummary, ["totalNumberOfTickets", "totalTickets"]) ?? ""],
+          ["Total Activity Hours:", getReportValue(reportSummary, ["totalActivityHours"]) ?? ""],
+          ["Inside Working Hours (Hrs):", getReportValue(reportSummary, ["totalHoursSpendInsideOfWorkingHours"]) ?? ""],
+          ["Total Payout:", getReportValue(reportSummary, ["totalPayout"]) ?? ""],
+          ["Working Hours Cost:", getReportValue(reportSummary, ["workingHoursCost"]) ?? ""],
+          ["After Hours Cost:", getReportValue(reportSummary, ["afterHoursCost"]) ?? ""],
+        ];
+
+        worksheet.addRow([]);
+        const summaryTitleRow = worksheet.addRow(["SUMMARY"]);
+        worksheet.mergeCells(summaryTitleRow.number, 1, summaryTitleRow.number, 2);
+        summaryTitleRow.getCell(1).fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFDB2777" },
+        };
+        summaryTitleRow.getCell(1).font = {
+          color: { argb: "FFFFFFFF" },
+          bold: true,
+        };
+        summaryTitleRow.getCell(1).alignment = { horizontal: "center" };
+
+        summaryRows.forEach(([label, value], index) => {
+          const row = worksheet.addRow([label, value]);
+          row.getCell(1).font = { bold: true };
+          row.getCell(1).fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFFCE7F3" },
+          };
+          row.eachCell((cell) => {
+            cell.border = {
+              top: { style: "thin", color: { argb: "FFE2E8F0" } },
+              left: { style: "thin", color: { argb: "FFE2E8F0" } },
+              bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
+              right: { style: "thin", color: { argb: "FFE2E8F0" } },
+            };
+          });
+          if (index >= 3 && typeof value === "number") {
+            row.getCell(2).numFmt = "0.00";
+          }
         });
 
         worksheet.columns.forEach((column) => {
           column.width = 20;
         });
+        worksheet.getColumn(1).width = 32;
+        worksheet.getColumn(2).width = Math.max(worksheet.getColumn(2).width || 0, 22);
 
         const buffer = await workbook.xlsx.writeBuffer();
         saveAs(
@@ -533,6 +633,12 @@ export default function AMSTicketsReportPage() {
         ...new Set([...uploadedTicketNumbers, ...filterTicketNumbers]),
       ];
 
+      const selectedServicePlannedType = servicePlannedTypeOptions.find(
+        (option) => option.value === filters.servicePlannedType,
+      );
+      const selectedServicePlannedTypeApiValue =
+        selectedServicePlannedType?.apiValue || 0;
+
       const amsTicketSearch = {
         siteName: "",
         siteOCN: "",
@@ -543,13 +649,12 @@ export default function AMSTicketsReportPage() {
         issueDiscription: "",
         status: STATUS_API_VALUES[filters.status] || 0,
         ticketType: TICKET_TYPE_API_VALUES[filters.ticketType] || 0,
-        servicePlannedType:
-          SERVICE_PLANNED_TYPE_API_VALUES[filters.servicePlannedType] || 0,
+        servicePlannedType: selectedServicePlannedTypeApiValue,
         servicePlannedTypes: filters.servicePlannedType
-          ? [SERVICE_PLANNED_TYPE_API_VALUES[filters.servicePlannedType]]
+          ? [selectedServicePlannedTypeApiValue]
           : [],
-        workDoneCodeIds: filters.workDoneCode ? [filters.workDoneCode] : [],
-        performedByUsers: filters.performed ? [filters.performed] : [],
+        workDoneCodeIds: filters.workDoneCode,
+        performedByUsers: filters.performed,
         dateFrom: formatFilterDateTime(filters.dateFrom, "00:00"),
         dateTo: formatFilterDateTime(filters.dateTo, "23:59", true),
         ...(filters.country ? { countryId: filters.country } : {}),
@@ -701,7 +806,39 @@ export default function AMSTicketsReportPage() {
   }, [reportData]);
 
   const filterInputClass =
-    "px-3 py-2 text-xs bg-white dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-xl outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all placeholder:text-slate-400 w-full shadow-sm";
+    "h-[42px] min-h-[42px] px-3 py-2 text-xs bg-white dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-xl outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all placeholder:text-slate-400 w-full shadow-sm";
+
+  const usesReceivedDateLabels = ["Opened", "Open", "Void"].includes(filters.status);
+  const dateFromLabel = getBackendLocalizationText(
+    applicationConfig,
+    usesReceivedDateLabels ? "TicketReceviedDateFrom" : "TicketClosedDateFrom",
+  );
+  const dateToLabel = getBackendLocalizationText(
+    applicationConfig,
+    usesReceivedDateLabels ? "TicketReceviedDateTo" : "TicketClosedDateTo",
+  );
+  const pageText = {
+    title: getBackendLocalizationText(applicationConfig, "AMSTicketsReport"),
+    clear: getBackendLocalizationText(applicationConfig, "Clear"),
+    loading: getBackendLocalizationText(applicationConfig, "LoadingWithThreeDot"),
+    processing: getBackendLocalizationText(applicationConfig, "ProcessingWithThreeDot"),
+    getReport: getBackendLocalizationText(applicationConfig, "GetReport"),
+    excelReport: getBackendLocalizationText(applicationConfig, "GetExcelReport"),
+    ticketNumber: getBackendLocalizationText(applicationConfig, "CMSNextTicketNo"),
+    status: getBackendLocalizationText(applicationConfig, "Status"),
+    country: getBackendLocalizationText(applicationConfig, "Country"),
+    ticketType: getBackendLocalizationText(applicationConfig, "TicketType"),
+    servicePlannedType: getBackendLocalizationText(applicationConfig, "ServicePlannedType"),
+    customer: getBackendLocalizationText(applicationConfig, "CustomerUserId"),
+    workDoneCode: getBackendLocalizationText(applicationConfig, "WorkDoneCode"),
+    performedBy: getBackendLocalizationText(applicationConfig, "PerformedBy"),
+    compareTickets: getBackendLocalizationText(applicationConfig, "CompareTicketsButton"),
+    search: getBackendLocalizationText(applicationConfig, "Search"),
+    all: getBackendLocalizationText(applicationConfig, "All"),
+    home: getBackendLocalizationText(applicationConfig, "Home"),
+    management: getBackendLocalizationText(applicationConfig, "Menu:Administration"),
+    reports: getBackendLocalizationText(applicationConfig, "Permission:Reports"),
+  };
 
   return (
     <div className="ams-ticket-report-page min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
@@ -759,20 +896,20 @@ export default function AMSTicketsReportPage() {
               onClick={() => navigate("/")}
               className="hover:text-pink-500 cursor-pointer transition-colors"
             >
-              Home
+              {pageText.home}
             </span>
             <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span>Management</span>
+            <span>{pageText.management}</span>
             <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span>Reports</span>
+            <span>{pageText.reports}</span>
             <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span className="text-pink-500">AMS Tickets Report</span>
+            <span className="text-pink-500">{pageText.title}</span>
           </nav>
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
-                AMS Tickets Report
+                {pageText.title}
               </h1>
             </div>
 
@@ -782,14 +919,14 @@ export default function AMSTicketsReportPage() {
                 className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all active:scale-95 focus:outline-none"
               >
                 <RotateCcw size={14} />
-                Clear
+                {pageText.clear}
               </button>
               <button
                 onClick={() => handleGetReport(false)}
                 disabled={reportLoading}
                 className="app-primary-button flex items-center gap-1.5 px-4 py-2 text-[11px] focus:outline-none"
               >
-                {reportLoading ? "Loading..." : "Get Report"}
+                {reportLoading ? pageText.loading : pageText.getReport}
               </button>
 
               <PermissionGuard permission="Billing.AMSTickets.ExportReportToExcel">
@@ -798,7 +935,7 @@ export default function AMSTicketsReportPage() {
                   disabled={excelLoading}
                   className="app-primary-button flex items-center gap-1.5 px-4 py-2 text-[11px] focus:outline-none"
                 >
-                  {excelLoading ? "Exporting..." : "Excel Report"}
+                  {excelLoading ? pageText.processing : pageText.excelReport}
                 </button>
               </PermissionGuard>
             </div>
@@ -818,67 +955,69 @@ export default function AMSTicketsReportPage() {
           )}
 
           {/* Row 1 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="flex flex-col gap-1.5 md:col-span-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            <div className="flex min-w-0 flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                CMS Next Ticket No
+                {pageText.ticketNumber}
               </label>
               <textarea
-                placeholder="Enter ticket no... (152172RA2364993;152172RA2364881;)"
+                placeholder="152152RA2466404; 152152RA24664098;"
                 value={filters.cmsNextTicketNo}
                 onChange={(e) => setFilters({ ...filters, cmsNextTicketNo: e.target.value })}
-                className={`${filterInputClass} resize-y min-h-[42px]`}
+                className={`${filterInputClass} resize-none`}
                 rows={1}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                Ticket Closed Date From
+                {dateFromLabel}
               </label>
-              <Flatpickr
+              <EditableFlatpickrInput
                 value={filters.dateFrom}
-                onChange={(dates, dateStr) => setFilters({ ...filters, dateFrom: dateStr })}
-                options={{ dateFormat: "Y-m-d", allowInput: true }}
-                placeholder="YYYY-MM-DD"
+                onChange={(dateStr) => setFilters((current) => ({
+                  ...current,
+                  dateFrom: dateStr,
+                }))}
                 className={filterInputClass}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                Ticket Closed Date To
+                {dateToLabel}
               </label>
-              <Flatpickr
+              <EditableFlatpickrInput
                 value={filters.dateTo}
-                onChange={(dates, dateStr) => setFilters({ ...filters, dateTo: dateStr })}
-                options={{ dateFormat: "Y-m-d", allowInput: true }}
-                placeholder="YYYY-MM-DD"
+                onChange={(dateStr) => setFilters((current) => ({
+                  ...current,
+                  dateTo: dateStr,
+                }))}
                 className={filterInputClass}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                Status
+                {pageText.status}
               </label>
-              <select
+              <AppSelect
                 value={filters.status}
                 onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                 className={filterInputClass}
               >
-                <option value="">All</option>
+                <option value="">{pageText.all}</option>
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s.value} value={s.value}>
                     {s.label}
                   </option>
                 ))}
-              </select>
+              </AppSelect>
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                Country
+                {pageText.country}
               </label>
               <Autocomplete
                 options={countriesList}
@@ -891,6 +1030,10 @@ export default function AMSTicketsReportPage() {
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "0.5rem",
                     padding: "1px 12px",
+                    height: "42px",
+                    minHeight: "42px",
+                    maxHeight: "42px",
+                    overflow: "hidden",
                     fontSize: "12px",
                     fontWeight: "bold",
                     backgroundColor: "transparent",
@@ -899,16 +1042,16 @@ export default function AMSTicketsReportPage() {
                 }}
                 className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all w-full text-slate-800 dark:text-slate-200"
                 renderInput={(params) => (
-                  <TextField {...params} placeholder="Search country..." variant="outlined" />
+                  <TextField {...params} placeholder={pageText.search} variant="outlined" />
                 )}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                Ticket Type
+                {pageText.ticketType}
               </label>
-              <select
+              <AppSelect
                 value={filters.ticketType}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -921,39 +1064,38 @@ export default function AMSTicketsReportPage() {
                 }}
                 className={filterInputClass}
               >
-                <option value="">All</option>
+                <option value="">{pageText.all}</option>
                 {TICKET_TYPE_OPTIONS.map((t) => (
                   <option key={t.value} value={t.value}>
                     {t.label}
                   </option>
                 ))}
-              </select>
+              </AppSelect>
             </div>
 
             {/* Service Planned Type — only shown when Ticket Type is Service Planned */}
             {filters.ticketType === "ServicePlanned" && (
               <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                  Service Planned Type
+                  {pageText.servicePlannedType}
                 </label>
-                <select
+                <AppSelect
                   value={filters.servicePlannedType}
                   onChange={(e) => setFilters({ ...filters, servicePlannedType: e.target.value })}
                   className={filterInputClass}
                 >
-                  <option value="">All</option>
-                  {SERVICE_PLANNED_TYPE_OPTIONS.map((t) => (
+                  {servicePlannedTypeOptions.map((t) => (
                     <option key={t.value} value={t.value}>
                       {t.label}
                     </option>
                   ))}
-                </select>
+                </AppSelect>
               </div>
             )}
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                Customer
+                {pageText.customer}
               </label>
               <Autocomplete
                 options={customersList}
@@ -968,6 +1110,10 @@ export default function AMSTicketsReportPage() {
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "0.5rem",
                     padding: "1px 12px",
+                    height: "42px",
+                    minHeight: "42px",
+                    maxHeight: "42px",
+                    overflow: "hidden",
                     fontSize: "12px",
                     fontWeight: "bold",
                     backgroundColor: "transparent",
@@ -976,32 +1122,53 @@ export default function AMSTicketsReportPage() {
                 }}
                 className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all w-full text-slate-800 dark:text-slate-200"
                 renderInput={(params) => (
-                  <TextField {...params} placeholder="Search customer..." variant="outlined" />
+                  <TextField {...params} placeholder={pageText.search} variant="outlined" />
                 )}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                Work Done Code
+                {pageText.workDoneCode}
               </label>
               <Autocomplete
+                multiple
+                disableCloseOnSelect
+                limitTags={1}
                 options={workCodesList}
-                getOptionLabel={(option) => {
-                  if (typeof option === "string") return option;
-                  const c = option.code || "";
-                  const d = option.description || "";
-                  if (c && d) return `${c} - ${d}`;
-                  return c || d || option.name || "";
+                getOptionLabel={getWorkDoneCodeOptionLabel}
+                isOptionEqualToValue={(option, value) =>
+                  (option.id || option) === (value.id || value)
+                }
+                value={workCodesList.filter((workCode) =>
+                  filters.workDoneCode.includes(workCode.id || workCode)
+                )}
+                onChange={(event, newValues) => {
+                  setFilters({
+                    ...filters,
+                    workDoneCode: newValues.map((value) => value.id || value),
+                  });
                 }}
-                value={workCodesList.find((w) => (w.id || w) === filters.workDoneCode) || null}
-                onChange={(e, newValue) => {
-                  setFilters({ ...filters, workDoneCode: newValue ? newValue.id || newValue : "" });
+                renderOption={(props, option, { selected, inputValue }) => {
+                  const { key, ...optionProps } = props;
+                  return (
+                    <li key={key} {...optionProps}>
+                      <Checkbox checked={selected} size="small" sx={{ mr: 1, p: 0.5 }} />
+                      <SearchTextHighlight
+                        text={getWorkDoneCodeOptionLabel(option)}
+                        query={inputValue}
+                      />
+                    </li>
+                  );
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "0.5rem",
                     padding: "1px 12px",
+                    height: "42px",
+                    minHeight: "42px",
+                    maxHeight: "42px",
+                    overflow: "hidden",
                     fontSize: "12px",
                     fontWeight: "bold",
                     backgroundColor: "transparent",
@@ -1010,28 +1177,53 @@ export default function AMSTicketsReportPage() {
                 }}
                 className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all w-full text-slate-800 dark:text-slate-200"
                 renderInput={(params) => (
-                  <TextField {...params} placeholder="Search work code..." variant="outlined" />
+                  <TextField {...params} placeholder={pageText.search} variant="outlined" />
                 )}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                Performed By
+                {pageText.performedBy}
               </label>
               <Autocomplete
+                multiple
+                disableCloseOnSelect
+                limitTags={1}
                 options={performedList}
-                getOptionLabel={(option) =>
-                  option.name || option.userName || option.email || option || ""
+                getOptionLabel={getPerformedByOptionLabel}
+                isOptionEqualToValue={(option, value) =>
+                  (option.id || option) === (value.id || value)
                 }
-                value={performedList.find((c) => (c.id || c) === filters.performed) || null}
-                onChange={(e, newValue) => {
-                  setFilters({ ...filters, performed: newValue ? newValue.id || newValue : "" });
+                value={performedList.filter((performedBy) =>
+                  filters.performed.includes(performedBy.id || performedBy)
+                )}
+                onChange={(event, newValues) => {
+                  setFilters({
+                    ...filters,
+                    performed: newValues.map((value) => value.id || value),
+                  });
+                }}
+                renderOption={(props, option, { selected, inputValue }) => {
+                  const { key, ...optionProps } = props;
+                  return (
+                    <li key={key} {...optionProps}>
+                      <Checkbox checked={selected} size="small" sx={{ mr: 1, p: 0.5 }} />
+                      <SearchTextHighlight
+                        text={getPerformedByOptionLabel(option)}
+                        query={inputValue}
+                      />
+                    </li>
+                  );
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "0.5rem",
                     padding: "1px 12px",
+                    height: "42px",
+                    minHeight: "42px",
+                    maxHeight: "42px",
+                    overflow: "hidden",
                     fontSize: "12px",
                     fontWeight: "bold",
                     backgroundColor: "transparent",
@@ -1040,14 +1232,14 @@ export default function AMSTicketsReportPage() {
                 }}
                 className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all w-full text-slate-800 dark:text-slate-200"
                 renderInput={(params) => (
-                  <TextField {...params} placeholder="Search user..." variant="outlined" />
+                  <TextField {...params} placeholder={pageText.search} variant="outlined" />
                 )}
               />
             </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
-                Compare Tickets (File)
+                {pageText.compareTickets}
               </label>
               <div className="relative">
                 <input

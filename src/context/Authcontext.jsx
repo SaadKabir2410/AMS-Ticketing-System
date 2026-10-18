@@ -4,7 +4,10 @@ import {
   clearSession,
   getValidAccessToken,
 } from "../services/tokenAuth";
-import apiClient from "../services/apiClient";
+import {
+  clearApplicationConfigCache,
+  loadApplicationConfig,
+} from "../services/applicationConfigCache";
 
 export const AuthContext = createContext();
 
@@ -75,6 +78,8 @@ export function AuthProvider({ children }) {
         if (!accessToken && active) {
           localStorage.removeItem(SESSION_KEY);
           setUser(null);
+        } else if (accessToken) {
+          loadApplicationConfig().catch(() => null);
         }
       } catch (sessionError) {
         // Do not log users out merely because the server/network is briefly
@@ -94,6 +99,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const handleExpiredSession = () => {
       clearSession();
+      clearApplicationConfigCache();
       localStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(LOGIN_TIME_KEY);
       setUser(null);
@@ -183,7 +189,7 @@ export function AuthProvider({ children }) {
       // Fetch application configuration for permissions and user details
       let permissionsMap = {};
       try {
-        const appConfig = await apiClient.get("/api/abp/application-configuration").then(r => r.data);
+        const appConfig = await loadApplicationConfig({ force: true });
 
         if (appConfig?.auth?.grantedPolicies) {
           permissionsMap = appConfig.auth.grantedPolicies;
@@ -236,6 +242,7 @@ export function AuthProvider({ children }) {
 
       // Clear manual password-token session (from tokenAuth.js)
       clearSession();
+      clearApplicationConfigCache();
 
       // Clear reactive state
       setUser(null);

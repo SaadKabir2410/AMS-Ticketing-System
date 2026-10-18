@@ -22,6 +22,13 @@ const buildPayload = (data, includeStamp = false) => ({
 
 const BASE = "/api/app/lookup-detail";
 
+const includeDeletedRecords = (params = {}) => {
+  const requestParams = { ...params };
+  delete requestParams.isDeleted;
+  delete requestParams.IsDeleted;
+  return { ...requestParams, IsDeleted: true };
+};
+
 export const codeDetailsApi = {
   getById: async (id) => {
     const response = await apiClient.get(`${BASE}/${id}/by-id`);
@@ -31,21 +38,26 @@ export const codeDetailsApi = {
   // Kept as-is for the single-lookupId use case (different from getByLookupCodes below)
   getAll: async (params) => {
     if (!params?.lookupCode && !params?.lookupId) return [];
-    try {
-      const codesArray = params.lookupCode ? [params.lookupCode] : [];
-      const urlParams = new URLSearchParams();
-      codesArray.forEach((code, i) => urlParams.append(`codes[${i}]`, code));
-      urlParams.append("api-version", "1.0");
 
-      const response = await apiClient.get(`${BASE}/by-lookup-codes?${urlParams.toString()}`);
-      const data = Array.isArray(response.data)
+    if (params.lookupId) {
+      const response = await apiClient.get("/get-list-by-lookup-code", {
+        params: includeDeletedRecords({ lookupId: params.lookupId }),
+      });
+      return Array.isArray(response.data)
         ? response.data
         : response.data?.items || [];
-      return data;
-    } catch (err) {
-      console.error("[CodeDetails] getAll failed:", err);
-      return [];
     }
+
+    const codesArray = params.lookupCode ? [params.lookupCode] : [];
+    const urlParams = new URLSearchParams();
+    codesArray.forEach((code, i) => urlParams.append(`codes[${i}]`, code));
+    urlParams.append("IsDeleted", "true");
+    urlParams.append("api-version", "1.0");
+
+    const response = await apiClient.get(`${BASE}/by-lookup-codes?${urlParams.toString()}`);
+    return Array.isArray(response.data)
+      ? response.data
+      : response.data?.items || [];
   },
 
   getByCode: async (lookupId) => {
@@ -55,12 +67,16 @@ export const codeDetailsApi = {
 
   // Legacy bare routes — kept in case other parts of the app still use them
   getListByLookupCode: async (params) => {
-    const response = await apiClient.get(`/get-list-by-lookup-code`, { params });
+    const response = await apiClient.get(`/get-list-by-lookup-code`, {
+      params: includeDeletedRecords(params),
+    });
     return response.data;
   },
 
   getListByLookupCodes: async (params) => {
-    const response = await apiClient.get(`/get-list-by-lookup-codes`, { params });
+    const response = await apiClient.get(`/get-list-by-lookup-codes`, {
+      params: includeDeletedRecords(params),
+    });
     return response.data;
   },
 
@@ -70,6 +86,7 @@ export const codeDetailsApi = {
   getByLookupCodes: async (codesArray = []) => {
     const params = new URLSearchParams();
     codesArray.forEach((code, i) => params.append(`codes[${i}]`, code));
+    params.append("IsDeleted", "true");
     params.append("api-version", "1.0");
 
     const response = await apiClient.get(`${BASE}/by-lookup-codes?${params.toString()}`);

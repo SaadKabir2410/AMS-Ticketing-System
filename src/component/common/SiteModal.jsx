@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, IconButton, Autocomplete, TextField } from "@mui/material";
-import { Check, AlertCircle } from "lucide-react";
+import { Check } from "lucide-react";
 
-import { sitesApi } from "../../services/api/sites";
 import { countriesApi } from "../../services/api/countries";
+import { getApiErrorMessage } from "../../utils/apiError";
 import PremiumErrorAlert from "./PremiumErrorAlert";
 
 
@@ -23,25 +23,20 @@ export default function SiteModal({
   site = null,
   loading = false,
   submitError = null,
+  onSubmitErrorClose,
 }) {
   const isEdit = !!site;
   const [form, setForm] = useState(EMPTY);
-  const [errors, setErrors] = useState({});
-  const [ocnChecking, setOcnChecking] = useState(false); // true while querying API
 
   const [countries, setCountries] = useState([]);
   const [loadingCountries, setLoadingCountries] = useState(false);
-
-  // Track the OCN that was on the record when the modal opened (for edit mode)
-  const originalOcnRef = useRef("");
+  const [countryLoadError, setCountryLoadError] = useState("");
 
   useEffect(() => {
     if (open) {
-      setErrors({});
-      setOcnChecking(false);
+      setCountryLoadError("");
       if (site) {
         const ocn = site.ocn || site.oCN || "";
-        originalOcnRef.current = ocn;
         setForm({
           name: site.name || "",
           oCN: ocn,
@@ -50,94 +45,10 @@ export default function SiteModal({
           status: site.status || "Active",
         });
       } else {
-        originalOcnRef.current = "";
         setForm(EMPTY);
       }
     }
   }, [open, site]);
-
-  // Show server-side submit errors inline on the relevant field
-  useEffect(() => {
-    if (!submitError) return;
-    const msg = submitError.toLowerCase();
-    if (
-      msg.includes("ocn") ||
-      msg.includes("duplicate") ||
-      msg.includes("already exist") ||
-      msg.includes("unique")
-    ) {
-      setErrors((e) => ({ ...e, oCN: `Server: ${submitError}` }));
-    } else {
-      // Generic error — show on name field as fallback
-      setErrors((e) => ({ ...e, name: `Server: ${submitError}` }));
-    }
-  }, [submitError]);
-
-  // AbortController ref so we can cancel a stale in-flight OCN check when the
-  // user blurs quickly, types again, and blurs a second time before the first
-  // request resolves (race condition fix).
-  const ocnAbortRef = useRef(null);
-
-  // Called once when user leaves the OCN field — uses DB.sites.checkOcnExists
-  // which goes through the shared `api` instance (with auth header + safe interceptor).
-  const checkOcnExists = async () => {
-    const ocn = form.oCN.trim();
-    if (!ocn || ocn === originalOcnRef.current) return;
-
-    // Cancel any previous in-flight check before starting a new one
-    if (ocnAbortRef.current) ocnAbortRef.current.abort();
-    const controller = new AbortController();
-    ocnAbortRef.current = controller;
-
-    setOcnChecking(true);
-    try {
-      const res = await sitesApi.checkOcnExists(ocn, controller.signal);
-
-      // If this request was aborted (superceded by a newer check), bail out
-      if (controller.signal.aborted) return;
-
-      const items =
-        res?.result?.items || res?.items || (Array.isArray(res) ? res : []);
-      console.log("[OCN] raw items count:", items.length);
-
-      // Scan every string property of every returned item for an exact match.
-      // Resilient to any backend field naming (ocn / oCN / OCN / etc.)
-      const ocnLower = ocn.toLowerCase();
-      const isDuplicate = items.some((item) =>
-        Object.values(item).some(
-          (val) => typeof val === "string" && val.toLowerCase() === ocnLower,
-        ),
-      );
-
-      console.log("[OCN] isDuplicate:", isDuplicate);
-
-      if (isDuplicate) {
-        setErrors((errs) => ({ ...errs, oCN: `OCN "${ocn}" already exists` }));
-      } else {
-        setErrors((errs) =>
-          errs.oCN?.includes("already exists") ? { ...errs, oCN: "" } : errs,
-        );
-      }
-    } catch (err) {
-      // CanceledError = request was aborted; ignore silently
-      if (
-        err?.name === "CanceledError" ||
-        err?.name === "AbortError" ||
-        controller.signal.aborted
-      )
-        return;
-      // Any other error (network, auth) — don't block the user
-      console.warn("[OCN] check failed — skipping:", err?.message);
-      setErrors((errs) =>
-        errs.oCN?.includes("already exists") ? { ...errs, oCN: "" } : errs,
-      );
-    } finally {
-      // Only clear the spinner if this controller is still the current one
-      if (!controller.signal.aborted) {
-        setOcnChecking(false);
-      }
-    }
-  };
 
   useEffect(() => {
     if (!open || countries.length > 0) return;
@@ -153,7 +64,7 @@ export default function SiteModal({
       } catch (error) {
         if (error?.name === "CanceledError" || error?.name === "AbortError")
           return;
-        console.error("Failed to load countries", error);
+        setCountryLoadError(getApiErrorMessage(error));
       } finally {
         setLoadingCountries(false);
       }
@@ -165,38 +76,10 @@ export default function SiteModal({
 
   const handleChange = (field) => (e) => {
     setForm((f) => ({ ...f, [field]: e.target.value }));
-    if (errors[field]) {
-      setErrors((errs) => ({ ...errs, [field]: "" }));
-    }
-  };
-
-  const validate = () => {
-    const errs = {};
-    if (!form.name) errs.name = "Name is required";
-    else if (form.name.length > 200) errs.name = "Name cannot exceed 200";
-
-    if (!form.oCN) errs.oCN = "OCN is required";
-    else if (form.oCN.length > 50) errs.oCN = "OCN cannot exceed 50";
-
-    if (!form.countryId) errs.countryId = "Country is required";
-
-    if (form.address && form.address.length > 500)
-      errs.address = "Address cannot exceed 500";
-
-    return errs;
   };
 
   const handleSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
-    // Guard: if the onBlur check is still in-flight (user tabbed straight to submit)
-    if (ocnChecking) return;
-    const errs = validate();
-    if (Object.keys(errs).length) {
-      setErrors(errs);
-      return;
-    }
-    // Block if a duplicate OCN was found
-    if (errors.oCN && errors.oCN.includes("already exists")) return;
 
     // Merge form values into existing site object to preserve metadata like concurrencyStamps
     const payload = isEdit ? { ...site, ...form } : { ...form };
@@ -232,15 +115,13 @@ export default function SiteModal({
 
   const InputLabel = ({ label, required }) => (
     <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">
-      {label} {required && <span className="text-red-500">*</span>}
+      {label} {required && <span className="required-asterisk">*</span>}
     </label>
   );
 
-  const inputClasses = (error, isValid) =>
+  const inputClasses = (isValid) =>
     `w-full px-4 py-2.5 rounded-xl border outline-none transition-all text-sm ` +
-    (error
-      ? `bg-red-50/50 border-red-400 text-red-900 placeholder:text-red-300 dark:bg-red-500/10 dark:border-red-500/50 dark:text-red-200`
-      : isValid
+    (isValid
         ? `bg-green-50/50 border-green-500 focus:border-green-600 text-green-900 dark:bg-green-500/10 dark:border-green-500/50 dark:text-green-200`
         : `bg-slate-50 border-slate-200 hover:border-slate-300 focus:bg-white focus:border-blue-500 text-slate-700 placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:focus:border-blue-500`);
 
@@ -269,11 +150,14 @@ export default function SiteModal({
       </div>
 
       <div className="px-6 py-2 space-y-5">
-        {submitError && (
+        {(submitError || countryLoadError) && (
           <PremiumErrorAlert
-            open={!!submitError}
-            message={submitError}
-            onClose={() => { }} // Usually submitError is handled by parent, but we can't easily clear it here without a prop
+            open={!!(submitError || countryLoadError)}
+            message={submitError || countryLoadError}
+            onClose={() => {
+              if (submitError) onSubmitErrorClose?.();
+              else setCountryLoadError("");
+            }}
           />
         )}
 
@@ -282,24 +166,17 @@ export default function SiteModal({
           <div className="relative">
             <input
               type="text"
-              maxLength={200}
               value={form.name}
               onChange={handleChange("name")}
-              className={inputClasses(
-                errors.name,
-                form.name.length > 0 && !errors.name,
-              )}
+              className={inputClasses(form.name.length > 0)}
             />
-            {form.name.length > 0 && !errors.name && (
+            {form.name.length > 0 && (
               <Check
                 size={16}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500"
               />
             )}
           </div>
-          {typeof errors.name === "string" && (
-            <p className="text-red-500 text-xs mt-1.5">{errors.name}</p>
-          )}
         </div>
 
         <div>
@@ -307,45 +184,17 @@ export default function SiteModal({
           <div className="relative">
             <input
               type="text"
-              maxLength={50}
               value={form.oCN}
               onChange={handleChange("oCN")}
-              onBlur={checkOcnExists}
-              className={inputClasses(
-                errors.oCN,
-                form.oCN.length > 0 && !errors.oCN && !ocnChecking,
-              )}
+              className={inputClasses(form.oCN.length > 0)}
             />
-            {/* Spinner while checking */}
-            {ocnChecking && "..."}
-            {/* Green tick when valid and not checking */}
-            {form.oCN.length > 0 && !errors.oCN && !ocnChecking && (
+            {form.oCN.length > 0 && (
               <Check
                 size={16}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500"
               />
             )}
-            {/* Red icon when duplicate found */}
-            {errors.oCN && errors.oCN.includes("already exists") && (
-              <AlertCircle
-                size={15}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-red-500"
-              />
-            )}
           </div>
-          {typeof errors.oCN === "string" && errors.oCN && (
-            <p
-              className={`text-xs mt-1.5 flex items-center gap-1 ${errors.oCN.includes("already exists")
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-red-500"
-                }`}
-            >
-              {errors.oCN.includes("already exists") && (
-                <AlertCircle size={11} />
-              )}
-              {errors.oCN}
-            </p>
-          )}
         </div>
 
         <div>
@@ -360,8 +209,6 @@ export default function SiteModal({
                 ...f,
                 countryId: newValue ? newValue.id : "",
               }));
-              if (errors.countryId)
-                setErrors((errs) => ({ ...errs, countryId: "" }));
             }}
             loading={loadingCountries}
             sx={{
@@ -371,15 +218,11 @@ export default function SiteModal({
                 backgroundColor: "transparent",
                 "& fieldset": {
                   border: "1px solid",
-                  borderColor: errors.countryId
-                    ? "rgb(248 113 113)"
-                    : "inherit",
+                  borderColor: "inherit",
                 },
               },
             }}
-            className={`w-full transition-all text-sm rounded-xl ${errors.countryId
-                ? "bg-red-50/50 text-red-900 placeholder:text-red-300 dark:bg-red-500/10 dark:text-red-200"
-                : form.countryId
+            className={`w-full transition-all text-sm rounded-xl ${form.countryId
                   ? "bg-green-50/50 text-green-900 border-green-500 dark:bg-green-500/10 dark:text-green-200"
                   : "bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
               }`}
@@ -400,9 +243,6 @@ export default function SiteModal({
               />
             )}
           />
-          {typeof errors.countryId === "string" && (
-            <p className="text-red-500 text-xs mt-1.5">{errors.countryId}</p>
-          )}
         </div>
 
         <div>
@@ -410,21 +250,17 @@ export default function SiteModal({
           <div className="relative">
             <textarea
               rows={3}
-              maxLength={500}
               value={form.address}
               onChange={handleChange("address")}
-              className={`${inputClasses(errors.address, form.address.length > 0 && !errors.address)} resize-y`}
+              className={`${inputClasses(form.address.length > 0)} resize-y`}
             />
-            {form.address.length > 0 && !errors.address && (
+            {form.address.length > 0 && (
               <Check
                 size={16}
                 className="absolute right-3 top-3 text-green-500"
               />
             )}
           </div>
-          {typeof errors.address === "string" && (
-            <p className="text-red-500 text-xs mt-1.5">{errors.address}</p>
-          )}
         </div>
       </div>
 
@@ -439,10 +275,10 @@ export default function SiteModal({
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={loading || ocnChecking}
+          disabled={loading}
           className="app-primary-button px-8 py-2.5 text-sm flex items-center justify-center min-w-[120px]"
         >
-          {loading || ocnChecking ? "Wait..." : isEdit ? (
+          {loading ? "Wait..." : isEdit ? (
             "Update"
           ) : (
             "Create"
@@ -452,6 +288,3 @@ export default function SiteModal({
     </Dialog>
   );
 }
-
-
-

@@ -1,38 +1,91 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
 import { workingHoursApi } from "../services/api/workingHours";
 import { useToast } from "../component/common/ToastContext";
 import { ActionsMenu } from "../component/common/ResourcePage";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Plus,
+} from "lucide-react";
 import UserWorkingHourModal from "../component/common/UserWorkingHourModal";
 import { useAuth } from "../context/AuthContextHook";
 import { usePermission } from "../hooks/usePermission";
+import {
+  getCachedApplicationConfig,
+  loadApplicationConfig,
+} from "../services/applicationConfigCache";
+import { getApiErrorMessage } from "../utils/apiError";
 
-const WEEK_DAYS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
+const getLocalizationValue = (applicationConfig, key) => {
+  const resources = applicationConfig?.localization?.values;
+  if (!resources || typeof resources !== "object") return key;
+
+  for (const resource of Object.values(resources)) {
+    const value = resource?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  return key;
+};
 
 export default function UserWorkingHoursPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const isAdmin = useMemo(() => user?.role?.toLowerCase().includes("admin"), [user]);
 
   const canEdit = usePermission("Billing.UserWorkingHours.Edit");
   const canViewAuditLog = usePermission("Billing.UserWorkingHours.ViewAuditLog");
   const canCreate = usePermission("Billing.UserWorkingHours.Create");
+  const canManageWorkingHours = canCreate || canEdit;
+  const hasRowActions = canEdit || canViewAuditLog;
+  const [applicationConfig, setApplicationConfig] = useState(
+    getCachedApplicationConfig,
+  );
+  const localize = useCallback(
+    (key) => getLocalizationValue(applicationConfig, key),
+    [applicationConfig],
+  );
+  const weekDays = useMemo(() => {
+    const cultureName =
+      applicationConfig?.localization?.currentCulture?.cultureName;
+    const monday = new Date(Date.UTC(2024, 0, 1));
+    return Array.from({ length: 7 }, (_, index) =>
+      new Intl.DateTimeFormat(cultureName || undefined, {
+        weekday: "long",
+        timeZone: "UTC",
+      }).format(new Date(monday.getTime() + index * 86400000)),
+    );
+  }, [applicationConfig]);
+
+  useEffect(() => {
+    let isCurrent = true;
+    loadApplicationConfig()
+      .then((config) => {
+        if (isCurrent) setApplicationConfig(config);
+      })
+      .catch(() => null);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const [sorting, setSorting] = useState({
+    field: "WeekDay",
+    direction: "asc",
+  });
 
   // Modals
   const [modalOpen, setModalOpen] = useState(false);
@@ -41,36 +94,68 @@ export default function UserWorkingHoursPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const resp = await workingHoursApi.getAll({
+      const resp = await workingHoursApi.getPagedList({
         page,
         perPage: pageSize,
-        UserId: isAdmin ? undefined : (user?.id || undefined),
+        userId: canManageWorkingHours ? undefined : (user?.id || undefined),
+        sortField: sorting.field,
+        sortDirection: sorting.direction,
       });
       setData(resp.items || []);
       setTotalCount(resp.totalCount || 0);
     } catch (err) {
-      toast("Failed to load working hours", "error");
+      toast(
+        getApiErrorMessage(err) || localize("DefaultErrorMessage"),
+        "error",
+      );
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, toast, isAdmin, user?.id]);
+  }, [page, pageSize, sorting, toast, canManageWorkingHours, user?.id, localize]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const handleNew = () => {
+    if (!canCreate) return;
+
     setEditItem(null);
     setModalOpen(true);
   };
 
   const handleEdit = (item) => {
+    if (!canEdit) return;
+
     setEditItem(item);
     setModalOpen(true);
   };
 
+  const handleSort = (field) => {
+    setSorting((current) => ({
+      field,
+      direction:
+        current.field === field && current.direction === "asc" ? "desc" : "asc",
+    }));
+    setPage(1);
+  };
+
+  const sortIcon = (field) => {
+    if (sorting.field !== field) return <ArrowUpDown size={13} />;
+    return sorting.direction === "asc" ? (
+      <ArrowUp size={13} />
+    ) : (
+      <ArrowDown size={13} />
+    );
+  };
+
   // Fix: breadcrumb path → Home / Management / Lookups / User Working Hours
-  const breadcrumb = ["Home", "Management", "Lookups", "User Working Hours"];
+  const breadcrumb = [
+    { key: "Home", isHome: true },
+    { key: "Menu:Administration" },
+    { key: "Lookups" },
+    { key: "UserWorkingHours" },
+  ];
 
   return (
     <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]">
@@ -94,19 +179,19 @@ export default function UserWorkingHoursPage() {
         {/* Header */}
         <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
           <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
-            {breadcrumb.map((b, i) => (
-              <span key={i} className="flex items-center gap-1.5">
+            {breadcrumb.map((item, i) => (
+              <span key={item.key} className="flex items-center gap-1.5">
                 <span
-                  onClick={() => b === "Home" && navigate("/")}
+                  onClick={() => item.isHome && navigate("/")}
                   className={
                     i === breadcrumb.length - 1
                       ? "text-pink-500"
-                      : b === "Home"
+                      : item.isHome
                         ? "hover:text-pink-500 cursor-pointer transition-colors"
                         : ""
                   }
                 >
-                  {b}
+                  {localize(item.key)}
                 </span>
                 {i < breadcrumb.length - 1 && <span className="text-slate-300 dark:text-slate-700">/</span>}
               </span>
@@ -114,7 +199,7 @@ export default function UserWorkingHoursPage() {
           </nav>
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              User Working Hours
+              {localize("UserWorkingHours")}
             </h1>
             <div className="flex items-center gap-4">
               {canCreate && <button
@@ -122,7 +207,7 @@ export default function UserWorkingHoursPage() {
                 className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs"
               >
                 <Plus size={16} className="mr-2" strokeWidth={3} />
-                New Working Hour
+                {localize("NewUserWorkingHour")}
               </button>}
             </div>
           </div>
@@ -132,22 +217,49 @@ export default function UserWorkingHoursPage() {
         <div className="flex flex-col w-full h-auto relative text-slate-900 dark:text-white">
           {loading ? (
             <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-10">
-              Refreshing data...
+              {localize("LoadingWithThreeDot")}
             </div>
           ) : data.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] py-10">
-              No working hours found
+              {localize("NoDataAvailableInDatatable")}
             </div>
           ) : (
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar text-slate-900 dark:text-white">
               <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px]">
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">
-                    <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-left">User Name</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-center">Week Day</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-center">Start Time</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-center">End Time</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-center">Actions</th>
+                    {[
+                      { field: "UserName", label: localize("UserName"), className: "pl-8 text-left" },
+                      { field: "WeekDay", label: localize("WeekDay"), className: "text-center" },
+                      { field: "StartTime", label: localize("StartTime"), className: "text-center" },
+                      { field: "EndTime", label: localize("EndTime"), className: "text-center" },
+                    ].map((column) => (
+                      <th
+                        key={column.field}
+                        aria-sort={
+                          sorting.field === column.field
+                            ? sorting.direction === "asc"
+                              ? "ascending"
+                              : "descending"
+                            : "none"
+                        }
+                        className={`px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 ${column.className}`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleSort(column.field)}
+                          className={`inline-flex w-full items-center gap-1.5 hover:text-pink-500 transition-colors ${column.field === "UserName" ? "justify-start" : "justify-center"}`}
+                        >
+                          <span>{column.label}</span>
+                          {sortIcon(column.field)}
+                        </button>
+                      </th>
+                    ))}
+                    {hasRowActions && (
+                      <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 text-center">
+                        {localize("Actions")}
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -168,7 +280,9 @@ export default function UserWorkingHoursPage() {
                             {(() => {
                               const val = row.weekDay;
                               if (val === null || val === undefined) return "—";
-                              if (typeof val === "number") return WEEK_DAYS[val] || val;
+                              if (typeof val === "number") {
+                                return weekDays[val - 1] || val;
+                              }
                               return val;
                             })()}
                           </span>
@@ -181,7 +295,7 @@ export default function UserWorkingHoursPage() {
                             {row.startTime || "—"}
                           </div>
                         </td>
-                        <td className="px-5 h-[60px] text-center transition-colors text-slate-900 dark:text-white">
+                        <td className={`px-5 h-[60px] text-center transition-colors text-slate-900 dark:text-white ${hasRowActions ? "" : "rounded-r-2xl"}`}>
                           <div className="flex items-center gap-2 font-mono font-bold text-[12px] justify-center text-slate-700 dark:text-slate-300">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
@@ -189,15 +303,20 @@ export default function UserWorkingHoursPage() {
                             {row.endTime || "—"}
                           </div>
                         </td>
-                        <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">
-                          <ActionsMenu
-                            onEdit={canEdit ? () => handleEdit(row) : undefined}
-                            onAuditLog={canViewAuditLog ? () =>
-                              navigate(`/audit-logs?primaryKey=${row.id}&entityName=UserWorkingHour`)
-                              : undefined
-                            }
-                          />
-                        </td>
+                        {hasRowActions && (
+                          <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">
+                            <ActionsMenu
+                              onEdit={canEdit ? () => handleEdit(row) : undefined}
+                              onAuditLog={canViewAuditLog ? () =>
+                                navigate(`/audit-logs?primaryKey=${row.id}&entityName=UserWorkingHour`)
+                                : undefined
+                              }
+                              actionButtonText={localize("Actions")}
+                              editButtonText={localize("Edit")}
+                              auditLogButtonText={localize("AuditLogs")}
+                            />
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
@@ -212,7 +331,7 @@ export default function UserWorkingHoursPage() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2.5">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-              <select
+              <AppSelect
                 value={pageSize}
                 onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
                 className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
@@ -220,7 +339,7 @@ export default function UserWorkingHoursPage() {
                 {[10, 25, 50, 100].map((s) => (
                   <option key={s} value={s} className="font-sans">{s}</option>
                 ))}
-              </select>
+              </AppSelect>
             </div>
 
             <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
@@ -294,10 +413,14 @@ export default function UserWorkingHoursPage() {
       </div>
 
       <UserWorkingHourModal
-        open={modalOpen}
+        open={modalOpen && (editItem ? canEdit : canCreate)}
         onClose={() => { setModalOpen(false); setEditItem(null); }}
         onSave={() => { fetchData(); }}
         item={editItem}
+        canCreate={canCreate}
+        canEdit={canEdit}
+        localize={localize}
+        localizedWeekDays={weekDays}
       />
     </div>
   );

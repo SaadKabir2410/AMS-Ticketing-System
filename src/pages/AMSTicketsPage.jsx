@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -600,23 +601,6 @@ export default function AMSTicketsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Advanced Filter Toggle */}
-              <button
-                onClick={() => setShowFilters(v => !v)}
-                className={`relative inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-all ${showFilters || activeFilterCount > 0
-                  ? "bg-pink-50 border-pink-300 text-pink-600 dark:bg-pink-500/10 dark:border-pink-500/40 dark:text-pink-400"
-                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-pink-500 hover:border-pink-300"
-                  }`}
-              >
-                <Filter size={13} />
-                Advanced Filter
-                {activeFilterCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-pink-500 text-white text-[9px] font-black flex items-center justify-center">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
-
               {canCreate && (
                 <button
                   onClick={() => { setActionItem(null); setActionType("create"); }}
@@ -627,6 +611,42 @@ export default function AMSTicketsPage() {
                 </button>
               )}
             </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-3 mt-2 border-t border-slate-100 dark:border-slate-800/50">
+            <div className="relative w-full sm:max-w-md">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={14} className={search ? "text-pink-500" : "text-slate-400"} />
+              </div>
+              <input
+                type="text"
+                placeholder="Search tickets..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-xs outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
+              />
+              {search && (
+                <button onClick={() => setSearch("")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-pink-500">
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setShowFilters(v => !v)}
+              aria-expanded={showFilters}
+              className={`relative inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${showFilters || activeFilterCount > 0
+                ? "bg-pink-50 border-pink-300 text-pink-600 dark:bg-pink-500/10 dark:border-pink-500/40 dark:text-pink-400"
+                : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:text-pink-500 hover:border-pink-300"
+                }`}
+            >
+              <Filter size={14} />
+              Advanced Search
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-pink-500 text-white text-[9px] font-black flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
           </div>
 
           {/* ── Advanced Filter Panel ── */}
@@ -640,30 +660,8 @@ export default function AMSTicketsPage() {
                 className="overflow-hidden"
               >
                 <div className="flex flex-wrap items-center gap-3 py-3 border-t border-slate-100 dark:border-slate-800/50">
-                  {/* Search */}
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Search size={13} className="text-slate-400" />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Search tickets..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="pl-8 pr-7 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400 min-w-[200px]"
-                    />
-                    {search && (
-                      <button
-                        onClick={() => setSearch("")}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500"
-                      >
-                        <X size={11} />
-                      </button>
-                    )}
-                  </div>
-
                   {/* Status */}
-                  <select
+                  <AppSelect
                     value={filterStatus}
                     onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}
                     className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
@@ -672,10 +670,10 @@ export default function AMSTicketsPage() {
                     <option value="1">Open</option>
                     <option value="2">Closed</option>
                     <option value="3">Void</option>
-                  </select>
+                  </AppSelect>
 
                   {/* PRE */}
-                  <select
+                  <AppSelect
                     value={filterIsPRE}
                     onChange={e => { setFilterIsPRE(e.target.value); setCurrentPage(1); }}
                     className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
@@ -683,10 +681,10 @@ export default function AMSTicketsPage() {
                     <option value="">PRE Status</option>
                     <option value="true">PRE</option>
                     <option value="false">Non-PRE</option>
-                  </select>
+                  </AppSelect>
 
                   {/* Verified */}
-                  <select
+                  <AppSelect
                     value={filterIsVerified}
                     onChange={e => { setFilterIsVerified(e.target.value); setCurrentPage(1); }}
                     className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
@@ -694,17 +692,17 @@ export default function AMSTicketsPage() {
                     <option value="">Verification Status</option>
                     <option value="true">Verified</option>
                     <option value="false">Non-Verified</option>
-                  </select>
+                  </AppSelect>
 
                   {/* Ticket Delayed */}
-                  <select
+                  <AppSelect
                     value={filterTicketDelayed}
                     onChange={e => { setFilterTicketDelayed(e.target.value); setCurrentPage(1); }}
                     className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
                   >
                     <option value="">Delayed Status</option>
                     <option value="late_closures">Late Closures</option>
-                  </select>
+                  </AppSelect>
 
                   {/* Created By */}
                   <div className="relative">
@@ -726,9 +724,9 @@ export default function AMSTicketsPage() {
                   </div>
 
                   {/* Clear Filters */}
-                  {(activeFilterCount > 0 || search) && (
+                  {activeFilterCount > 0 && (
                     <button
-                      onClick={() => { setFilterStatus(""); setFilterIsPRE(""); setFilterIsVerified(""); setFilterCreatedBy(""); setFilterTicketDelayed(""); setSearch(""); setCurrentPage(1); }}
+                      onClick={() => { setFilterStatus(""); setFilterIsPRE(""); setFilterIsVerified(""); setFilterCreatedBy(""); setFilterTicketDelayed(""); setCurrentPage(1); }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-rose-200 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
                     >
                       <X size={11} />
@@ -981,7 +979,7 @@ export default function AMSTicketsPage() {
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">
                 Show
               </span>
-              <select
+              <AppSelect
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
                 className="bg-slate-50 dark:bg-slate-700 border-none rounded-lg text-[10px] font-black px-2 py-1 outline-none"
@@ -991,7 +989,7 @@ export default function AMSTicketsPage() {
                     {v}
                   </option>
                 ))}
-              </select>
+              </AppSelect>
             </div>
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
               <span className="text-slate-900 dark:text-white tabular-nums">

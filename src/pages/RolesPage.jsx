@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import AppSelect from "../component/common/AppSelect";
 import { useTheme } from "../context/ThemeContext";
 import { rolesApi } from "../services/api/roles";
 import { useToast } from "../component/common/ToastContext";
@@ -16,6 +17,11 @@ import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import { ActionsMenu } from "../component/common/ResourcePage";
+import { useAuth } from "../context/AuthContextHook";
+import {
+  getCachedApplicationConfig,
+  loadApplicationConfig,
+} from "../services/applicationConfigCache";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -32,10 +38,24 @@ const rowVariants = {
 
 const ROW_HEIGHT = "h-[60px]";
 
-const getPermissionDisplayName = (permission) =>
-  permission.name === "Billing.AMSTickets"
-    ? "Viewing AMS Tickets"
-    : permission.displayName || permission.name;
+const getPermissionDisplayName = (permission) => permission.displayName;
+
+const getLocalizationValue = (applicationConfig, key) => {
+  const resources = applicationConfig?.localization?.values;
+  if (!resources || typeof resources !== "object") return key;
+
+  const identityValue = resources.AbpIdentity?.[key];
+  if (typeof identityValue === "string" && identityValue.trim()) {
+    return identityValue.trim();
+  }
+
+  for (const resource of Object.values(resources)) {
+    const value = resource?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  return key;
+};
 
 const PermissionTree = ({
   permissions,
@@ -91,8 +111,29 @@ const PermissionTree = ({
 export default function RolesPage() {
   const { toast } = useToast();
   const { refetchPermissions } = usePermissionContext();
+  const { user } = useAuth();
   const { dark } = useTheme();
   const isDark = dark === "dark";
+  const isAdmin = String(user?.role || "")
+    .split(",")
+    .some((role) => role.trim().toLowerCase() === "admin");
+  const [applicationConfig, setApplicationConfig] = useState(
+    getCachedApplicationConfig,
+  );
+  const localize = (key) => getLocalizationValue(applicationConfig, key);
+
+  useEffect(() => {
+    let isCurrent = true;
+    loadApplicationConfig()
+      .then((config) => {
+        if (isCurrent) setApplicationConfig(config);
+      })
+      .catch(() => null);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   // Data State
   const [roles, setRoles] = useState([]);
@@ -309,6 +350,8 @@ export default function RolesPage() {
   };
 
   const handlePermissions = (role) => {
+    if (!isAdmin) return;
+
     setPermissionRole(role);
     setLoadingPermissions(true);
     rolesApi
@@ -328,7 +371,7 @@ export default function RolesPage() {
         setLoadingPermissions(false);
       })
       .catch((err) => {
-        toast(`Failed to load permissions: ${err.message}`, "error");
+        toast(err.message || localize("DefaultErrorMessage"), "error");
         setLoadingPermissions(false);
       });
   };
@@ -353,6 +396,8 @@ export default function RolesPage() {
   };
 
   const handleSavePermissions = async () => {
+    if (!isAdmin) return;
+
     setLoadingPermissions(true);
     const payload = {
       permissions: Object.entries(checkedPerms).map(([name, isGranted]) => ({
@@ -368,10 +413,10 @@ export default function RolesPage() {
       // role change so the current user's buttons react without another login.
       await refetchPermissions();
 
-      toast(`Permissions for ${permissionRole.name} updated successfully`);
+      toast(localize("SavedSuccessfully"));
       handleClosePermissions();
     } catch (err) {
-      toast(`Failed to save permissions: ${err.message}`, "error");
+      toast(err.message || localize("DefaultErrorMessage"), "error");
       setLoadingPermissions(false);
     }
   };
@@ -576,9 +621,13 @@ export default function RolesPage() {
                         </td>
                         <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-500 dark:text-slate-400 text-right pr-8 rounded-r-2xl`}>
                           <ActionsMenu
-                            onPermissions={() => handlePermissions(row)}
+                            onPermissions={isAdmin ? () => handlePermissions(row) : null}
                             onEdit={() => handleEditOpen(row)}
                             onDelete={row.name?.toLowerCase() !== "admin" ? () => handleDelete(row) : null}
+                            actionButtonText={localize("Actions")}
+                            editButtonText={localize("Edit")}
+                            permissionButtonText={localize("Permissions")}
+                            deleteButtonText={localize("Delete")}
                             className="text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider bg-transparent border-pink-500/20 hover:border-pink-500 shadow-sm"
                           />
                         </td>
@@ -603,7 +652,7 @@ export default function RolesPage() {
                 {/* Rows per page dropdown */}
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Show:</span>
-                  <select
+                  <AppSelect
                     value={pageSize}
                     onChange={(e) => {
                       setPageSize(Number(e.target.value));
@@ -614,7 +663,7 @@ export default function RolesPage() {
                     {[5, 10, 15, 20, 50].map((size) => (
                       <option key={size} value={size}>{size}</option>
                     ))}
-                  </select>
+                  </AppSelect>
                 </div>
 
                 <div className="flex items-center gap-1 bg-slate-100/60 dark:bg-slate-800/40 p-1 border border-slate-200/60 dark:border-slate-700/50 rounded-xl shadow-sm">
@@ -697,7 +746,7 @@ export default function RolesPage() {
       >
         <DialogTitle className="flex items-center justify-between px-6 pt-5 pb-2">
           <span className="text-lg font-bold text-slate-800 dark:text-slate-200">
-            Permissions - {permissionRole?.name}
+            {localize("Permissions")} - {permissionRole?.name}
           </span>
           <button
             type="button"
@@ -714,11 +763,7 @@ export default function RolesPage() {
             </div>
           ) : (
             <div className={`text-sm space-y-3 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              <div className={`flex justify-between items-center mb-4 pb-2 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
-                <p>
-                  Control what <strong className={isDark ? 'text-slate-200' : 'text-slate-800'}>{permissionRole?.name}</strong> can do.
-                </p>
-
+              <div className={`flex justify-end items-center mb-4 pb-2 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
                 {/* Grant All Checkbox */}
                 {permissionsData?.groups && (
                   <div className="flex items-center gap-2 px-3 py-2">
@@ -739,7 +784,7 @@ export default function RolesPage() {
                       htmlFor="grant-all-permissions"
                       className={`text-sm cursor-pointer font-medium ${isDark ? 'text-slate-200' : 'text-slate-700'}`}
                     >
-                      Grant all
+                      {localize("SelectAllInAllTabs")}
                     </label>
                   </div>
                 )}
@@ -769,7 +814,7 @@ export default function RolesPage() {
                           <ChevronDown size={18} className={`group-hover:text-[#ec4899] ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                         </div>
                         <h4 className={`text-[14px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                          {group.displayName || group.name}
+                          {group.displayName}
                         </h4>
                       </div>
 
@@ -785,7 +830,7 @@ export default function RolesPage() {
                           htmlFor={`select-all-${group.name}`}
                           className={`text-[10px] uppercase font-black tracking-widest cursor-pointer hover:text-[#ec4899] transition-colors ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
                         >
-                          Select all
+                          {localize("SelectAllInThisTab")}
                         </label>
                       </div>
                     </div>
@@ -814,7 +859,7 @@ export default function RolesPage() {
                     ? 'bg-slate-800/50 border-slate-700 text-slate-400'
                     : 'bg-slate-50 border-slate-200 text-slate-500'
                 }`}>
-                  No specific permissions defined.
+                  {localize("NoDataAvailableInDatatable")}
                 </div>
               )}
             </div>
@@ -825,14 +870,16 @@ export default function RolesPage() {
             onClick={() => handleClosePermissions()}
             className={`flex-1 border h-[38px] text-[11px] font-bold rounded-xl transition-all duration-200 ${isDark ? 'border-slate-700 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
           >
-            Cancel
+            {localize("Cancel")}
           </button>
           <button
             onClick={handleSavePermissions}
             disabled={loadingPermissions}
             className="app-primary-button flex-1 h-[38px] text-[11px]"
           >
-            {loadingPermissions ? "Wait..." : "Save Changes"}
+            {loadingPermissions
+              ? localize("SavingWithThreeDot")
+              : localize("Save")}
           </button>
         </DialogActions>
       </Dialog>

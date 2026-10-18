@@ -11,7 +11,9 @@ export const codesApi = {
 
   // Fetch single record by ID before editing
   getById: async (id) => {
-    const response = await apiClient.get(`/api/app/lookup/${id}/by-id`);
+    const response = await apiClient.get(`/api/app/lookup/${id}/by-id`, {
+      params: { loadIsDeleted: true },
+    });
     return response.data;
   },
 

@@ -7,6 +7,7 @@ import dashboardApi from "../services/api/dashboardApi";
 import usersApi from "../services/api/users";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContextHook";
+import SearchTextHighlight from "../component/common/SearchTextHighlight";
 
 // ─── Utility functions ────────────────────────────────────────────────────────
 const parseDurationToMinutes = (value) => {
@@ -569,7 +570,9 @@ export default function Dashboard() {
                           }}
                           className="h-4 w-4 rounded border-slate-300 accent-pink-500"
                         />
-                        <span>All Users</span>
+                        <span>
+                          <SearchTextHighlight text="All Users" query={userSearch} />
+                        </span>
                       </label>
                     )}
                     {filteredUsers.length > 0 ? (
@@ -592,7 +595,12 @@ export default function Dashboard() {
                               onChange={() => toggleUser(availableUser.id)}
                               className="h-4 w-4 rounded border-slate-300 accent-pink-500"
                             />
-                            <span>{getUserLabel(availableUser)}</span>
+                            <span>
+                              <SearchTextHighlight
+                                text={getUserLabel(availableUser)}
+                                query={userSearch}
+                              />
+                            </span>
                           </label>
                         );
                       })

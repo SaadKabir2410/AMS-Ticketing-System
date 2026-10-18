@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import AppSelect from "../component/common/AppSelect";
 import {
   DndContext,
   closestCenter,
@@ -15,8 +16,8 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Edit2, Power, PowerOff, Loader2, Plus, Code2, Search, MoreVertical, X, ChevronLeft, ChevronsLeft, ChevronsRight, ChevronRight } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { GripVertical, Loader2, Plus, Search, X, ChevronLeft, ChevronsLeft, ChevronsRight, ChevronRight, Filter, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ActionsMenu } from "../component/common/ResourcePage";
 
@@ -27,11 +28,13 @@ import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
 import { usePermission } from "../hooks/usePermission";
 import { useToast } from "../component/common/ToastContext";
 import { useResource } from "../component/hooks/useResource";
+import { getApiErrorMessage } from "../utils/apiError";
 
 // ── Highlight helper ────────────────────────────────────────────────
 const highlightText = (text, query) => {
   if (!query || !text) return text;
-  const parts = String(text).split(new RegExp(`(${query})`, 'gi'));
+  const escapedQuery = String(query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = String(text).split(new RegExp(`(${escapedQuery})`, "gi"));
   return parts.map((part, i) => 
     part.toLowerCase() === query.toLowerCase() ? (
       <mark key={i} className="bg-pink-100 dark:bg-pink-500/30 text-pink-700 dark:text-pink-100 rounded-[2px] px-[2px]">
@@ -58,8 +61,31 @@ function SkeletonRow() {
 }
 
 // ── Sortable row ──────────────────────────────────────────────────
-function SortableRow({ row, index, onEdit, onDisable, onEnable, onAuditLog, searchTerm }) {
-  const navigate = useNavigate();
+function SortableHeader({ label, column, sortConfig, onSort, align = "left" }) {
+  const active = sortConfig.key === column;
+  const Icon = active
+    ? sortConfig.direction === "asc"
+      ? ArrowUp
+      : ArrowDown
+    : ArrowUpDown;
+
+  return (
+    <th className={`px-5 h-[56px] text-[10px] font-black uppercase tracking-widest ${align === "center" ? "text-center" : "text-left"}`}>
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        className={`inline-flex w-full items-center gap-1.5 transition-colors hover:text-pink-600 dark:hover:text-pink-400 ${align === "center" ? "justify-center" : "justify-start"} ${active ? "text-pink-600 dark:text-pink-400" : "text-slate-500 dark:text-slate-400"}`}
+        aria-label={`Sort by ${label}`}
+      >
+        <span>{label}</span>
+        <Icon size={12} strokeWidth={2.5} />
+      </button>
+    </th>
+  );
+}
+
+// ── Sortable row ──────────────────────────────────────────────────
+function SortableRow({ row, index, onEdit, onDisable, onEnable, onAuditLog, searchTerm, advancedFilters, dragDisabled }) {
   const {
     attributes,
     listeners,
@@ -67,7 +93,7 @@ function SortableRow({ row, index, onEdit, onDisable, onEnable, onAuditLog, sear
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: row.id });
+  } = useSortable({ id: row.id, disabled: dragDisabled });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -76,37 +102,44 @@ function SortableRow({ row, index, onEdit, onDisable, onEnable, onAuditLog, sear
   };
 
   const isEven = index % 2 === 0;
+  const isRowActive = row.isActive && !row.isDeleted;
 
   return (
     <tr
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"} ${isDragging ? "shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/40 z-50 relative pointer-events-none" : "cursor-grab active:cursor-grabbing"}`}
+      {...(!dragDisabled ? attributes : {})}
+      {...(!dragDisabled ? listeners : {})}
+      className={`group cursor-default transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"} ${isDragging ? "shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/40 z-50 relative pointer-events-none" : ""}`}
     >
       <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
-        {highlightText(row.lookupCode, searchTerm)}
+        <div className="flex items-center gap-2">
+          <GripVertical
+            size={14}
+            className={dragDisabled ? "text-slate-200 dark:text-slate-700" : "text-slate-400 group-hover:text-pink-500"}
+          />
+          {highlightText(row.lookupCode, advancedFilters.lookupCode || searchTerm)}
+        </div>
       </td>
       <td className="px-5 h-[60px] text-left transition-colors">
-        {highlightText(row.description || "—", searchTerm)}
+        {highlightText(row.description || "—", advancedFilters.description || searchTerm)}
       </td>
       <td className="px-5 h-[60px] text-center transition-colors">
-        {row.sequence}
+        {highlightText(String(row.sequence ?? "—"), advancedFilters.sequence || searchTerm)}
       </td>
       <td className="px-5 h-[60px] text-center transition-colors">
-        {row.isSystemIndicator ? "✓" : "–"}
+        {highlightText(row.isSystemIndicator ? "Yes" : "No", searchTerm)}
       </td>
       <td className="px-5 h-[60px] text-center transition-colors">
-        {row.isActive ? "Active" : "Inactive"}
+        {highlightText(isRowActive ? "Active" : "Inactive", searchTerm)}
       </td>
       <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">
         {!row.isSystemIndicator && (
           <ActionsMenu
-            onAuditLog={onAuditLog}
-            onEdit={() => onEdit(row)}
-            onDisable={row.isActive ? () => onDisable(row) : null}
-            onEnable={!row.isActive ? () => onEnable(row) : null}
+            onAuditLog={onAuditLog ? () => onAuditLog(row) : undefined}
+            onEdit={isRowActive && onEdit ? () => onEdit(row) : undefined}
+            onDisable={isRowActive && onDisable ? () => onDisable(row) : undefined}
+            onEnable={!isRowActive && onEnable ? () => onEnable(row) : undefined}
           />
         )}
       </td>
@@ -116,19 +149,36 @@ function SortableRow({ row, index, onEdit, onDisable, onEnable, onAuditLog, sear
 
 // ── Main Page ─────────────────────────────────────────────────────
 export default function CodePage() {
+  const navigate = useNavigate();
   const canCreate = usePermission("Billing.Lookups.Create");
   const canEdit = usePermission("Billing.Lookups.Edit");
   const canDelete = usePermission("Billing.Lookups.Delete");
   const canViewAuditLog = usePermission("Billing.Lookups.ViewAuditLog");
   const { toast } = useToast();
-  const { data, loading: resourceLoading, refetch } = useResource(codesApi, { perPage: 1000 });
+  const {
+    data,
+    loading: resourceLoading,
+    error: resourceError,
+    refetch,
+  } = useResource(codesApi, { perPage: 1000 });
 
   const [items, setItems] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState({
+    lookupCode: "",
+    description: "",
+    sequence: "",
+  });
+  const [sortConfig, setSortConfig] = useState({
+    key: "sequence",
+    direction: "asc",
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [actionItem, setActionItem] = useState(null);
   const [actionType, setActionType] = useState("");
   const [updateLoading, setUpdateLoading] = useState(false);
+  const [pageError, setPageError] = useState("");
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -136,34 +186,119 @@ export default function CodePage() {
 
   useEffect(() => {
     if (data) {
-      const sorted = [...data].sort((a, b) => (a.sequence || 999) - (b.sequence || 999));
+      const sorted = [...data].sort(
+        (a, b) =>
+          (a.sequence ?? Number.MAX_SAFE_INTEGER) -
+          (b.sequence ?? Number.MAX_SAFE_INTEGER),
+      );
       setItems(sorted);
     }
   }, [data]);
 
+  useEffect(() => {
+    if (!resourceError) return;
+    setPageError(getApiErrorMessage(resourceError));
+  }, [resourceError]);
+
   const filteredItems = useMemo(() => {
-    let result = items;
+    let result = [...items];
     if (searchTerm.trim()) {
       const s = searchTerm.toLowerCase();
-      result = items.filter(
+      result = result.filter(
         (i) =>
           i.lookupCode?.toLowerCase().includes(s) ||
-          i.description?.toLowerCase().includes(s)
+          i.description?.toLowerCase().includes(s) ||
+          String(i.sequence ?? "").includes(s) ||
+          (i.isSystemIndicator ? "system yes" : "system no").includes(s) ||
+          (i.isActive && !i.isDeleted ? "active" : "inactive").includes(s)
       );
     }
+
+    const lookupCodeFilter = advancedFilters.lookupCode.trim().toLowerCase();
+    const descriptionFilter = advancedFilters.description.trim().toLowerCase();
+    const sequenceFilter = advancedFilters.sequence.trim();
+
+    if (lookupCodeFilter) {
+      result = result.filter((item) =>
+        item.lookupCode?.toLowerCase().includes(lookupCodeFilter)
+      );
+    }
+    if (descriptionFilter) {
+      result = result.filter((item) =>
+        item.description?.toLowerCase().includes(descriptionFilter)
+      );
+    }
+    if (sequenceFilter) {
+      result = result.filter(
+        (item) => String(item.sequence ?? "") === sequenceFilter
+      );
+    }
+    result.sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+      let comparison = 0;
+
+      if (sortConfig.key === "sequence") {
+        comparison = Number(aValue ?? 0) - Number(bValue ?? 0);
+      } else if (sortConfig.key === "isActive") {
+        comparison =
+          Number(Boolean(a.isActive && !a.isDeleted)) -
+          Number(Boolean(b.isActive && !b.isDeleted));
+      } else if (sortConfig.key === "isSystemIndicator") {
+        comparison = Number(Boolean(aValue)) - Number(Boolean(bValue));
+      } else {
+        comparison = String(aValue ?? "").localeCompare(
+          String(bValue ?? ""),
+          undefined,
+          { sensitivity: "base", numeric: true }
+        );
+      }
+
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    });
+
     return result;
-  }, [items, searchTerm]);
+  }, [items, searchTerm, advancedFilters, sortConfig]);
 
   const paginatedItems = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return filteredItems.slice(start, start + pageSize);
-  }, [filteredItems, currentPage]);
+  }, [filteredItems, currentPage, pageSize]);
 
   const totalPages = Math.ceil(filteredItems.length / pageSize);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, advancedFilters, sortConfig]);
+
+  const hasAdvancedFilters = Object.values(advancedFilters).some(Boolean);
+  const canReorder =
+    !searchTerm.trim() &&
+    !hasAdvancedFilters &&
+    sortConfig.key === "sequence" &&
+    sortConfig.direction === "asc";
+
+  const handleSort = (key) => {
+    setSortConfig((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const updateAdvancedFilter = (field, value) => {
+    setAdvancedFilters((current) => ({ ...current, [field]: value }));
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setAdvancedFilters({
+      lookupCode: "",
+      description: "",
+      sequence: "",
+    });
+    setSortConfig({ key: "sequence", direction: "asc" });
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -171,8 +306,8 @@ export default function CodePage() {
   );
 
   const handleDragEnd = async ({ active, over }) => {
-    // Disable sorting when search is active to prevent confusion
-    if (searchTerm.trim()) return;
+    // Reordering is only meaningful while the grid is in its canonical order.
+    if (!canReorder) return;
 
     if (over && active.id !== over.id) {
       setItems((prev) => {
@@ -180,17 +315,18 @@ export default function CodePage() {
         const newIndex = prev.findIndex((i) => i.id === over.id);
         const next = arrayMove(prev, oldIndex, newIndex);
         handleSequenceUpdate(next);
-        return next;
+        return next.map((item, index) => ({ ...item, sequence: index }));
       });
     }
   };
 
   const handleSequenceUpdate = async (newItems) => {
     setUpdateLoading(true);
+    setPageError("");
     try {
       const updates = newItems
         .map((item, index) => {
-          const seq = index + 1;
+          const seq = index;
           return item.sequence !== seq ? { ...item, sequence: seq } : null;
         })
         .filter(Boolean);
@@ -199,8 +335,8 @@ export default function CodePage() {
       for (const item of updates) await codesApi.update(item.id, item);
       toast(`Reordered ${updates.length} item${updates.length > 1 ? "s" : ""}.`);
       refetch();
-    } catch {
-      toast("Failed to update order.", "error");
+    } catch (error) {
+      setPageError(getApiErrorMessage(error));
       refetch();
     } finally {
       setUpdateLoading(false);
@@ -220,8 +356,6 @@ export default function CodePage() {
       setModalOpen(false);
       setActionItem(null);
       refetch();
-    } catch (err) {
-      throw err;
     } finally {
       setUpdateLoading(false);
     }
@@ -230,6 +364,7 @@ export default function CodePage() {
   const handleConfirmAction = async () => {
     if (!actionItem) return;
     setUpdateLoading(true);
+    setPageError("");
     try {
       if (actionType === "disable") {
         await codesApi.disable(actionItem.id);
@@ -241,15 +376,12 @@ export default function CodePage() {
       setActionItem(null);
       setActionType("");
       refetch();
-    } catch {
-      toast("Action failed.", "error");
+    } catch (error) {
+      setPageError(getApiErrorMessage(error));
     } finally {
       setUpdateLoading(false);
     }
   };
-
-  const isEmpty = !resourceLoading && items.length === 0;
-  const activeCount = items.filter((i) => i.isActive).length;
 
   // Modal helpers
   const isView = actionType === "view";
@@ -264,7 +396,7 @@ export default function CodePage() {
   };
 
   return (
-    <motion.div
+    <Motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3 }}
@@ -276,7 +408,7 @@ export default function CodePage() {
       `}</style>
 
       {/* ── Unified Full-Screen Card ── */}
-      <motion.div
+      <Motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
@@ -301,66 +433,116 @@ export default function CodePage() {
                   Codes
                   <AnimatePresence>
                     {updateLoading && (
-                      <motion.span
+                      <Motion.span
                         initial={{ opacity: 0, scale: 0.7 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.7 }}
                         transition={{ duration: 0.15 }}
                       >
                         <Loader2 size={15} className="animate-spin text-indigo-400" />
-                      </motion.span>
+                      </Motion.span>
                     )}
                   </AnimatePresence>
                 </h1>
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-              <div className="relative group w-full sm:w-64">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search
-                    size={14}
-                    className={
-                      searchTerm
-                        ? "text-pink-500"
-                        : "text-slate-400 dark:text-slate-600 transition-colors"
-                    }
-                  />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search codes..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-8 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-[12px] outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
+            {canCreate && (
+              <Motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  setActionItem(null);
+                  setActionType("create");
+                  setModalOpen(true);
+                }}
+                className="app-primary-button inline-flex items-center justify-center px-5 py-2.5 w-full sm:w-auto text-xs uppercase tracking-tight"
+              >
+                <Plus size={14} className="mr-2" strokeWidth={3} />
+                New Code
+              </Motion.button>
+            )}
+          </div>
 
-              {canCreate && (
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => {
-                    setActionItem(null);
-                    setActionType("create");
-                    setModalOpen(true);
-                  }}
-                  className="app-primary-button inline-flex items-center justify-center px-5 py-2.5 w-full sm:w-auto text-xs uppercase tracking-tight"
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="relative group w-full sm:w-[32rem] max-w-full">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search
+                  size={14}
+                  className={
+                    searchTerm
+                      ? "text-pink-500"
+                      : "text-slate-400 dark:text-slate-600 transition-colors"
+                  }
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="Search all code columns..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-8 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-[12px] outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
+                  aria-label="Clear general search"
                 >
-                  <Plus size={14} className="mr-2" strokeWidth={3} />
-                  New Code
-                </motion.button>
+                  <X size={14} />
+                </button>
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setShowAdvancedSearch((visible) => !visible)}
+              className={`w-full sm:w-auto h-[42px] inline-flex items-center justify-center gap-2 px-4 rounded-xl border text-xs font-bold transition-all ${showAdvancedSearch ? "bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-500/10 dark:border-pink-500/30 dark:text-pink-400" : "bg-white text-slate-500 border-slate-200/60 dark:bg-slate-900/50 dark:border-slate-800/50 dark:text-slate-400 hover:text-pink-600"}`}
+              aria-expanded={showAdvancedSearch}
+            >
+              <Filter size={14} />
+              Advanced Search
+              {hasAdvancedFilters && (
+                <span className="h-2 w-2 rounded-full bg-pink-500" aria-label="Filters active" />
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="app-primary-button inline-flex h-[42px] w-full sm:w-auto items-center justify-center px-4 text-xs"
+            >
+              Clear
+            </button>
           </div>
+
+          {showAdvancedSearch && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 pt-3 border-t border-slate-100 dark:border-slate-800/50">
+              <input
+                type="text"
+                value={advancedFilters.lookupCode}
+                onChange={(e) => updateAdvancedFilter("lookupCode", e.target.value)}
+                placeholder="Filter by lookup code..."
+                className="px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10"
+              />
+              <input
+                type="text"
+                value={advancedFilters.description}
+                onChange={(e) => updateAdvancedFilter("description", e.target.value)}
+                placeholder="Filter by description..."
+                className="px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10"
+              />
+              <input
+                type="number"
+                min="0"
+                value={advancedFilters.sequence}
+                onChange={(e) => updateAdvancedFilter("sequence", e.target.value)}
+                placeholder="Exact sequence..."
+                className="px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10"
+              />
+            </div>
+          )}
         </div>
 
         {/* ── Table Area ── */}
@@ -386,11 +568,11 @@ export default function CodePage() {
                 </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
-                    <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">Lookup Code</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">Description</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Sequence</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">System</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Status</th>
+                    <SortableHeader label="Lookup Code" column="lookupCode" sortConfig={sortConfig} onSort={handleSort} />
+                    <SortableHeader label="Description" column="description" sortConfig={sortConfig} onSort={handleSort} />
+                    <SortableHeader label="Sequence" column="sequence" sortConfig={sortConfig} onSort={handleSort} align="center" />
+                    <SortableHeader label="System Indicator" column="isSystemIndicator" sortConfig={sortConfig} onSort={handleSort} align="center" />
+                    <SortableHeader label="Status" column="isActive" sortConfig={sortConfig} onSort={handleSort} align="center" />
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Actions</th>
                   </tr>
                 </thead>
@@ -411,6 +593,8 @@ export default function CodePage() {
                             row={row}
                             index={idx}
                             searchTerm={searchTerm}
+                            advancedFilters={advancedFilters}
+                            dragDisabled={!canReorder}
                             onEdit={canEdit ? (r) => {
                               setActionItem(r);
                               setActionType("edit");
@@ -424,7 +608,7 @@ export default function CodePage() {
                               setActionItem(r);
                               setActionType("enable");
                             } : undefined}
-                            onAuditLog={canViewAuditLog ? (r) => navigate(`/audit-logs?primaryKey=${r.id}&entityName=Lookup`) : undefined}
+                            onAuditLog={canViewAuditLog ? (r) => navigate(`/audit-logs?primaryKey=${encodeURIComponent(r.id)}`) : undefined}
                           />
                         ))}
                       </AnimatePresence>
@@ -442,7 +626,7 @@ export default function CodePage() {
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2.5">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-                <select
+                <AppSelect
                   value={pageSize}
                   onChange={(e) => {
                     setPageSize(Number(e.target.value));
@@ -453,7 +637,7 @@ export default function CodePage() {
                   {[10, 25, 50, 100].map((s) => (
                     <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
                   ))}
-                </select>
+                </AppSelect>
               </div>
 
               <div className="hidden sm:flex items-center gap-2 border-l border-slate-200 dark:border-slate-800 pl-4">
@@ -513,7 +697,13 @@ export default function CodePage() {
             </div>
           </div>
         )}
-      </motion.div>
+      </Motion.div>
+
+      <PremiumErrorAlert
+        open={Boolean(pageError)}
+        message={pageError}
+        onClose={() => setPageError("")}
+      />
 
 
       {/* ── Modals ── */}
@@ -534,6 +724,6 @@ export default function CodePage() {
         onClose={resetActionState}
         onConfirm={handleConfirmAction}
       />
-    </motion.div>
+    </Motion.div>
   );
 }

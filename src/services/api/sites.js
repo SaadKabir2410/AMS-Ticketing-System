@@ -9,6 +9,7 @@ export const sitesApi = {
     sortDir = "desc",
     columnFilter,
     filterOperator,
+    advancedFilters,
   } = {}) => {
     const operatorMap = {
       contains: "Contains",
@@ -46,6 +47,10 @@ export const sitesApi = {
       Filter: search || undefined,
       FilterOperator: backendOperator,
       ...siteSearchParams,
+      "SiteSearch.Name": advancedFilters?.name || siteSearchParams["SiteSearch.Name"],
+      "SiteSearch.OCN": advancedFilters?.ocn || siteSearchParams["SiteSearch.OCN"],
+      "SiteSearch.CountryName": advancedFilters?.countryName || siteSearchParams["SiteSearch.CountryName"],
+      "SiteSearch.Address": advancedFilters?.address || siteSearchParams["SiteSearch.Address"],
       Sorting: `${sortFieldMap[sortKey] || "Id"} ${sortDir}`,
     };
 

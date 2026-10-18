@@ -43,7 +43,7 @@ export default function PremiumErrorAlert({ open, message, onClose }) {
           <h3 className="text-lg font-bold text-slate-800 dark:text-white leading-tight">
              Execution Error
           </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed break-words">
+          <p className="text-sm text-red-600 dark:text-red-400 leading-relaxed break-words">
             {message}
           </p>
         </div>

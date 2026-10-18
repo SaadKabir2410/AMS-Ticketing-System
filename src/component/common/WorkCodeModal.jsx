@@ -189,7 +189,7 @@ export default function WorkCodeModal({
         )}
         <div>
           <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">
-            Code <span className="text-red-500">*</span>
+            Code <span className="required-asterisk">*</span>
           </label>
           <div className="relative">
             <input
@@ -223,7 +223,7 @@ export default function WorkCodeModal({
 
         <div>
           <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">
-            Description <span className="text-red-500">*</span>
+            Description <span className="required-asterisk">*</span>
           </label>
           <div className="relative">
             <input
@@ -276,6 +276,5 @@ export default function WorkCodeModal({
     </Dialog>
   );
 }
-
 
 
