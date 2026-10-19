@@ -37,10 +37,11 @@ export const auditLogsApi = {
       dateTime: "DateTime",
     };
     const apiClientParams = {
+      ...searchParams,
+      Sorting: `${sortFieldMap[sortKey] || "DateTime"} ${sortDir === "asc" ? "ASC" : "DESC"}`,
       SkipCount: (page - 1) * perPage,
       MaxResultCount: perPage,
-      Sorting: `${sortFieldMap[sortKey] || "DateTime"} ${sortDir === "asc" ? "Asc" : "Desc"}`,
-      ...searchParams,
+      "api-version": "1.0",
     };
     const sp = new URLSearchParams();
     Object.keys(apiClientParams).forEach((k) => {

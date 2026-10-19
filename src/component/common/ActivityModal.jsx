@@ -50,6 +50,7 @@ function Combobox({
   disabled,
   loading,
   error,
+  localize = (key) => key,
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -78,6 +79,7 @@ function Combobox({
     <div className="relative w-full" ref={containerRef}>
       <div
         onClick={() => !disabled && setOpen(!open)}
+        style={{ borderWidth: "0.5px" }}
         className={`${inputClass} app-combobox-trigger flex items-center justify-between cursor-pointer ${disabled
           ? "opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/30"
           : ""
@@ -117,7 +119,7 @@ function Combobox({
                 <input
                   type="text"
                   autoFocus
-                  placeholder="Search..."
+                  placeholder={localize("Search")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-9 pr-4 py-2.5 bg-slate-100 dark:bg-slate-900 border border-transparent rounded-xl text-xs outline-none focus:bg-white dark:focus:bg-slate-950 focus:ring-4 focus:ring-pink-500/5 focus:border-pink-500/20 transition-all placeholder:text-slate-500/80"
@@ -129,12 +131,12 @@ function Combobox({
               {loading ? (
                 <div className="p-8 text-center flex flex-col items-center gap-2">
                   <div className="w-4 h-4 border-2 border-pink-500/20 border-t-pink-500 rounded-full animate-spin" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Loading...</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{localize("LoadingWithThreeDot")}</span>
                 </div>
               ) : filteredOptions.length === 0 ? (
                 <div className="p-10 text-center flex flex-col items-center gap-1.5">
                   <AlertCircle size={20} className="text-slate-300" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">No results found</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{localize("NoDataAvailableInDatatable")}</span>
                 </div>
               ) : (
                 <div className="px-2 space-y-0.5">
@@ -193,7 +195,13 @@ const EMPTY = {
   likelyCause: false,
 };
 
-export default function ActivityModal({ open, onClose, onSubmit, activity = null }) {
+export default function ActivityModal({
+  open,
+  onClose,
+  onSubmit,
+  activity = null,
+  localize = (key) => key,
+}) {
   const isEdit = !!activity;
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
@@ -311,11 +319,24 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
 
   const validate = () => {
     const newErrors = {};
-    if (!form.activityType) newErrors.activityType = "Activity Type is required";
-    if (!form.startDate) newErrors.startDate = "Start Date is required";
-    if (!form.endDate) newErrors.endDate = "End Date is required";
-    if (!form.workDoneCode) newErrors.workDoneCode = "Work Done Code is required";
-    if (!form.resolvedBy) newErrors.resolvedBy = "Resolved By is required";
+    const requiredMessage = (fieldName) =>
+      localize("The {0} field is required.").replace("{0}", fieldName);
+
+    if (!form.activityType) {
+      newErrors.activityType = requiredMessage(localize("ActivityType"));
+    }
+    if (!form.startDate) {
+      newErrors.startDate = requiredMessage(localize("StartDate"));
+    }
+    if (!form.endDate) {
+      newErrors.endDate = requiredMessage(localize("EndDate"));
+    }
+    if (!form.workDoneCode) {
+      newErrors.workDoneCode = requiredMessage(localize("WorkDoneCode"));
+    }
+    if (!form.resolvedBy) {
+      newErrors.resolvedBy = requiredMessage(localize("ResolvedBy"));
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -359,12 +380,12 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
               <div className="flex items-center gap-4">
                 <div>
                   <nav className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-500 dark:text-slate-500 mb-0.5">
-                    <span>AMS</span>
+                    <span>{localize("AMSTickets")}</span>
                     <span className="text-slate-300 dark:text-slate-700">/</span>
-                    <span className="text-pink-600">Activity</span>
+                    <span className="text-pink-600">{localize("AddActivity")}</span>
                   </nav>
                   <h2 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-                    {isEdit ? "Update Activity" : "New Activity"}
+                    {isEdit ? localize("EditActivity") : localize("NewActivity")}
                   </h2>
                 </div>
               </div>
@@ -381,7 +402,7 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
             <div className="px-8 py-6 space-y-4 overflow-y-auto no-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                 {/* Activity Type */}
-                <Field label="Activity Type *" error={errors.activityType}>
+                <Field label={`${localize("ActivityType")} *`} error={errors.activityType}>
                   <div className="relative group/input">
                     <Combobox
                       value={form.activityType}
@@ -390,15 +411,16 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
                         if (errors.activityType) setErrors(e => ({ ...e, activityType: "" }));
                       }}
                       options={apiData.activityTypes.map(o => o.label ?? o)}
-                      placeholder={loadingApis ? "Loading..." : "Select type..."}
+                      placeholder={loadingApis ? localize("LoadingWithThreeDot") : localize("SelectBoxEmptyValueText")}
                       disabled={loadingApis}
                       error={errors.activityType}
+                      localize={localize}
                     />
                   </div>
                 </Field>
 
                 {/* Start Date */}
-                <Field label="Start Date *" error={errors.startDate}>
+                <Field label={`${localize("StartDate")} *`} error={errors.startDate}>
                   <div className="relative group/input">
                     <Flatpickr
                       data-enable-time
@@ -420,7 +442,7 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
                 </Field>
 
                 {/* End Date */}
-                <Field label="End Date *" error={errors.endDate}>
+                <Field label={`${localize("EndDate")} *`} error={errors.endDate}>
                   <div className="relative group/input">
                     <Flatpickr
                       data-enable-time
@@ -442,7 +464,7 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
                 </Field>
 
                 {/* Duration (Hours) */}
-                <Field label="Duration (Hours)" error={errors.durationHours}>
+                <Field label={localize("ActivityTotalDuration")} error={errors.durationHours}>
                   <div className="relative group/input">
                     <input
                       type="number"
@@ -457,7 +479,7 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
                 </Field>
 
                 {/* Work Done Code */}
-                <Field label="Work Done Code *" error={errors.workDoneCode}>
+                <Field label={`${localize("WorkDoneCode")} *`} error={errors.workDoneCode}>
                   <Combobox
                     value={form.workDoneCode}
                     onChange={(label) => {
@@ -470,14 +492,15 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
                       if (errors.workDoneCode) setErrors(e => ({ ...e, workDoneCode: "" }));
                     }}
                     options={apiData.workDoneCodes.map(w => w.label)}  // ✅ show labels
-                    placeholder="Search codes..."
+                    placeholder={localize("Search")}
                     disabled={loadingApis}
                     error={errors.workDoneCode}
+                    localize={localize}
                   />
                 </Field>
 
                 {/* Resolved By */}
-                <Field label="Resolved By *" error={errors.resolvedBy}>
+                <Field label={`${localize("ResolvedBy")} *`} error={errors.resolvedBy}>
                   <Combobox
                     value={form.resolvedBy}
                     onChange={(label) => {
@@ -490,9 +513,10 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
                       if (errors.resolvedBy) setErrors(e => ({ ...e, resolvedBy: "" }));
                     }}
                     options={apiData.users.map(u => u.label)}  // ✅ show labels
-                    placeholder="Search users..."
+                    placeholder={localize("Search")}
                     disabled={loadingApis}
                     error={errors.resolvedBy}
+                    localize={localize}
                   />
                 </Field>
               </div>
@@ -512,7 +536,7 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
                       className={`absolute left-0 top-1 bg-white w-4 h-4 rounded-full shadow-md transition-all`}
                     />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Likely Cause of issue</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">{localize("IsLikelyCause")}</span>
                 </label>
               </div>
             </div>
@@ -524,13 +548,13 @@ export default function ActivityModal({ open, onClose, onSubmit, activity = null
                 onClick={onClose}
                 className="px-6 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
               >
-                Cancel
+                {localize("Cancel")}
               </button>
               <button
                 onClick={handleSubmit}
                 className="app-primary-button px-8 py-2.5 text-[10px] uppercase tracking-widest flex items-center justify-center min-w-[140px]"
               >
-                {isEdit ? "Update Activity" : "Create Activity"}
+                {isEdit ? localize("UpdateButtonText") : localize("AddActivity")}
               </button>
             </div>
 

@@ -24,6 +24,8 @@ export function ActionsMenu({
   editButtonText = "Update Data",
   permissionButtonText = "Permissions",
   auditLogButtonText = "Audit Log",
+  disableButtonText = "Disable",
+  enableButtonText = "Enable",
   className = "text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider bg-transparent hover:border-pink-500 shadow-sm",
 }) {
 
@@ -103,12 +105,12 @@ export function ActionsMenu({
               )}
               {onDisable && (
                 <MenuItem onClick={() => { onDisable(); handleClose(); }} sx={menuItemHover}>
-                  <ListItemText primary="Disable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "warning.main" }} />
+                  <ListItemText primary={disableButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "warning.main" }} />
                 </MenuItem>
               )}
               {onEnable && (
                 <MenuItem onClick={() => { onEnable(); handleClose(); }} sx={menuItemHover}>
-                  <ListItemText primary="Enable" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "success.main" }} />
+                  <ListItemText primary={enableButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600, color: "success.main" }} />
                 </MenuItem>
               )}
               {onDelete && (

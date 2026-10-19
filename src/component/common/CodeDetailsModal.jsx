@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, IconButton } from "@mui/material";
 import codeDetailsApi from "../../services/api/CodeDetails";
 import PremiumErrorAlert from "./PremiumErrorAlert";
+import { getApiErrorMessage, getApiFieldErrors } from "../../utils/apiError";
 
 
 
@@ -29,6 +30,7 @@ export default function CodeDetailsModal({
   onSubmit,
   item = null,
   selectedParent = null,
+  localize = (key) => key,
 }) {
   const isEdit = !!item;
   const [formData, setFormData] = useState(EMPTY_FORM);
@@ -66,8 +68,10 @@ export default function CodeDetailsModal({
               extraDescriptionLable: record.extraDescriptionLable || "",
               comments: record.comments || "",
             });
-          } catch {
-            setError("Failed to fetch record details.");
+          } catch (err) {
+            setError(
+              getApiErrorMessage(err) || localize("DefaultErrorMessage"),
+            );
           } finally {
             setSubmitting(false);
           }
@@ -82,7 +86,7 @@ export default function CodeDetailsModal({
         });
       }
     }
-  }, [open, isEdit, item, selectedParent]);
+  }, [open, isEdit, item, selectedParent, localize]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -106,15 +110,20 @@ export default function CodeDetailsModal({
     try {
       // Client-side validation - build errors object
       const errors = {};
+      const requiredMessage = (fieldName) =>
+        localize("The {0} field is required.").replace("{0}", fieldName);
       if (!formData.newCode?.trim()) {
-        errors.newCode = "Code field is required";
+        errors.newCode = requiredMessage(localize("LookupDetailCode"));
       }
       if (!formData.description?.trim()) {
-        errors.description = "Description field is required";
+        errors.description = requiredMessage(localize("Description"));
       }
       const seq = Number(formData.sequence);
       if (isNaN(seq) || seq < 1 || seq > 2147483647) {
-        errors.sequence = "Sequence field must be between 1 and 2147483647";
+        errors.sequence = localize("The field {0} must be between {1} and {2}.")
+          .replace("{0}", localize("Sequence"))
+          .replace("{1}", "1")
+          .replace("{2}", "2147483647");
       }
 
       if (Object.keys(errors).length > 0) {
@@ -132,12 +141,13 @@ export default function CodeDetailsModal({
       };
       await onSubmit(payload);
     } catch (err) {
-      const apiError =
-        err?.response?.data?.error?.validationErrors?.[0]?.message ||
-        err?.response?.data?.error?.message ||
-        err?.message ||
-        "An error occurred.";
-      setError(apiError);
+      const apiFieldErrors = getApiFieldErrors(err);
+      if (Object.keys(apiFieldErrors).length > 0) {
+        setFieldErrors(apiFieldErrors);
+      }
+      setError(
+        getApiErrorMessage(err) || localize("DefaultErrorMessage"),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -190,9 +200,14 @@ export default function CodeDetailsModal({
     >
       <div className="flex items-center justify-between px-6 pt-5 pb-1 bg-white dark:bg-black">
         <h2 className="text-[18px] font-black text-slate-800 dark:text-slate-100 tracking-tighter uppercase leading-none">
-          {isEdit ? "Update Detail" : "Create Detail"}
+          {localize(isEdit ? "EditLookupDetail" : "CreateLookupDetail")}
         </h2>
-        <IconButton onClick={onClose} size="small" disabled={submitting}>
+        <IconButton
+          onClick={onClose}
+          size="small"
+          disabled={submitting}
+          aria-label={localize("Close")}
+        >
           <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -209,9 +224,13 @@ export default function CodeDetailsModal({
         )}
 
         {/* FULL WIDTH COMBO BOXES IN REQUESTED SEQUENCE */}
-        <form onSubmit={handleSubmitInternal} className="flex flex-col gap-4">
+        <form
+          onSubmit={handleSubmitInternal}
+          className="flex flex-col gap-4"
+          noValidate
+        >
           <div>
-            <label style={labelStyle}>Code <span className="required-asterisk">*</span></label>
+            <label style={labelStyle}>{localize("LookupDetailCode")} <span className="required-asterisk">*</span></label>
             <input
               type="text"
               name="newCode"
@@ -235,7 +254,7 @@ export default function CodeDetailsModal({
 
 
           <div>
-            <label style={labelStyle}>Lookup Code</label>
+            <label style={labelStyle}>{localize("LookupCode")}</label>
             <input
               type="text"
               name="lookupCode"
@@ -250,7 +269,7 @@ export default function CodeDetailsModal({
           </div>
 
           <div>
-            <label style={labelStyle}>Description <span className="required-asterisk">*</span></label>
+            <label style={labelStyle}>{localize("Description")} <span className="required-asterisk">*</span></label>
             <input
               type="text"
               name="description"
@@ -264,7 +283,7 @@ export default function CodeDetailsModal({
           </div>
 
           <div>
-            <label style={labelStyle}>Value 1</label>
+            <label style={labelStyle}>{localize("Value1")}</label>
             <input
               type="text"
               name="value1"
@@ -276,7 +295,7 @@ export default function CodeDetailsModal({
           </div>
 
           <div>
-            <label style={labelStyle}>Value 2</label>
+            <label style={labelStyle}>{localize("Value2")}</label>
             <input
               type="text"
               name="value2"
@@ -288,7 +307,7 @@ export default function CodeDetailsModal({
           </div>
 
           <div>
-            <label style={labelStyle}>Group Code</label>
+            <label style={labelStyle}>{localize("GroupCode")}</label>
             <input
               type="text"
               name="groupCode"
@@ -300,7 +319,7 @@ export default function CodeDetailsModal({
           </div>
 
           <div>
-            <label style={labelStyle}>G.Code Detail</label>
+            <label style={labelStyle}>{localize("GroupCodeDetail")}</label>
             <input
               type="text"
               name="groupCodeDetail"
@@ -312,7 +331,7 @@ export default function CodeDetailsModal({
           </div>
 
           <div>
-            <label style={labelStyle}>Sequence <span className="required-asterisk">*</span></label>
+            <label style={labelStyle}>{localize("Sequence")} <span className="required-asterisk">*</span></label>
             <input
               type="number"
               name="sequence"
@@ -328,7 +347,7 @@ export default function CodeDetailsModal({
           </div>
 
           <div>
-            <label style={labelStyle}>Ex. Desc Label</label>
+            <label style={labelStyle}>{localize("ExtraDescriptionLable")}</label>
             <input
               type="text"
               name="extraDescriptionLable"
@@ -340,7 +359,7 @@ export default function CodeDetailsModal({
           </div>
 
           <div>
-            <label style={labelStyle}>Comments</label>
+            <label style={labelStyle}>{localize("Comments")}</label>
             <textarea
               name="comments"
               value={formData.comments}
@@ -353,10 +372,10 @@ export default function CodeDetailsModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 pt-3 border-t border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-black/50 p-3 rounded-lg">
             {[
-              { label: "Default Indicator", name: "isDefaultIndicator" },
-              { label: "Extra Description", name: "hasExtraDescription" },
-              { label: "Required Field", name: "isRequiredField" },
-              { label: "Has Sub Category", name: "hasSubCategory" },
+              { label: localize("IsDefaultIndicator"), name: "isDefaultIndicator" },
+              { label: localize("HasExtraDescription"), name: "hasExtraDescription" },
+              { label: localize("IsRequiredField"), name: "isRequiredField" },
+              { label: localize("HasSubCategory"), name: "hasSubCategory" },
             ].map((check) => (
               <label key={check.name} className="flex items-center gap-2.5 cursor-pointer group select-none">
                 <div className="relative flex items-center justify-center">
@@ -388,14 +407,16 @@ export default function CodeDetailsModal({
           onClick={onClose}
           className="h-[30px] px-6 rounded-lg text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all active:scale-95 transition-all duration-200"
         >
-          Cancel
+          {localize("Cancel")}
         </button>
         <button
           onClick={handleSubmitInternal}
           disabled={submitting}
           className="app-primary-button h-[30px] px-8 text-[10.5px] uppercase"
         >
-          {submitting ? "Processing..." : isEdit ? "Update Code" : "Save"}
+          {submitting
+            ? localize("ProcessingWithThreeDot")
+            : localize(isEdit ? "UpdateButtonText" : "Save")}
         </button>
       </div>
 
@@ -406,5 +427,3 @@ export default function CodeDetailsModal({
     </Dialog>
   );
 }
-
-

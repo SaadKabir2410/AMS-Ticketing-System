@@ -2,49 +2,68 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import AppSelect from "../component/common/AppSelect";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Filter, Search, X, Loader2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion as Motion, AnimatePresence } from "framer-motion";
 import { auditLogsApi } from "../services/api/auditLogs";
 import CollapsibleAuditLogTable from "../component/common/CollapsibleAuditLogTable";
 import { useResource } from "../component/hooks/useResource";
+import { getApiErrorMessage } from "../utils/apiError";
+import {
+  getCachedApplicationConfig,
+  loadApplicationConfig,
+} from "../services/applicationConfigCache";
+
+const getLocalizationValue = (applicationConfig, key) => {
+  const resources = applicationConfig?.localization?.values;
+  if (!resources || typeof resources !== "object") return key;
+
+  const defaultResourceName = applicationConfig?.localization?.defaultResourceName;
+  const defaultValue = resources[defaultResourceName]?.[key];
+  if (typeof defaultValue === "string" && defaultValue.trim()) {
+    return defaultValue.trim();
+  }
+
+  for (const resource of Object.values(resources)) {
+    const value = resource?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  return key;
+};
 
 export default function AuditLogsPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const initKey = searchParams.get("primaryKey") || "";
+  const [applicationConfig, setApplicationConfig] = useState(
+    getCachedApplicationConfig,
+  );
+  const localize = useCallback(
+    (key) => getLocalizationValue(applicationConfig, key),
+    [applicationConfig],
+  );
+  const primaryKeySearch = searchParams.get("primaryKey") || "";
+  const entityType = searchParams.get("entityName") || "all";
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(25);
-  const [primaryKeySearch] = useState(initKey);
-  const [debouncedPrimaryKey, setDebouncedPrimaryKey] = useState(initKey);
+  const [pageSize, setPageSize] = useState(10);
   const [userNameSearch, setUserNameSearch] = useState("");
   const [debouncedUserName, setDebouncedUserName] = useState("");
   const [datePreset, setDatePreset] = useState("all");
   const [operationType, setOperationType] = useState("all");
-  const [entityType, setEntityType] = useState(searchParams.get("entityName") || "all");
-
-
   const [customFromDate, setCustomFromDate] = useState("");
   const [customToDate, setCustomToDate] = useState("");
 
   useEffect(() => {
-    const timer = setTimeout(
-      () => setDebouncedPrimaryKey(primaryKeySearch),
-      500,
-    );
-    return () => clearTimeout(timer);
-  }, [primaryKeySearch]);
+    let isCurrent = true;
+    loadApplicationConfig()
+      .then((config) => {
+        if (isCurrent) setApplicationConfig(config);
+      })
+      .catch(() => null);
 
-  useEffect(() => {
-    const key = searchParams.get("primaryKey") || "";
-    const ent = searchParams.get("entityName") || "all";
-
-    if (key !== debouncedPrimaryKey) {
-      setDebouncedPrimaryKey(key);
-    }
-    if (ent !== entityType) {
-      setEntityType(ent);
-    }
-  }, [searchParams]);
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedUserName(userNameSearch), 500);
@@ -111,7 +130,7 @@ export default function AuditLogsPage() {
     () => ({
       page,
       perPage: pageSize,
-      primaryKey: debouncedPrimaryKey || undefined,
+      primaryKey: primaryKeySearch || undefined,
       userName: debouncedUserName || undefined,
       entityName: entityType === "all" ? undefined : entityType,
       operationType:
@@ -121,7 +140,7 @@ export default function AuditLogsPage() {
     [
       page,
       pageSize,
-      debouncedPrimaryKey,
+      primaryKeySearch,
       debouncedUserName,
       entityType,
       operationType,
@@ -129,7 +148,13 @@ export default function AuditLogsPage() {
     ],
   );
 
-  const { data, total, loading } = useResource(auditLogsApi, apiParams);
+  const hasAuditTarget = Boolean(
+    primaryKeySearch && entityType !== "all",
+  );
+  const { data, total, loading, error } = useResource(
+    hasAuditTarget ? auditLogsApi : null,
+    apiParams,
+  );
   const totalPages = Math.ceil(total / pageSize) || 1;
 
   const [showFilters, setShowFilters] = useState(false);
@@ -139,7 +164,7 @@ export default function AuditLogsPage() {
   ].filter(v => v !== "").length;
 
   return (
-    <motion.div
+    <Motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]"
@@ -156,7 +181,7 @@ export default function AuditLogsPage() {
         .dark .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #475569; }
       `}</style>
 
-      <motion.div
+      <Motion.div
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl"
@@ -181,13 +206,13 @@ export default function AuditLogsPage() {
                     <span>Countries</span>
                     <span className="text-slate-300">/</span>
                   </>
-                ) : entityType === "Lookup" ? (
+                ) : entityType === "Lookup" || entityType === "LookupDetail" ? (
                   <>
                     <span>Management</span>
                     <span className="text-slate-300">/</span>
                     <span>Lookups</span>
                     <span className="text-slate-300">/</span>
-                    <span>Codes</span>
+                    <span>{entityType === "LookupDetail" ? "Code Details" : "Codes"}</span>
                     <span className="text-slate-300">/</span>
                   </>
                 ) : (
@@ -257,7 +282,7 @@ export default function AuditLogsPage() {
 
           <AnimatePresence>
             {showFilters && (
-              <motion.div
+              <Motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
@@ -316,7 +341,7 @@ export default function AuditLogsPage() {
                     </button>
                   )}
                 </div>
-              </motion.div>
+              </Motion.div>
             )}
           </AnimatePresence>
         </div>
@@ -329,7 +354,18 @@ export default function AuditLogsPage() {
               </div>
             </div>
           )}
-          <CollapsibleAuditLogTable data={data} loading={loading} />
+          {error && !loading ? (
+            <div className="min-h-[300px] flex items-center justify-center px-6 text-center text-sm font-semibold text-rose-600 dark:text-rose-400">
+              {getApiErrorMessage(error) || localize("DefaultErrorMessage")}
+            </div>
+          ) : (
+            <CollapsibleAuditLogTable
+              data={data}
+              loading={loading}
+              localize={localize}
+              searchTerm={userNameSearch}
+            />
+          )}
         </div>
 
         {/* Pagination Section (CodePage Style) */}
@@ -433,7 +469,7 @@ export default function AuditLogsPage() {
             </div>
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </Motion.div>
+    </Motion.div>
   );
 }

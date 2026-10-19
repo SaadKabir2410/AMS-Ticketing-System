@@ -22,6 +22,7 @@ import {
   getCachedApplicationConfig,
   loadApplicationConfig,
 } from "../services/applicationConfigCache";
+import { excludeFeatureManagementPermissions } from "../utils/permissionGroups";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -357,11 +358,12 @@ export default function RolesPage() {
     rolesApi
       .getPermissions("R", role.name)
       .then((data) => {
-        setPermissionsData(data);
+        const visiblePermissions = excludeFeatureManagementPermissions(data);
+        setPermissionsData(visiblePermissions);
         const initial = {};
-        if (data && data.groups) {
+        if (visiblePermissions?.groups) {
           // ✅ Initialize checked state from backend response
-          data.groups.forEach((g) => {
+          visiblePermissions.groups.forEach((g) => {
             g.permissions.forEach((p) => {
               initial[p.name] = p.isGranted;
             });

@@ -1,0 +1,1 @@
+import{y as e}from"./index-3VuroNgm.js";function t(t){let{hasPermission:n,isLoading:r}=e();return r?!1:n(t)}export{t};

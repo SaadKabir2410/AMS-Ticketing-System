@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import AppSelect from "../component/common/AppSelect";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,6 +38,29 @@ import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import UnclosedTicketsModal from "../component/common/UnclosedTicketsModal";
 import { ActionsMenu } from "../component/common/ResourcePage";
 import { usePermission } from "../hooks/usePermission";
+import {
+  getCachedApplicationConfig,
+  loadApplicationConfig,
+} from "../services/applicationConfigCache";
+
+const getLocalizationValue = (applicationConfig, key) => {
+  const resources = applicationConfig?.localization?.values;
+  if (!resources || typeof resources !== "object") return key;
+
+  const defaultResourceName =
+    applicationConfig?.localization?.defaultResourceName;
+  const defaultValue = resources[defaultResourceName]?.[key];
+  if (typeof defaultValue === "string" && defaultValue.trim()) {
+    return defaultValue.trim();
+  }
+
+  for (const resource of Object.values(resources)) {
+    const value = resource?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  return key;
+};
 
 // ── Animation variants ────────────────────────────────────────────
 const containerVariants = {
@@ -200,6 +223,26 @@ export default function AMSTicketsPage() {
   const canReopen = usePermission("Billing.AMSTickets.ReOpenAMSTicket") && !isAdmin;
   const canViewAuditLog = usePermission("Billing.AMSTickets.ViewAuditLog");
   const canClose = usePermission("Billing.AMSTickets.CloseAMSTicket") && !isAdmin;
+  const [applicationConfig, setApplicationConfig] = useState(
+    getCachedApplicationConfig,
+  );
+  const localize = useCallback(
+    (key) => getLocalizationValue(applicationConfig, key),
+    [applicationConfig],
+  );
+
+  useEffect(() => {
+    let isCurrent = true;
+    loadApplicationConfig()
+      .then((config) => {
+        if (isCurrent) setApplicationConfig(config);
+      })
+      .catch(() => null);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   // --- States ---
   const [tickets, setTickets] = useState([]);
@@ -1054,6 +1097,7 @@ export default function AMSTicketsPage() {
       <TicketModal
         open={actionType === "create"}
         canCloseTicket={canClose}
+        localize={localize}
         onClose={() => setActionType("")}
         onSave={async (payload) => {
           try {
@@ -1070,7 +1114,7 @@ export default function AMSTicketsPage() {
             } else if (errorData?.message) {
               toast(errorData.message, "error");
             } else {
-              toast("Failed to create ticket", "error");
+              toast(localize("DefaultErrorMessage"), "error");
             }
           }
         }}
@@ -1082,6 +1126,7 @@ export default function AMSTicketsPage() {
           <TicketModal
             open={actionType === "edit" || actionType === "detail"}
             viewMode={actionType === "detail"}
+            localize={localize}
             onClose={() => {
               setActionType("");
               setActionItem(null);
@@ -1116,7 +1161,7 @@ export default function AMSTicketsPage() {
                 } else if (errorData?.message) {
                   toast(errorData.message, "error");
                 } else {
-                  toast("Failed to save ticket", "error");
+                  toast(localize("DefaultErrorMessage"), "error");
                 }
               }
             }}

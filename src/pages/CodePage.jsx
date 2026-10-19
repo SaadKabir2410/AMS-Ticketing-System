@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import AppSelect from "../component/common/AppSelect";
 import {
   DndContext,
@@ -16,7 +16,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Loader2, Plus, Search, X, ChevronLeft, ChevronsLeft, ChevronsRight, ChevronRight, Filter, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Loader2, Plus, Search, X, ChevronLeft, ChevronsLeft, ChevronsRight, ChevronRight, Filter, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ActionsMenu } from "../component/common/ResourcePage";
@@ -29,6 +29,29 @@ import { usePermission } from "../hooks/usePermission";
 import { useToast } from "../component/common/ToastContext";
 import { useResource } from "../component/hooks/useResource";
 import { getApiErrorMessage } from "../utils/apiError";
+import {
+  getCachedApplicationConfig,
+  loadApplicationConfig,
+} from "../services/applicationConfigCache";
+
+const getLocalizationValue = (applicationConfig, key) => {
+  const resources = applicationConfig?.localization?.values;
+  if (!resources || typeof resources !== "object") return key;
+
+  const defaultResourceName =
+    applicationConfig?.localization?.defaultResourceName;
+  const defaultValue = resources[defaultResourceName]?.[key];
+  if (typeof defaultValue === "string" && defaultValue.trim()) {
+    return defaultValue.trim();
+  }
+
+  for (const resource of Object.values(resources)) {
+    const value = resource?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  return key;
+};
 
 // ── Highlight helper ────────────────────────────────────────────────
 const highlightText = (text, query) => {
@@ -113,13 +136,7 @@ function SortableRow({ row, index, onEdit, onDisable, onEnable, onAuditLog, sear
       className={`group cursor-default transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"} ${isDragging ? "shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/40 z-50 relative pointer-events-none" : ""}`}
     >
       <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
-        <div className="flex items-center gap-2">
-          <GripVertical
-            size={14}
-            className={dragDisabled ? "text-slate-200 dark:text-slate-700" : "text-slate-400 group-hover:text-pink-500"}
-          />
-          {highlightText(row.lookupCode, advancedFilters.lookupCode || searchTerm)}
-        </div>
+        {highlightText(row.lookupCode, advancedFilters.lookupCode || searchTerm)}
       </td>
       <td className="px-5 h-[60px] text-left transition-colors">
         {highlightText(row.description || "—", advancedFilters.description || searchTerm)}
@@ -155,6 +172,13 @@ export default function CodePage() {
   const canDelete = usePermission("Billing.Lookups.Delete");
   const canViewAuditLog = usePermission("Billing.Lookups.ViewAuditLog");
   const { toast } = useToast();
+  const [applicationConfig, setApplicationConfig] = useState(
+    getCachedApplicationConfig,
+  );
+  const localize = useCallback(
+    (key) => getLocalizationValue(applicationConfig, key),
+    [applicationConfig],
+  );
   const {
     data,
     loading: resourceLoading,
@@ -183,6 +207,19 @@ export default function CodePage() {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    let isCurrent = true;
+    loadApplicationConfig()
+      .then((config) => {
+        if (isCurrent) setApplicationConfig(config);
+      })
+      .catch(() => null);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (data) {
@@ -608,7 +645,7 @@ export default function CodePage() {
                               setActionItem(r);
                               setActionType("enable");
                             } : undefined}
-                            onAuditLog={canViewAuditLog ? (r) => navigate(`/audit-logs?primaryKey=${encodeURIComponent(r.id)}`) : undefined}
+                            onAuditLog={canViewAuditLog ? (r) => navigate(`/audit-logs?primaryKey=${encodeURIComponent(r.id)}&entityName=Lookup`) : undefined}
                           />
                         ))}
                       </AnimatePresence>
@@ -713,12 +750,14 @@ export default function CodePage() {
         onSubmit={handleCreateOrUpdate}
         item={actionItem}
         readOnly={isView}
+        localize={localize}
       />
 
       <DeleteConfirmModal
         open={Boolean(actionItem) && isToggleAction}
         item={actionItem}
         loading={updateLoading}
+        blurBackdrop={false}
         title={isDisable ? "Disable Lookup Code" : "Enable Lookup Code"}
         confirmText={isDisable ? "Yes, Disable" : "Yes, Enable"}
         onClose={resetActionState}

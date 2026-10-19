@@ -12,6 +12,8 @@ export default function DeleteConfirmModal({
   title = "Confirm Delete",
   message = "Are you sure you want to proceed with this action?",
   confirmText = "Delete Now",
+  cancelText = "Cancel",
+  processingText = "Processing...",
   blurBackdrop = true,
 }) {
   const activeItem = item || ticket || site;
@@ -50,7 +52,7 @@ export default function DeleteConfirmModal({
             onClick={onCancel || onClose}
             className="flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
           >
-            Cancel
+            {cancelText}
           </button>
           <button
             onClick={onConfirm}
@@ -58,7 +60,7 @@ export default function DeleteConfirmModal({
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-red-400 text-white text-sm transition-all shadow-lg shadow-red-500/20"
           >
 
-            {loading ? "Processing..." : confirmText}
+            {loading ? processingText : confirmText}
           </button>
         </div>
       </div>

@@ -8,13 +8,14 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Search,
-  Plus,
+  Filter,
   Loader2,
   Code2,
-  X,
-  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from "lucide-react";
-import { Autocomplete, TextField, Checkbox } from "@mui/material";
+import { Autocomplete, TextField } from "@mui/material";
 
 import codeDetailsApi from "../services/api/CodeDetails";
 import codesApi from "../services/api/Code";
@@ -23,6 +24,30 @@ import CodeDetailsModal from "../component/common/CodeDetailsModal";
 import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import { ActionsMenu } from "../component/common/ResourcePage";
 import { usePermission } from "../hooks/usePermission";
+import {
+  getCachedApplicationConfig,
+  loadApplicationConfig,
+} from "../services/applicationConfigCache";
+import { getApiErrorMessage } from "../utils/apiError";
+
+const getLocalizationValue = (applicationConfig, key) => {
+  const resources = applicationConfig?.localization?.values;
+  if (!resources || typeof resources !== "object") return key;
+
+  const defaultResourceName =
+    applicationConfig?.localization?.defaultResourceName;
+  const defaultValue = resources[defaultResourceName]?.[key];
+  if (typeof defaultValue === "string" && defaultValue.trim()) {
+    return defaultValue.trim();
+  }
+
+  for (const resource of Object.values(resources)) {
+    const value = resource?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  return key;
+};
 
 // ── Animation variants ────────────────────────────────────────────
 const rowVariants = {
@@ -36,26 +61,62 @@ const rowVariants = {
 };
 
 const ROW_HEIGHT = "h-[56px]";
+const ADVANCED_SEARCH_FIELDS = [
+  { key: "newCode", localizationKey: "LookupDetailCode" },
+  { key: "lookupCode", localizationKey: "Lookup" },
+  { key: "description", localizationKey: "Description" },
+  { key: "value1", localizationKey: "Value1", compact: true },
+  { key: "value2", localizationKey: "Value2", compact: true },
+  { key: "groupCode", localizationKey: "GroupCode" },
+  { key: "groupCodeDetail", localizationKey: "GroupCodeDetail" },
+  { key: "sequence", localizationKey: "Sequence", compact: true },
+  { key: "extraDescriptionLable", localizationKey: "ExtraDescriptionLable" },
+];
 
 // --- Text Highlighter ---
 const HighlightText = ({ text, term }) => {
-  if (!term || !text) return text ?? "—";
+  if (
+    term === null ||
+    term === undefined ||
+    term === "" ||
+    text === null ||
+    text === undefined ||
+    text === ""
+  ) {
+    return text ?? "—";
+  }
   const str = String(text);
-  const index = str.toLowerCase().indexOf(term.toLowerCase());
+  const normalizedTerm = String(term).toLowerCase();
+  const normalizedText = str.toLowerCase();
+  const parts = [];
+  let cursor = 0;
+  let index = normalizedText.indexOf(normalizedTerm, cursor);
+
   if (index === -1) return str;
+
+  while (index !== -1) {
+    if (index > cursor) parts.push(str.slice(cursor, index));
+    parts.push(
+      <mark
+        key={`${index}-${cursor}`}
+        className="bg-transparent text-pink-600 dark:text-pink-400 font-black"
+      >
+        {str.slice(index, index + normalizedTerm.length)}
+      </mark>,
+    );
+    cursor = index + normalizedTerm.length;
+    index = normalizedText.indexOf(normalizedTerm, cursor);
+  }
+
+  if (cursor < str.length) parts.push(str.slice(cursor));
+
   return (
-    <>
-      {str.slice(0, index)}
-      <mark className="bg-pink-200 dark:bg-pink-500/40 text-pink-900 dark:text-pink-100 px-0.5 rounded-[1px] border border-pink-300 dark:border-pink-500/30">
-        {str.slice(index, index + term.length)}
-      </mark>
-      {str.slice(index + term.length)}
-    </>
+    <>{parts}</>
   );
 };
 
 // ── Skeleton row ──────────────────────────────────────────────────
-function SkeletonRow({ delay = 0 }) {
+function SkeletonRow({ delay = 0, columnCount = 1 }) {
   return (
     <Motion.tr
       initial={{ opacity: 0 }}
@@ -63,7 +124,9 @@ function SkeletonRow({ delay = 0 }) {
       transition={{ delay }}
       className={`border-b border-slate-100 dark:border-slate-800/60 ${ROW_HEIGHT}`}
     >
-      {[8, 22, 38, 8, 8, 12, 8].map((w, i) => (
+      {Array.from({ length: columnCount }, (_, index) =>
+        [8, 22, 38, 12][index % 4],
+      ).map((w, i) => (
         <td key={i} className={`px-5 ${ROW_HEIGHT}`}>
           <div
             className="h-3 rounded-full bg-slate-100 dark:bg-slate-800 animate-pulse"
@@ -82,11 +145,30 @@ export default function CodeDetailsPage() {
   const canEdit = usePermission("Billing.LookupDetails.Edit");
   const canDelete = usePermission("Billing.LookupDetails.Delete");
   const canViewAuditLog = usePermission("Billing.LookupDetails.ViewAuditLog");
+  const [applicationConfig, setApplicationConfig] = useState(
+    getCachedApplicationConfig,
+  );
+  const localize = useCallback(
+    (key) => getLocalizationValue(applicationConfig, key),
+    [applicationConfig],
+  );
+
+  useEffect(() => {
+    let isCurrent = true;
+    loadApplicationConfig()
+      .then((config) => {
+        if (isCurrent) setApplicationConfig(config);
+      })
+      .catch(() => null);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   const [parentCodes, setParentCodes] = useState([]);
   const [selectedParent, setSelectedParent] = useState(null);
   const [loadingParents, setLoadingParents] = useState(false);
-  const [, setResetKey] = useState(0);
 
   const [codeDetails, setCodeDetails] = useState([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -99,6 +181,10 @@ export default function CodeDetailsPage() {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [sortConfig, setSortConfig] = useState({
+    key: "",
+    direction: "asc",
+  });
 
   const [filters, setFilters] = useState({
     newCode: "",
@@ -111,6 +197,7 @@ export default function CodeDetailsPage() {
     sequence: "",
     extraDescriptionLable: "",
   });
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
   const [parentSearch, setParentSearch] = useState("");
 
   const loadParentCodes = useCallback(async () => {
@@ -118,12 +205,15 @@ export default function CodeDetailsPage() {
     try {
       const data = await codesApi.getAll();
       setParentCodes(data);
-    } catch {
-      toast("Failed to load lookup codes", "error");
+    } catch (error) {
+      toast(
+        getApiErrorMessage(error) || localize("DefaultErrorMessage"),
+        "error",
+      );
     } finally {
       setLoadingParents(false);
     }
-  }, [toast]);
+  }, [localize, toast]);
 
   const fetchCodeDetails = useCallback(async () => {
     if (!selectedParent) return;
@@ -135,12 +225,15 @@ export default function CodeDetailsPage() {
         IsDeleted: true,
       });
       setCodeDetails(data);
-    } catch {
-      toast("Failed to load code details", "error");
+    } catch (error) {
+      toast(
+        getApiErrorMessage(error) || localize("DefaultErrorMessage"),
+        "error",
+      );
     } finally {
       setLoadingDetails(false);
     }
-  }, [selectedParent, toast]);
+  }, [localize, selectedParent, toast]);
 
   useEffect(() => {
     loadParentCodes();
@@ -149,23 +242,28 @@ export default function CodeDetailsPage() {
     fetchCodeDetails();
   }, [fetchCodeDetails]);
 
-  const handleClearAll = () => {
-    setSelectedParent(null);
-    setParentSearch("");
-    setCodeDetails([]);
-    setFilters({
-      newCode: "",
-      lookupCode: "",
-      description: "",
-      value1: "",
-      value2: "",
-      groupCode: "",
-      groupCodeDetail: "",
-      sequence: "",
-      extraDescriptionLable: "",
-    });
-    setResetKey((prev) => prev + 1);
+  const clearSearchFilters = () => {
+    setFilters((current) =>
+      Object.fromEntries(Object.keys(current).map((key) => [key, ""])),
+    );
   };
+
+  const hasAdvancedFilters = Object.values(filters).some(Boolean);
+  const advancedSearchOptions = useMemo(
+    () =>
+      Object.fromEntries(
+        ADVANCED_SEARCH_FIELDS.map(({ key }) => [
+          key,
+          [...new Set(
+            codeDetails
+              .map((record) => record[key])
+              .filter((value) => value !== null && value !== undefined && value !== "")
+              .map(String),
+          )].sort((left, right) => left.localeCompare(right)),
+        ]),
+      ),
+    [codeDetails],
+  );
 
   // --- Real-time Local Filtering ---
   const filteredData = useMemo(() => {
@@ -173,22 +271,68 @@ export default function CodeDetailsPage() {
       return Object.keys(filters).every((key) => {
         const term = filters[key];
         if (!term) return true;
-        const cellVal = String(row[key] || "");
+        const cellVal = String(row[key] ?? "");
         return cellVal.toLowerCase().includes(term.toLowerCase());
       });
     });
   }, [codeDetails, filters]);
 
+  const sortedData = useMemo(() => {
+    if (!sortConfig.key) return filteredData;
+
+    const getSortValue = (row) => {
+      if (sortConfig.key === "isActive") {
+        return Boolean(row.isActive && !row.isDeleted);
+      }
+      return row[sortConfig.key];
+    };
+
+    return filteredData
+      .map((row, index) => ({ row, index }))
+      .sort((leftItem, rightItem) => {
+        const left = getSortValue(leftItem.row);
+        const right = getSortValue(rightItem.row);
+
+        if (left == null && right == null) return leftItem.index - rightItem.index;
+        if (left == null) return 1;
+        if (right == null) return -1;
+
+        let comparison;
+        if (typeof left === "number" && typeof right === "number") {
+          comparison = left - right;
+        } else if (typeof left === "boolean" && typeof right === "boolean") {
+          comparison = Number(left) - Number(right);
+        } else {
+          comparison = String(left).localeCompare(String(right), undefined, {
+            numeric: true,
+            sensitivity: "base",
+          });
+        }
+
+        if (comparison === 0) return leftItem.index - rightItem.index;
+        return sortConfig.direction === "asc" ? comparison : -comparison;
+      })
+      .map(({ row }) => row);
+  }, [filteredData, sortConfig]);
+
   const paginatedItems = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return filteredData.slice(start, start + pageSize);
-  }, [filteredData, currentPage, pageSize]);
+    return sortedData.slice(start, start + pageSize);
+  }, [sortedData, currentPage, pageSize]);
 
   const totalPages = Math.ceil(filteredData.length / pageSize);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filters]);
+  }, [filters, sortConfig]);
+
+  const handleSort = (key) => {
+    setSortConfig((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+  };
 
   const handleCreate = async (payload) => {
     const finalPayload = {
@@ -197,7 +341,7 @@ export default function CodeDetailsPage() {
       lookupCode: selectedParent?.lookupCode,
     };
     await codeDetailsApi.create(finalPayload);
-    toast("Code detail created !successfully");
+    toast(localize("SavedSuccessfully"));
     setModalOpen(false);
     await fetchCodeDetails();
   };
@@ -207,7 +351,7 @@ export default function CodeDetailsPage() {
       ...payload,
       lookupId: selectedParent?.id,
     });
-    toast("Code detail updated !successfully");
+    toast(localize("SavedSuccessfully"));
     setActionItem(null);
     setActionType("");
     await fetchCodeDetails();
@@ -220,18 +364,17 @@ export default function CodeDetailsPage() {
     try {
       if (actionType === "disable") {
         await codeDetailsApi.disable(actionItem.id);
-        toast("Record disabled !successfully");
+        toast(localize("SavedSuccessfully"));
       } else if (actionType === "enable") {
         await codeDetailsApi.enable(actionItem.id);
-        toast("Record enabled !successfully");
+        toast(localize("SavedSuccessfully"));
       }
       await fetchCodeDetails();
     } catch (err) {
-      const msg =
-        err.response?.data?.error?.message ||
-        err.message ||
-        "An error occurred.";
-      toast(`Failed to ${actionType} record: ${msg}`, "error");
+      toast(
+        getApiErrorMessage(err) || localize("DefaultErrorMessage"),
+        "error",
+      );
     } finally {
       setActionLoading(false);
       setActionItem(null);
@@ -242,68 +385,86 @@ export default function CodeDetailsPage() {
   const columns = [
     {
       key: "newCode",
-      label: "CODE",
+      label: localize("LookupDetailCode"),
       width: 80,
       render: (val) => (
-        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 tracking-tight leading-none">
+        <span className="text-sm font-semibold text-black dark:text-white tracking-tight leading-none">
           <HighlightText text={val} term={filters.newCode} />
         </span>
       ),
     },
     {
       key: "lookupCode",
-      label: "LOOKUP",
+      label: localize("Lookup"),
       width: 100,
       render: (val) => (
-        <span className="text-sm font-semibold text-slate-800 dark:text-slate-100 tracking-tight leading-none">
+        <span className="text-sm font-semibold text-black dark:text-white tracking-tight leading-none">
           <HighlightText text={val} term={filters.lookupCode} />
         </span>
       ),
     },
     {
       key: "description",
-      label: "DESCRIPTION",
+      label: localize("Description"),
       width: 220,
       render: (val) => (
-        <span className="text-sm text-slate-500 dark:text-slate-400 leading-none line-clamp-1">
+        <span className="text-sm text-black dark:text-white leading-none line-clamp-1">
           {val ? (
             <HighlightText text={val} term={filters.description} />
           ) : (
-            <span className="italic text-slate-300 dark:text-slate-700">
-              No description
-            </span>
+            <span className="italic text-black dark:text-white">—</span>
           )}
         </span>
       ),
     },
     {
+      key: "value1",
+      label: localize("Value1"),
+      width: 80,
+      render: (val) => (
+        <span className="text-xs font-medium text-black dark:text-white">
+          <HighlightText text={val} term={filters.value1} />
+        </span>
+      ),
+    },
+    {
+      key: "value2",
+      label: localize("Value2"),
+      width: 80,
+      render: (val) => (
+        <span className="text-xs font-medium text-black dark:text-white">
+          <HighlightText text={val} term={filters.value2} />
+        </span>
+      ),
+    },
+    {
       key: "groupCode",
-      label: "GROUP",
+      label: localize("GroupCode"),
       width: 100,
       render: (val) => (
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+        <span className="text-xs font-medium text-black dark:text-white">
           <HighlightText text={val} term={filters.groupCode} />
         </span>
       ),
     },
     {
       key: "groupCodeDetail",
-      label: "DETAIL",
+      label: localize("GroupCodeDetail"),
       width: 140,
       render: (val) => (
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+        <span className="text-xs font-medium text-black dark:text-white">
           <HighlightText text={val} term={filters.groupCodeDetail} />
         </span>
       ),
     },
     {
       key: "hasSubCategory",
-      label: "SUB",
+      label: localize("HasSubCategory"),
       width: 50,
       align: "center",
       render: (val) => (
         <span
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${val ? "bg-slate-100 dark:bg-slate-500/15 text-slate-600 dark:text-slate-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-slate-300 dark:text-slate-700"}`}
+          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-sm font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
         >
           {val ? "✓" : "–"}
         </span>
@@ -311,104 +472,106 @@ export default function CodeDetailsPage() {
     },
     {
       key: "sequence",
-      label: "SEQ",
+      label: localize("Sequence"),
       width: 50,
       align: "center",
       render: (val) => (
-        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-md bg-slate-100/50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-mono text-xs font-medium">
-          {val}
+        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-md bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white font-mono text-xs font-medium">
+          <HighlightText text={val} term={filters.sequence} />
         </span>
       ),
     },
     {
       key: "isDefaultIndicator",
-      label: "DEF",
+      label: localize("IsDefaultIndicator"),
       width: 50,
       align: "center",
       render: (val) => (
         <span
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${val ? "bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-slate-300 dark:text-slate-700"}`}
+          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-sm font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
         >
-          {val ? "★" : "–"}
+          {val ? "✓" : "–"}
         </span>
       ),
     },
     {
       key: "isSystemIndicator",
-      label: "SYSTEM INDICATOR",
+      label: localize("IsSystemIndicator"),
       width: 120,
       align: "center",
       render: (val) => (
         <span
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${val ? "bg-indigo-100 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-slate-300 dark:text-slate-700"}`}
+          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-sm font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
         >
-          {val ? "⚙" : "–"}
+          {val ? "✓" : "–"}
         </span>
       ),
     },
     {
       key: "hasExtraDescription",
-      label: "EXT",
+      label: localize("HasExtraDescription"),
       width: 50,
       align: "center",
       render: (val) => (
         <span
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${val ? "bg-purple-100 dark:bg-purple-500/15 text-purple-600 dark:text-purple-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-slate-300 dark:text-slate-700"}`}
+          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-sm font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
         >
-          {val ? "⊕" : "–"}
+          {val ? "✓" : "–"}
         </span>
       ),
     },
     {
       key: "extraDescriptionLable",
-      label: "EXT LABEL",
+      label: localize("ExtraDescriptionLable"),
       width: 120,
       render: (val) => (
-        <span className="text-xs text-slate-500 dark:text-slate-400 italic line-clamp-1">
+        <span className="text-xs text-black dark:text-white italic line-clamp-1">
           <HighlightText text={val} term={filters.extraDescriptionLable} />
         </span>
       ),
     },
     {
       key: "isRequiredField",
-      label: "REQ",
+      label: localize("IsRequiredField"),
       width: 50,
       align: "center",
       render: (val) => (
         <span
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold ${val ? "bg-rose-100 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-slate-300 dark:text-slate-700"}`}
+          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-sm font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
         >
-          {val ? "!" : "–"}
+          {val ? "✓" : "–"}
         </span>
       ),
     },
     {
       key: "isActive",
-      label: "STATUS",
+      label: localize("IsActive"),
       width: 100,
       align: "center",
       render: (val, row) => (
         <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${val && !row.isDeleted ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-slate-100 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500"}`}
+          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-sm font-black ${val && !row.isDeleted ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
         >
-          <span
-            className={`w-1 h-1 rounded-full ${val && !row.isDeleted ? "bg-emerald-500" : "bg-slate-400 dark:bg-slate-600"}`}
-          />
-          {val && !row.isDeleted ? "Active" : "Inactive"}
+          {val && !row.isDeleted ? "✓" : "–"}
         </span>
       ),
     },
     {
       key: "actions",
-      label: "ACTIONS",
+      label: localize("Actions"),
       width: 100,
       align: "right",
+      sortable: false,
       render: (val, row) => {
+        // System-indicator records are backend-controlled reference data.
+        // They must remain visible, but no row actions may be exposed.
+        if (row.isSystemIndicator) return null;
+
         return (
           <div className="flex justify-end items-center h-full">
             <ActionsMenu
               onEdit={
-                canEdit && !row.isSystemIndicator
+                canEdit && row.isActive && !row.isDeleted
                   ? () => {
                     setActionItem(row);
                     setActionType("edit");
@@ -417,11 +580,11 @@ export default function CodeDetailsPage() {
               }
               onAuditLog={canViewAuditLog ? () =>
                 navigate(
-                  `/audit-logs?primaryKey=${row.id}&entityName=${codeDetailsApi.entityName}`,
+                  `/audit-logs?primaryKey=${encodeURIComponent(row.id)}&entityName=${encodeURIComponent(codeDetailsApi.entityName)}`,
                 )
               : undefined}
               onDisable={
-                canDelete && !row.isSystemIndicator && row.isActive && !row.isDeleted
+                canDelete && row.isActive && !row.isDeleted
                   ? () => {
                     setActionItem(row);
                     setActionType("disable");
@@ -429,88 +592,24 @@ export default function CodeDetailsPage() {
                   : undefined
               }
               onEnable={
-                canDelete && !row.isSystemIndicator && (!row.isActive || row.isDeleted)
+                canDelete && (!row.isActive || row.isDeleted)
                   ? () => {
                     setActionItem(row);
                     setActionType("enable");
                   }
                   : undefined
               }
+              actionButtonText={localize("Actions")}
+              editButtonText={localize("Edit")}
+              auditLogButtonText={localize("AuditLogsButtonText")}
+              disableButtonText={localize("DisableButtonText")}
+              enableButtonText={localize("EnableButtonText")}
             />
           </div>
         );
       },
     },
   ];
-
-  const filterRow = (
-    <div className="bg-slate-50/50 dark:bg-slate-900/40 border-b border-slate-100 dark:border-slate-800/60 transition-all overflow-x-auto no-scrollbar">
-      <div className="flex px-4 min-w-max relative group">
-        {[
-          { label: "Code", key: "newCode", w: 120, isCombo: true },
-          { label: "Lookup", key: "lookupCode", w: 150, isCombo: true },
-          { label: "Description", key: "description", w: 280, isCombo: true },
-          { label: "Group", key: "groupCode", w: 150, isCombo: true },
-          { label: "Detail", key: "groupCodeDetail", w: 140, isCombo: false },
-          { label: "Sub", key: "hasSubCategory", w: 50, isCombo: false },
-          { label: "Seq", key: "sequence", w: 50, isCombo: false },
-          { label: "Def", key: "isDefaultIndicator", w: 50, isCombo: false },
-          { label: "System Indicator", key: "isSystemIndicator", w: 120, isCombo: false },
-          { label: "Ext", key: "hasExtraDescription", w: 50, isCombo: false },
-          {
-            label: "Extra Label",
-            key: "extraDescriptionLable",
-            w: 120,
-            isCombo: false,
-          },
-          { label: "Req", key: "isRequiredField", w: 50, isCombo: false },
-          { label: "Status", key: "isActive", w: 100, isCombo: false },
-          { label: "Actions", key: "actions", w: 100, isCombo: false },
-        ].map((f, i) => (
-          <div
-            key={f.key}
-            style={{ width: f.w }}
-            className={`px-2 py-3 flex flex-col gap-1.5 shrink-0 ${i === 0 ? "pl-4" : ""}`}
-          >
-            {f.isCombo ? (
-              <div className="relative group/input">
-                <input
-                  type="text"
-                  placeholder={f.label}
-                  className="w-full pl-3 pr-8 py-2 text-[11px] font-medium bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all placeholder:text-slate-400/70"
-                  value={filters[f.key] || ""}
-                  onChange={(e) =>
-                    setFilters((prev) => ({ ...prev, [f.key]: e.target.value }))
-                  }
-                />
-                {filters[f.key] && (
-                  <button
-                    onClick={() =>
-                      setFilters((prev) => ({ ...prev, [f.key]: "" }))
-                    }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500 transition-colors"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="h-[30px]" />
-            )}
-          </div>
-        ))}
-        {/* Absolute Clear Button */}
-        <div className="sticky right-0 flex items-center pl-4 pr-2 bg-gradient-to-l from-slate-50 dark:from-[#161920] via-slate-50 dark:via-[#161920] to-transparent">
-          <button
-            onClick={handleClearAll}
-            className="h-8 px-4 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 hover:text-pink-600 hover:border-pink-500 transition-all shadow-sm flex items-center gap-2 whitespace-nowrap"
-          >
-            <X size={12} /> Clear Filters
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <Motion.div
@@ -546,18 +645,16 @@ export default function CodeDetailsPage() {
             <div className="flex items-center gap-4">
               <div>
                 <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
-                  <span>Home</span>
+                  <span>{localize("Home")}</span>
                   <span className="text-slate-300 dark:text-slate-700">/</span>
-                  <span>Management</span>
-                  <span className="text-slate-300 dark:text-slate-700">/</span>
-                  <span>Lookups</span>
+                  <span>{localize("Lookups")}</span>
                   <span className="text-slate-300 dark:text-slate-700">/</span>
                   <span className="text-pink-500">
-                    Code Details
+                    {localize("LookupDetails")}
                   </span>
                 </nav>
                 <h1 className="text-4xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 tracking-tighter">
-                  Code Details
+                  {localize("LookupDetails")}
                   <AnimatePresence>
                     {(loadingParents || loadingDetails || actionLoading) && (
                       <Motion.span
@@ -584,22 +681,33 @@ export default function CodeDetailsPage() {
                 onClick={() => setModalOpen(true)}
                 className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs uppercase tracking-tight"
               >
-                New Code Detail
+                {localize("AddNewLookupDetail")}
               </Motion.button>
             )}
           </div>
 
-          {/* Parent Selection */}
-          <div className="w-full max-w-2xl">
-            <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col xl:flex-row xl:items-end gap-3">
+              {/* Parent Selection */}
+              <div className="w-full max-w-2xl xl:flex-1">
+                <div className="flex flex-col gap-2">
               <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none px-1">
-                Select Lookup Code <span className="required-asterisk">*</span>
+                {localize("LookupCode")} <span className="required-asterisk">*</span>
               </label>
               <Autocomplete
                 fullWidth
                 options={parentCodes}
                 loading={loadingParents}
                 getOptionLabel={(o) => o.description || ""}
+                filterOptions={(options, state) => {
+                  const searchValue = state.inputValue.trim().toLowerCase();
+                  if (!searchValue) return options;
+                  return options.filter((option) =>
+                    `${option.lookupCode ?? ""} ${option.description ?? ""}`
+                      .toLowerCase()
+                      .includes(searchValue),
+                  );
+                }}
                 value={selectedParent}
                 inputValue={parentSearch}
                 onInputChange={(_, val) => setParentSearch(val)}
@@ -646,7 +754,7 @@ export default function CodeDetailsPage() {
                 renderInput={(params) => (
                   <TextField
                     {...params}
-                    placeholder="Search parent code..."
+                    placeholder={localize("SearchCode")}
                     size="small"
                     sx={{
                       "& .MuiOutlinedInput-root": {
@@ -679,15 +787,106 @@ export default function CodeDetailsPage() {
                     }}
                   />
                 )}
-              />
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAdvancedSearch((visible) => !visible)}
+                className={`h-[44px] inline-flex items-center justify-center gap-2 px-4 rounded-xl border text-xs font-bold transition-all ${showAdvancedSearch ? "bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-500/10 dark:border-pink-500/30 dark:text-pink-400" : "bg-white text-slate-500 border-slate-200/60 dark:bg-slate-900/50 dark:border-slate-800/50 dark:text-slate-400 hover:text-pink-600"}`}
+                aria-expanded={showAdvancedSearch}
+              >
+                <Filter size={14} />
+                {localize("AdvancedSearch")}
+                {hasAdvancedFilters && (
+                  <span className="h-2 w-2 rounded-full bg-pink-500" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={clearSearchFilters}
+                className="app-primary-button h-[44px] inline-flex items-center justify-center gap-2 px-4 text-xs"
+              >
+                {localize("ClearFilter")}
+              </button>
             </div>
+            </div>
+
+            <AnimatePresence initial={false}>
+              {showAdvancedSearch && (
+                <Motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex flex-nowrap w-full gap-1.5 pt-3 pb-1 border-t border-slate-100 dark:border-slate-800/50 overflow-hidden">
+                    {ADVANCED_SEARCH_FIELDS.map(({ key, localizationKey, compact }) => (
+                      <div
+                        key={key}
+                        className="basis-0 min-w-0"
+                        style={{ flexGrow: compact ? 0.55 : 1 }}
+                      >
+                        <Autocomplete
+                          freeSolo
+                          forcePopupIcon={false}
+                          options={advancedSearchOptions[key] || []}
+                          value={filters[key] || null}
+                          inputValue={filters[key] || ""}
+                          onChange={(_, value) =>
+                            setFilters((current) => ({
+                              ...current,
+                              [key]: value === null ? "" : String(value),
+                            }))
+                          }
+                          onInputChange={(_, value) =>
+                            setFilters((current) => ({ ...current, [key]: value }))
+                          }
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              placeholder={localize(localizationKey)}
+                              size="small"
+                              sx={{
+                                "& .MuiOutlinedInput-root": {
+                                  minHeight: "34px",
+                                  paddingRight: "6px !important",
+                                  borderRadius: "9px",
+                                  backgroundColor: "rgba(248, 250, 252, 0.8)",
+                                  fontSize: "10px",
+                                  fontWeight: 700,
+                                  ".dark &": {
+                                    backgroundColor: "rgba(15, 23, 42, 0.7)",
+                                  },
+                                  "&.Mui-focused fieldset": {
+                                    borderColor: "#ec4899",
+                                  },
+                                },
+                                "& .MuiAutocomplete-input": {
+                                  minWidth: "0 !important",
+                                  padding: "5px 4px !important",
+                                  textOverflow: "ellipsis",
+                                },
+                                "& .MuiAutocomplete-clearIndicator": {
+                                  padding: "2px",
+                                },
+                              }}
+                            />
+                          )}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </Motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
         {/* ── Table Area ── */}
         <div className="w-full flex flex-col">
-          {filterRow}
-
           <div className="w-full overflow-x-auto custom-scrollbar px-4 pb-4">
             <div className="min-w-max">
               <table className="w-full text-left border-separate border-spacing-y-0">
@@ -695,13 +894,40 @@ export default function CodeDetailsPage() {
                   <tr
                     className={`bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 ${ROW_HEIGHT}`}
                   >
-                    {columns.map((col, i) => (
+                    {columns.map((col) => (
                       <th
                         key={col.key}
                         style={{ width: col.width }}
-                        className={`px-5 ${ROW_HEIGHT} text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 text-${col.align || "left"} ${i === 0 ? "pl-8" : ""}`}
+                        aria-sort={
+                          col.sortable === false || sortConfig.key !== col.key
+                            ? "none"
+                            : sortConfig.direction === "asc"
+                              ? "ascending"
+                              : "descending"
+                        }
+                        className={`px-3 ${ROW_HEIGHT} text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 text-${col.align || "left"}`}
                       >
-                        {col.label}
+                        {col.sortable === false ? (
+                          col.label
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSort(col.key)}
+                            aria-label={col.label}
+                            className={`w-full inline-flex items-center gap-1.5 hover:text-pink-600 dark:hover:text-pink-400 transition-colors ${col.align === "center" ? "justify-center" : col.align === "right" ? "justify-end" : "justify-start"}`}
+                          >
+                            <span>{col.label}</span>
+                            {sortConfig.key === col.key ? (
+                              sortConfig.direction === "asc" ? (
+                                <ArrowUp size={12} className="shrink-0 text-pink-600 dark:text-pink-400" />
+                              ) : (
+                                <ArrowDown size={12} className="shrink-0 text-pink-600 dark:text-pink-400" />
+                              )
+                            ) : (
+                              <ArrowUpDown size={11} className="shrink-0 opacity-50" />
+                            )}
+                          </button>
+                        )}
                       </th>
                     ))}
                   </tr>
@@ -738,7 +964,7 @@ export default function CodeDetailsPage() {
                             />
                           </div>
                           <p className="text-sm text-slate-400 dark:text-slate-600 uppercase font-black tracking-widest">
-                            Please select a lookup code first
+                            {localize("SelectBoxEmptyValueText")}
                           </p>
                         </Motion.div>
                       </td>
@@ -763,7 +989,7 @@ export default function CodeDetailsPage() {
                               />
                             </div>
                             <p className="text-sm text-slate-400 dark:text-slate-600">
-                              No records found for the selected criteria.
+                              {localize("NoDataAvailableInDatatable")}
                             </p>
                           </Motion.div>
                         </td>
@@ -793,10 +1019,10 @@ export default function CodeDetailsPage() {
                             {columns.map((col, colIdx) => (
                               <td
                                 key={col.key}
-                                className={`px-5 ${ROW_HEIGHT} ${rowBgClass} ${colIdx === 0 ? "pl-8 rounded-l-2xl" : ""} ${colIdx === columns.length - 1 ? "rounded-r-2xl" : ""} transition-colors`}
+                                className={`px-3 ${ROW_HEIGHT} ${rowBgClass} ${colIdx === 0 ? "rounded-l-2xl" : ""} ${colIdx === columns.length - 1 ? "rounded-r-2xl" : ""} transition-colors`}
                               >
                                 <div
-                                  className={`text-[11px] font-medium text-slate-600 dark:text-slate-300 leading-none text-${col.align || "left"}`}
+                                  className={`text-[11px] font-medium text-black dark:text-white leading-none text-${col.align || "left"}`}
                                 >
                                   {col.render ? (
                                     col.render(row[col.key], row)
@@ -827,7 +1053,7 @@ export default function CodeDetailsPage() {
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2.5">
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
-                    Page Size:
+                    {localize("PagerShowMenuEntries").split("_MENU_")[0]}
                   </span>
                   <AppSelect
                     value={pageSize}
@@ -842,32 +1068,33 @@ export default function CodeDetailsPage() {
                         {s}
                       </option>
                     ))}
-                  </AppSelect>
+                    </AppSelect>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                      {localize("PagerShowMenuEntries").split("_MENU_")[1]}
+                    </span>
                 </div>
 
                 <div className="hidden sm:flex items-center gap-2 border-l border-slate-200 dark:border-slate-800 pl-4">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                    <span className="text-slate-900 dark:text-white">
-                      {filteredData.length === 0
-                        ? 0
-                        : (currentPage - 1) * pageSize + 1}
-                    </span>
-                    <span className="mx-1.5 text-slate-400">—</span>
-                    <span className="text-slate-900 dark:text-white">
-                      {Math.min(currentPage * pageSize, filteredData.length)}
-                    </span>
-                    <span className="mx-2 lowercase font-bold italic tracking-normal">
-                      of
-                    </span>
-                    <span className="text-slate-900 dark:text-white">
-                      {filteredData.length}
-                    </span>
+                    {localize("PagerInfo{0}{1}{2}")
+                      .replace(
+                        "{0}",
+                        filteredData.length === 0
+                          ? "0"
+                          : String((currentPage - 1) * pageSize + 1),
+                      )
+                      .replace(
+                        "{1}",
+                        String(Math.min(currentPage * pageSize, filteredData.length)),
+                      )
+                      .replace("{2}", String(filteredData.length))}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
                 <button
+                  aria-label={localize("PagerFirst")}
                   onClick={() => setCurrentPage(1)}
                   disabled={currentPage === 1}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 transition-all"
@@ -875,6 +1102,7 @@ export default function CodeDetailsPage() {
                   <ChevronsLeft size={16} strokeWidth={2.5} />
                 </button>
                 <button
+                  aria-label={localize("PagerPrevious")}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 transition-all"
@@ -885,9 +1113,6 @@ export default function CodeDetailsPage() {
                 <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1" />
 
                 <div className="px-3 flex items-center gap-2">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Page
-                  </span>
                   <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
                     <span className="text-[12px] font-black text-pink-600 leading-none">
                       {currentPage}
@@ -904,6 +1129,7 @@ export default function CodeDetailsPage() {
                 <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1" />
 
                 <button
+                  aria-label={localize("PagerNext")}
                   onClick={() =>
                     setCurrentPage((p) => Math.min(totalPages, p + 1))
                   }
@@ -913,6 +1139,7 @@ export default function CodeDetailsPage() {
                   <ChevronRight size={16} strokeWidth={2.5} />
                 </button>
                 <button
+                  aria-label={localize("PagerLast")}
                   onClick={() => setCurrentPage(totalPages)}
                   disabled={currentPage >= totalPages}
                   className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 transition-all"
@@ -932,6 +1159,7 @@ export default function CodeDetailsPage() {
           onClose={() => setModalOpen(false)}
           onSubmit={handleCreate}
           selectedParent={selectedParent}
+          localize={localize}
         />
       )}
 
@@ -946,6 +1174,7 @@ export default function CodeDetailsPage() {
             setActionType("");
           }}
           onSubmit={(payload) => handleUpdate(actionItem.id, payload)}
+          localize={localize}
         />
       )}
 
@@ -955,10 +1184,24 @@ export default function CodeDetailsPage() {
           open={true}
           item={actionItem}
           loading={actionLoading}
+          blurBackdrop={false}
           title={
-            actionType === "disable" ? "Confirm Disable" : "Confirm Enable"
+            actionType === "disable"
+              ? localize("DisableButtonText")
+              : localize("EnableButtonText")
           }
-          confirmText={actionType === "disable" ? "Disable Now" : "Enable Now"}
+          message={
+            actionType === "disable"
+              ? localize("DisableConfirmationMessage")
+              : localize("EnableConfirmationMessage")
+          }
+          confirmText={
+            actionType === "disable"
+              ? localize("DisableButtonText")
+              : localize("EnableButtonText")
+          }
+          cancelText={localize("Cancel")}
+          processingText={localize("ProcessingWithThreeDot")}
           onClose={() => {
             setActionItem(null);
             setActionType("");

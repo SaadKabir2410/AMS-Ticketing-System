@@ -17,6 +17,7 @@ export default function CodeModal({
   onSubmit, // Function called after successful form validation and payload building
   item = null, // If item is passed, we fetch its full details externally or pass via props
   readOnly = false,
+  localize = (key) => key,
 }) {
   const isEdit = !!item;
   const [formData, setFormData] = useState(EMPTY_FORM);
@@ -47,7 +48,9 @@ export default function CodeModal({
               // Deliberately explicitly decoupled from form state per structural rule
             });
           } catch (fetchError) {
-            setError(getApiErrorMessage(fetchError));
+            setError(
+              getApiErrorMessage(fetchError) || localize("DefaultErrorMessage"),
+            );
           } finally {
             setSubmitting(false);
           }
@@ -58,7 +61,7 @@ export default function CodeModal({
         setFormData(EMPTY_FORM);
       }
     }
-  }, [open, isEdit, item]);
+  }, [open, isEdit, item, localize]);
 
   const handleChange = (e) => {
     if (readOnly) return;
@@ -85,10 +88,30 @@ export default function CodeModal({
     setFieldErrors({});
 
     try {
+      const errors = {};
+      const requiredMessage = (fieldName) =>
+        localize("The {0} field is required.").replace("{0}", fieldName);
+
+      if (!formData.lookupCode?.trim()) {
+        errors.lookupCode = requiredMessage(localize("LookupCode"));
+      }
+      if (!formData.description?.trim()) {
+        errors.description = requiredMessage(localize("Description"));
+      }
+      if (formData.sequence === "" || formData.sequence === null || formData.sequence === undefined) {
+        errors.sequence = requiredMessage(localize("Sequence"));
+      }
+
+      if (Object.keys(errors).length > 0) {
+        setFieldErrors(errors);
+        setSubmitting(false);
+        return;
+      }
+
       const payload = {
-        lookupCode: formData.lookupCode,
-        description: formData.description,
-        sequence: formData.sequence,
+        lookupCode: formData.lookupCode.trim(),
+        description: formData.description.trim(),
+        sequence: Number(formData.sequence),
         // System defaults for Create, preserved overrides for Edit precisely as strictly prescribed
         isSystemIndicator: isEdit && fetchedRecord ? !!fetchedRecord.isSystemIndicator : false,
         isActive: isEdit && fetchedRecord ? fetchedRecord.isActive : true,
@@ -105,7 +128,9 @@ export default function CodeModal({
       );
       setFieldErrors(nextFieldErrors);
       setError(
-        Object.keys(nextFieldErrors).length ? null : getApiErrorMessage(err),
+        Object.keys(nextFieldErrors).length
+          ? null
+          : getApiErrorMessage(err) || localize("DefaultErrorMessage"),
       );
     } finally {
       if (!isEdit) {
@@ -129,6 +154,14 @@ export default function CodeModal({
       }}
       maxWidth="xs"
       fullWidth
+      slotProps={{
+        backdrop: {
+          sx: {
+            backdropFilter: "none",
+            WebkitBackdropFilter: "none",
+          },
+        },
+      }}
       PaperProps={{
         sx: { borderRadius: "16px" },
         className: "bg-white dark:bg-slate-900 dark:text-white",
@@ -136,7 +169,11 @@ export default function CodeModal({
     >
       <div className="flex items-center justify-between px-6 pt-5 pb-3">
         <h2 className="text-lg font-medium text-slate-800 dark:text-white">
-          {readOnly ? "View Code" : (isEdit ? "Edit Code" : "Add Code")}
+          {readOnly
+            ? localize("View")
+            : isEdit
+              ? localize("EditLookup")
+              : localize("AddNewLookup")}
         </h2>
         <IconButton onClick={onClose} size="small" disabled={submitting}>
           <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -150,7 +187,7 @@ export default function CodeModal({
           {/* Lookup Code */}
           <div>
             <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1.5 ml-1 font-medium">
-              Lookup Code <span className="required-asterisk">*</span>
+              {localize("LookupCode")} <span className="required-asterisk">*</span>
             </label>
             <input
               type="text"
@@ -171,7 +208,7 @@ export default function CodeModal({
           {/* Description */}
           <div>
             <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1.5 ml-1 font-medium">
-              Description <span className="required-asterisk">*</span>
+              {localize("Description")} <span className="required-asterisk">*</span>
             </label>
             <textarea
               name="description"
@@ -190,14 +227,14 @@ export default function CodeModal({
           {/* Sequence */}
           <div>
             <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1.5 ml-1 font-medium">
-              Sequence <span className="required-asterisk">*</span>
+              {localize("Sequence")} <span className="required-asterisk">*</span>
             </label>
             <input
               type="number"
               name="sequence"
               min={0}
               step={1}
-              placeholder="Enter Sequence"
+              placeholder={localize("Sequence")}
               value={formData.sequence}
               onChange={handleChange}
               className={getInputClass()}
@@ -228,7 +265,7 @@ export default function CodeModal({
           disabled={submitting}
           className={`${readOnly ? "w-full" : "flex-1"} btn-flagship h-[42px]! text-[11px]! border-slate-200! dark:border-slate-700! text-slate-500! hover:bg-slate-50! dark:hover:bg-white/5!`}
         >
-          {readOnly ? "Close" : "Cancel"}
+          {readOnly ? localize("Close") : localize("Cancel")}
         </button>
         {!readOnly && (
           <button
@@ -239,7 +276,7 @@ export default function CodeModal({
           >
             {submitting ? (
               <div className="w-4 h-4 border-2 border-white! border-t-transparent rounded-full animate-spin"></div>
-            ) : isEdit ? "Save Changes" : "Create"}
+            ) : localize("Save")}
           </button>
         )}
       </div>

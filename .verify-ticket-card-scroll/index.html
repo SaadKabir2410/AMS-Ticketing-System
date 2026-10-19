@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sureze Ticketing System</title>
+  <script>
+    try {
+      var session = localStorage.getItem("spike_session");
+      var userId = session ? JSON.parse(session).id : null;
+      var themeKey = userId ? "theme_" + userId : "theme";
+      var theme = localStorage.getItem(themeKey) || "light";
+      if (theme === "dark") {
+        document.documentElement.classList.add("dark");
+        document.documentElement.style.backgroundColor = "#020617";
+      }
+    } catch (e) {}
+  </script>
+  <script type="module" crossorigin src="/assets/index-3VuroNgm.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-Bhmf7a9N.js">
+  <link rel="modulepreload" crossorigin href="/assets/vendor-dates-CIEX1b1Y.js">
+  <link rel="modulepreload" crossorigin href="/assets/vendor-dnd-BtBMxdal.js">
+  <link rel="modulepreload" crossorigin href="/assets/vendor-mui-D_OW494h.js">
+  <link rel="modulepreload" crossorigin href="/assets/vendor-utils-HKq9eA0N.js">
+  <link rel="modulepreload" crossorigin href="/assets/createLucideIcon-BKxTUx8W.js">
+  <link rel="modulepreload" crossorigin href="/assets/vendor-react-DWiL-JDE.js">
+  <link rel="modulepreload" crossorigin href="/assets/AuthContextHook-Dd0jwsgL.js">
+  <link rel="stylesheet" crossorigin href="/assets/vendor-dates-OPXdkuVA.css">
+  <link rel="stylesheet" crossorigin href="/assets/index-DTQmaI7f.css">
+</head>
+
+<body>
+  <div id="root"></div>
+</body>
+
+</html>

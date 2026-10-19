@@ -41,6 +41,7 @@ import { useTheme } from "../context/ThemeContext";
 import { Menu, MenuItem, ListItemText, Popper, Paper, ClickAwayListener, MenuList } from "@mui/material";
 import { usePermission } from "../hooks/usePermission";
 import { useAuth } from "../context/AuthContextHook";
+import { excludeFeatureManagementPermissions } from "../utils/permissionGroups";
 
 const getPermissionParentName = (permission) =>
   permission.parentName?.trim() || null;
@@ -261,12 +262,13 @@ export default function UsersPage() {
     setLoadingPermissions(true);
     try {
       const userPerms = await usersApi.getPermissions(user.id);
-      setPermissionsData(userPerms);
+      const visiblePermissions = excludeFeatureManagementPermissions(userPerms);
+      setPermissionsData(visiblePermissions);
 
       const initial = {};
       const locked = {};
 
-      userPerms.groups?.forEach((g) => {
+      visiblePermissions.groups?.forEach((g) => {
         g.permissions.forEach((p) => {
           initial[p.name] = p.isGranted || false;
           locked[p.name] = p.isGranted === true;

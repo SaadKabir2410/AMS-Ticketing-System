@@ -22,6 +22,7 @@ import { ActionsMenu } from "./ResourcePage";
 import { useToast } from "./ToastContext";
 import { useAuth } from "../../context/AuthContextHook";
 import SearchTextHighlight from "./SearchTextHighlight";
+import { getApiErrorMessage } from "../../utils/apiError";
 
 import { usersApi } from "../../services/api/users";
 import { sitesApi } from "../../services/api/sites";
@@ -36,9 +37,9 @@ import "flatpickr/dist/flatpickr.css";
 
 function Field({ label, error, children }) {
   return (
-    <div className="space-y-1.5 flex flex-col group/field">
+    <div className="space-y-0.5 flex flex-col group/field">
       {label && (
-        <label className="text-[12px] font-semibold text-slate-700 dark:text-slate-400 mb-1.5 group-focus-within/field:text-pink-600 transition-colors flex items-center gap-2">
+        <label className="text-[10px] font-semibold text-slate-700 dark:text-slate-400 mb-0.5 group-focus-within/field:text-pink-600 transition-colors flex items-center gap-1.5">
           {label.includes("*") ? (
             <>
               {label.split("*")[0]}
@@ -54,7 +55,7 @@ function Field({ label, error, children }) {
         <motion.p
           initial={{ opacity: 0, y: -5 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-[11px] font-semibold text-rose-600 flex items-center gap-1.5 mt-1.5"
+          className="text-[10px] font-semibold text-rose-600 flex items-center gap-1 mt-0.5 leading-tight"
         >
           <AlertCircle size={10} strokeWidth={2.5} /> {error}
         </motion.p>
@@ -64,7 +65,7 @@ function Field({ label, error, children }) {
 }
 
 const inputClass =
-  "w-full px-4 py-2 rounded-xl border border-transparent border-slate-500 bg-slate-100 dark:bg-slate-800/50 backdrop-blur-sm text-sm outline-none transition-all duration-300 focus:bg-white dark:focus:bg-slate-900 focus:border-pink-500/30 focus:ring-4 focus:ring-pink-500/10 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800/50 font-medium text-black dark:text-slate-200 placeholder:text-slate-500/80";
+  "w-full px-3 py-1.5 rounded-lg border border-transparent border-slate-500 bg-slate-100 dark:bg-slate-800/50 backdrop-blur-sm text-xs outline-none transition-all duration-300 focus:bg-white dark:focus:bg-slate-900 focus:border-pink-500/30 focus:ring-2 focus:ring-pink-500/10 shadow-sm hover:bg-slate-100 dark:hover:bg-slate-800/50 font-medium text-black dark:text-slate-200 placeholder:text-slate-500/80";
 
 // ─── Robust string-based equality ──────────────────────────────────────────
 // Converts both sides to lowercase strings before comparing so that
@@ -97,6 +98,19 @@ function getActivityDurationMinutes(activity) {
 
 const isEmailIncomingChannel = (value) =>
   String(value).trim().toLowerCase() === "email" || Number(value) === 3;
+
+const getLocalizedApiError = (error, localize) => {
+  const backendMessage = getApiErrorMessage(error);
+  if (backendMessage) return backendMessage;
+
+  const statusKey = error?.response?.status
+    ? `DefaultErrorMessage${error.response.status}`
+    : "";
+  const statusMessage = statusKey ? localize(statusKey) : "";
+  return statusMessage && statusMessage !== statusKey
+    ? statusMessage
+    : localize("DefaultErrorMessage");
+};
 
 function Combobox({
   value,
@@ -174,6 +188,7 @@ function Combobox({
         onClick={() => {
           if (!disabled && !open) setOpen(true);
         }}
+        style={{ borderWidth: "0.5px" }}
         className={`${inputClass} app-combobox-trigger flex items-center justify-between ${disabled
           ? "opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800/30"
           : "cursor-text"
@@ -373,6 +388,7 @@ export default function TicketModal({
   submitting = false,
   viewMode = false,
   canCloseTicket = false,
+  localize = (key) => key,
 }) {
   const onSubmit = onSave || onSubmitProp;
   const isEdit = !!ticket;
@@ -662,9 +678,7 @@ export default function TicketModal({
           "[TicketModal] Failed to fetch sites:",
           err?.response?.data || err.message
         );
-        setOptionsError(
-          "Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in."
-        );
+        setOptionsError(getLocalizedApiError(err, localize));
         return { items: [] };
       }),
       usersApi
@@ -674,18 +688,14 @@ export default function TicketModal({
         })
         .catch((err) => {
           console.error("[TicketModal] Failed to fetch users:", err);
-          setOptionsError(
-            "Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in."
-          );
+          setOptionsError(getLocalizedApiError(err, localize));
           return [];
         }),
       usersApi
         .getUsersList({ onlyLoadCurrentUser: true })
         .catch((err) => {
           console.error("[TicketModal] Failed to fetch current user:", err);
-          setOptionsError(
-            "Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in."
-          );
+          setOptionsError(getLocalizedApiError(err, localize));
           return [];
         }),
       codeDetailsApi
@@ -694,9 +704,7 @@ export default function TicketModal({
         })
         .catch((err) => {
           console.error("[TicketModal] Failed to fetch lookups:", err);
-          setOptionsError(
-            "Some form options couldn't be loaded due to a permissions issue. \nPlease contact your administrator or try logging out and back in."
-          );
+          setOptionsError(getLocalizedApiError(err, localize));
           return {};
         }),
     ])
@@ -806,7 +814,7 @@ export default function TicketModal({
       .finally(() => {
         setLoadingApis(false);
       });
-  }, [open, ticket]);
+  }, [open, ticket, localize, user]);
 
   // ── Load customers whenever the selected site changes ─────────────────────
   useEffect(() => {
@@ -991,12 +999,7 @@ export default function TicketModal({
       toast("PDF extracted successfully! Form has been auto-filled.");
     } catch (err) {
       console.error("PDF upload error:", err);
-      const msg =
-        err.response?.data?.error?.message ||
-        err.response?.data?.error?.validationErrors?.map((e) => e.message).join(", ") ||
-        err.message ||
-        "Failed to process PDF. Please try again.";
-      setPdfError(msg);
+      setPdfError(getLocalizedApiError(err, localize));
     } finally {
       setPdfUploading(false);
     }
@@ -1007,27 +1010,35 @@ export default function TicketModal({
 
     const newErrors = {};
     const now = new Date();
+    const requiredMessage = (fieldName) =>
+      localize("The {0} field is required.").replace("{0}", fieldName);
+    const invalidMessage = (fieldName) =>
+      localize("The field {0} is invalid.").replace("{0}", fieldName);
 
     if (!form.receivedAt) {
-      newErrors.receivedAt = "Ticket Received Date is required";
+      newErrors.receivedAt = requiredMessage(localize("TicketReceivedDate"));
     } else {
       const receivedDate = new Date(form.receivedAt);
       if (receivedDate > now) {
-        newErrors.receivedAt =
-          "Ticket Received Date can not be more than today's date";
+        newErrors.receivedAt = invalidMessage(localize("TicketReceivedDate"));
       }
     }
 
-    if (form.cmsTicketAddedOn) {
+    if (!String(form.cmsNextTicketNo ?? "").trim()) {
+      newErrors.cmsNextTicketNo = requiredMessage(localize("CMSNextTicketNo"));
+    }
+
+    if (!form.cmsTicketAddedOn) {
+      newErrors.cmsTicketAddedOn = requiredMessage(localize("CMSTicketAddedOn"));
+    } else {
       const addedOnDate = new Date(form.cmsTicketAddedOn);
       if (addedOnDate > now) {
-        newErrors.cmsTicketAddedOn =
-          "CMS Ticket Added On can not be more than today's date";
+        newErrors.cmsTicketAddedOn = invalidMessage(localize("CMSTicketAddedOn"));
       }
     }
 
     if (form.isTicketForwarded && !form.ticketForwardedBy) {
-      newErrors.ticketForwardedBy = "Ticket Forwarded By is required";
+      newErrors.ticketForwardedBy = requiredMessage(localize("TicketForwardedBy"));
     }
 
     if (form.receivedAt) {
@@ -1036,16 +1047,14 @@ export default function TicketModal({
       if (form.cmsTicketClosedOn) {
         const cmsTicketClosedOnDate = new Date(form.cmsTicketClosedOn);
         if (cmsTicketClosedOnDate < receivedDate) {
-          newErrors.cmsTicketClosedOn =
-            "CMS Ticket Closed On can NOT be lesser than Ticket Received Date";
+          newErrors.cmsTicketClosedOn = invalidMessage(localize("CMSTicketClosedOn"));
         }
       }
 
       if (form.serviceClosedDate) {
         const serviceClosedDateDate = new Date(form.serviceClosedDate);
         if (serviceClosedDateDate < receivedDate) {
-          newErrors.serviceClosedDate =
-            "Service Closed Date can NOT be lesser than Ticket Received Date";
+          newErrors.serviceClosedDate = invalidMessage(localize("ServiceClosedDate"));
         }
       }
 
@@ -1054,48 +1063,72 @@ export default function TicketModal({
           form.ticketResolutionVerifiedOn
         );
         if (ticketResolutionVerifiedOnDate < receivedDate) {
-          newErrors.ticketResolutionVerifiedOn =
-            "Ticket Resolution Verified On can NOT be lesser than Ticket Received Date";
+          newErrors.ticketResolutionVerifiedOn = invalidMessage(
+            localize("TicketResolutionVerifiedOn"),
+          );
         }
       }
     }
 
-    if (!form.siteName) newErrors.siteName = "Site Name is required";
-    if (!form.customer) newErrors.customer = "Customer is required";
+    if (!form.siteName) {
+      newErrors.siteName = requiredMessage(localize("SiteName"));
+    }
+    if (!form.customer) {
+      newErrors.customer = requiredMessage(localize("CustomerUserId"));
+    }
     if (!form.ticketAssignedTo)
-      newErrors.ticketAssignedTo = "Assigned To is required";
-    if (!form.ticketType) newErrors.ticketType = "Ticket Type is required";
+      newErrors.ticketAssignedTo = requiredMessage(localize("TicketAssignedToId"));
+    if (!form.ticketType) {
+      newErrors.ticketType = requiredMessage(localize("TicketType"));
+    }
     if (
       (form.ticketType === "Service Planned" ||
         form.ticketType === 2 ||
         form.ticketType === "2") &&
       !form.servicePlannedType
     ) {
-      newErrors.servicePlannedType = "Service Planned Type is required";
+      newErrors.servicePlannedType = requiredMessage(localize("ServicePlannedType"));
     }
-    if (!form.issueDescription)
-      newErrors.issueDescription = "Issue Description is required";
+    if (!form.issueDescription?.trim())
+      newErrors.issueDescription = requiredMessage(localize("IssueDescription"));
+    if (!form.notes?.trim()) {
+      newErrors.notes = requiredMessage(localize("TicketNotes"));
+    }
     if (!form.ticketIncomingChannel) {
-      newErrors.ticketIncomingChannel = "Channel is required";
+      newErrors.ticketIncomingChannel = requiredMessage(localize("TicketIncomingChannel"));
     } else if (
       isEmailIncomingChannel(form.ticketIncomingChannel) &&
       !form.incomingChannelEmail
     ) {
-      newErrors.incomingChannelEmail = "Email Address is required";
+      newErrors.incomingChannelEmail = requiredMessage(localize("EmailAddress"));
     }
 
     if (activeTab === "Ticket Verification") {
+      if (!form.ticketResolutionVerifiedBy) {
+        newErrors.ticketResolutionVerifiedBy = requiredMessage(
+          localize("TicketResolutionVerifiedById"),
+        );
+      }
+      if (!form.ticketResolutionVerifiedOn) {
+        newErrors.ticketResolutionVerifiedOn = requiredMessage(
+          localize("TicketResolutionVerifiedOn"),
+        );
+      }
+      if (!form.cmsTicketClosedBy) {
+        newErrors.cmsTicketClosedBy = requiredMessage(
+          localize("CMSTicketClosedById"),
+        );
+      }
       if (!form.serviceClosedDate) {
-        newErrors.serviceClosedDate = "Service Closed Date is required";
+        newErrors.serviceClosedDate = requiredMessage(localize("ServiceClosedDate"));
       }
       if (!form.cmsTicketClosedOn) {
-        newErrors.cmsTicketClosedOn = "CMS Ticket Closed On is required";
+        newErrors.cmsTicketClosedOn = requiredMessage(localize("CMSTicketClosedOn"));
       }
     }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
-      toast("Please fix the errors before submitting.", "error");
       return;
     }
 
@@ -1108,10 +1141,7 @@ export default function TicketModal({
       (act) => !act.activityType && !act.ActivityType
     );
     if (hasInvalidActivity) {
-      toast(
-        "Every activity detail must have an Activity Type selected.",
-        "error"
-      );
+      toast(requiredMessage(localize("ActivityType")), "error");
       return;
     }
 
@@ -1126,7 +1156,7 @@ export default function TicketModal({
     <>
       <AnimatePresence>
         {open && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 overflow-hidden">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-1 md:p-2 overflow-hidden">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1139,13 +1169,13 @@ export default function TicketModal({
               initial={{ opacity: 0, scale: 0.98, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 10 }}
-              className="relative w-full max-w-6xl bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-auto max-h-[95vh] overflow-hidden font-[Arial]"
+              className="relative w-full max-w-6xl bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-auto max-h-[98vh] overflow-hidden font-[Arial]"
             >
               <div className="flex flex-col gap-0 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-                <div className="flex items-center justify-between px-6 py-4">
+                <div className="flex items-center justify-between px-5 py-2">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0">
-                      <Ticket size={20} />
+                    <div className="w-8 h-8 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0">
+                      <Ticket size={17} />
                     </div>
                     <div>
                       <nav className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-500 mb-0.5">
@@ -1181,20 +1211,20 @@ export default function TicketModal({
                   <button
                     type="button"
                     onClick={() => setShowExitConfirm(true)}
-                    className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all border border-slate-200 dark:border-slate-700"
+                    className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all border border-slate-200 dark:border-slate-700"
                   >
                     <X size={20} strokeWidth={2} />
                   </button>
                 </div>
 
-                <div className="flex px-6 gap-8">
+                <div className="flex px-5 gap-6">
                   {["Ticket", "Activities", ...(viewMode || canCloseTicket ? ["Ticket Verification"] : [])].map(
                     (tab) => (
                       <button
                         key={tab}
                         type="button"
                         onClick={() => setActiveTab(tab)}
-                        className={`relative py-3 text-[12px] font-semibold transition-all flex items-center gap-2 group ${activeTab === tab
+                        className={`relative py-2 text-[11px] font-semibold transition-all flex items-center gap-2 group ${activeTab === tab
                           ? "text-pink-600"
                           : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                           }`}
@@ -1212,7 +1242,7 @@ export default function TicketModal({
                 </div>
               </div>
 
-              <div className="overflow-y-auto no-scrollbar px-6 py-5">
+              <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-4 py-2">
                 {optionsError && (
                   <div className="max-w-5xl mx-auto mb-6 flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs animate-in fade-in slide-in-from-top-4 duration-500">
                     <AlertCircle size={16} className="shrink-0 mt-0.5" />
@@ -1228,7 +1258,7 @@ export default function TicketModal({
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
                     transition={{ duration: 0.2 }}
-                    className={`max-w-5xl mx-auto ${viewMode ? "pointer-events-none opacity-90" : ""
+                    className={`max-w-full mx-auto ${viewMode ? "pointer-events-none opacity-90" : ""
                       }`}
                   >
                     {errors.server && (
@@ -1242,21 +1272,21 @@ export default function TicketModal({
                     )}
 
                     {activeTab === "Ticket" && (
-                      <div className="flex flex-col space-y-4">
-                        <div className="flex items-center gap-3 mb-1">
-                          <div className="w-8 h-8 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0">
-                            <Activity size={18} />
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0">
+                            <Activity size={15} />
                           </div>
                           <div>
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                            <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
                               Ticket Information
                             </h3>
 
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-                          <div className="md:col-span-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-3 gap-y-1.5">
+                          <div className="md:col-span-2 lg:col-span-3">
                             <Field label="Upload PDF" error={errors.pdfFile}>
                               <div className="relative group/file">
                                 <input
@@ -1272,7 +1302,7 @@ export default function TicketModal({
                                   }}
                                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
                                 />
-                                <div className={`w-full p-4 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-3 transition-all ${pdfUploading
+                                <div className={`w-full p-2 border border-dashed rounded-xl flex flex-row items-center justify-center gap-2 transition-all ${pdfUploading
                                   ? "border-violet-400 bg-violet-50/60 dark:bg-violet-500/5"
                                   : pdfError
                                     ? "border-rose-400 bg-rose-50/40 dark:bg-rose-500/5 group-hover/file:border-rose-500"
@@ -1296,7 +1326,7 @@ export default function TicketModal({
                                         <AlertCircle size={20} className="text-rose-500" />
                                       </div>
                                       <div className="text-center">
-                                        <p className="text-sm font-bold text-rose-600 dark:text-rose-400">Extraction Failed</p>
+                                        <p className="text-sm font-bold text-rose-600 dark:text-rose-400">{localize("Error")}</p>
                                         <p className="text-[11px] font-semibold text-rose-400/80 mt-1 max-w-xs">{pdfError}</p>
                                         <p className="text-[10px] text-slate-400 mt-1">Click to try another file</p>
                                       </div>
@@ -1337,7 +1367,7 @@ export default function TicketModal({
                           </div>
 
                           <Field
-                            label="Ticket Received Date Time *"
+                            label={`${localize("TicketReceivedDate")} *`}
                             error={errors.receivedAt}
                           >
                             <div className="relative group/input">
@@ -1387,20 +1417,20 @@ export default function TicketModal({
                           </Field>
 
                           <Field
-                            label="CMS Next Ticket No *"
+                            label={`${localize("CMSNextTicketNo")} *`}
                             error={errors.cmsNextTicketNo}
                           >
                             <input
                               type="text"
                               value={form.cmsNextTicketNo}
                               onChange={setField("cmsNextTicketNo")}
-                              className={inputClass}
+                              className={`${inputClass} ${errors.cmsNextTicketNo ? "border-rose-500 text-rose-600" : ""}`}
                             />
                           </Field>
 
-                          <div className="md:col-span-2">
+                          <div>
                             <Field
-                              label="Site Name *"
+                              label={`${localize("SiteName")} *`}
                               error={errors.siteName}
                             >
                               <div className="flex items-center gap-3">
@@ -1421,7 +1451,7 @@ export default function TicketModal({
                                   <button
                                     type="button"
                                     onClick={() => setIsSiteModalOpen(true)}
-                                    className="w-[42px] h-[42px] flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-pink-600 rounded-xl hover:bg-pink-600 hover:text-white transition-all shadow-sm active:scale-95 shrink-0"
+                                    className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-pink-600 rounded-lg hover:bg-pink-600 hover:text-white transition-all shadow-sm active:scale-95 shrink-0"
                                     title="Add New Site"
                                   >
                                     <Plus size={18} strokeWidth={2.5} />
@@ -1431,8 +1461,8 @@ export default function TicketModal({
                             </Field>
                           </div>
 
-                          <div className="md:col-span-2">
-                            <Field label="Customer *" error={errors.customer}>
+                          <div>
+                            <Field label={`${localize("CustomerUserId")} *`} error={errors.customer}>
                               <div className="flex items-center gap-3">
                                 <Combobox
                                   value={form.customer}
@@ -1457,7 +1487,7 @@ export default function TicketModal({
                                   type="button"
                                   onClick={() => setIsCustomerModalOpen(true)}
                                   disabled={!form.siteName || loadingApis || loadingCustomers}
-                                  className="w-[42px] h-[42px] flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-pink-600 rounded-xl hover:bg-pink-600 hover:text-white transition-all shadow-sm active:scale-95 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-100 disabled:hover:text-pink-600 dark:disabled:hover:bg-slate-800"
+                                  className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-pink-600 rounded-lg hover:bg-pink-600 hover:text-white transition-all shadow-sm active:scale-95 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-100 disabled:hover:text-pink-600 dark:disabled:hover:bg-slate-800"
                                   title={!form.siteName ? "Select a site first" : "Add New Customer"}
                                 >
                                   <Plus size={18} strokeWidth={2.5} />
@@ -1467,7 +1497,7 @@ export default function TicketModal({
                           </div>
 
                           <Field
-                            label="Ticket Assigned To *"
+                            label={`${localize("TicketAssignedToId")} *`}
                             error={errors.ticketAssignedTo}
                           >
                             <Combobox
@@ -1486,7 +1516,7 @@ export default function TicketModal({
                           </Field>
 
                           <Field
-                            label="Ticket Type *"
+                            label={`${localize("TicketType")} *`}
                             error={errors.ticketType}
                           >
                             <Combobox
@@ -1526,7 +1556,7 @@ export default function TicketModal({
                           <div className="flex gap-6 items-end">
                             <div className="flex-1">
                               <Field
-                                label="Ticket Incoming Channel *"
+                                label={`${localize("TicketIncomingChannel")} *`}
                                 error={errors.ticketIncomingChannel}
                               >
                                 <Combobox
@@ -1616,7 +1646,7 @@ export default function TicketModal({
                           </Field>
 
                           <Field
-                            label="CMS Ticket Added On *"
+                            label={`${localize("CMSTicketAddedOn")} *`}
                             error={errors.cmsTicketAddedOn}
                           >
                             <div className="relative group/input">
@@ -1667,14 +1697,14 @@ export default function TicketModal({
 
                           <div className="md:col-span-1">
                             <Field
-                              label="Issue Description *"
+                              label={`${localize("IssueDescription")} *`}
                               error={errors.issueDescription}
                             >
                               <textarea
                                 value={form.issueDescription || ""}
                                 onChange={setField("issueDescription")}
-                                rows={2}
-                                className={inputClass}
+                                rows={1}
+                                className={`${inputClass} ${errors.issueDescription ? "border-rose-500 text-rose-600" : ""}`}
                               />
                             </Field>
                           </div>
@@ -1687,24 +1717,24 @@ export default function TicketModal({
                               <textarea
                                 value={form.possibleRootCause || ""}
                                 onChange={setField("possibleRootCause")}
-                                rows={2}
+                                rows={1}
                                 className={inputClass}
                               />
                             </Field>
                           </div>
 
-                          <div className="md:col-span-2">
-                            <Field label="Notes *" error={errors.notes}>
+                          <div>
+                            <Field label={`${localize("TicketNotes")} *`} error={errors.notes}>
                               <textarea
                                 value={form.notes || ""}
                                 onChange={setField("notes")}
-                                rows={2}
-                                className={inputClass}
+                                rows={1}
+                                className={`${inputClass} ${errors.notes ? "border-rose-500 text-rose-600" : ""}`}
                               />
                             </Field>
                           </div>
 
-                          <div className="md:col-span-2">
+                          <div>
                             <Field
                               label="Total Duration (Hours)"
                               error={errors.totalDuration}
@@ -1720,7 +1750,7 @@ export default function TicketModal({
                             </Field>
                           </div>
 
-                          <div className="md:col-span-2">
+                          <div>
                             <label className="flex items-center gap-3 cursor-pointer w-max p-1 px-4 rounded-xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
                               <div className="relative group/toggle">
                                 <input
@@ -1898,7 +1928,7 @@ export default function TicketModal({
                           </div>
                           <div>
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                              Ticket Verification
+                              {localize("TicketVerification")}
                               {form.ticketResolutionVerifiedBy && (
                                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50/50 dark:bg-emerald-500/5 text-emerald-500/70 dark:text-emerald-400/70 text-[11px] font-bold tracking-wide uppercase border border-emerald-200/50 dark:border-emerald-500/20 cursor-not-allowed select-none">
                                   <Check size={12} strokeWidth={3} />
@@ -1909,7 +1939,7 @@ export default function TicketModal({
                           </div>
                         </div>
                         <Field
-                          label="Ticket Resolution Verified By"
+                          label={`${localize("TicketResolutionVerifiedById")} *`}
                           error={errors.ticketResolutionVerifiedBy}
                         >
                           <Combobox
@@ -1930,7 +1960,7 @@ export default function TicketModal({
                         </Field>
 
                         <Field
-                          label="Ticket Resolution Verified On By Sureze *"
+                          label={`${localize("TicketResolutionVerifiedOn")} *`}
                           error={errors.ticketResolutionVerifiedOn}
                         >
                           <div className="flex items-center w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all">
@@ -1962,7 +1992,7 @@ export default function TicketModal({
                         </Field>
 
                         <Field
-                          label="CMS Ticket Closed By"
+                          label={`${localize("CMSTicketClosedById")} *`}
                           error={errors.cmsTicketClosedBy}
                         >
                           <Combobox
@@ -1983,7 +2013,7 @@ export default function TicketModal({
                         </Field>
 
                         <Field
-                          label="CMS Ticket Closed On *"
+                          label={`${localize("CMSTicketClosedOn")} *`}
                           error={errors.cmsTicketClosedOn}
                         >
                           <div className="flex items-center w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all">
@@ -2015,7 +2045,7 @@ export default function TicketModal({
                         </Field>
 
                         <Field
-                          label="Service Closed Date *"
+                          label={`${localize("ServiceClosedDate")} *`}
                           error={errors.serviceClosedDate}
                         >
                           <div className="flex items-center w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all">
@@ -2051,14 +2081,14 @@ export default function TicketModal({
                 </AnimatePresence>
               </div>
 
-              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div className="flex items-center justify-end gap-2 px-5 py-2 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
                 <button
                   type="button"
                   onClick={
                     viewMode ? onClose : () => setShowExitConfirm(true)
                   }
                   disabled={submitting}
-                  className="px-6 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all disabled:opacity-50 pointer-events-auto"
+                  className="px-5 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all disabled:opacity-50 pointer-events-auto"
                 >
                   {viewMode ? "Close" : "Cancel"}
                 </button>
@@ -2067,7 +2097,7 @@ export default function TicketModal({
                     type="button"
                     onClick={handleSubmit}
                     disabled={submitting}
-                    className="px-8 py-2.5 text-[10px] font-bold uppercase tracking-widest rounded-xl bg-pink-600 text-white shadow-lg shadow-pink-500/20 transition-all disabled:opacity-50 flex items-center justify-center min-w-[140px] pointer-events-auto"
+                    className="px-7 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg bg-pink-600 text-white shadow-lg shadow-pink-500/20 transition-all disabled:opacity-50 flex items-center justify-center min-w-[125px] pointer-events-auto"
                   >
                     {submitting
                       ? "Saving..."
@@ -2087,6 +2117,7 @@ export default function TicketModal({
       <ActivityModal
         open={isActivityModalOpen}
         activity={activityToEdit}
+        localize={localize}
         onClose={() => setIsActivityModalOpen(false)}
         onSubmit={(data) => {
           if (activityToEdit) {
@@ -2212,8 +2243,14 @@ export default function TicketModal({
                 onClick={async () => {
                   // Validate
                   const errs = {};
-                  if (!customerForm.name.trim()) errs.name = "Name is required";
-                  if (!customerForm.phoneNumber.trim()) errs.phoneNumber = "Phone number is required";
+                  const requiredMessage = (fieldName) =>
+                    localize("The {0} field is required.").replace("{0}", fieldName);
+                  if (!customerForm.name.trim()) {
+                    errs.name = requiredMessage(localize("Name"));
+                  }
+                  if (!customerForm.phoneNumber.trim()) {
+                    errs.phoneNumber = requiredMessage(localize("CustomerContactNumber"));
+                  }
                   if (Object.keys(errs).length > 0) { setCustomerFormErrors(errs); return; }
 
                   // Auto-generate userName from name (e.g. "John Doe" → "john.doe")
@@ -2258,11 +2295,7 @@ export default function TicketModal({
                     setCustomerForm({ name: "", email: "", phoneNumber: "" });
                     setCustomerFormErrors({});
                   } catch (err) {
-                    const msg =
-                      err?.response?.data?.error?.message ||
-                      err?.response?.data?.message ||
-                      err?.message ||
-                      "Failed to create customer. Please try again.";
+                    const msg = getLocalizedApiError(err, localize);
                     setCustomerFormErrors((prev) => ({ ...prev, server: msg }));
                   } finally {
                     setCustomerSubmitting(false);
@@ -2336,10 +2369,10 @@ export default function TicketModal({
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 text-center animate-fade-in font-[Arial]">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
-              Warning
+              {localize("Warning")}
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-              Enter Received Date before adding an activity
+              {localize("TicketReceivedDateNotPresentErrorMessage")}
             </p>
             <div className="flex gap-3">
               <button
@@ -2347,7 +2380,7 @@ export default function TicketModal({
                 onClick={() => setShowDateWarning(false)}
                 className="flex-1 py-2.5 rounded-xl bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
               >
-                OK
+                {localize("Ok")}
               </button>
             </div>
           </div>
@@ -2359,10 +2392,10 @@ export default function TicketModal({
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 text-center animate-fade-in font-[Arial]">
             <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
-              Warning
+              {localize("Warning")}
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-              Please add at least one activity before saving
+              {localize("ActivityNotAddedErrorMessage")}
             </p>
             <div className="flex gap-3">
               <button
@@ -2370,7 +2403,7 @@ export default function TicketModal({
                 onClick={() => setShowActivityWarning(false)}
                 className="flex-1 py-2.5 rounded-xl bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
               >
-                OK
+                {localize("Ok")}
               </button>
             </div>
           </div>
