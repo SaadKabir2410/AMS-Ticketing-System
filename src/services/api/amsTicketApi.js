@@ -2,29 +2,7 @@ import apiClient from "../apiClient";
 
 const BASE = "/api/app/a-mSTicket";
 
-const operatorMap = {
-    contains: "Contains",
-    equals: "Equals",
-    startsWith: "StartsWith",
-};
-
-const columnFilterParamMap = {
-    siteName: "AMSTicketSearch.SiteName",
-    siteOcn: "AMSTicketSearch.SiteOCN",
-    ticketNo: "AMSTicketSearch.TicketNo",
-    status: "AMSTicketSearch.Status",
-    pre: "AMSTicketSearch.Pre",
-    ticketClosedBy: "AMSTicketSearch.TicketClosedBy",
-    createdBy: "AMSTicketSearch.CreatedBy",
-};
-
 const isNil = (value) => value === null || value === undefined || value === "";
-
-const toIsoOrNull = (value) => {
-    if (isNil(value)) return null;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
-};
 
 const toNumberOrNull = (value) => {
     if (isNil(value)) return null;
@@ -75,13 +53,40 @@ const formatDate = (val) => {
     return String(val).replace("Z", "").split(".")[0];
 };
 
+// Activity date-times are entered as local wall-clock values. Converting them
+// with toISOString() shifts the hour to UTC, so preserve the displayed local
+// components and send a timezone-neutral ISO date-time to the API.
+const formatActivityDate = (value) => {
+    if (isNil(value)) return null;
+
+    const text = String(value).trim();
+    const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(text);
+    const localParts = text.match(
+        /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?/,
+    );
+
+    if (localParts && !hasTimezone) {
+        const [, year, month, day, hour, minute, second = "00"] = localParts;
+        return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+    }
+
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const pad = (part) => String(part).padStart(2, "0");
+    return [
+        `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+        `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
+    ].join("T");
+};
+
 // ── Enum label → integer maps (exact form dropdown values) ───────────────────
 
 const ticketTypeMap = {
     "Service Planned": 1,
     "Service Demand": 2,
-    "Complaint": 3,
-    "Inquiry": 4
+    "Inquiry": 3,
+    "Complaint": 4
 };
 
 const ticketIncomingChannelMap = {
@@ -117,8 +122,8 @@ export const SERVICE_PLANNED_TYPE_OPTIONS = [
 ];
 
 const activityTypeMap = {
-    "Technical": 1,
-    "Documentation": 2,
+    "Documentation": 1,
+    "Technical": 2,
 };
 
 // Case-insensitive string enum resolver
@@ -155,7 +160,7 @@ const resolveIntegerToLabel = (map, value) => {
 //   3. Nested object with .id or .value    → extract and resolve
 //   4. Anything else / unresolvable        → fall back to 1 (Technical)
 //      (1 is the safest non-zero default; the server rejects 0 for this enum)
-const ACTIVITY_TYPE_FALLBACK = 1; // Technical — safest non-zero default
+const ACTIVITY_TYPE_FALLBACK = 2; // Technical — safest non-zero default
 
 const resolveActivityType = (raw) => {
     // null / undefined / empty string → use fallback
@@ -208,8 +213,9 @@ const buildDetailPayload = (detail = {}) => {
     // resolveActivityType handles all forms: string label, integer, numeric string,
     // nested object — and always returns a valid integer (never null).
     const rawActType =
-        detail.ActivityType ??
+        detail.activityTypeId ??
         detail.activityType ??
+        detail.ActivityType ??
         null;
 
     const actTypeVal = resolveActivityType(rawActType);
@@ -217,58 +223,87 @@ const buildDetailPayload = (detail = {}) => {
     // Debug log — remove after confirming fix works
     console.log("[buildDetailPayload] rawActType:", rawActType, "→ resolved:", actTypeVal);
 
+    const editedResolvedById = pickId(detail.resolvedById);
+    const resolvedUserIds = editedResolvedById
+        ? [editedResolvedById]
+        : Array.isArray(detail.amsTicketDetailUserIds)
+            ? detail.amsTicketDetailUserIds.map(pickId).filter(Boolean)
+            : Array.isArray(detail.users)
+                ? detail.users.map(pickId).filter(Boolean)
+                : [];
+
     return {
         id: pickId(detail.id) || "00000000-0000-0000-0000-000000000000",
         amsTicketId: pickId(detail.amsTicketId) || "00000000-0000-0000-0000-000000000000",
-        startDate: formatDate(toIsoOrNull(detail.startDate)),
-        endDate: formatDate(toIsoOrNull(detail.endDate)),
-        // FIX: Send the resolved integer under both casing keys the server may expect
+        creationTime: detail.creationTime || "0001-01-01T00:00:00",
+        creatorId: pickId(detail.creatorId) || null,
+        lastModificationTime: detail.lastModificationTime || null,
+        lastModifierId: pickId(detail.lastModifierId) || null,
+        concurrencyStamp: detail.concurrencyStamp || null,
+        startDate: formatActivityDate(detail.startDate),
+        endDate: formatActivityDate(detail.endDate),
+        // The DTO contract uses camelCase. Keep a single source of truth so a
+        // stale PascalCase property from a fetched row cannot override an edit.
         activityType: actTypeVal,
-        ActivityType: actTypeVal,
         workDoneCodeId: pickId(detail.workDoneCodeId || detail.workDoneCode) || null,
         afterWorkingHoursReasonId: pickId(detail.afterWorkingHoursReasonId) || null,
         afterWorkingHoursReasonRemarks: detail.afterWorkingHoursReasonRemarks || "",
-        workDoneCodeAndDescription: detail.workDoneCodeAndDescription || detail.workDoneCode || "",
+        workDoneCodeAndDescription: detail.workDoneCode || detail.workDoneCodeAndDescription || "",
         isLikelyCause: toBoolean(
             detail.isLikelyCause ?? detail.likelyCauseOfIssue ?? detail.likelyCause
         ),
         isActive: toBoolean(detail.isActive ?? true),
         isActivityDuringWorkingHours: toBoolean(detail.isActivityDuringWorkingHours ?? true),
-        amsTicketDetailUserIds: Array.isArray(detail.amsTicketDetailUserIds)
-            ? detail.amsTicketDetailUserIds.map(pickId).filter(Boolean)
-            : Array.isArray(detail.users)
-                ? detail.users.map(pickId).filter(Boolean)
-                : detail.resolvedById
-                    ? [detail.resolvedById]
-                    : [],
+        // An edited Resolved By value must override the IDs from the original
+        // activity record that were spread into the form state.
+        amsTicketDetailUserIds: resolvedUserIds,
     };
+};
+
+const GUID_PATTERN = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+
+// On edit the form state also carries the fetched API record, so the stale
+// API id (e.g. ticketAssignedToId) sits next to the edited form value (e.g.
+// ticketAssignedTo). Prefer the edited form value whenever it is a real id.
+const pickEditedId = (formValue, ...apiValues) => {
+    const editedId = pickId(formValue);
+    if (editedId && GUID_PATTERN.test(editedId)) return editedId;
+    for (const apiValue of apiValues) {
+        const apiId = pickId(apiValue);
+        if (apiId) return apiId;
+    }
+    return editedId;
 };
 
 const buildTicketPayload = (data = {}) => {
     // ── Resolve IDs — handles both form keys and direct API keys ─────────────
-    const siteId = pickId(data.siteId || data.site || data.siteName);
-    const customerUserId = pickId(data.customerUserId || data.customer || data.customerName);
-    const ticketAssignedToId = pickId(data.ticketAssignedToId || data.ticketAssignedTo);
-    const ticketForwardedById = pickId(data.ticketForwardedById || data.ticketForwardedBy);
-    const cmsTicketAddedById = pickId(
-        data.cmsTicketAddedById || data.cmsTicketAddedBy ||
-        data.cMSTicketAddedById || data.cMSTicketAddedBy
+    const siteId = pickEditedId(data.siteName, data.siteId, data.site);
+    const customerUserId = pickEditedId(data.customer, data.customerUserId, data.customerName);
+    const ticketAssignedToId = pickEditedId(data.ticketAssignedTo, data.ticketAssignedToId);
+    const ticketForwardedById = data.isTicketForwarded === false
+        ? null
+        : pickEditedId(data.ticketForwardedBy, data.ticketForwardedById);
+    const cmsTicketAddedById = pickEditedId(
+        data.cmsTicketAddedBy,
+        data.cmsTicketAddedById, data.cMSTicketAddedById, data.cMSTicketAddedBy
     );
-    const cmsTicketClosedById = pickId(
-        data.cmsTicketClosedById || data.cmsTicketClosedBy ||
-        data.cMSTicketClosedById || data.cMSTicketClosedBy
+    const cmsTicketClosedById = pickEditedId(
+        data.cmsTicketClosedBy,
+        data.cmsTicketClosedById, data.cMSTicketClosedById, data.cMSTicketClosedBy
     );
-    const ticketResolutionVerifiedById = pickId(
-        data.ticketResolutionVerifiedById || data.ticketResolutionVerifiedBy
+    const ticketResolutionVerifiedById = pickEditedId(
+        data.ticketResolutionVerifiedBy, data.ticketResolutionVerifiedById
     );
 
     // ── Activities: form sends "activities", API needs "amsTicketDetails" ────
-    const rawActivities =
-        Array.isArray(data.amsTicketDetails) && data.amsTicketDetails.length > 0
+    // `activities` is the editable form collection. On edit, the fetched
+    // `amsTicketDetails` collection also remains on the ticket object, so it
+    // must not take precedence or the API receives the stale pre-edit values.
+    const rawActivities = Array.isArray(data.activities)
+        ? data.activities
+        : Array.isArray(data.amsTicketDetails)
             ? data.amsTicketDetails
-            : Array.isArray(data.activities)
-                ? data.activities
-                : [];
+            : [];
 
     const payload = {
         // ── Audit ──────────────────────────────────────────────────────────────
@@ -298,25 +333,31 @@ const buildTicketPayload = (data = {}) => {
         // ── Enums ──────────────────────────────────────────────────────────────
         status: data.status ? normalizeEnum(data.status, 1) : 1,
         ticketType: resolveStringEnum(ticketTypeMap, data.ticketType, 0),
-        servicePlannedType: resolveStringEnum(servicePlannedTypeMap, data.servicePlannedType, 1),
+        // Only Service Planned tickets have a planned type; 0 is stored as none by the backend.
+        servicePlannedType: resolveStringEnum(ticketTypeMap, data.ticketType, 0) === ticketTypeMap["Service Planned"]
+            ? resolveStringEnum(servicePlannedTypeMap, data.servicePlannedType, 0)
+            : 0,
         ticketIncomingChannel: resolveStringEnum(ticketIncomingChannelMap, data.ticketIncomingChannel, 0),
 
         // ── Booleans ───────────────────────────────────────────────────────────
-        isPRE: toBoolean(data.isPRE ?? data.pre),
+        isPRE: toBoolean(data.pre ?? data.isPRE),
         isTicketForwarded: toBoolean(data.isTicketForwarded),
         isComingFromEditScreen: toBoolean(data.isComingFromEditScreen),
         isComingFromReOpenScreen: toBoolean(data.isComingFromReOpenScreen),
 
         // ── Required text ──────────────────────────────────────────────────────
         cmsNextTicketNo: data.cmsNextTicketNo || data.cMSNextTicketNo || "0",
-        ticketNotes: data.ticketNotes || data.notes || "",
+        ticketNotes: data.notes ?? data.ticketNotes ?? "",
         issueDescription: data.issueDescription || null,
         possibleRootCause: data.possibleRootCause || null,
-        emailAddress: data.emailAddress || data.incomingChannelEmail || null,
+        emailAddress:
+            (data.incomingChannelEmail !== undefined
+                ? data.incomingChannelEmail
+                : data.emailAddress) || null,
 
         // ── Dates ──────────────────────────────────────────────────────────────
         ticketReceivedDate:
-            formatDate(data.ticketReceivedDate || data.receivedAt) ||
+            formatDate(data.receivedAt || data.ticketReceivedDate) ||
             formatDate(new Date().toISOString()),
         cmsTicketAddedOn:
             formatDate(data.cmsTicketAddedOn || data.cMSTicketAddedOn) ||
@@ -326,8 +367,10 @@ const buildTicketPayload = (data = {}) => {
         ticketResolutionVerifiedOn: formatDate(data.ticketResolutionVerifiedOn) || undefined,
 
         // ── Numeric ────────────────────────────────────────────────────────────
+        // totalDuration is recomputed from the edited activities; the fetched
+        // activityTotalDuration is the stale pre-edit value.
         activityTotalDuration:
-            toNumberOrNull(data.activityTotalDuration ?? data.totalDuration) ?? 0,
+            toNumberOrNull(data.totalDuration ?? data.activityTotalDuration) ?? 0,
         afterWorkingHoursActivityTotalAmountForSpecificUser:
             toNumberOrNull(data.afterWorkingHoursActivityTotalAmountForSpecificUser) ?? 0,
         afterWorkingHoursActivityTotalDurationForSpecificUser:
@@ -338,8 +381,12 @@ const buildTicketPayload = (data = {}) => {
         // ── Activities ─────────────────────────────────────────────────────────
         // FIX: buildDetailPayload now uses resolveActivityType which always returns
         // a valid integer (1–5) and never null, preventing the 400 enum error.
-        amsTicketDetails: rawActivities.map(buildDetailPayload),
-        aMSTicketDetails: rawActivities.map(buildDetailPayload),
+        amsTicketDetails: rawActivities.map((detail) =>
+            buildDetailPayload({
+                ...detail,
+                amsTicketId: detail.amsTicketId || data.id,
+            })
+        ),
     };
 
     // Remove undefined — keep null (API expects nulls)
@@ -388,8 +435,6 @@ export const amsTicketApi = {
         search,
         sortKey,
         sortDir = "desc",
-        columnFilter,
-        filterOperator,
         userId = "",
         siteName = "",
         siteOcn = "",
@@ -409,23 +454,9 @@ export const amsTicketApi = {
         customerUserId = "",
         workDoneCodeIds = "",
         performedByUsers = "",
-        ticketNumbers = "",
-        compressedTicketNumbers = "",
         dateFrom = "",
         dateTo = "",
     } = {}) => {
-        const backendOperator = operatorMap[filterOperator] || "Contains";
-
-        let columnFilterParams = {};
-        if (columnFilter?.value && columnFilterParamMap[columnFilter.field]) {
-            const backendParam = columnFilterParamMap[columnFilter.field];
-            columnFilterParams = {
-                [backendParam]: columnFilter.value,
-                [`${backendParam}Operator`]:
-                    operatorMap[columnFilter.operator] || backendOperator,
-            };
-        }
-
         const sortMap = {
             siteName: "Site.Name",
             siteOCN: "Site.OCN",
@@ -453,7 +484,6 @@ export const amsTicketApi = {
             SkipCount: (page - 1) * perPage,
             MaxResultCount: perPage,
             "api-version": "1.0",
-            ...columnFilterParams,
             ...(userId && { "AMSTicketSearch.UserId": userId }),
             ...(workDoneCodeIds && { "AMSTicketSearch.WorkDoneCodeIds": workDoneCodeIds }),
             ...(performedByUsers && { "AMSTicketSearch.PerformedByUsers": performedByUsers }),
@@ -462,7 +492,7 @@ export const amsTicketApi = {
             ...(ticketForwardedBy && { "AMSTicketSearch.TicketForwardedBy": ticketForwardedBy }),
             ...(cmsNextTicketNo && { "AMSTicketSearch.CMSNextTicketNo": cmsNextTicketNo }),
             ...(cmsNextTicketNumbers && { "AMSTicketSearch.CMSNextTicketNumbers": cmsNextTicketNumbers }),
-            ...(issueDiscription && { "AMSTicketSearch.IssueDescription": issueDiscription }),
+            ...(issueDiscription && { "AMSTicketSearch.IssueDiscription": issueDiscription }),
             ...(ticketReceivedDate && { "AMSTicketSearch.TicketReceivedDate": ticketReceivedDate }),
             ...(cmsTicketClosedOn && { "AMSTicketSearch.CMSTicketClosedOn": cmsTicketClosedOn }),
             ...(ticketResolutionVerifiedOn && {
@@ -471,10 +501,6 @@ export const amsTicketApi = {
             ...(servicePlannedTypes && { "AMSTicketSearch.ServicePlannedTypes": servicePlannedTypes }),
             ...(countryId && { "AMSTicketSearch.CountryId": countryId }),
             ...(customerUserId && { "AMSTicketSearch.CustomerUserId": customerUserId }),
-            ...(ticketNumbers && { "AMSTicketSearch.TicketNumbers": ticketNumbers }),
-            ...(compressedTicketNumbers && {
-                "AMSTicketSearch.CompressedTicketNumbers": compressedTicketNumbers,
-            }),
             ...(dateFrom && { "AMSTicketSearch.DateFrom": dateFrom }),
             ...(dateTo && { "AMSTicketSearch.DateTo": dateTo }),
             ...(status && { "AMSTicketSearch.Status": status }),
@@ -504,7 +530,11 @@ export const amsTicketApi = {
     },
 
     update: (id, data, { setNewSettings = false } = {}) => {
-        const payload = buildTicketPayload(data);
+        const payload = buildTicketPayload({
+            ...data,
+            id,
+            isComingFromEditScreen: true,
+        });
         console.log("AMS update payload:", JSON.stringify(payload, null, 2));
         return apiClient.put(`${BASE}/${id}`, payload, { params: { setNewSettings } })
             .then((r) => r.data)
@@ -514,7 +544,7 @@ export const amsTicketApi = {
             });
     },
 
-    delete: (ticketData) => {
+    void: (ticketData) => {
         const id = typeof ticketData === "string" ? ticketData : ticketData.id;
         return apiClient
             .get(`${BASE}/${id}/by-id`)
@@ -528,12 +558,6 @@ export const amsTicketApi = {
                     }
                 });
 
-                if (!cleanPayload.servicePlannedType) {
-                    cleanPayload.servicePlannedType = 1;
-                }
-                if (!cleanPayload.serviceClosedDate) {
-                    cleanPayload.serviceClosedDate = formatDate(completeTicket.ticketReceivedDate || new Date().toISOString());
-                }
                 return apiClient
                     .post(`${BASE}/${id}/void-aMSTicket`, cleanPayload, {
                         headers: { "Content-Type": "application/json" },
@@ -541,7 +565,7 @@ export const amsTicketApi = {
                     .then((r) => r.data);
             })
             .catch((error) => {
-                console.error("DELETE ERROR:", error.response?.data?.error || error.message);
+                console.error("VOID ERROR:", error.response?.data?.error || error.message);
                 throw error;
             });
     },
@@ -565,12 +589,14 @@ export const amsTicketApi = {
                     }
                 });
 
-                if (!cleanPayload.servicePlannedType) {
-                    cleanPayload.servicePlannedType = 1;
-                }
-                if (!cleanPayload.serviceClosedDate) {
-                    cleanPayload.serviceClosedDate = formatDate(completeTicket.ticketReceivedDate || new Date().toISOString());
-                }
+                // Reopening starts a new verification cycle. Explicit nulls
+                // ensure the previous closure assignment and dates are removed.
+                cleanPayload.ticketResolutionVerifiedById = null;
+                cleanPayload.ticketResolutionVerifiedOn = null;
+                cleanPayload.cmsTicketClosedById = null;
+                cleanPayload.cmsTicketClosedOn = null;
+                cleanPayload.serviceClosedDate = null;
+                cleanPayload.isComingFromReOpenScreen = true;
                 return apiClient
                     .post(`${BASE}/${id}/re-open-aMSTicket`, cleanPayload, {
                         headers: { "Content-Type": "application/json" },
@@ -658,6 +684,7 @@ export const amsTicketApi = {
     resolveServicePlannedTypeLabel: (val) => resolveIntegerToLabel(servicePlannedTypeMap, val),
     resolveTicketIncomingChannelLabel: (val) => resolveIntegerToLabel(ticketIncomingChannelMap, val),
     resolveActivityTypeLabel: (val) => resolveIntegerToLabel(activityTypeMap, val),
+    ACTIVITY_TYPE_OPTIONS: Object.entries(activityTypeMap).map(([label, enumValue]) => ({ label, enumValue })),
 };
 
 export default amsTicketApi;

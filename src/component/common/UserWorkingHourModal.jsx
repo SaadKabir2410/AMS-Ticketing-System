@@ -10,7 +10,6 @@ import {
 } from "@mui/material";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.css";
-import "flatpickr/dist/themes/dark.css";
 import { usersApi } from "../../services/api/users";
 import { workingHoursApi } from "../../services/api/workingHours";
 import { useToast } from "./ToastContext";
@@ -298,10 +297,10 @@ export default function UserWorkingHourModal({
     try {
       if (item) {
         await workingHoursApi.update(item.id, payload);
-        toast(localize("SuccessfullySaved"), "success");
+        toast(localize("SavedSuccessfully"), "success");
       } else {
         await workingHoursApi.create(payload);
-        toast(localize("SuccessfullySaved"), "success");
+        toast(localize("SavedSuccessfully"), "success");
       }
       onSave();
       onClose();
@@ -420,7 +419,7 @@ export default function UserWorkingHourModal({
                 className={`w-full appearance-none bg-slate-50 dark:bg-slate-800 border ${validationErrors.weekDay ? "border-red-500" : "border-slate-200 dark:border-slate-700"
                   } text-slate-900 dark:text-white text-[12px] font-semibold rounded-lg px-3 py-2 outline-none focus:ring-1 focus:ring-pink-500/20 transition-all cursor-pointer`}
               >
-                <option value="" className="bg-white dark:bg-slate-900">{localize("Select")}</option>
+                <option value="" className="bg-white dark:bg-slate-900">{localize("SelectBoxEmptyValueText")}</option>
                 {WEEK_DAYS.map((day, index) => (
                   <option key={day} value={day} className="bg-white dark:bg-slate-900">
                     {localizedWeekDays[index] || day}

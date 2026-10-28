@@ -63,7 +63,6 @@ export const workingHoursApi = {
       .put(`/api/app/user-working-hour/${id}`, payload)
       .then((r) => r.data);
   },
-  delete: (id) => apiClient.delete(`/api/app/user-working-hour/${id}`),
 };
 
 export default workingHoursApi;

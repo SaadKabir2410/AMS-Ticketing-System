@@ -4,6 +4,7 @@ import { AlertCircle, Check, X } from "lucide-react";
 
 import { workCodesApi } from "../../services/api/workCodes";
 import PremiumErrorAlert from "./PremiumErrorAlert";
+import { useBackendLocalization } from "../../hooks/useBackendLocalization";
 
 
 
@@ -18,9 +19,11 @@ export default function WorkCodeModal({
   submitError = null,
 }) {
   const isEdit = !!item;
+  const localize = useBackendLocalization("Billing");
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [checkingCode, setCheckingCode] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const abortControllerRef = useRef(null);
 
   const [prevOpen, setPrevOpen] = useState(open);
@@ -46,13 +49,14 @@ export default function WorkCodeModal({
     };
   }, []);
 
+  // Returns true when another work done code already uses this code.
   const checkCodeExists = async () => {
     const code = form.code.trim().toUpperCase();
-    if (!code) return;
+    if (!code) return false;
 
     // Skip check if we are editing and the code hasn't changed
     if (isEdit && item && item.code && item.code.toUpperCase() === code) {
-      return;
+      return false;
     }
 
     if (abortControllerRef.current) abortControllerRef.current.abort();
@@ -75,13 +79,16 @@ export default function WorkCodeModal({
       if (isDuplicate) {
         setErrors((prev) => ({
           ...prev,
-          code: `Code "${code}" already exists`,
+          code: localize("SA:WorkDoneCodeExistsErrorMessage"),
         }));
       }
+      return isDuplicate;
     } catch (err) {
       if (err.name !== "CanceledError") {
         console.error("Check code error:", err);
       }
+      // The backend still rejects a duplicate on save.
+      return false;
     } finally {
       setCheckingCode(false);
     }
@@ -92,12 +99,15 @@ export default function WorkCodeModal({
     const code = form.code.trim();
     const desc = form.description.trim();
 
+    const requiredMessage = (fieldKey) =>
+      localize("The {0} field is required.").replace("{0}", localize(fieldKey));
+
     if (!desc) {
-      errs.description = "Description is required";
+      errs.description = requiredMessage("Description");
     }
 
     if (!code) {
-      errs.code = "Code is required";
+      errs.code = requiredMessage("Code");
     }
     return errs;
   };
@@ -109,8 +119,15 @@ export default function WorkCodeModal({
       setErrors(errs);
       return;
     }
-    if (errors.code || checkingCode) return;
+    if (submitting) return;
+    setSubmitting(true);
     setErrors({});
+
+    // One click: the duplicate check runs here instead of blocking the button.
+    if (await checkCodeExists()) {
+      setSubmitting(false);
+      return;
+    }
 
     const payload = {
       Description: form.description.trim(),
@@ -148,6 +165,8 @@ export default function WorkCodeModal({
           setErrors((prev) => ({ ...prev, server: msg }));
         }
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -172,7 +191,7 @@ export default function WorkCodeModal({
     >
       <div className="flex items-center justify-between px-6 pt-5 pb-3">
         <h2 className="text-lg font-bold text-pink-600 dark:text-pink-400">
-          {isEdit ? "Update Work Code" : "Create Work Code"}
+          {isEdit ? localize("EditWorkDoneCode") : localize("NewWorkDoneCode")}
         </h2>
         <IconButton onClick={onClose} size="small" className="text-slate-400 hover:text-pink-500 transition-colors">
           <X size={20} />
@@ -189,12 +208,11 @@ export default function WorkCodeModal({
         )}
         <div>
           <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">
-            Code <span className="required-asterisk">*</span>
+            {localize("Code")} <span className="required-asterisk">*</span>
           </label>
           <div className="relative">
             <input
               type="text"
-              placeholder="Enter Code"
               value={form.code}
               onChange={(e) => {
                 setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }));
@@ -207,7 +225,7 @@ export default function WorkCodeModal({
               )}
             />
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
-              {checkingCode && "Checking..."}
+              {checkingCode && localize("ProcessingWithThreeDot")}
               {errors.code && (
                 <AlertCircle size={16} className="text-red-500" />
               )}
@@ -223,12 +241,11 @@ export default function WorkCodeModal({
 
         <div>
           <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">
-            Description <span className="required-asterisk">*</span>
+            {localize("Description")} <span className="required-asterisk">*</span>
           </label>
           <div className="relative">
             <input
               type="text"
-              placeholder="Enter Description"
               value={form.description}
               onChange={(e) => {
                 setForm((f) => ({ ...f, description: e.target.value }));
@@ -259,18 +276,16 @@ export default function WorkCodeModal({
           onClick={onClose}
           className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
         >
-          Cancel
+          {localize("CancelButtonText")}
         </button>
         <button
           onClick={handleSubmit}
-          disabled={loading || checkingCode || !!errors.code}
+          disabled={loading || submitting}
           className="app-primary-button px-8 py-2.5 text-sm flex items-center justify-center min-w-[120px]"
         >
-          {loading ? "Loading..." : isEdit ? (
-            "Update"
-          ) : (
-            "Create"
-          )}
+          {loading || submitting
+            ? localize("SavingWithThreeDot")
+            : isEdit ? localize("UpdateButtonText") : localize("CreateButtonText")}
         </button>
       </div>
     </Dialog>

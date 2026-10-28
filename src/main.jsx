@@ -76,6 +76,20 @@ function MuiThemeWrapper({ children }) {
               },
             },
           },
+          // On phones, dialogs use almost the whole screen instead of keeping
+          // the 32px desktop margins.
+          MuiDialog: {
+            styleOverrides: {
+              paper: {
+                "@media (max-width: 600px)": {
+                  margin: 8,
+                  width: "calc(100% - 16px)",
+                  maxWidth: "calc(100% - 16px) !important",
+                  maxHeight: "calc(100% - 16px)",
+                },
+              },
+            },
+          },
           MuiButton: {
             styleOverrides: {
               root: {

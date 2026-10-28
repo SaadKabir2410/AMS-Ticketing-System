@@ -1,487 +1,341 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
-import { RotateCcw, ArrowLeft, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
-import apiClient from "../services/apiClient";
-import { PermissionGuard } from "../component/common/PermissionGuard";
 import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
-import { buildReportFileName } from "../utils/reportFileName";
-import {
-  useReactTable,
-  getCoreRowModel,
-  flexRender,
-  getSortedRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-} from "@tanstack/react-table";
+import apiClient from "../services/apiClient";
+import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
+import { useBackendLocalization } from "../hooks/useBackendLocalization";
+import { getApiErrorMessage } from "../utils/apiError";
+
+// Same year range as the Blazor page: current year and the previous 10 years.
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 11 }, (_, index) => CURRENT_YEAR - index);
+
+// Columns and header texts follow the Blazor page's Excel export
+// (Blazor.Client/Pages/Reports/AMSTicketingUserYearlyReport.razor). Only "User"
+// and "Year" have backend localization keys; the other header texts exist only there.
+const REPORT_COLUMNS = [
+  { field: "UserName", labelKey: "User" },
+  { field: "MonthName", label: "Month" },
+  { field: "Year", labelKey: "Year" },
+  { field: "BilledOfficeHoursCost", label: "Billed_Office_Amount (MYR)", type: "cost" },
+  { field: "BilledAfterOfficeHoursCost", label: "Billed_AfterOffice_Amount (MYR)", type: "cost" },
+  { field: "BilledTotalAmount", label: "Billed_Total_Amount (MYR)", type: "cost" },
+  { field: "NonBilledOfficeHoursCost", label: "NonBilled_Office_Amount (MYR)", type: "cost" },
+  { field: "NonBilledAfterOfficeHoursCost", label: "NonBilled_AfterOffice_Amount (MYR)", type: "cost" },
+  { field: "NonBilledTotalAmount", label: "NonBilled_Total_Amount (MYR)", type: "cost" },
+  { field: "OfficeHoursCost", label: "Total_Office_Amount (MYR)", type: "cost" },
+  { field: "AfterOfficeHoursCost", label: "Total_AfterOffice_Amount (MYR)", type: "cost" },
+  { field: "TotalAmount", label: "Total_Amount (MYR)", type: "cost" },
+  { field: "BilledOfficeHours", label: "Billed_Office_Hours (Hrs)", type: "hours" },
+  { field: "BilledAfterOfficeHours", label: "Billed_AfterOffice_Hours (Hrs)", type: "hours" },
+  { field: "BilledTotalHours", label: "Billed_Total_Hours (Hrs)", type: "hours" },
+  { field: "NonBilledOfficeHours", label: "NonBilled_Office_Hours (Hrs)", type: "hours" },
+  { field: "NonBilledAfterOfficeHours", label: "NonBilled_AfterOffice_Hours (Hrs)", type: "hours" },
+  { field: "NonBilledTotalHours", label: "NonBilled_Total_Hours (Hrs)", type: "hours" },
+  { field: "OfficeHours", label: "Total_Office_Hours (Hrs)", type: "hours" },
+  { field: "AfterOfficeHours", label: "Total_After_Office_Hours (Hrs)", type: "hours" },
+  { field: "TotalHours", label: "Total_Hours (Hrs)", type: "hours" },
+];
+
+// Compact on-screen widths (px); long headers wrap instead of widening the column.
+const COLUMN_WIDTHS = { UserName: 130, MonthName: 80, Year: 52 };
+const NUMBER_COLUMN_WIDTH = 84;
+const getColumnWidth = (column) => COLUMN_WIDTHS[column.field] ?? NUMBER_COLUMN_WIDTH;
+const TABLE_WIDTH = REPORT_COLUMNS.reduce((total, column) => total + getColumnWidth(column), 0);
+
+// Lets headers such as "NonBilled_AfterOffice_Amount (MYR)" break after underscores
+// without changing the visible text.
+const withHeaderBreaks = (label) => label.replace(/_/g, "_​");
+
+// Same number formats as the Blazor Excel export.
+const EXCEL_NUMBER_FORMATS = { cost: "#,##0.00", hours: "0.00" };
+const costFormatter = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+// The API may camelCase the DTO property names, so match them case-insensitively.
+const getRowValue = (row, field) => {
+  if (!row) return undefined;
+  const matchingKey = Object.keys(row).find(
+    (key) => key.toLowerCase() === field.toLowerCase(),
+  );
+  return matchingKey ? row[matchingKey] : undefined;
+};
+
+const getCellValue = (row, column, year) =>
+  column.field === "Year" ? year : getRowValue(row, column.field);
+
+const formatCellValue = (value, type) => {
+  if (value === null || value === undefined || value === "") return "-";
+  const numericValue = Number(value);
+  if (type === "cost" && Number.isFinite(numericValue)) return costFormatter.format(numericValue);
+  if (type === "hours" && Number.isFinite(numericValue)) return numericValue.toFixed(2);
+  return String(value);
+};
+
+// Blazor highlights grand total rows light green and user total rows light yellow.
+const getTotalRowType = (row) => {
+  if (getRowValue(row, "IsGrandTotal")) return "grand";
+  if (getRowValue(row, "IsUserTotal")) return "user";
+  return null;
+};
+
+const fetchYearlyReport = async (year) => {
+  const response = await apiClient.get("/api/app/a-mSTicket/yearly-generation-each-user", {
+    params: { year: Number(year) },
+  });
+  return Array.isArray(response.data) ? response.data : [];
+};
 
 export default function UserYearlyReportPage() {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState({ year: "" });
-  const [loading, setLoading] = useState(false);
-  const [formError, setFormError] = useState("");
+  const localize = useBackendLocalization("Billing");
+  const [year, setYear] = useState(String(CURRENT_YEAR));
   const [reportData, setReportData] = useState([]);
-  const [sorting, setSorting] = useState([]);
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [reportYear, setReportYear] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [excelLoading, setExcelLoading] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const getColumnLabel = (column) =>
+    column.labelKey ? localize(column.labelKey) : column.label;
+
+  const validateYear = () => {
+    if (year) return true;
+    setFormError(
+      localize("The {0} field is required.").replace("{0}", localize("Year")),
+    );
+    return false;
+  };
 
   const handleClear = () => {
     setFormError("");
-    setFilters({ year: "" });
     setReportData([]);
+    setReportYear("");
+    setYear(String(CURRENT_YEAR));
   };
 
   const handleGetReport = async () => {
+    setFormError("");
+    if (!validateYear()) return;
+
     try {
       setLoading(true);
-      setFormError("");
-      setReportData([]);
-
-      if (!filters.year) {
-        setFormError("Please select a Year before proceeding.");
-        return;
-      }
-
-      const response = await apiClient.get(
-        "/api/app/a-mSTicket/yearly-generation-each-user",
-        { params: { year: filters.year } }
-      );
-
-      const data = Array.isArray(response.data)
-        ? response.data
-        : response.data?.items || response.data?.data || [];
-
-      if (data.length === 0) {
-        setFormError(`No data available for the year ${filters.year}.`);
-        return;
-      }
-
-      setReportData(data);
+      const dataArray = await fetchYearlyReport(year);
+      setReportData(dataArray);
+      setReportYear(year);
+      if (dataArray.length === 0) setFormError(localize("NoReportFound"));
     } catch (error) {
-      setFormError(error?.response?.data?.error?.message || "Failed to generate report.");
+      console.error("Failed to get report:", error);
+      setReportData([]);
+      setFormError(getApiErrorMessage(error) || localize("DefaultErrorMessage"));
     } finally {
       setLoading(false);
     }
   };
 
+  // Like Blazor, the Excel button loads the selected year itself.
   const handleExportExcel = async () => {
-    if (reportData.length === 0) return;
+    setFormError("");
+    if (!validateYear()) return;
+
+    let results;
+    try {
+      setExcelLoading(true);
+      results = reportYear === year && reportData.length > 0
+        ? reportData
+        : await fetchYearlyReport(year);
+    } catch (error) {
+      console.error("Failed to get report:", error);
+      setFormError(getApiErrorMessage(error) || localize("DefaultErrorMessage"));
+      setExcelLoading(false);
+      return;
+    }
+
+    if (results.length === 0) {
+      setFormError(localize("NoReportFound"));
+      setExcelLoading(false);
+      return;
+    }
+
     try {
       const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Yearly Report");
+      const worksheet = workbook.addWorksheet("TicketReport");
+      const thinBorder = { style: "thin" };
+      const cellBorder = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
 
-      const headers = [
-        "USERNAME", "MONTH", "MONTH NAME",
-        "BILLED OFFICE HOURS COST", "BILLED AFTER OFFICE HOURS COST", "BILLED TOTAL AMOUNT",
-        "NON BILLED OFFICE HOURS COST", "NON BILLED AFTER OFFICE HOURS COST", "NON BILLED TOTAL AMOUNT",
-        "OFFICE HOURS COST", "AFTER OFFICE HOURS COST", "TOTAL AMOUNT",
-        "BILLED OFFICE HOURS", "BILLED AFTER OFFICE HOURS", "BILLED TOTAL HOURS",
-        "NON BILLED OFFICE HOURS", "NON BILLED AFTER OFFICE HOURS", "NON BILLED TOTAL HOURS",
-        "OFFICE HOURS", "AFTER OFFICE HOURS", "TOTAL HOURS"
-      ];
-      
-      const headerKeys = [
-        "userName", "month", "monthName",
-        "billedOfficeHoursCost", "billedAfterOfficeHoursCost", "billedTotalAmount",
-        "nonBilledOfficeHoursCost", "nonBilledAfterOfficeHoursCost", "nonBilledTotalAmount",
-        "officeHoursCost", "afterOfficeHoursCost", "totalAmount",
-        "billedOfficeHours", "billedAfterOfficeHours", "billedTotalHours",
-        "nonBilledOfficeHours", "nonBilledAfterOfficeHours", "nonBilledTotalHours",
-        "officeHours", "afterOfficeHours", "totalHours"
-      ];
-
-      const headerRow = worksheet.addRow(headers);
+      const headerRow = worksheet.addRow(REPORT_COLUMNS.map(getColumnLabel));
       headerRow.eachCell((cell) => {
-        cell.fill = {
-          type: "pattern",
-          pattern: "solid",
-          fgColor: { argb: "FFDB2777" },
-        };
-        cell.font = { color: { argb: "FFFFFFFF" }, bold: true };
-        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+        cell.font = { bold: true };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFD3D3D3" } };
+        cell.border = cellBorder;
       });
-      worksheet.getRow(1).height = 40;
 
-      reportData.forEach((row) => {
-        const rowData = headerKeys.map(key => {
-          const matchingKey = Object.keys(row).find(k => k.toLowerCase() === key.toLowerCase());
-          return matchingKey ? row[matchingKey] : "";
-        });
-        const excelRow = worksheet.addRow(rowData);
-        
-        // Highlight total rows
-        const isUserTotalKey = Object.keys(row).find(k => k.toLowerCase() === 'isusertotal');
-        const isGrandTotalKey = Object.keys(row).find(k => k.toLowerCase() === 'isgrandtotal');
-        if ((isUserTotalKey && row[isUserTotalKey]) || (isGrandTotalKey && row[isGrandTotalKey])) {
-          excelRow.eachCell((cell) => {
+      results.forEach((row) => {
+        const excelRow = worksheet.addRow(
+          REPORT_COLUMNS.map((column) => getCellValue(row, column, String(year)) ?? ""),
+        );
+        const totalRowType = getTotalRowType(row);
+
+        REPORT_COLUMNS.forEach((column, index) => {
+          const cell = excelRow.getCell(index + 1);
+          cell.border = cellBorder;
+          if (column.type) cell.numFmt = EXCEL_NUMBER_FORMATS[column.type];
+          if (totalRowType) {
             cell.font = { bold: true };
             cell.fill = {
               type: "pattern",
               pattern: "solid",
-              fgColor: { argb: "FFF1F5F9" }, // light gray
+              fgColor: { argb: totalRowType === "grand" ? "FF90EE90" : "FFFFFFE0" },
             };
-          });
-        }
+          }
+        });
       });
 
-      worksheet.columns.forEach((column) => {
-        column.width = 18;
+      worksheet.columns.forEach((column, index) => {
+        column.width = Math.max(getColumnLabel(REPORT_COLUMNS[index]).length + 2, 12);
       });
 
       const buffer = await workbook.xlsx.writeBuffer();
       saveAs(
-        new Blob([buffer]),
-        buildReportFileName("User Yearly Report"),
+        new Blob([buffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+        `UserYearlyReport_${year}.xlsx`,
       );
     } catch (error) {
-      console.error(error);
-      setFormError("Failed to export Excel file.");
+      console.error("Export failed:", error);
+      setFormError(localize("DefaultErrorMessage"));
+    } finally {
+      setExcelLoading(false);
     }
   };
 
-  const highlightText = (text, highlight) => {
-    if (!highlight.trim()) {
-      return text;
-    }
-    const escapedHighlight = highlight.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const parts = String(text).split(new RegExp(`(${escapedHighlight})`, "gi"));
-    return (
-      <span className="flex flex-wrap gap-0">
-        {parts.map((part, i) =>
-          part.toLowerCase() === highlight.toLowerCase() ? (
-            <mark key={i} className="bg-pink-100 dark:bg-pink-500/30 text-pink-700 dark:text-pink-100 px-0.5 rounded-sm">
-              {part}
-            </mark>
-          ) : (
-            <span key={i} className="text-slate-900 dark:text-white">{part}</span>
-          ),
-        )}
-      </span>
-    );
+  const headerCellClass =
+    "border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-1 py-1.5 text-[9px] font-black uppercase text-slate-700 dark:text-slate-200 text-center align-middle leading-tight break-words";
+
+  const totalRowClass = {
+    grand: "bg-green-100 dark:bg-green-500/15 font-black",
+    user: "bg-yellow-50 dark:bg-yellow-500/10 font-black",
   };
-
-  const columns = useMemo(() => {
-    if (reportData.length === 0) return [];
-
-    return Object.keys(reportData[0]).map((key) => ({
-      accessorKey: key,
-      header: () => {
-        const headerStr = key.toUpperCase().replace(/_/g, " ");
-        const headerMap = {
-          "USERNAME": "USERNAME",
-          "MONTH": "MONTH",
-          "MONTHNAME": "MONTH NAME",
-          "BILLEDOFFICEHOURSCOST": "BILLED OFFICE\nHOURS COST",
-          "BILLEDAFTEROFFICEHOURSCOST": "BILLED AFTER\nOFFICE HOURS COST",
-          "BILLEDTOTALAMOUNT": "BILLED TOTAL\nAMOUNT",
-          "NONBILLEDOFFICEHOURSCOST": "NON BILLED\nOFFICE HOURS COST",
-          "NONBILLEDAFTEROFFICEHOURSCOST": "NON BILLED\nAFTER OFFICE HOURS COST",
-          "NONBILLEDTOTALAMOUNT": "NON BILLED\nTOTAL AMOUNT",
-          "OFFICEHOURSCOST": "OFFICE HOURS\nCOST",
-          "AFTEROFFICEHOURSCOST": "AFTER OFFICE\nHOURS COST",
-          "TOTALAMOUNT": "TOTAL\nAMOUNT",
-          "BILLEDOFFICEHOURS": "BILLED OFFICE\nHOURS",
-          "BILLEDAFTEROFFICEHOURS": "BILLED AFTER\nOFFICE HOURS",
-          "BILLEDTOTALHOURS": "BILLED TOTAL\nHOURS",
-          "NONBILLEDOFFICEHOURS": "NON BILLED\nOFFICE HOURS",
-          "NONBILLEDAFTEROFFICEHOURS": "NON BILLED\nAFTER OFFICE HOURS",
-          "NONBILLEDTOTALHOURS": "NON BILLED\nTOTAL HOURS",
-          "OFFICEHOURS": "OFFICE\nHOURS",
-          "AFTEROFFICEHOURS": "AFTER OFFICE\nHOURS",
-          "TOTALHOURS": "TOTAL\nHOURS",
-          "ISUSERTOTAL": "IS USER\nTOTAL",
-          "ISGRANDTOTAL": "IS GRAND\nTOTAL",
-        };
-        const formatted = headerMap[headerStr] || headerStr;
-        return (
-          <div className="whitespace-pre-line leading-[1.3]">
-            {formatted}
-          </div>
-        );
-      },
-      cell: (info) => {
-        const val = info.getValue();
-        if (typeof val === "boolean") return val ? "Yes" : "No";
-        if (val === null || val === undefined) return "—";
-        return highlightText(String(val), globalFilter);
-      },
-    }));
-  }, [reportData, globalFilter]);
-
-  const table = useReactTable({
-    data: reportData,
-    columns,
-    state: {
-      sorting,
-      globalFilter,
-    },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 10,
-      },
-    },
-  });
 
   return (
     <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial] text-slate-900 dark:text-white">
-      <style>{`
-        *::-webkit-scrollbar { display: none !important; }
-        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; display: block !important; }
-        .custom-scrollbar { scrollbar-width: thin !important; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #ec4899; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #475569; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #ec4899; }
-      `}</style>
-
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
         {/* Header */}
-        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
-          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
-            <span onClick={() => navigate("/")} className="hover:opacity-80 cursor-pointer transition-all hover:text-pink-500">Home</span>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span className="hover:opacity-80 cursor-pointer transition-all hover:text-pink-500">Management</span>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span className="hover:opacity-80 cursor-pointer transition-all hover:text-pink-500">Reports</span>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span className="text-pink-500 font-black">User Yearly Report</span>
-          </nav>
-
+        <div className="app-page-header flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
+            <div>
+              <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
+                <span onClick={() => navigate("/")} className="hover:opacity-80 cursor-pointer transition-all hover:text-pink-500">
+                  {localize("Home")}
+                </span>
+                <span className="text-slate-300 dark:text-slate-700">/</span>
+                <span>{localize("Permission:Reports")}</span>
+                <span className="text-slate-300 dark:text-slate-700">/</span>
+                <span className="text-pink-500 font-black">{localize("UserYearlyReport")}</span>
+              </nav>
               <h1 className="text-4xl font-black tracking-tighter flex items-center gap-3">
-                User Yearly Report
-                {loading && <span className="w-4 h-4 border-2 border-slate-800 dark:border-white border-t-transparent rounded-full animate-spin"></span>}
+                {localize("UserYearlyReport")}
+                {(loading || excelLoading) && <span className="w-4 h-4 border-2 border-slate-800 dark:border-white border-t-transparent rounded-full animate-spin"></span>}
               </h1>
             </div>
 
-            <div className="flex items-center gap-2">
-              {filters.year && (
-                <button
-                  onClick={handleClear}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold hover:border-slate-400 dark:hover:border-slate-500 transition-all active:scale-95 shadow-sm text-slate-700 dark:text-slate-300"
-                >
-                  <RotateCcw size={12} />
-                  Clear
-                </button>
-              )}
-              {reportData.length > 0 && (
-                <PermissionGuard permission="Billing.AMSTickets.ExportReportToExcel">
-                  <button
-                    onClick={handleExportExcel}
-                    className="app-primary-button flex items-center gap-2 px-3 py-1.5 text-[11px]"
-                  >
-                    Export Excel
-                  </button>
-                </PermissionGuard>
-              )}
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={handleClear}
+                className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold hover:border-slate-400 dark:hover:border-slate-500 transition-all active:scale-95 shadow-sm text-slate-700 dark:text-slate-300"
+              >
+                {localize("Clear")}
+              </button>
+
               <button
                 onClick={handleGetReport}
                 disabled={loading}
                 className="app-primary-button flex items-center gap-2 px-4 py-1.5 text-[11px]"
               >
-                {loading ? "Generating..." : "Get Reports"}
+                {loading ? localize("LoadingWithThreeDot") : localize("GetReport")}
+              </button>
+
+              <button
+                onClick={handleExportExcel}
+                disabled={excelLoading}
+                className="app-primary-button flex items-center gap-2 px-3 py-1.5 text-[11px]"
+              >
+                {excelLoading ? localize("ProcessingWithThreeDot") : localize("GetExcelReport")}
               </button>
             </div>
           </div>
-        </div>
 
-        {/* Filter Section */}
-        <div className="px-4 md:px-8 py-5 flex items-end gap-4">
-          <div className="flex flex-col gap-2 w-[200px]">
-            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Year</label>
+          {/* Filter Section */}
+          <div className="w-full sm:w-48">
+            <label className="flex items-center gap-2 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-1.5">
+              {localize("Year")}
+            </label>
             <AppSelect
-              value={filters.year}
-              onChange={(e) => setFilters({ ...filters, year: e.target.value })}
-              className="px-3 py-2 text-xs bg-white dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-xl outline-none focus:border-pink-500 transition-all w-full font-semibold text-slate-900 dark:text-white shadow-sm"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              className="w-full h-[36px] text-xs font-semibold"
             >
-              <option value="">Select Year</option>
-              {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() + 2 - i).map((year) => (
-                <option key={year} value={year}>{year}</option>
+              {YEAR_OPTIONS.map((optionYear) => (
+                <option key={optionYear} value={optionYear}>{optionYear}</option>
               ))}
             </AppSelect>
           </div>
-
-          {reportData.length > 0 && (
-            <div className="w-full sm:w-64 animate-in fade-in slide-in-from-left-4 duration-500">
-              <label className="flex items-center gap-2 text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-1.5">
-                Data Filtering
-              </label>
-              <div className="relative group">
-                <input
-                  type="text"
-                  value={globalFilter ?? ""}
-                  onChange={(e) => setGlobalFilter(e.target.value)}
-                  placeholder="Search results..."
-                  className="w-full px-3 py-1.5 text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg outline-none focus:border-pink-500 transition-all shadow-sm group-hover:border-slate-400 dark:group-hover:border-slate-600 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
-                />
-              </div>
-            </div>
-          )}
-
-          {formError && (
-            <div className="flex-1 p-3 bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 rounded-xl text-xs flex items-center gap-3 font-semibold">
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-              </span>
-              {formError}
-            </div>
-          )}
         </div>
 
-        {/* Results */}
-        <div className="flex-1 flex flex-col relative py-4 h-auto w-full">
-          {reportData.length > 0 ? (
-            <div className="flex flex-col w-full h-auto relative">
-              <div className="isolate max-h-[580px] overflow-auto px-4 pb-4 bg-white dark:bg-slate-900 custom-scrollbar">
-                <table className="relative z-0 w-full text-left border-separate border-spacing-0 min-w-max text-[11px]">
-                  <thead className="sticky top-0 z-40 bg-slate-50 dark:bg-slate-900">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <tr key={headerGroup.id} className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
-                        {headerGroup.headers.map((header, colIdx) => (
-                          <th
-                            key={header.id}
-                            className={`sticky top-0 z-50 bg-slate-50 dark:bg-slate-900 px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-left cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 shadow-[0_1px_0_#e2e8f0] dark:shadow-[0_1px_0_#1e293b] ${colIdx === 0 ? "pl-8" : ""}`}
-                            onClick={header.column.getToggleSortingHandler()}
+        {/* Report */}
+        <div className="flex-1 flex flex-col relative p-4 h-auto w-full">
+          {formError && (
+            <div className="mb-4">
+              <PremiumErrorAlert open={!!formError} message={formError} onClose={() => setFormError("")} />
+            </div>
+          )}
+
+          {reportData.length > 0 && (
+            <div className="max-h-[580px] overflow-auto">
+              <table className="table-fixed border-collapse text-[11px]" style={{ width: TABLE_WIDTH }}>
+                <colgroup>
+                  {REPORT_COLUMNS.map((column) => (
+                    <col key={column.field} style={{ width: getColumnWidth(column) }} />
+                  ))}
+                </colgroup>
+                <thead className="sticky top-0 z-10">
+                  <tr>
+                    {REPORT_COLUMNS.map((column) => (
+                      <th key={column.field} className={headerCellClass}>
+                        {withHeaderBreaks(getColumnLabel(column))}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {reportData.map((row, rowIndex) => {
+                    const totalRowType = getTotalRowType(row);
+                    const rowClass = totalRowType
+                      ? totalRowClass[totalRowType]
+                      : rowIndex % 2 === 0
+                        ? "bg-white dark:bg-[#161920] font-semibold"
+                        : "bg-slate-50 dark:bg-white/[0.03] font-semibold";
+
+                    return (
+                      <tr key={`${getRowValue(row, "UserName")}-${getRowValue(row, "Month")}-${rowIndex}`} className={rowClass}>
+                        {REPORT_COLUMNS.map((column) => (
+                          <td
+                            key={column.field}
+                            className={`border border-slate-200 dark:border-slate-700 px-1.5 py-1.5 text-slate-800 dark:text-slate-100 tabular-nums text-center align-middle ${column.type ? "whitespace-nowrap" : "break-words"}`}
                           >
-                            <div className="flex items-center gap-1">
-                              {flexRender(header.column.columnDef.header, header.getContext())}
-                              {header.column.getIsSorted() ? (
-                                <span className="text-pink-500">
-                                  {header.column.getIsSorted() === "asc" ? "↑" : "↓"}
-                                </span>
-                              ) : null}
-                            </div>
-                          </th>
+                            {formatCellValue(getCellValue(row, column, reportYear), column.type)}
+                          </td>
                         ))}
                       </tr>
-                    ))}
-                  </thead>
-                  <tbody className="relative z-0">
-                    {table.getRowModel().rows.map((row, idx) => {
-                      const isEven = idx % 2 === 0;
-                      return (
-                        <tr
-                          key={row.id}
-                          className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
-                        >
-                          {row.getVisibleCells().map((cell, colIdx) => (
-                            <td
-                              key={cell.id}
-                              className={`px-5 h-[60px] text-left transition-colors font-bold text-[12px] ${colIdx === 0 ? "pl-8 rounded-l-2xl" : ""} ${colIdx === row.getVisibleCells().length - 1 ? "rounded-r-2xl" : ""}`}
-                            >
-                              <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200">
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                              </div>
-                            </td>
-                          ))}
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination Section */}
-              <div className="px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl">
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-                    <AppSelect
-                      value={table.getState().pagination.pageSize}
-                      onChange={(e) => table.setPageSize(Number(e.target.value))}
-                      className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
-                    >
-                      {[5, 10, 25, 50, 100].map((s) => (
-                        <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
-                      ))}
-                    </AppSelect>
-                  </div>
-
-                  <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                      <span className="text-slate-900 dark:text-white tabular-nums">
-                        {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}
-                      </span>
-                      <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
-                      <span className="text-slate-900 dark:text-white tabular-nums">
-                        {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, table.getFilteredRowModel().rows.length)}
-                      </span>
-                      <span className="text-slate-400 dark:text-slate-500 mx-2 lowercase font-bold tracking-normal italic">of</span>
-                      <span className="text-slate-900 dark:text-white tabular-nums font-black">
-                        {table.getFilteredRowModel().rows.length}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
-                    <button
-                      onClick={() => table.firstPage()}
-                      disabled={!table.getCanPreviousPage()}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                      title="First Page"
-                    >
-                      <ChevronsLeft size={14} strokeWidth={2.5} />
-                    </button>
-                    <button
-                      onClick={() => table.previousPage()}
-                      disabled={!table.getCanPreviousPage()}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                      title="Previous Page"
-                    >
-                      <ChevronLeft size={14} strokeWidth={2.5} />
-                    </button>
-
-                    <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-                    <div className="px-3 flex items-center gap-2 py-1">
-                      <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Page</span>
-                      <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
-                        <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{table.getState().pagination.pageIndex + 1}</span>
-                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-600">/</span>
-                        <span className="text-[10px] font-black text-slate-900 dark:text-white tabular-nums leading-none">{table.getPageCount() || 1}</span>
-                      </div>
-                    </div>
-
-                    <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-                    <button
-                      onClick={() => table.nextPage()}
-                      disabled={!table.getCanNextPage()}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                      title="Next Page"
-                    >
-                      <ChevronRight size={14} strokeWidth={2.5} />
-                    </button>
-                    <button
-                      onClick={() => table.lastPage()}
-                      disabled={!table.getCanNextPage()}
-                      className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                      title="Last Page"
-                    >
-                      <ChevronsRight size={14} strokeWidth={2.5} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-12 max-w-sm mx-auto text-slate-500 dark:text-slate-400">
-              <h2 className="text-xl font-black text-slate-800 dark:text-slate-200 mb-2 uppercase tracking-tighter">No active report</h2>
-              <p className="text-[11px] font-medium leading-relaxed">
-                Select a year and click "Get Reports" to view data.
-              </p>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>

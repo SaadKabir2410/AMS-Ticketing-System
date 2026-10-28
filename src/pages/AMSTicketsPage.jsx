@@ -11,7 +11,6 @@ import {
   Calendar,
   Filter,
   CheckCircle2,
-  Clock,
   AlertCircle,
   Edit,
   ChevronRight,
@@ -22,6 +21,8 @@ import {
   Ticket,
   Eye,
   ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
   ArrowRight,
   MoreVertical,
   Check,
@@ -29,6 +30,8 @@ import {
   ShieldAlert
 } from "lucide-react";
 import { Popper, ClickAwayListener, Paper, Box, MenuItem, ListItemText } from "@mui/material";
+import Flatpickr from "react-flatpickr";
+import "flatpickr/dist/flatpickr.css";
 
 import { useAuth } from "../context/AuthContextHook";
 import amsTicketApi from "../services/api/amsTicketApi";
@@ -38,6 +41,7 @@ import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import UnclosedTicketsModal from "../component/common/UnclosedTicketsModal";
 import { ActionsMenu } from "../component/common/ResourcePage";
 import { usePermission } from "../hooks/usePermission";
+import { useBackendEnumOptions } from "../hooks/useBackendEnumOptions";
 import {
   getCachedApplicationConfig,
   loadApplicationConfig,
@@ -84,7 +88,9 @@ const ROW_HEIGHT = "h-[60px]";
 const HighlightText = ({ text, terms = [] }) => {
   if (!text) return "—";
   const str = String(text);
-  const activeTerms = terms.filter((t) => t && String(t).trim().length > 0);
+  const activeTerms = terms
+    .map((term) => String(term ?? "").trim())
+    .filter((term) => term.length > 0);
   if (activeTerms.length === 0) return str;
 
   const escapedTerms = activeTerms
@@ -99,7 +105,7 @@ const HighlightText = ({ text, terms = [] }) => {
         activeTerms.some((t) => t.toLowerCase() === part.toLowerCase()) ? (
           <mark
             key={i}
-            className="bg-pink-100 dark:bg-pink-500/30 text-pink-700 dark:text-pink-100 px-0.5 rounded-[1px]"
+            className="rounded-sm bg-pink-200 px-0.5 text-pink-900 dark:bg-pink-500/40 dark:text-pink-100"
           >
             {part}
           </mark>
@@ -110,6 +116,129 @@ const HighlightText = ({ text, terms = [] }) => {
     </>
   );
 };
+
+const AdvancedFilterInput = ({ label, value, onChange, onClear, type = "text" }) => (
+  <div className="flex min-w-0 w-full flex-col gap-1">
+    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+      {label}
+    </span>
+    <div className="relative">
+      {type === "date" ? (
+        <Flatpickr
+          value={value || undefined}
+          onChange={(_dates, dateString) => onChange(dateString)}
+          onInput={(event) => onChange(event.currentTarget.value)}
+          options={{
+            dateFormat: "Y-m-d",
+            allowInput: true,
+          }}
+          aria-label={label}
+          title={label}
+          placeholder={label}
+          className="w-full px-2 pr-12 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400 text-slate-700 dark:text-slate-200"
+        />
+      ) : (
+        <input
+          type="text"
+          aria-label={label}
+          title={label}
+          placeholder={label}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full px-2 pr-7 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400 text-slate-700 dark:text-slate-200"
+        />
+      )}
+      {value && (
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label={label}
+          className={`absolute ${type === "date" ? "right-7" : "right-2"} top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500`}
+        >
+          <X size={11} />
+        </button>
+      )}
+      {type === "date" && (
+        <Calendar
+          size={14}
+          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
+        />
+      )}
+    </div>
+  </div>
+);
+
+const formatTicketDateTime = (value, locale) => {
+  if (!value) return "";
+  const date = new Date(String(value).replace(" ", "T"));
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString(locale, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const getLocalDate = (value) => {
+  if (!value) return "";
+  const rawValue = String(value).trim();
+  const normalizedValue = /^\d{4}-\d{2}-\d{2}$/.test(rawValue)
+    ? `${rawValue}T00:00:00`
+    : rawValue.replace(" ", "T");
+  const date = new Date(normalizedValue);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (part) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
+
+const formatTicketDate = (value, locale) => {
+  const localDate = getLocalDate(value);
+  if (!localDate) return "";
+  const [year, month, day] = localDate.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(locale, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const fetchRemainingPages = async (pageCount, fetchPage, concurrency = 4) => {
+  const results = [];
+  for (let firstPage = 2; firstPage <= pageCount; firstPage += concurrency) {
+    const lastPage = Math.min(firstPage + concurrency - 1, pageCount);
+    const batch = await Promise.all(
+      Array.from(
+        { length: lastPage - firstPage + 1 },
+        (_, index) => fetchPage(firstPage + index)
+      )
+    );
+    results.push(...batch);
+  }
+  return results;
+};
+
+const sortTicketsByStatusAndDate = (items) => items.sort((a, b) => {
+  const aIsOpen = Number(a.status) === 1;
+  const bIsOpen = Number(b.status) === 1;
+  if (aIsOpen && !bIsOpen) return -1;
+  if (!aIsOpen && bIsOpen) return 1;
+  const aDate = a.ticketReceivedDate ? new Date(a.ticketReceivedDate).getTime() : 0;
+  const bDate = b.ticketReceivedDate ? new Date(b.ticketReceivedDate).getTime() : 0;
+  return bDate - aDate;
+});
+
+// Retain the completed search dataset while navigating within the SPA. The
+// owner key prevents data from being reused across different signed-in users.
+const sharedAllTicketsCache = {
+  ownerId: null,
+  items: null,
+  promise: null,
+  version: 0,
+  loadedAt: 0,
+};
+const SEARCH_CACHE_TTL_MS = 2 * 60 * 1000;
 
 // --- Helper Functions ---
 const formatAge = (dateString) => {
@@ -145,9 +274,23 @@ const getInitials = (name) => {
   return name.charAt(0).toUpperCase();
 };
 
-const RowActions = ({ row, onView, onUpdateData, onVoid, onAuditLog, onReopen }) => {
+const isVoidedTicket = (ticket) => Number(ticket?.status) === 3;
+
+const RowActions = ({
+  row,
+  onUpdateData,
+  onVoid,
+  onAuditLog,
+  onReopen,
+  moreActionsText,
+  editButtonText,
+  voidButtonText,
+  reopenButtonText,
+  auditLogsButtonText,
+}) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
+  const isVoided = isVoidedTicket(row);
   const handleClick = (e) => {
     setAnchorEl(anchorEl ? null : e.currentTarget);
   };
@@ -158,7 +301,7 @@ const RowActions = ({ row, onView, onUpdateData, onVoid, onAuditLog, onReopen })
   return (
     <ClickAwayListener onClickAway={handleClose}>
       <div className="flex items-center justify-center gap-1">
-        <button onClick={handleClick} className="p-1 text-slate-400 hover:text-slate-600 transition-colors" title="More Actions">
+        <button onClick={handleClick} className="p-1 text-slate-400 hover:text-slate-600 transition-colors" title={moreActionsText}>
           <MoreVertical size={16} />
         </button>
         <Popper
@@ -177,29 +320,24 @@ const RowActions = ({ row, onView, onUpdateData, onVoid, onAuditLog, onReopen })
             }}
           >
             <Box sx={{ py: 0.5 }}>
-              {onView && (
-                <MenuItem onClick={() => { handleClose(); onView(); }}>
-                  <ListItemText primary="View" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
-                </MenuItem>
-              )}
               {onUpdateData && (
                 <MenuItem onClick={() => { handleClose(); onUpdateData(); }}>
-                  <ListItemText primary="Update Data" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                  <ListItemText primary={editButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
-              {row?.status !== 2 && onVoid && (
+              {!isVoided && Number(row?.status) !== 2 && onVoid && (
                 <MenuItem onClick={() => { handleClose(); onVoid(); }}>
-                  <ListItemText primary="Void" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                  <ListItemText primary={voidButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
               {row?.status === 2 && onReopen && (
                 <MenuItem onClick={() => { handleClose(); onReopen(); }}>
-                  <ListItemText primary="Reopen Ticket" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                  <ListItemText primary={reopenButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
               {onAuditLog && (
                 <MenuItem onClick={() => { handleClose(); onAuditLog(); }}>
-                  <ListItemText primary="Audit Log" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                  <ListItemText primary={auditLogsButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
             </Box>
@@ -216,12 +354,15 @@ export default function AMSTicketsPage() {
   const navigate = useNavigate();
   const { ticketNumber } = useParams();
   const isAdmin = user?.role?.toLowerCase().includes("admin");
-  const canCreate = usePermission("Billing.AMSTickets.Create");
-  const canEdit = usePermission("Billing.AMSTickets.Edit");
-  const canView = usePermission("Billing.AMSTickets");
+  // Admin is hard-coded to read-only on tickets: no create, edit/view opens in
+  // view mode only, and audit log is always available.
+  const canCreate = usePermission("Billing.AMSTickets.Create") && !isAdmin;
+  const canEdit = usePermission("Billing.AMSTickets.Edit") && !isAdmin;
+  // The backend has no view-only permission; admins open tickets read-only.
+  const canViewMode = isAdmin;
   const canVoid = usePermission("Billing.AMSTickets.VoidAMSTicket") && !isAdmin;
   const canReopen = usePermission("Billing.AMSTickets.ReOpenAMSTicket") && !isAdmin;
-  const canViewAuditLog = usePermission("Billing.AMSTickets.ViewAuditLog");
+  const canViewAuditLog = usePermission("Billing.AMSTickets.ViewAuditLog") || isAdmin;
   const canClose = usePermission("Billing.AMSTickets.CloseAMSTicket") && !isAdmin;
   const [applicationConfig, setApplicationConfig] = useState(
     getCachedApplicationConfig,
@@ -230,6 +371,15 @@ export default function AMSTicketsPage() {
     (key) => getLocalizationValue(applicationConfig, key),
     [applicationConfig],
   );
+  const currentCulture =
+    applicationConfig?.localization?.currentCulture?.cultureName || undefined;
+  // Status names come from the backend StatusEnum (Opened, Closed, Void).
+  const statusOptions = useBackendEnumOptions("StatusEnum", (key) => {
+    const value = localize(key);
+    return value === key ? "" : value;
+  });
+  const statusLabel = (value) =>
+    statusOptions.find((option) => option.value === Number(value))?.label || "";
 
   useEffect(() => {
     let isCurrent = true;
@@ -261,20 +411,38 @@ export default function AMSTicketsPage() {
   const [actionLoading, setActionLoading] = useState(false);
 
   // Filters
-  const [search, setSearch] = useState("");
+  const [generalSearch, setGeneralSearch] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [filterStatus, setFilterStatus] = useState("");
   const [filterIsPRE, setFilterIsPRE] = useState("");
   const [filterIsVerified, setFilterIsVerified] = useState("");
   const [filterCreatedBy, setFilterCreatedBy] = useState("");
   const [filterTicketDelayed, setFilterTicketDelayed] = useState("");
+  const [filterSiteName, setFilterSiteName] = useState("");
+  const [filterSiteOCN, setFilterSiteOCN] = useState("");
+  const [filterCmsNextTicketNo, setFilterCmsNextTicketNo] = useState("");
+  const [filterTicketReceivedDate, setFilterTicketReceivedDate] = useState("");
+  const [filterTicketClosedBy, setFilterTicketClosedBy] = useState("");
 
-  const activeFilterCount = [filterStatus, filterIsPRE, filterIsVerified, filterCreatedBy, filterTicketDelayed].filter(v => v !== "").length;
+  const advancedFilterValues = [
+    filterStatus,
+    filterIsPRE,
+    filterIsVerified,
+    filterCreatedBy,
+    filterTicketDelayed,
+    filterSiteName,
+    filterSiteOCN,
+    filterCmsNextTicketNo,
+    filterTicketReceivedDate,
+    filterTicketClosedBy,
+  ];
+  const activeFilterCount = advancedFilterValues.filter(
+    value => String(value ?? "").trim() !== ""
+  ).length;
 
-  const [globalStats, setGlobalStats] = useState({ open: 0, closed: 0, voided: 0, inProgress: 0, verified: 0, nonVerified: 0, lateClosures: 0 });
+  const [globalStats, setGlobalStats] = useState({ open: 0, closed: 0, voided: 0, verified: 0, nonVerified: 0, lateClosures: 0 });
 
-  // Cache for client-side filtering to avoid redundant full-table fetches
-  const allTicketsCache = useRef({ paramsKey: null, items: null });
+  const ticketFetchRequestId = useRef(0);
 
   // Carousel ref
   const kpiScrollRef = useRef(null);
@@ -286,44 +454,105 @@ export default function AMSTicketsPage() {
     }
   };
 
-  const fetchGlobalStats = async (currentSearch = search) => {
+  const ticketCacheOwnerId = String(user?.id ?? "anonymous");
+  const getAllTicketsCache = () => {
+    if (sharedAllTicketsCache.ownerId !== ticketCacheOwnerId) {
+      sharedAllTicketsCache.ownerId = ticketCacheOwnerId;
+      sharedAllTicketsCache.items = null;
+      sharedAllTicketsCache.promise = null;
+      sharedAllTicketsCache.version += 1;
+      sharedAllTicketsCache.loadedAt = 0;
+    }
+    return sharedAllTicketsCache;
+  };
+
+  const loadAllTickets = async () => {
+    const cache = getAllTicketsCache();
+    if (cache.items && Date.now() - cache.loadedAt < SEARCH_CACHE_TTL_MS) {
+      return cache.items;
+    }
+    cache.items = null;
+    if (cache.promise) {
+      return cache.promise;
+    }
+
+    const cacheVersion = cache.version;
+    const request = (async () => {
+      const limit = 1000;
+      const initialResponse = await amsTicketApi.getAll({ page: 1, perPage: limit });
+      let items = initialResponse.items || [];
+      const totalCount = initialResponse.totalCount || 0;
+
+      if (totalCount > items.length) {
+        const pageCount = Math.ceil(totalCount / limit);
+        const remainingPages = await fetchRemainingPages(
+          pageCount,
+          page => amsTicketApi.getAll({ page, perPage: limit })
+        );
+        for (const response of remainingPages) {
+          items = items.concat(response.items || []);
+        }
+      }
+
+      if (items.length < totalCount) {
+        throw new Error(`Only ${items.length} of ${totalCount} AMS tickets were loaded.`);
+      }
+      if (cache.ownerId === ticketCacheOwnerId && cache.version === cacheVersion) {
+        cache.items = items;
+        cache.loadedAt = Date.now();
+      }
+      return items;
+    })();
+
+    cache.promise = request;
     try {
-      const baseParams = {
-        search: currentSearch,
-      };
+      return await request;
+    } finally {
+      if (cache.promise === request) {
+        cache.promise = null;
+      }
+    }
+  };
 
-      const safeFetch = (params) => amsTicketApi.getAll(params).catch(() => ({ totalCount: 0, items: [] }));
+  const invalidateAllTicketsCache = () => {
+    const cache = getAllTicketsCache();
+    cache.items = null;
+    cache.promise = null;
+    cache.version += 1;
+    cache.loadedAt = 0;
+  };
 
-      const [openRes, closedRes, voidRes, initialAllRes] = await Promise.all([
-        safeFetch({ ...baseParams, status: 1, page: 1, perPage: 1 }),
-        safeFetch({ ...baseParams, status: 2, page: 1, perPage: 1 }),
-        safeFetch({ ...baseParams, status: 3, page: 1, perPage: 1 }),
-        safeFetch({ ...baseParams, page: 1, perPage: 1000 })
-      ]);
-      const openCount = openRes.totalCount || 0;
-      const closedCount = closedRes.totalCount || 0;
-      const voidCount = voidRes.totalCount || 0;
-      const totalCount = initialAllRes.totalCount || 0;
-
-      let allItems = initialAllRes.items || [];
+  const fetchGlobalStats = async () => {
+    try {
+      const allItems = await loadAllTickets();
+      const totalCount = allItems.length;
+      const openCount = allItems.filter(ticket => Number(ticket.status) === 1).length;
+      const closedCount = allItems.filter(ticket => Number(ticket.status) === 2).length;
+      const voidCount = allItems.filter(ticket => Number(ticket.status) === 3).length;
 
       const calcStats = (items) => {
-        const verifiedCount = items.filter(r => r.ticketResolutionVerifiedBy || r.ticketResolutionVerifiedById).length;
+        const verifiedCount = items.filter(r =>
+          r.ticketResolutionVerifiedBy ||
+          r.ticketResolutionVerifiedById ||
+          r.ticketResolutionVerifiedOn
+        ).length;
         const nonVerifiedCount = totalCount > 0 ? totalCount - verifiedCount : 0;
         let lateClosuresCount = 0;
         const now = new Date();
         items.forEach(ticket => {
-          if (ticket.status === 3) return; // ignore void
+          if (Number(ticket.status) === 3) return; // ignore void
           if (!ticket.ticketReceivedDate) return;
           const received = new Date(ticket.ticketReceivedDate);
+          if (Number.isNaN(received.getTime())) return;
           let end = now;
-          if (ticket.status === 2) {
+          if (Number(ticket.status) === 2) {
             if (ticket.cmsTicketClosedOn) {
               end = new Date(ticket.cmsTicketClosedOn);
             } else if (ticket.serviceClosedDate) {
               end = new Date(ticket.serviceClosedDate);
             }
           }
+          if (Number.isNaN(end.getTime())) return;
           const diffHours = (end - received) / (1000 * 60 * 60);
           if (diffHours > 24) {
             lateClosuresCount++;
@@ -332,36 +561,15 @@ export default function AMSTicketsPage() {
         return { verifiedCount, nonVerifiedCount, lateClosuresCount };
       };
 
-      const initialStats = calcStats(allItems);
+      const stats = calcStats(allItems);
       setGlobalStats({
         open: openCount,
         closed: closedCount,
         voided: voidCount,
-        inProgress: Math.floor(openCount * 0.2),
-        verified: initialStats.verifiedCount,
-        nonVerified: initialStats.nonVerifiedCount,
-        lateClosures: initialStats.lateClosuresCount,
+        verified: stats.verifiedCount,
+        nonVerified: stats.nonVerifiedCount,
+        lateClosures: stats.lateClosuresCount,
       });
-
-      if (totalCount > allItems.length && allItems.length > 0) {
-        const limit = 1000;
-        const pagesToFetch = Math.ceil(totalCount / limit);
-        for (let i = 2; i <= pagesToFetch; i++) {
-          const res = await safeFetch({ ...baseParams, page: i, perPage: limit });
-          if (res.items) {
-            allItems = allItems.concat(res.items);
-            const stats = calcStats(allItems);
-            setGlobalStats(prev => ({
-              ...prev,
-              verified: stats.verifiedCount,
-              nonVerified: stats.nonVerifiedCount,
-              lateClosures: stats.lateClosuresCount,
-            }));
-          }
-          // Yield to not block other network requests like fetchTickets
-          await new Promise(r => setTimeout(r, 50));
-        }
-      }
     } catch (e) {
       console.error("Failed to fetch global stats", e);
     }
@@ -369,18 +577,16 @@ export default function AMSTicketsPage() {
 
   // --- Initialization and Watchers ---
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchGlobalStats(search);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [search]);
+    // Start warming the shared search cache immediately on page entry.
+    fetchGlobalStats();
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchTickets();
-    }, 400);
+    }, generalSearch.trim() ? 300 : activeFilterCount > 0 ? 100 : 250);
     return () => clearTimeout(timer);
-  }, [search, currentPage, pageSize, sortKey, sortDir, filterStatus, filterIsPRE, filterIsVerified, filterCreatedBy, filterTicketDelayed]);
+  }, [generalSearch, currentPage, pageSize, sortKey, sortDir, filterStatus, filterIsPRE, filterIsVerified, filterCreatedBy, filterTicketDelayed, filterSiteName, filterSiteOCN, filterCmsNextTicketNo, filterTicketReceivedDate, filterTicketClosedBy]);
 
   useEffect(() => {
     if (ticketNumber) return;
@@ -411,11 +617,16 @@ export default function AMSTicketsPage() {
         });
         const ticket = await amsTicketApi.getById(ticketId);
         if (cancelled) return;
+        if (!canEdit && !canViewMode) {
+          toast(localize("DefaultErrorMessage403"), "error");
+          navigate("/ams-tickets", { replace: true });
+          return;
+        }
         setActionItem(ticket);
-        setActionType(canEdit ? "edit" : "detail");
+        setActionType(canEdit && !isVoidedTicket(ticket) ? "edit" : "detail");
       } catch (error) {
         if (!cancelled) {
-          toast("The linked ticket could not be opened.", "error");
+          toast(localize("DefaultErrorMessage"), "error");
           navigate("/ams-tickets", { replace: true });
         }
       }
@@ -425,25 +636,40 @@ export default function AMSTicketsPage() {
     return () => {
       cancelled = true;
     };
-  }, [ticketNumber, canEdit, navigate, toast]);
+  }, [ticketNumber, canEdit, canViewMode, localize, navigate, toast]);
 
   const fetchTickets = async () => {
+    const requestId = ++ticketFetchRequestId.current;
     setLoading(true);
     try {
-      const isClientSideFiltering = filterIsPRE !== "" || filterIsVerified !== "" || filterCreatedBy !== "" || filterTicketDelayed !== "";
+      const requiresClientSideFiltering =
+        filterIsPRE !== "" ||
+        filterIsVerified !== "" ||
+        filterCreatedBy.trim() !== "" ||
+        filterTicketClosedBy.trim() !== "" ||
+        filterTicketDelayed !== "";
+
+      const selectedReceivedDate = getLocalDate(filterTicketReceivedDate);
 
       const params = {
-        search,
+        search: generalSearch.trim(),
         sortKey,
         sortDir,
+        siteName: filterSiteName.trim(),
+        siteOcn: filterSiteOCN.trim(),
+        cmsNextTicketNo: filterCmsNextTicketNo.trim(),
+        // The paged list filters on TicketReceivedDate (same day); it ignores
+        // DateFrom/DateTo, which only the report endpoints use.
+        ticketReceivedDate: selectedReceivedDate ? `${selectedReceivedDate}T00:00:00` : "",
       };
       if (filterStatus !== "") params.status = Number(filterStatus);
 
       let items = [];
       let finalTotalCount = 0;
 
-      if (!isClientSideFiltering) {
-        // Fetch just the current page
+      if (!requiresClientSideFiltering) {
+        // Backend-supported filters are applied by the paged-list API so only
+        // the requested result page is transferred to the browser.
         const data = await amsTicketApi.getAll({
           ...params,
           page: currentPage,
@@ -452,104 +678,124 @@ export default function AMSTicketsPage() {
         items = data.items || [];
         finalTotalCount = data.totalCount || 0;
       } else {
-        const paramsKey = JSON.stringify(params);
-        if (allTicketsCache.current.paramsKey === paramsKey && allTicketsCache.current.items) {
-          items = [...allTicketsCache.current.items];
-        } else {
-          // Fetch all items to apply client-side filtering correctly
+        const hasBackendFilter = Boolean(
+          params.search ||
+          params.siteName ||
+          params.siteOcn ||
+          params.cmsNextTicketNo ||
+          params.ticketReceivedDate ||
+          params.status
+        );
+        if (hasBackendFilter) {
           const limit = 1000;
-          const initialRes = await amsTicketApi.getAll({ ...params, page: 1, perPage: limit });
-          items = initialRes.items || [];
-          const serverTotalCount = initialRes.totalCount || 0;
-
-          if (serverTotalCount > items.length && items.length > 0) {
-            const pagesToFetch = Math.ceil(serverTotalCount / limit);
-            for (let i = 2; i <= pagesToFetch; i++) {
-              const res = await amsTicketApi.getAll({ ...params, page: i, perPage: limit }).catch(() => ({ items: [] }));
-              if (res.items) {
-                items = items.concat(res.items);
-              }
+          const initialResponse = await amsTicketApi.getAll({ ...params, page: 1, perPage: limit });
+          items = initialResponse.items || [];
+          const serverTotalCount = initialResponse.totalCount || 0;
+          if (serverTotalCount > items.length) {
+            const remainingPages = await fetchRemainingPages(
+              Math.ceil(serverTotalCount / limit),
+              page => amsTicketApi.getAll({ ...params, page, perPage: limit })
+            );
+            for (const response of remainingPages) {
+              items = items.concat(response.items || []);
             }
           }
-          allTicketsCache.current = { paramsKey, items: [...items] };
+        } else {
+          // These legacy filters are not exposed by the paged-list API contract.
+          // Reuse the already-warmed KPI dataset rather than downloading it again.
+          items = [...await loadAllTickets()];
         }
       }
 
-      // Always show Open/New tickets (status === 1) first, then by received date (newest first)
-      items = [...items].sort((a, b) => {
-        const aIsOpen = a.status === 1;
-        const bIsOpen = b.status === 1;
-        if (aIsOpen && !bIsOpen) return -1;
-        if (!aIsOpen && bIsOpen) return 1;
-        // Within same status, sort by received date descending
-        const aDate = a.ticketReceivedDate ? new Date(a.ticketReceivedDate).getTime() : 0;
-        const bDate = b.ticketReceivedDate ? new Date(b.ticketReceivedDate).getTime() : 0;
-        return bDate - aDate;
-      });
+      if (requiresClientSideFiltering) {
+        const siteNameSearch = filterSiteName.trim().toLocaleLowerCase();
+        const siteOcnSearch = filterSiteOCN.trim().toLocaleLowerCase();
+        const ticketNoSearch = filterCmsNextTicketNo.trim().toLocaleLowerCase();
+        const createdBySearch = filterCreatedBy.trim().toLocaleLowerCase();
+        const closedBySearch = filterTicketClosedBy.trim().toLocaleLowerCase();
+        const selectedStatus = filterStatus === "" ? null : Number(filterStatus);
+        const selectedIsPre = filterIsPRE === "" ? null : filterIsPRE === "true";
+        const selectedIsVerified = filterIsVerified === "" ? null : filterIsVerified === "true";
+        const selectedDate = getLocalDate(filterTicketReceivedDate);
+        const filterDelayed = filterTicketDelayed === "late_closures";
+        const now = filterDelayed ? new Date() : null;
 
-      if (isClientSideFiltering) {
-        // Apply client-side filters
-        if (filterIsPRE !== "") {
-          items = items.filter(r => String(r.isPRE) === filterIsPRE);
-        }
-        if (filterIsVerified !== "") {
-          const verified = filterIsVerified === "true";
-          items = items.filter(r => {
-            const isVer = !!(r.ticketResolutionVerifiedBy || r.ticketResolutionVerifiedById);
-            return isVer === verified;
-          });
-        }
-        if (filterCreatedBy !== "") {
-          const lowerSearch = filterCreatedBy.toLowerCase();
-          items = items.filter(r => r.createdBy && r.createdBy.toLowerCase().includes(lowerSearch));
-        }
-        if (filterTicketDelayed === "late_closures") {
-          const now = new Date();
-          items = items.filter(ticket => {
-            if (ticket.status === 3) return false;
-            if (!ticket.ticketReceivedDate) return false;
+        items = items.filter(ticket => {
+          if (siteNameSearch && !String(ticket.siteName ?? "").toLocaleLowerCase().includes(siteNameSearch)) return false;
+          if (siteOcnSearch && !String(ticket.siteOCN ?? "").toLocaleLowerCase().includes(siteOcnSearch)) return false;
+          if (ticketNoSearch && !String(ticket.cmsNextTicketNo ?? "").toLocaleLowerCase().includes(ticketNoSearch)) return false;
+          if (createdBySearch && !String(ticket.createdBy ?? "").toLocaleLowerCase().includes(createdBySearch)) return false;
+          if (closedBySearch && !String(ticket.ticketClosedByName ?? "").toLocaleLowerCase().includes(closedBySearch)) return false;
+          if (selectedStatus !== null && Number(ticket.status) !== selectedStatus) return false;
+          if (selectedIsPre !== null && Boolean(ticket.isPRE) !== selectedIsPre) return false;
 
+          if (selectedIsVerified !== null) {
+            const isVerified = Boolean(
+              ticket.ticketResolutionVerifiedBy ||
+              ticket.ticketResolutionVerifiedById ||
+              ticket.ticketResolutionVerifiedOn
+            );
+            if (isVerified !== selectedIsVerified) return false;
+          }
+          if (selectedDate && getLocalDate(ticket.ticketReceivedDate) !== selectedDate) return false;
+
+          if (filterDelayed) {
+            if (Number(ticket.status) === 3 || !ticket.ticketReceivedDate) return false;
             const received = new Date(ticket.ticketReceivedDate);
+            if (Number.isNaN(received.getTime())) return false;
             let end = now;
-            if (ticket.status === 2) {
-              if (ticket.cmsTicketClosedOn) {
-                end = new Date(ticket.cmsTicketClosedOn);
-              } else if (ticket.serviceClosedDate) {
-                end = new Date(ticket.serviceClosedDate);
-              }
+            if (Number(ticket.status) === 2) {
+              end = new Date(ticket.cmsTicketClosedOn || ticket.serviceClosedDate || "");
             }
-            const diffHours = (end - received) / (1000 * 60 * 60);
-            return diffHours > 24;
-          });
-        }
+            if (Number.isNaN(end.getTime())) return false;
+            if ((end - received) / (1000 * 60 * 60) <= 24) return false;
+          }
+          return true;
+        });
 
         finalTotalCount = items.length;
+        sortTicketsByStatusAndDate(items);
         // Client-side pagination
         const startIndex = (currentPage - 1) * pageSize;
         items = items.slice(startIndex, startIndex + pageSize);
+      } else {
+        sortTicketsByStatusAndDate(items);
       }
 
-      setTickets(items);
-      setTotalCount(finalTotalCount);
+      if (requestId === ticketFetchRequestId.current) {
+        setTickets(items);
+        setTotalCount(finalTotalCount);
+      }
     } catch (err) {
-      toast("Failed to fetch tickets", "error");
+      if (requestId === ticketFetchRequestId.current) {
+        toast(localize("DefaultErrorMessage"), "error");
+      }
     } finally {
-      setLoading(false);
+      if (requestId === ticketFetchRequestId.current) {
+        setLoading(false);
+      }
     }
   };
 
 
-  const handleDelete = async (row) => {
-    try {
-      setActionLoading(true);
-      await amsTicketApi.delete(row);
-      toast("Ticket voided successfully");
+  const handleVoid = async (row) => {
+    if (isVoidedTicket(row)) {
       setActionItem(null);
       setActionType("");
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await amsTicketApi.void(row);
+      toast(localize("SavedSuccessfully"));
+      setActionItem(null);
+      setActionType("");
+      invalidateAllTicketsCache();
       fetchGlobalStats();
       fetchTickets();
     } catch (err) {
-      toast("Failed to void ticket", "error");
+      toast(localize("DefaultErrorMessage"), "error");
     } finally {
       setActionLoading(false);
     }
@@ -559,13 +805,14 @@ export default function AMSTicketsPage() {
     try {
       setActionLoading(true);
       await amsTicketApi.reOpen(row.id, {});
-      toast("Ticket reopened successfully");
+      toast(localize("SavedSuccessfully"));
       setActionItem(null);
       setActionType("");
+      invalidateAllTicketsCache();
       fetchGlobalStats();
       fetchTickets();
     } catch (err) {
-      toast("Failed to reopen ticket", "error");
+      toast(localize("DefaultErrorMessage"), "error");
     } finally {
       setActionLoading(false);
     }
@@ -586,22 +833,28 @@ export default function AMSTicketsPage() {
 
   // --- Table Configuration ---
   const columns = [
-    { key: "siteName", label: "SITE NAME", width: 140 },
-    { key: "siteOCN", label: "SITE OCN", width: 100 },
-    { key: "cmsNextTicketNo", label: "CMS NEXT TICKET NO", width: 140 },
-    { key: "ticketReceivedDate", label: "RECEIVED DATE TIME", width: 130, sortable: true },
-    { key: "ticketClosedByName", label: "TICKET CLOSED BY", width: 120 },
-    { key: "activityTotalDuration", label: "TOTAL DURATION (H)", width: 120 },
-    { key: "cmsTicketClosedOn", label: "CMS CLOSED ON", width: 120 },
-    { key: "serviceClosedDate", label: "SERVICE CLOSED", width: 120 },
-    { key: "status", label: "STATUS", width: 90 },
-    { key: "isPRE", label: "PRE", width: 50, align: "center" },
-    { key: "isVerified", label: "VERIFIED", width: 80, align: "center" },
-    { key: "createdBy", label: "CREATED BY", width: 110 },
-    { key: "actions", label: "ACTIONS", width: 70, align: "center" },
+    { key: "siteName", label: localize("SiteName"), width: 140 },
+    { key: "siteOCN", label: localize("SiteOCN"), width: 100 },
+    { key: "cmsNextTicketNo", label: localize("CMSNextTicketNo"), width: 140 },
+    { key: "ticketReceivedDate", label: localize("TicketReceivedDate"), width: 130, sortable: true },
+    { key: "ticketClosedByName", label: localize("TicketClosedById"), width: 120 },
+    { key: "activityTotalDuration", label: localize("ActivityTotalDuration"), width: 120 },
+    { key: "cmsTicketClosedOn", label: localize("CMSTicketClosedOn"), width: 120 },
+    { key: "serviceClosedDate", label: localize("ServiceClosedDate"), width: 120 },
+    { key: "status", label: localize("Status"), width: 90 },
+    { key: "isPRE", label: localize("IsPRE"), width: 50, align: "center" },
+    { key: "isVerified", label: localize("TicketVerification"), width: 80, align: "center" },
+    { key: "createdBy", label: localize("CreatedBy"), width: 110 },
+    { key: "actions", label: localize("Actions"), width: 70, align: "center" },
   ];
 
   const totalPages = Math.ceil(totalCount / pageSize);
+  const pageStart = totalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0;
+  const pageEnd = Math.min(currentPage * pageSize, totalCount);
+  const pagerInfoText = localize("PagerInfo{0}{1}{2}")
+    .replace("{0}", pageStart)
+    .replace("{1}", pageEnd)
+    .replace("{2}", totalCount);
 
 
 
@@ -612,9 +865,6 @@ export default function AMSTicketsPage() {
       className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial]"
     >
       <style>{`
-        *::-webkit-scrollbar { display: none !important; }
-        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
-        
         .custom-scrollbar::-webkit-scrollbar:horizontal { height: 8px; display: block !important; }
         .custom-scrollbar::-webkit-scrollbar:vertical { display: none !important; width: 0 !important; }
         .custom-scrollbar { scrollbar-width: thin !important; }
@@ -630,16 +880,16 @@ export default function AMSTicketsPage() {
         className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl"
       >
         {/* ── Header Row ── */}
-        <div className="flex flex-col pt-3 pb-1 px-6 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+        <div className="app-page-header flex flex-col pt-3 pb-1 px-6 transition-colors">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-0">
             <div className="flex flex-col">
               <nav className="flex items-center gap-1.5 text-xs font-medium text-slate-400 dark:text-slate-500 mb-2">
-                <span>Home</span>
+                <span>{localize("Home")}</span>
                 <span className="text-slate-300">/</span>
-                <span className="text-pink-500">AMS Tickets</span>
+                <span className="text-pink-500">{localize("AMSTickets")}</span>
               </nav>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                AMS Tickets
+                {localize("AMSTickets")}
               </h1>
             </div>
 
@@ -650,26 +900,41 @@ export default function AMSTicketsPage() {
                   className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs"
                 >
                   <Plus size={16} className="mr-1.5" />
-                  New Ticket
+                  {localize("NewAMSTicket")}
                 </button>
               )}
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-3 mt-2 border-t border-slate-100 dark:border-slate-800/50">
-            <div className="relative w-full sm:max-w-md">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 py-3 mt-2">
+            <div className="relative w-full sm:max-w-xl">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search size={14} className={search ? "text-pink-500" : "text-slate-400"} />
+                <Search
+                  size={14}
+                  className={generalSearch ? "text-pink-500" : "text-slate-400"}
+                />
               </div>
               <input
                 type="text"
-                placeholder="Search tickets..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={generalSearch}
+                onChange={(event) => {
+                  setGeneralSearch(event.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder={localize("Search")}
+                aria-label={localize("Search")}
                 className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-xs outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
               />
-              {search && (
-                <button onClick={() => setSearch("")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-pink-500">
+              {generalSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGeneralSearch("");
+                    setCurrentPage(1);
+                  }}
+                  aria-label={`${localize("Clear")} ${localize("Search")}`}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-pink-500"
+                >
                   <X size={12} />
                 </button>
               )}
@@ -683,7 +948,7 @@ export default function AMSTicketsPage() {
                 }`}
             >
               <Filter size={14} />
-              Advanced Search
+              {localize("AdvancedSearch")}
               {activeFilterCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-pink-500 text-white text-[9px] font-black flex items-center justify-center">
                   {activeFilterCount}
@@ -702,79 +967,136 @@ export default function AMSTicketsPage() {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="flex flex-wrap items-center gap-3 py-3 border-t border-slate-100 dark:border-slate-800/50">
-                  {/* Status */}
-                  <AppSelect
-                    value={filterStatus}
-                    onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-                    className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
-                  >
-                    <option value="">Ticket Status</option>
-                    <option value="1">Open</option>
-                    <option value="2">Closed</option>
-                    <option value="3">Void</option>
-                  </AppSelect>
+                <div className="flex flex-col py-3">
+                  <div className="order-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  <AdvancedFilterInput
+                    label={localize("SiteName")}
+                    value={filterSiteName}
+                    onChange={(value) => { setFilterSiteName(value); setCurrentPage(1); }}
+                    onClear={() => { setFilterSiteName(""); setCurrentPage(1); }}
+                  />
 
-                  {/* PRE */}
-                  <AppSelect
-                    value={filterIsPRE}
-                    onChange={e => { setFilterIsPRE(e.target.value); setCurrentPage(1); }}
-                    className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
-                  >
-                    <option value="">PRE Status</option>
-                    <option value="true">PRE</option>
-                    <option value="false">Non-PRE</option>
-                  </AppSelect>
+                  <AdvancedFilterInput
+                    label={localize("SiteOCN")}
+                    value={filterSiteOCN}
+                    onChange={(value) => { setFilterSiteOCN(value); setCurrentPage(1); }}
+                    onClear={() => { setFilterSiteOCN(""); setCurrentPage(1); }}
+                  />
 
-                  {/* Verified */}
-                  <AppSelect
-                    value={filterIsVerified}
-                    onChange={e => { setFilterIsVerified(e.target.value); setCurrentPage(1); }}
-                    className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
-                  >
-                    <option value="">Verification Status</option>
-                    <option value="true">Verified</option>
-                    <option value="false">Non-Verified</option>
-                  </AppSelect>
+                  <AdvancedFilterInput
+                    label={localize("CMSNextTicketNo")}
+                    value={filterCmsNextTicketNo}
+                    onChange={(value) => { setFilterCmsNextTicketNo(value); setCurrentPage(1); }}
+                    onClear={() => { setFilterCmsNextTicketNo(""); setCurrentPage(1); }}
+                  />
 
-                  {/* Ticket Delayed */}
-                  <AppSelect
-                    value={filterTicketDelayed}
-                    onChange={e => { setFilterTicketDelayed(e.target.value); setCurrentPage(1); }}
-                    className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
-                  >
-                    <option value="">Delayed Status</option>
-                    <option value="late_closures">Late Closures</option>
-                  </AppSelect>
+                  <AdvancedFilterInput
+                    type="date"
+                    label={localize("TicketReceivedDate")}
+                    value={filterTicketReceivedDate}
+                    onChange={(value) => { setFilterTicketReceivedDate(value); setCurrentPage(1); }}
+                    onClear={() => { setFilterTicketReceivedDate(""); setCurrentPage(1); }}
+                  />
 
-                  {/* Created By */}
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Created By..."
-                      value={filterCreatedBy}
-                      onChange={(e) => { setFilterCreatedBy(e.target.value); setCurrentPage(1); }}
-                      className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400 min-w-[150px] text-slate-700 dark:text-slate-200"
-                    />
-                    {filterCreatedBy && (
-                      <button
-                        onClick={() => { setFilterCreatedBy(""); setCurrentPage(1); }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500"
-                      >
-                        <X size={11} />
-                      </button>
-                    )}
+                  <AdvancedFilterInput
+                    label={localize("TicketClosedById")}
+                    value={filterTicketClosedBy}
+                    onChange={(value) => { setFilterTicketClosedBy(value); setCurrentPage(1); }}
+                    onClear={() => { setFilterTicketClosedBy(""); setCurrentPage(1); }}
+                  />
+
+                  <AdvancedFilterInput
+                    label={localize("CreatedBy")}
+                    value={filterCreatedBy}
+                    onChange={(value) => { setFilterCreatedBy(value); setCurrentPage(1); }}
+                    onClear={() => { setFilterCreatedBy(""); setCurrentPage(1); }}
+                  />
+
+                  <div className="flex min-w-0 w-full flex-col gap-1">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      {`${localize("Ticket")} ${localize("Status")}`}
+                    </span>
+                    <AppSelect
+                      value={filterStatus}
+                      onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}
+                      className="w-full px-2 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                    >
+                      <option value="">{localize("SelectBoxEmptyValueText")}</option>
+                      <option value="1">{statusLabel(1)}</option>
+                      <option value="2">{statusLabel(2)}</option>
+                      <option value="3">{localize("VoidAMSTicketButtonText")}</option>
+                    </AppSelect>
+                  </div>
+
+                  <div className="flex min-w-0 w-full flex-col gap-1">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      {`${localize("IsPRE")} ${localize("Status")}`}
+                    </span>
+                    <AppSelect
+                      value={filterIsPRE}
+                      onChange={e => { setFilterIsPRE(e.target.value); setCurrentPage(1); }}
+                      className="w-full px-2 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                    >
+                      <option value="">{localize("SelectBoxEmptyValueText")}</option>
+                      <option value="true">{localize("IsPRE")}</option>
+                      <option value="false">{`${localize("No")} ${localize("IsPRE")}`}</option>
+                    </AppSelect>
+                  </div>
+
+                  <div className="flex min-w-0 w-full flex-col gap-1">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      {localize("TicketVerification")}
+                    </span>
+                    <AppSelect
+                      value={filterIsVerified}
+                      onChange={e => { setFilterIsVerified(e.target.value); setCurrentPage(1); }}
+                      className="w-full px-2 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                    >
+                      <option value="">{localize("SelectBoxEmptyValueText")}</option>
+                      <option value="true">{localize("Yes")}</option>
+                      <option value="false">{localize("No")}</option>
+                    </AppSelect>
+                  </div>
+
+                  <div className="flex min-w-0 w-full flex-col gap-1">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                      {`${localize("Overdue")} ${localize("Status")}`}
+                    </span>
+                    <AppSelect
+                      value={filterTicketDelayed}
+                      onChange={e => { setFilterTicketDelayed(e.target.value); setCurrentPage(1); }}
+                      className="w-full px-2 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                    >
+                      <option value="">{localize("SelectBoxEmptyValueText")}</option>
+                      <option value="late_closures">{localize("Overdue")}</option>
+                    </AppSelect>
+                  </div>
+
                   </div>
 
                   {/* Clear Filters */}
                   {activeFilterCount > 0 && (
+                    <div className="order-1 flex justify-end mb-3">
                     <button
-                      onClick={() => { setFilterStatus(""); setFilterIsPRE(""); setFilterIsVerified(""); setFilterCreatedBy(""); setFilterTicketDelayed(""); setCurrentPage(1); }}
+                      onClick={() => {
+                        setFilterStatus("");
+                        setFilterIsPRE("");
+                        setFilterIsVerified("");
+                        setFilterCreatedBy("");
+                        setFilterTicketDelayed("");
+                        setFilterSiteName("");
+                        setFilterSiteOCN("");
+                        setFilterCmsNextTicketNo("");
+                        setFilterTicketReceivedDate("");
+                        setFilterTicketClosedBy("");
+                        setCurrentPage(1);
+                      }}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-rose-200 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
                     >
                       <X size={11} />
-                      Clear All
+                      {localize("ClearFilter")}
                     </button>
+                    </div>
                   )}
                 </div>
               </motion.div>
@@ -794,19 +1116,8 @@ export default function AMSTicketsPage() {
                   <Ticket size={18} strokeWidth={2} />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Open Tickets</span>
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">{statusLabel(1)}</span>
                   <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.open}</span>
-                </div>
-              </div>
-
-              {/* In Progress */}
-              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-2 shadow-sm snap-start">
-                <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
-                  <Clock size={18} strokeWidth={2} />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">In Progress</span>
-                  <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.inProgress}</span>
                 </div>
               </div>
 
@@ -816,7 +1127,7 @@ export default function AMSTicketsPage() {
                   <ShieldCheck size={18} strokeWidth={2} />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Verified  </span>
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">{`${localize("TicketVerification")}: ${localize("Yes")}`}</span>
                   <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.verified}</span>
                 </div>
               </div>
@@ -827,7 +1138,7 @@ export default function AMSTicketsPage() {
                   <ShieldAlert size={18} strokeWidth={2} />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Non Verified</span>
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">{`${localize("TicketVerification")}: ${localize("No")}`}</span>
                   <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.nonVerified}</span>
                 </div>
               </div>
@@ -838,7 +1149,7 @@ export default function AMSTicketsPage() {
                   <CheckCircle2 size={18} strokeWidth={2} />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Closed  </span>
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">{statusLabel(2)}</span>
                   <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.closed}</span>
                 </div>
               </div>
@@ -849,18 +1160,18 @@ export default function AMSTicketsPage() {
                   <X size={18} strokeWidth={2} />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Void</span>
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">{localize("VoidAMSTicketButtonText")}</span>
                   <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.voided}</span>
                 </div>
               </div>
 
-              {/* Late Closures */}
+              {/* Overdue */}
               <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-2 shadow-sm snap-start min-w-[140px]">
                 <div className="w-10 h-10 rounded-lg bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-500 shrink-0">
                   <AlertCircle size={18} strokeWidth={2} />
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate">Late Closures</span>
+                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate">{localize("Overdue")}</span>
                   <span className="text-xl font-bold text-slate-900 dark:text-white leading-tight">{stats.lateClosures}</span>
                 </div>
               </div>
@@ -893,10 +1204,15 @@ export default function AMSTicketsPage() {
                       <div className={`flex items-center ${col.align === "center" ? "justify-center" : "justify-start"} gap-1`}>
                         {col.label}
                         {col.key !== "actions" && col.key !== "isVerified" && (
-                          <div className="flex flex-col">
-                            <ChevronRight size={10} className={`-rotate-90 -mb-1 ${sortKey === col.key && sortDir === "asc" ? "text-pink-500" : "text-slate-300 dark:text-slate-600"}`} />
-                            <ChevronRight size={10} className={`rotate-90 ${sortKey === col.key && sortDir === "desc" ? "text-pink-500" : "text-slate-300 dark:text-slate-600"}`} />
-                          </div>
+                          sortKey === col.key ? (
+                            sortDir === "asc" ? (
+                              <ArrowUp size={13} className="shrink-0 text-pink-500" />
+                            ) : (
+                              <ArrowDown size={13} className="shrink-0 text-pink-500" />
+                            )
+                          ) : (
+                            <ArrowUpDown size={12} className="shrink-0 text-slate-400 dark:text-slate-600" />
+                          )
                         )}
                       </div>
                     </th>
@@ -914,25 +1230,22 @@ export default function AMSTicketsPage() {
                       colSpan={columns.length}
                       className="py-32 text-center text-sm font-medium text-slate-400 uppercase tracking-widest"
                     >
-                      No tickets found
+                      {localize("NoDataAvailableInDatatable")}
                     </td>
                   </tr>
                 ) : (
-                  tickets.map((row, idx) => {
-                    const ageInfo = formatAge(row.ticketReceivedDate);
-                    const assignedUser = row.ticketClosedByName || row.createdBy || "admin";
-                    const avatarColor = getAvatarColor(assignedUser);
-
+                  tickets.map((row) => {
                     return (
                       <motion.tr
                         key={row.id}
                         variants={rowVariants}
-                        className={`group transition-all duration-200 border-b border-slate-50 dark:border-slate-800/30
-                            ${row.status === 1 ? "bg-rose-50/30 dark:bg-rose-950/20" :
-                            row.status === 2 ? "bg-emerald-50/30 dark:bg-emerald-950/20" :
-                              "bg-white dark:bg-slate-900"}`}
+                        className={`group transition-all duration-200 border-b border-white/80 dark:border-slate-700/50 hover:brightness-[0.98] dark:hover:brightness-110
+                            ${row.status === 1 ? "bg-rose-100/70 dark:bg-rose-950/45" :
+                            row.status === 2 ? "bg-emerald-100/70 dark:bg-emerald-950/40" :
+                              row.status === 3 ? "bg-slate-200/80 dark:bg-slate-800/80" :
+                                "bg-amber-100/70 dark:bg-amber-950/35"}`}
                       >
-                        {columns.map((col, colIdx) => (
+                        {columns.map((col) => (
                           <td
                             key={col.key}
                             className={`px-5 py-3 text-${col.align || "left"} transition-colors`}
@@ -940,35 +1253,40 @@ export default function AMSTicketsPage() {
                             <div className="text-[12px] leading-tight">
                               {col.key === "siteName" ? (
                                 <span className="font-bold text-slate-900 dark:text-slate-100 truncate max-w-[140px] block" title={row.siteName}>
-                                  <HighlightText text={row.siteName} terms={[search]} />
+                                  <HighlightText text={row.siteName} terms={[generalSearch, filterSiteName]} />
                                 </span>
                               ) : col.key === "siteOCN" ? (
                                 <span className="text-slate-600 dark:text-slate-400 font-medium">
-                                  <HighlightText text={row.siteOCN} terms={[search]} />
+                                  <HighlightText text={row.siteOCN} terms={[generalSearch, filterSiteOCN]} />
                                 </span>
                               ) : col.key === "cmsNextTicketNo" ? (
                                 <span className="font-bold text-slate-900 dark:text-slate-100">
-                                  <HighlightText text={row.cmsNextTicketNo} terms={[search]} />
+                                  <HighlightText text={row.cmsNextTicketNo} terms={[generalSearch, filterCmsNextTicketNo]} />
                                 </span>
                               ) : col.key === "ticketReceivedDate" ? (
                                 <span className="text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
-                                  {row.ticketReceivedDate ? new Date(row.ticketReceivedDate).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "—"}
+                                  {row.ticketReceivedDate ? (
+                                    <HighlightText
+                                      text={formatTicketDateTime(row.ticketReceivedDate, currentCulture)}
+                                      terms={[formatTicketDate(filterTicketReceivedDate, currentCulture)]}
+                                    />
+                                  ) : "—"}
                                 </span>
                               ) : col.key === "ticketClosedByName" ? (
                                 <span className="text-slate-600 dark:text-slate-400 font-medium">
-                                  {row.ticketClosedByName ? <HighlightText text={row.ticketClosedByName} terms={[search]} /> : "—"}
+                                  {row.ticketClosedByName ? <HighlightText text={row.ticketClosedByName} terms={[generalSearch, filterTicketClosedBy]} /> : "—"}
                                 </span>
                               ) : col.key === "activityTotalDuration" ? (
                                 <span className="font-bold text-blue-500">
-                                  {row.activityTotalDuration ? `${row.activityTotalDuration}h` : "0h"}
+                                  {row.activityTotalDuration || 0}
                                 </span>
                               ) : col.key === "cmsTicketClosedOn" ? (
                                 <span className="text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
-                                  {row.cmsTicketClosedOn ? new Date(row.cmsTicketClosedOn).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "—"}
+                                  {row.cmsTicketClosedOn ? formatTicketDateTime(row.cmsTicketClosedOn, currentCulture) : "—"}
                                 </span>
                               ) : col.key === "serviceClosedDate" ? (
                                 <span className="text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
-                                  {row.serviceClosedDate ? new Date(row.serviceClosedDate).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "—"}
+                                  {row.serviceClosedDate ? formatTicketDateTime(row.serviceClosedDate, currentCulture) : "—"}
                                 </span>
                               ) : col.key === "status" ? (
                                 <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap
@@ -977,26 +1295,37 @@ export default function AMSTicketsPage() {
                                       row.status === 3 ? "bg-slate-100 text-slate-600" :
                                         "bg-amber-100 text-amber-600"}`}
                                 >
-                                  {row.status === 1 ? "Open" : row.status === 2 ? "Closed" : row.status === 3 ? "Void" : "In Progress"}
+                                  {row.status === 3
+                                    ? localize("VoidAMSTicketButtonText")
+                                    : statusLabel(row.status) || "—"}
                                 </span>
                               ) : col.key === "isPRE" ? (
                                 <div className={`w-2 h-2 rounded-full mx-auto ${row.isPRE ? "bg-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.6)]" : "bg-slate-200 dark:bg-slate-700"}`} />
                               ) : col.key === "isVerified" ? (
                                 <div className="flex justify-center w-full">
                                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${(row.ticketResolutionVerifiedBy || row.ticketResolutionVerifiedById) ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>
-                                    {(row.ticketResolutionVerifiedBy || row.ticketResolutionVerifiedById) ? "Verified" : "Non-verified"}
+                                    {(row.ticketResolutionVerifiedBy || row.ticketResolutionVerifiedById)
+                                      ? localize("Yes")
+                                      : localize("No")}
                                   </span>
                                 </div>
                               ) : col.key === "createdBy" ? (
                                 <span className="text-slate-600 dark:text-slate-400 font-medium">
-                                  {row.createdBy ? <HighlightText text={row.createdBy} terms={[search, filterCreatedBy]} /> : "—"}
+                                  {row.createdBy ? <HighlightText text={row.createdBy} terms={[generalSearch, filterCreatedBy]} /> : "—"}
                                 </span>
                               ) : col.key === "actions" ? (
                                 <RowActions
                                   row={row}
-                                  onView={canView ? () => { setActionItem(row); setActionType("detail"); } : undefined}
-                                  onUpdateData={canEdit ? () => { setActionItem(row); setActionType("edit"); } : undefined}
-                                  onVoid={canVoid ? () => { setActionItem(row); setActionType("delete"); } : undefined}
+                                  moreActionsText={localize("Actions")}
+                                  editButtonText="Edit/View"
+                                  voidButtonText={localize("VoidAMSTicketButtonText")}
+                                  reopenButtonText={localize("ReOpenAMSTicketButtonText")}
+                                  auditLogsButtonText={localize("AuditLogsButtonText")}
+                                  onUpdateData={(canEdit || canViewMode) ? () => {
+                                    setActionItem(row);
+                                    setActionType(canEdit && !isVoidedTicket(row) ? "edit" : "detail");
+                                  } : undefined}
+                                  onVoid={canVoid ? () => { setActionItem(row); setActionType("void"); } : undefined}
                                   onReopen={canReopen ? () => { setActionItem(row); setActionType("reopen"); } : undefined}
                                   onAuditLog={canViewAuditLog ? () => navigate(`/audit-logs?primaryKey=${row.id}&entityName=AMSTicket`) : undefined}
                                 />
@@ -1020,7 +1349,7 @@ export default function AMSTicketsPage() {
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">
-                Show
+                {localize("PagerShowMenuEntries").replace("_MENU_", "")}
               </span>
               <AppSelect
                 value={pageSize}
@@ -1035,17 +1364,7 @@ export default function AMSTicketsPage() {
               </AppSelect>
             </div>
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-              <span className="text-slate-900 dark:text-white tabular-nums">
-                {totalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0}
-              </span>
-              <span className="mx-1.5 text-slate-300">—</span>
-              <span className="text-slate-900 dark:text-white tabular-nums">
-                {Math.min(currentPage * pageSize, totalCount)}
-              </span>
-              <span className="mx-2 lowercase font-bold italic text-slate-300">
-                of
-              </span>
-              <span className="text-pink-500 font-black">{totalCount}</span>
+              {pagerInfoText}
             </p>
           </div>
 
@@ -1102,8 +1421,9 @@ export default function AMSTicketsPage() {
         onSave={async (payload) => {
           try {
             await amsTicketApi.create(payload);
-            toast("Ticket created successfully");
+            toast(localize("SavedSuccessfully"));
             setActionType("");
+            invalidateAllTicketsCache();
             fetchGlobalStats();
             fetchTickets();
           } catch (error) {
@@ -1134,23 +1454,29 @@ export default function AMSTicketsPage() {
             ticket={actionItem}
             canCloseTicket={canClose}
             onSave={async (payload) => {
-              const { activeTab, ...dataToSave } = payload;
+              if (isVoidedTicket(actionItem)) {
+                setActionType("detail");
+                return;
+              }
+
+              const dataToSave = { ...payload };
+              const isClosingTicket =
+                dataToSave.activeTab === "Ticket Verification";
+              delete dataToSave.activeTab;
               try {
-                if (activeTab === "Ticket Verification") {
+                if (isClosingTicket) {
                   await amsTicketApi.close(actionItem.id, dataToSave);
-                  toast("Ticket closed successfully");
                 } else {
                   const settingsAreUnchanged = await amsTicketApi.isSettingsSameAfterReOpening(dataToSave);
                   const setNewSettings = settingsAreUnchanged
                     ? false
-                    : window.confirm(
-                      "Ticket settings changed after this ticket was reopened. Apply the current settings to this ticket?",
-                    );
+                    : window.confirm(localize("AreYouSure"));
                   await amsTicketApi.update(actionItem.id, dataToSave, { setNewSettings });
-                  toast("Ticket updated successfully");
                 }
+                toast(localize("SavedSuccessfully"));
                 setActionType("");
                 setActionItem(null);
+                invalidateAllTicketsCache();
                 fetchGlobalStats();
                 fetchTickets();
               } catch (error) {
@@ -1167,16 +1493,20 @@ export default function AMSTicketsPage() {
             }}
           />
           <DeleteConfirmModal
-            open={actionType === "delete"}
+            open={actionType === "void"}
             item={actionItem}
             onCancel={() => {
               setActionType("");
               setActionItem(null);
             }}
-            onConfirm={() => handleDelete(actionItem)}
-            title="Void Ticket"
-            message={`Are you sure you want to void ticket #${actionItem?.cmsNextTicketNo}? This action cannot be undone.`}
+            onConfirm={() => handleVoid(actionItem)}
+            title={localize("VoidAMSTicketButtonText")}
+            message={localize("VoidTicketConfirmMessage")}
+            confirmText={localize("VoidAMSTicketButtonText")}
+            cancelText={localize("CancelButtonText")}
+            processingText={localize("ProcessingWithThreeDot")}
             loading={actionLoading}
+            blurBackdrop={false}
           />
           <DeleteConfirmModal
             open={actionType === "reopen"}
@@ -1186,10 +1516,13 @@ export default function AMSTicketsPage() {
               setActionItem(null);
             }}
             onConfirm={() => handleReopen(actionItem)}
-            title="Reopen Ticket"
-            message={`Are you sure you want to ReOpen this ticket?`}
-            confirmText="Yes"
+            title={localize("ReOpenAMSTicketButtonText")}
+            message={localize("ReOpenTicketConfirmMessage")}
+            confirmText={localize("Yes")}
+            cancelText={localize("CancelButtonText")}
+            processingText={localize("ProcessingWithThreeDot")}
             loading={actionLoading}
+            blurBackdrop={false}
           />
         </>
       )}
@@ -1199,8 +1532,10 @@ export default function AMSTicketsPage() {
         onClose={() => setIsUnclosedModalOpen(false)}
         onTicketSelect={(ticket) => {
           setIsUnclosedModalOpen(false);
-          setActionItem(ticket);
-          setActionType(canEdit ? "edit" : "detail");
+          if (canEdit || canViewMode) {
+            setActionItem(ticket);
+            setActionType(canEdit && !isVoidedTicket(ticket) ? "edit" : "detail");
+          }
         }}
       />
 

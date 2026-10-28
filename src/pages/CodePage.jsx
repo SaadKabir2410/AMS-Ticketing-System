@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import AppSelect from "../component/common/AppSelect";
 import {
   DndContext,
   closestCenter,
@@ -16,10 +15,11 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Loader2, Plus, Search, X, ChevronLeft, ChevronsLeft, ChevronsRight, ChevronRight, Filter, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Loader2, Plus, Search, X, Filter, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ActionsMenu } from "../component/common/ResourcePage";
+import ListPager from "../component/common/ListPager";
 
 import codesApi from "../services/api/Code";
 import CodeModal from "../component/common/CodeModal";
@@ -60,7 +60,7 @@ const highlightText = (text, query) => {
   const parts = String(text).split(new RegExp(`(${escapedQuery})`, "gi"));
   return parts.map((part, i) => 
     part.toLowerCase() === query.toLowerCase() ? (
-      <mark key={i} className="bg-pink-100 dark:bg-pink-500/30 text-pink-700 dark:text-pink-100 rounded-[2px] px-[2px]">
+      <mark key={i} className="rounded-sm bg-pink-200 px-0.5 text-pink-900 dark:bg-pink-500/40 dark:text-pink-100">
         {part}
       </mark>
     ) : part
@@ -98,7 +98,7 @@ function SortableHeader({ label, column, sortConfig, onSort, align = "left" }) {
         type="button"
         onClick={() => onSort(column)}
         className={`inline-flex w-full items-center gap-1.5 transition-colors hover:text-pink-600 dark:hover:text-pink-400 ${align === "center" ? "justify-center" : "justify-start"} ${active ? "text-pink-600 dark:text-pink-400" : "text-slate-500 dark:text-slate-400"}`}
-        aria-label={`Sort by ${label}`}
+        aria-label={label}
       >
         <span>{label}</span>
         <Icon size={12} strokeWidth={2.5} />
@@ -108,7 +108,7 @@ function SortableHeader({ label, column, sortConfig, onSort, align = "left" }) {
 }
 
 // ── Sortable row ──────────────────────────────────────────────────
-function SortableRow({ row, index, onEdit, onDisable, onEnable, onAuditLog, searchTerm, advancedFilters, dragDisabled }) {
+function SortableRow({ row, index, onEdit, onDisable, onEnable, onAuditLog, searchTerm, advancedFilters, dragDisabled, localize }) {
   const {
     attributes,
     listeners,
@@ -145,10 +145,10 @@ function SortableRow({ row, index, onEdit, onDisable, onEnable, onAuditLog, sear
         {highlightText(String(row.sequence ?? "—"), advancedFilters.sequence || searchTerm)}
       </td>
       <td className="px-5 h-[60px] text-center transition-colors">
-        {highlightText(row.isSystemIndicator ? "Yes" : "No", searchTerm)}
+        {highlightText(row.isSystemIndicator ? localize("Yes") : localize("No"), searchTerm)}
       </td>
       <td className="px-5 h-[60px] text-center transition-colors">
-        {highlightText(isRowActive ? "Active" : "Inactive", searchTerm)}
+        {highlightText(isRowActive ? localize("IsActive") : localize("IsDisabled"), searchTerm)}
       </td>
       <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">
         {!row.isSystemIndicator && (
@@ -302,8 +302,6 @@ export default function CodePage() {
     return filteredItems.slice(start, start + pageSize);
   }, [filteredItems, currentPage, pageSize]);
 
-  const totalPages = Math.ceil(filteredItems.length / pageSize);
-
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, advancedFilters, sortConfig]);
@@ -370,7 +368,7 @@ export default function CodePage() {
 
       if (!updates.length) return;
       for (const item of updates) await codesApi.update(item.id, item);
-      toast(`Reordered ${updates.length} item${updates.length > 1 ? "s" : ""}.`);
+      toast(localize("OperationSuccessfull"));
       refetch();
     } catch (error) {
       setPageError(getApiErrorMessage(error));
@@ -385,11 +383,10 @@ export default function CodePage() {
     try {
       if (actionItem && actionType === "edit") {
         await codesApi.update(actionItem.id, payload);
-        toast("Code updated.");
       } else {
         await codesApi.create(payload);
-        toast("Code created.");
       }
+      toast(localize("OperationSuccessfull"));
       setModalOpen(false);
       setActionItem(null);
       refetch();
@@ -405,11 +402,10 @@ export default function CodePage() {
     try {
       if (actionType === "disable") {
         await codesApi.disable(actionItem.id);
-        toast("Record disabled.");
       } else if (actionType === "enable") {
         await codesApi.enable(actionItem.id);
-        toast("Record enabled.");
       }
+      toast(localize("OperationSuccessfull"));
       setActionItem(null);
       setActionType("");
       refetch();
@@ -452,22 +448,20 @@ export default function CodePage() {
         className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col relative rounded-3xl overflow-hidden"
       >
         {/* ── Header ── */}
-        <div className="flex flex-col gap-6 py-6 px-4 md:px-8 transition-colors">
+        <div className="app-page-header flex flex-col gap-6 py-6 px-4 md:px-8 transition-colors">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
 
             <div className="flex items-center gap-4">
               <div>
                 <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
-                  <span>Home</span>
+                  <span onClick={() => navigate("/")} className="hover:text-pink-500 cursor-pointer transition-colors">{localize("Home")}</span>
                   <span className="text-slate-300 dark:text-slate-700">/</span>
-                  <span>Management</span>
+                  <span>{localize("Menu:Administration")}</span>
                   <span className="text-slate-300 dark:text-slate-700">/</span>
-                  <span>Lookups</span>
-                  <span className="text-slate-300 dark:text-slate-700">/</span>
-                  <span className="text-pink-500">Codes</span>
+                  <span className="text-pink-500">{localize("Lookups")}</span>
                 </nav>
                 <h1 className="text-4xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 tracking-tighter">
-                  Codes
+                  {localize("Lookups")}
                   <AnimatePresence>
                     {updateLoading && (
                       <Motion.span
@@ -496,7 +490,7 @@ export default function CodePage() {
                 className="app-primary-button inline-flex items-center justify-center px-5 py-2.5 w-full sm:w-auto text-xs uppercase tracking-tight"
               >
                 <Plus size={14} className="mr-2" strokeWidth={3} />
-                New Code
+                {localize("NewLookup")}
               </Motion.button>
             )}
           </div>
@@ -515,7 +509,7 @@ export default function CodePage() {
               </div>
               <input
                 type="text"
-                placeholder="Search all code columns..."
+                placeholder={localize("SearchInTablePlaceholder")}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-8 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-[12px] outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
@@ -525,7 +519,7 @@ export default function CodePage() {
                   type="button"
                   onClick={() => setSearchTerm("")}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
-                  aria-label="Clear general search"
+                  aria-label={localize("ClearFilter")}
                 >
                   <X size={14} />
                 </button>
@@ -539,9 +533,9 @@ export default function CodePage() {
               aria-expanded={showAdvancedSearch}
             >
               <Filter size={14} />
-              Advanced Search
+              {localize("AdvancedSearch")}
               {hasAdvancedFilters && (
-                <span className="h-2 w-2 rounded-full bg-pink-500" aria-label="Filters active" />
+                <span className="h-2 w-2 rounded-full bg-pink-500" />
               )}
             </button>
 
@@ -550,7 +544,7 @@ export default function CodePage() {
               onClick={clearFilters}
               className="app-primary-button inline-flex h-[42px] w-full sm:w-auto items-center justify-center px-4 text-xs"
             >
-              Clear
+              {localize("ClearFilter")}
             </button>
           </div>
 
@@ -560,14 +554,14 @@ export default function CodePage() {
                 type="text"
                 value={advancedFilters.lookupCode}
                 onChange={(e) => updateAdvancedFilter("lookupCode", e.target.value)}
-                placeholder="Filter by lookup code..."
+                placeholder={localize("LookupCode")}
                 className="px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10"
               />
               <input
                 type="text"
                 value={advancedFilters.description}
                 onChange={(e) => updateAdvancedFilter("description", e.target.value)}
-                placeholder="Filter by description..."
+                placeholder={localize("Description")}
                 className="px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10"
               />
               <input
@@ -575,7 +569,7 @@ export default function CodePage() {
                 min="0"
                 value={advancedFilters.sequence}
                 onChange={(e) => updateAdvancedFilter("sequence", e.target.value)}
-                placeholder="Exact sequence..."
+                placeholder={localize("Sequence")}
                 className="px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/10"
               />
             </div>
@@ -586,15 +580,15 @@ export default function CodePage() {
         <div className="flex flex-col w-full h-auto relative">
           {resourceLoading && filteredItems.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-20 w-full">
-              Refreshing data...
+              {localize("LoadingWithThreeDot")}
             </div>
           ) : !resourceLoading && filteredItems.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] py-20 w-full">
-              No codes found
+              {localize("NoDataAvailableInDatatable")}
             </div>
           ) : (
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar">
-              <table className="w-full table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
+              <table className="w-full min-w-[720px] table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
                 <colgroup>
                   <col style={{ width: '16.66%' }} />
                   <col style={{ width: '16.66%' }} />
@@ -605,12 +599,12 @@ export default function CodePage() {
                 </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
-                    <SortableHeader label="Lookup Code" column="lookupCode" sortConfig={sortConfig} onSort={handleSort} />
-                    <SortableHeader label="Description" column="description" sortConfig={sortConfig} onSort={handleSort} />
-                    <SortableHeader label="Sequence" column="sequence" sortConfig={sortConfig} onSort={handleSort} align="center" />
-                    <SortableHeader label="System Indicator" column="isSystemIndicator" sortConfig={sortConfig} onSort={handleSort} align="center" />
-                    <SortableHeader label="Status" column="isActive" sortConfig={sortConfig} onSort={handleSort} align="center" />
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Actions</th>
+                    <SortableHeader label={localize("LookupCode")} column="lookupCode" sortConfig={sortConfig} onSort={handleSort} />
+                    <SortableHeader label={localize("Description")} column="description" sortConfig={sortConfig} onSort={handleSort} />
+                    <SortableHeader label={localize("Sequence")} column="sequence" sortConfig={sortConfig} onSort={handleSort} align="center" />
+                    <SortableHeader label={localize("IsSystemIndicator")} column="isSystemIndicator" sortConfig={sortConfig} onSort={handleSort} align="center" />
+                    <SortableHeader label={localize("Status")} column="isActive" sortConfig={sortConfig} onSort={handleSort} align="center" />
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">{localize("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -632,6 +626,7 @@ export default function CodePage() {
                             searchTerm={searchTerm}
                             advancedFilters={advancedFilters}
                             dragDisabled={!canReorder}
+                            localize={localize}
                             onEdit={canEdit ? (r) => {
                               setActionItem(r);
                               setActionType("edit");
@@ -657,82 +652,14 @@ export default function CodePage() {
           )}
         </div>
 
-        {/* Footer & Standard Pagination - INSIDE CARD */}
         {items.length > 0 && (
-          <div className="w-full px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4 transition-colors shrink-0">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-                <AppSelect
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
-                >
-                  {[10, 25, 50, 100].map((s) => (
-                    <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
-                  ))}
-                </AppSelect>
-              </div>
-
-              <div className="hidden sm:flex items-center gap-2 border-l border-slate-200 dark:border-slate-800 pl-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                  <span className="text-slate-900 dark:text-white tabular-nums">{filteredItems.length === 0 ? 0 : (currentPage - 1) * pageSize + 1}</span>
-                  <span className="mx-1.5 text-slate-400 dark:text-slate-600">—</span>
-                  <span className="text-slate-900 dark:text-white tabular-nums">{Math.min(currentPage * pageSize, filteredItems.length)}</span>
-                  <span className="mx-2 lowercase font-bold italic tracking-normal text-slate-400 dark:text-slate-500">of</span>
-                  <span className="text-slate-900 dark:text-white tabular-nums font-black">{filteredItems.length}</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
-              <button
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-              >
-                <ChevronsLeft size={14} strokeWidth={2.5} />
-              </button>
-              <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-              >
-                <ChevronLeft size={14} strokeWidth={2.5} />
-              </button>
-
-              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1" />
-
-              <div className="px-3 flex items-center gap-2 py-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page</span>
-                <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
-                  <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{currentPage}</span>
-                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-600">/</span>
-                  <span className="text-[10px] font-black text-slate-900 dark:text-white tabular-nums leading-none">{totalPages || 1}</span>
-                </div>
-              </div>
-
-              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1" />
-
-              <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage >= totalPages}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-              >
-                <ChevronRight size={14} strokeWidth={2.5} />
-              </button>
-              <button
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage >= totalPages}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-              >
-                <ChevronsRight size={14} strokeWidth={2.5} />
-              </button>
-            </div>
-          </div>
+          <ListPager
+            page={currentPage}
+            pageSize={pageSize}
+            totalCount={filteredItems.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+          />
         )}
       </Motion.div>
 
@@ -758,8 +685,11 @@ export default function CodePage() {
         item={actionItem}
         loading={updateLoading}
         blurBackdrop={false}
-        title={isDisable ? "Disable Lookup Code" : "Enable Lookup Code"}
-        confirmText={isDisable ? "Yes, Disable" : "Yes, Enable"}
+        title={isDisable ? localize("DisableButtonText") : localize("EnableButtonText")}
+        message={isDisable ? localize("DisableConfirmationMessage") : localize("EnableConfirmationMessage")}
+        confirmText={isDisable ? localize("DisableButtonText") : localize("EnableButtonText")}
+        cancelText={localize("CancelButtonText")}
+        processingText={localize("ProcessingWithThreeDot")}
         onClose={resetActionState}
         onConfirm={handleConfirmAction}
       />

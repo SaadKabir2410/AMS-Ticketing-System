@@ -99,7 +99,7 @@ const HighlightText = ({ text, term }) => {
     parts.push(
       <mark
         key={`${index}-${cursor}`}
-        className="bg-transparent text-pink-600 dark:text-pink-400 font-black"
+        className="rounded-sm bg-pink-200 px-0.5 text-pink-900 dark:bg-pink-500/40 dark:text-pink-100"
       >
         {str.slice(index, index + normalizedTerm.length)}
       </mark>,
@@ -388,7 +388,7 @@ export default function CodeDetailsPage() {
       label: localize("LookupDetailCode"),
       width: 80,
       render: (val) => (
-        <span className="text-sm font-semibold text-black dark:text-white tracking-tight leading-none">
+        <span className="text-[12px] font-semibold text-black dark:text-white tracking-tight leading-none">
           <HighlightText text={val} term={filters.newCode} />
         </span>
       ),
@@ -398,7 +398,7 @@ export default function CodeDetailsPage() {
       label: localize("Lookup"),
       width: 100,
       render: (val) => (
-        <span className="text-sm font-semibold text-black dark:text-white tracking-tight leading-none">
+        <span className="text-[12px] font-semibold text-black dark:text-white tracking-tight leading-none">
           <HighlightText text={val} term={filters.lookupCode} />
         </span>
       ),
@@ -408,7 +408,7 @@ export default function CodeDetailsPage() {
       label: localize("Description"),
       width: 220,
       render: (val) => (
-        <span className="text-sm text-black dark:text-white leading-none line-clamp-1">
+        <span className="text-[12px] text-black dark:text-white leading-none line-clamp-1">
           {val ? (
             <HighlightText text={val} term={filters.description} />
           ) : (
@@ -422,7 +422,7 @@ export default function CodeDetailsPage() {
       label: localize("Value1"),
       width: 80,
       render: (val) => (
-        <span className="text-xs font-medium text-black dark:text-white">
+        <span className="text-[11px] font-medium text-black dark:text-white">
           <HighlightText text={val} term={filters.value1} />
         </span>
       ),
@@ -432,7 +432,7 @@ export default function CodeDetailsPage() {
       label: localize("Value2"),
       width: 80,
       render: (val) => (
-        <span className="text-xs font-medium text-black dark:text-white">
+        <span className="text-[11px] font-medium text-black dark:text-white">
           <HighlightText text={val} term={filters.value2} />
         </span>
       ),
@@ -442,7 +442,7 @@ export default function CodeDetailsPage() {
       label: localize("GroupCode"),
       width: 100,
       render: (val) => (
-        <span className="text-xs font-medium text-black dark:text-white">
+        <span className="text-[11px] font-medium text-black dark:text-white">
           <HighlightText text={val} term={filters.groupCode} />
         </span>
       ),
@@ -452,7 +452,7 @@ export default function CodeDetailsPage() {
       label: localize("GroupCodeDetail"),
       width: 140,
       render: (val) => (
-        <span className="text-xs font-medium text-black dark:text-white">
+        <span className="text-[11px] font-medium text-black dark:text-white">
           <HighlightText text={val} term={filters.groupCodeDetail} />
         </span>
       ),
@@ -464,7 +464,7 @@ export default function CodeDetailsPage() {
       align: "center",
       render: (val) => (
         <span
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-sm font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
+          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
         >
           {val ? "✓" : "–"}
         </span>
@@ -476,7 +476,7 @@ export default function CodeDetailsPage() {
       width: 50,
       align: "center",
       render: (val) => (
-        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-md bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white font-mono text-xs font-medium">
+        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-2 rounded-md bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white font-mono text-[11px] font-medium">
           <HighlightText text={val} term={filters.sequence} />
         </span>
       ),
@@ -488,7 +488,7 @@ export default function CodeDetailsPage() {
       align: "center",
       render: (val) => (
         <span
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-sm font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
+          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
         >
           {val ? "✓" : "–"}
         </span>
@@ -501,7 +501,7 @@ export default function CodeDetailsPage() {
       align: "center",
       render: (val) => (
         <span
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-sm font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
+          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
         >
           {val ? "✓" : "–"}
         </span>
@@ -514,7 +514,7 @@ export default function CodeDetailsPage() {
       align: "center",
       render: (val) => (
         <span
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-sm font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
+          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
         >
           {val ? "✓" : "–"}
         </span>
@@ -525,7 +525,7 @@ export default function CodeDetailsPage() {
       label: localize("ExtraDescriptionLable"),
       width: 120,
       render: (val) => (
-        <span className="text-xs text-black dark:text-white italic line-clamp-1">
+        <span className="text-[11px] text-black dark:text-white italic line-clamp-1">
           <HighlightText text={val} term={filters.extraDescriptionLable} />
         </span>
       ),
@@ -537,7 +537,7 @@ export default function CodeDetailsPage() {
       align: "center",
       render: (val) => (
         <span
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-sm font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
+          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-black ${val ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
         >
           {val ? "✓" : "–"}
         </span>
@@ -550,7 +550,7 @@ export default function CodeDetailsPage() {
       align: "center",
       render: (val, row) => (
         <span
-          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-sm font-black ${val && !row.isDeleted ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
+          className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[11px] font-black ${val && !row.isDeleted ? "bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400" : "bg-slate-100/50 dark:bg-slate-800/80 text-black dark:text-white"}`}
         >
           {val && !row.isDeleted ? "✓" : "–"}
         </span>
@@ -640,7 +640,7 @@ export default function CodeDetailsPage() {
         className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col relative rounded-3xl overflow-hidden"
       >
         {/* ── Header ── */}
-        <div className="flex flex-col gap-6 py-6 px-4 md:px-8 transition-colors">
+        <div className="app-page-header flex flex-col gap-6 py-6 px-4 md:px-8 transition-colors">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div>
@@ -795,7 +795,7 @@ export default function CodeDetailsPage() {
               <button
                 type="button"
                 onClick={() => setShowAdvancedSearch((visible) => !visible)}
-                className={`h-[44px] inline-flex items-center justify-center gap-2 px-4 rounded-xl border text-xs font-bold transition-all ${showAdvancedSearch ? "bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-500/10 dark:border-pink-500/30 dark:text-pink-400" : "bg-white text-slate-500 border-slate-200/60 dark:bg-slate-900/50 dark:border-slate-800/50 dark:text-slate-400 hover:text-pink-600"}`}
+                className={`h-[42px] inline-flex items-center justify-center gap-2 px-4 rounded-xl border text-xs font-bold transition-all ${showAdvancedSearch ? "bg-pink-50 text-pink-600 border-pink-200 dark:bg-pink-500/10 dark:border-pink-500/30 dark:text-pink-400" : "bg-white text-slate-500 border-slate-200/60 dark:bg-slate-900/50 dark:border-slate-800/50 dark:text-slate-400 hover:text-pink-600"}`}
                 aria-expanded={showAdvancedSearch}
               >
                 <Filter size={14} />
@@ -807,7 +807,7 @@ export default function CodeDetailsPage() {
               <button
                 type="button"
                 onClick={clearSearchFilters}
-                className="app-primary-button h-[44px] inline-flex items-center justify-center gap-2 px-4 text-xs"
+                className="app-primary-button h-[42px] inline-flex items-center justify-center gap-2 px-4 text-xs"
               >
                 {localize("ClearFilter")}
               </button>
@@ -889,7 +889,7 @@ export default function CodeDetailsPage() {
         <div className="w-full flex flex-col">
           <div className="w-full overflow-x-auto custom-scrollbar px-4 pb-4">
             <div className="min-w-max">
-              <table className="w-full text-left border-separate border-spacing-y-0">
+              <table className="w-full min-w-[900px] text-left border-separate border-spacing-y-0">
                 <thead>
                   <tr
                     className={`bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 ${ROW_HEIGHT}`}
@@ -963,7 +963,7 @@ export default function CodeDetailsPage() {
                               className="text-slate-300 dark:text-slate-600"
                             />
                           </div>
-                          <p className="text-sm text-slate-400 dark:text-slate-600 uppercase font-black tracking-widest">
+                          <p className="text-[11px] text-slate-400 dark:text-slate-600 uppercase font-black tracking-widest">
                             {localize("SelectBoxEmptyValueText")}
                           </p>
                         </Motion.div>
@@ -988,7 +988,7 @@ export default function CodeDetailsPage() {
                                 className="text-slate-300 dark:text-slate-600"
                               />
                             </div>
-                            <p className="text-sm text-slate-400 dark:text-slate-600">
+                            <p className="text-[11px] text-slate-400 dark:text-slate-600">
                               {localize("NoDataAvailableInDatatable")}
                             </p>
                           </Motion.div>

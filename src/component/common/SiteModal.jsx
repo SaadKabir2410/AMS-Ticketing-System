@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { Dialog, IconButton, Autocomplete, TextField } from "@mui/material";
-import { Check } from "lucide-react";
+import { X } from "lucide-react";
 
 import { countriesApi } from "../../services/api/countries";
-import { getApiErrorMessage } from "../../utils/apiError";
-import PremiumErrorAlert from "./PremiumErrorAlert";
+import { getApiErrorMessage, getApiFieldErrors } from "../../utils/apiError";
 
 
 
@@ -16,6 +15,8 @@ const EMPTY = {
   status: "Active",
 };
 
+const fallbackLocalize = (key) => key;
+
 export default function SiteModal({
   open,
   onClose,
@@ -24,9 +25,11 @@ export default function SiteModal({
   loading = false,
   submitError = null,
   onSubmitErrorClose,
+  localize = fallbackLocalize,
 }) {
   const isEdit = !!site;
   const [form, setForm] = useState(EMPTY);
+  const [validationErrors, setValidationErrors] = useState({});
 
   const [countries, setCountries] = useState([]);
   const [loadingCountries, setLoadingCountries] = useState(false);
@@ -35,6 +38,7 @@ export default function SiteModal({
   useEffect(() => {
     if (open) {
       setCountryLoadError("");
+      setValidationErrors({});
       if (site) {
         const ocn = site.ocn || site.oCN || "";
         setForm({
@@ -64,7 +68,9 @@ export default function SiteModal({
       } catch (error) {
         if (error?.name === "CanceledError" || error?.name === "AbortError")
           return;
-        setCountryLoadError(getApiErrorMessage(error));
+        setCountryLoadError(
+          getApiErrorMessage(error) || localize("DefaultErrorMessage"),
+        );
       } finally {
         setLoadingCountries(false);
       }
@@ -72,14 +78,33 @@ export default function SiteModal({
 
     fetchCountries();
     return () => controller.abort(); // cleanup if modal closes mid-fetch
-  }, [open, countries.length]);
+  }, [open, countries.length, localize]);
 
   const handleChange = (field) => (e) => {
     setForm((f) => ({ ...f, [field]: e.target.value }));
+    setValidationErrors((current) => ({ ...current, [field]: "" }));
+    onSubmitErrorClose?.();
   };
 
   const handleSubmit = (e) => {
     if (e && e.preventDefault) e.preventDefault();
+
+    const requiredMessage = (fieldName) =>
+      localize("The {0} field is required.").replace("{0}", fieldName);
+    const nextValidationErrors = {};
+    if (!form.name.trim()) {
+      nextValidationErrors.name = requiredMessage(localize("SiteName"));
+    }
+    if (!form.oCN.trim()) {
+      nextValidationErrors.oCN = requiredMessage(localize("OCN"));
+    }
+    if (!form.countryId) {
+      nextValidationErrors.countryId = requiredMessage(localize("Country"));
+    }
+    if (Object.keys(nextValidationErrors).length > 0) {
+      setValidationErrors(nextValidationErrors);
+      return;
+    }
 
     // Merge form values into existing site object to preserve metadata like concurrencyStamps
     const payload = isEdit ? { ...site, ...form } : { ...form };
@@ -114,91 +139,108 @@ export default function SiteModal({
   };
 
   const InputLabel = ({ label, required }) => (
-    <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">
+    <label className="block text-[11px] leading-4 font-semibold text-slate-700 dark:text-slate-300 mb-0.5">
       {label} {required && <span className="required-asterisk">*</span>}
     </label>
   );
 
-  const inputClasses = (isValid) =>
-    `w-full px-4 py-2.5 rounded-xl border outline-none transition-all text-sm ` +
-    (isValid
-        ? `bg-green-50/50 border-green-500 focus:border-green-600 text-green-900 dark:bg-green-500/10 dark:border-green-500/50 dark:text-green-200`
-        : `bg-slate-50 border-slate-200 hover:border-slate-300 focus:bg-white focus:border-blue-500 text-slate-700 placeholder:text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:focus:border-blue-500`);
+  const FieldError = ({ message }) =>
+    message ? (
+      <p className="mt-0.5 text-[10px] font-semibold leading-tight text-rose-600 dark:text-rose-400">
+        {message}
+      </p>
+    ) : null;
+
+  const inputClasses =
+    "w-full px-3 py-2 rounded-lg border border-gray-300 bg-gray-100 text-slate-800 placeholder:text-slate-400 outline-none transition-all text-sm hover:border-gray-400 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/10 dark:border-gray-600 dark:bg-gray-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:hover:border-gray-500 dark:focus:border-pink-500";
+  const normalizedSubmitError =
+    submitError && submitError?.response
+      ? submitError
+      : submitError
+        ? { response: { data: submitError } }
+        : null;
+  const backendFieldErrors = normalizedSubmitError
+    ? getApiFieldErrors(normalizedSubmitError)
+    : {};
+  const hasFieldErrors = Object.keys(backendFieldErrors).length > 0;
+  const generalSubmitError =
+    normalizedSubmitError && !hasFieldErrors
+      ? getApiErrorMessage(normalizedSubmitError) ||
+        localize("DefaultErrorMessage")
+      : "";
+  const nameError =
+    validationErrors.name ||
+    backendFieldErrors.name ||
+    backendFieldErrors.siteName;
+  const ocnError =
+    validationErrors.oCN ||
+    backendFieldErrors.ocn ||
+    backendFieldErrors.oCN;
+  const countryError =
+    validationErrors.countryId ||
+    backendFieldErrors.countryId ||
+    backendFieldErrors.country ||
+    countryLoadError;
+  const addressError = backendFieldErrors.address;
 
   return (
     <Dialog
       open={open}
-      onClose={onClose}
-      maxWidth="sm"
+      onClose={(event, reason) => {
+        if (reason === "backdropClick") return;
+        onClose?.();
+      }}
+      disableEscapeKeyDown
+      maxWidth="xs"
       fullWidth
       PaperProps={{
-        sx: { borderRadius: "16px", p: 1 },
-        className: "bg-white dark:bg-slate-900 dark:text-white font-[Arial]",
+        sx: { borderRadius: "16px", p: 0 },
+        className: "!bg-white dark:!bg-slate-900 dark:text-white font-[Arial] border border-slate-200 dark:border-slate-700",
       }}
     >
-      <div className="flex items-center justify-between px-6 pt-5 pb-3">
-        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-          {isEdit ? "Update Site" : "Create Site"}
+      <div className="flex items-center justify-between px-5 py-3 rounded-t-2xl bg-white dark:bg-slate-900">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+          {localize(isEdit ? "UpdateSite" : "CreateSite")}
         </h2>
         <IconButton
           onClick={onClose}
           size="small"
-          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+          aria-label={localize("Close")}
+          className="!w-8 !h-8 !rounded-lg !text-slate-400 hover:!text-rose-500 hover:!bg-rose-50 dark:hover:!bg-rose-500/10"
         >
-
+          <X size={18} />
         </IconButton>
       </div>
 
-      <div className="px-6 py-2 space-y-5">
-        {(submitError || countryLoadError) && (
-          <PremiumErrorAlert
-            open={!!(submitError || countryLoadError)}
-            message={submitError || countryLoadError}
-            onClose={() => {
-              if (submitError) onSubmitErrorClose?.();
-              else setCountryLoadError("");
-            }}
-          />
-        )}
-
+      <div className="px-5 py-2 space-y-2">
         <div>
-          <InputLabel label="Name" required />
+          <InputLabel label={localize("SiteName")} required />
           <div className="relative">
             <input
               type="text"
               value={form.name}
               onChange={handleChange("name")}
-              className={inputClasses(form.name.length > 0)}
+              className={inputClasses}
             />
-            {form.name.length > 0 && (
-              <Check
-                size={16}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500"
-              />
-            )}
           </div>
+          <FieldError message={nameError} />
         </div>
 
         <div>
-          <InputLabel label="OCN" required />
+          <InputLabel label={localize("OCN")} required />
           <div className="relative">
             <input
               type="text"
               value={form.oCN}
               onChange={handleChange("oCN")}
-              className={inputClasses(form.oCN.length > 0)}
+              className={inputClasses}
             />
-            {form.oCN.length > 0 && (
-              <Check
-                size={16}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-green-500"
-              />
-            )}
           </div>
+          <FieldError message={ocnError} />
         </div>
 
         <div>
-          <InputLabel label="Country" required />
+          <InputLabel label={localize("Country")} required />
           <Autocomplete
             options={countries}
             getOptionLabel={(option) => option.name || ""}
@@ -209,80 +251,61 @@ export default function SiteModal({
                 ...f,
                 countryId: newValue ? newValue.id : "",
               }));
+              setValidationErrors((current) => ({
+                ...current,
+                countryId: "",
+              }));
+              onSubmitErrorClose?.();
             }}
             loading={loadingCountries}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: "0.75rem",
-                padding: "1.5px 12px",
-                backgroundColor: "transparent",
-                "& fieldset": {
-                  border: "1px solid",
-                  borderColor: "inherit",
-                },
-              },
-            }}
-            className={`w-full transition-all text-sm rounded-xl ${form.countryId
-                  ? "bg-green-50/50 text-green-900 border-green-500 dark:bg-green-500/10 dark:text-green-200"
-                  : "bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-200"
-              }`}
+            className="site-country-combobox w-full"
             renderInput={(params) => (
               <TextField
                 {...params}
                 placeholder={
                   loadingCountries
-                    ? "Loading countries..."
-                    : "Select a country..."
+                    ? localize("LoadingWithThreeDot")
+                    : localize("SelectBoxEmptyValueText")
                 }
                 variant="outlined"
-                sx={{
-                  "& .MuiInputBase-input": {
-                    padding: "10px !important",
-                  },
-                }}
               />
             )}
           />
+          <FieldError message={countryError} />
         </div>
 
         <div>
-          <InputLabel label="Address" />
+          <InputLabel label={localize("Address")} />
           <div className="relative">
             <textarea
               rows={3}
               value={form.address}
               onChange={handleChange("address")}
-              className={`${inputClasses(form.address.length > 0)} resize-y`}
+              className={`${inputClasses} resize-y`}
             />
-            {form.address.length > 0 && (
-              <Check
-                size={16}
-                className="absolute right-3 top-3 text-green-500"
-              />
-            )}
           </div>
+          <FieldError message={addressError} />
+          <FieldError message={generalSubmitError} />
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-3 px-6 pt-6 pb-5">
+      <div className="flex items-center justify-end gap-2 px-5 py-3 rounded-b-2xl bg-white dark:bg-slate-900">
         <button
           type="button"
           onClick={onClose}
-          className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+          className="px-5 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
         >
-          Cancel
+          {localize("Cancel")}
         </button>
         <button
           type="button"
           onClick={handleSubmit}
           disabled={loading}
-          className="app-primary-button px-8 py-2.5 text-sm flex items-center justify-center min-w-[120px]"
+          className="app-primary-button px-6 py-2 text-xs flex items-center justify-center min-w-[110px]"
         >
-          {loading ? "Wait..." : isEdit ? (
-            "Update"
-          ) : (
-            "Create"
-          )}
+          {loading
+            ? localize("ProcessingWithThreeDot")
+            : localize(isEdit ? "UpdateButtonText" : "Create")}
         </button>
       </div>
     </Dialog>

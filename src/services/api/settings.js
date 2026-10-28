@@ -21,12 +21,12 @@ const SettingsService = {
     return apiClient.post("/api/setting-management/emailing", payload).then((r) => r.data);
   },
 
-  sendTestEmail: (settings) => {
+  sendTestEmail: (testEmail) => {
     const payload = {
-      senderEmailAddress: settings.defaultFromAddress,
-      targetEmailAddress: settings.defaultFromAddress,
-      subject: "Test Email",
-      body: "This is a test email sent from the settings page.",
+      senderEmailAddress: testEmail.senderEmailAddress,
+      targetEmailAddress: testEmail.targetEmailAddress,
+      subject: testEmail.subject,
+      body: testEmail.body || null,
     };
     return apiClient
       .post("/api/setting-management/emailing/send-test-email", payload)

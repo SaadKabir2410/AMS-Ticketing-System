@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Dialog, IconButton, Autocomplete, TextField } from "@mui/material";
 import { X } from "lucide-react";
 import { useTheme } from "../../context/ThemeContext";
@@ -9,30 +9,19 @@ export default function SendTestEmailModal({
   onSend,
   loading = false,
   defaultSender = "",
+  localize,
 }) {
   const { dark } = useTheme();
   const isDark = dark === "dark";
 
   const [form, setForm] = useState({
-    senderEmailAddress: "",
-    targetEmailAddress: "",
-    subject: "Test Email",
-    body: "This is a test email sent from the settings page.",
+    senderEmailAddress: defaultSender || "",
+    targetEmailAddress: defaultSender || "",
+    subject: localize("TestEmailSubject").replace("{0}", "").trim(),
+    body: localize("TestEmailBody"),
   });
 
   const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    if (open) {
-      setForm({
-        senderEmailAddress: defaultSender || "",
-        targetEmailAddress: defaultSender || "",
-        subject: "Test Email",
-        body: "This is a test email sent from the settings page.",
-      });
-      setErrors({});
-    }
-  }, [open, defaultSender]);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -43,10 +32,11 @@ export default function SendTestEmailModal({
 
   const validate = () => {
     const newErrors = {};
-    if (!form.senderEmailAddress) newErrors.senderEmailAddress = "Sender is required";
-    if (!form.targetEmailAddress) newErrors.targetEmailAddress = "Target is required";
-    if (!form.subject) newErrors.subject = "Subject is required";
-    if (!form.body) newErrors.body = "Body is required";
+    const requiredMessage = localize("ThisFieldIsRequired.");
+    if (!form.senderEmailAddress) newErrors.senderEmailAddress = requiredMessage;
+    if (!form.targetEmailAddress) newErrors.targetEmailAddress = requiredMessage;
+    if (!form.subject) newErrors.subject = requiredMessage;
+    if (!form.body) newErrors.body = requiredMessage;
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -138,7 +128,7 @@ export default function SendTestEmailModal({
     >
       <div className="flex items-center justify-between px-7 pt-6 pb-2">
         <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">
-          Send Test Email
+          {localize("SendTestEmail")}
         </h2>
         <IconButton 
           onClick={onClose} 
@@ -150,31 +140,27 @@ export default function SendTestEmailModal({
       </div>
 
       <div className="px-7 py-3">
-        {renderComboBox("senderEmailAddress", "Sender email address", form.senderEmailAddress, errors.senderEmailAddress)}
-        {renderComboBox("targetEmailAddress", "Target email address", form.targetEmailAddress, errors.targetEmailAddress)}
-        {renderComboBox("subject", "Subject", form.subject, errors.subject)}
-        {renderComboBox("body", "Body", form.body, errors.body)}
+        {renderComboBox("senderEmailAddress", localize("SenderEmailAddress"), form.senderEmailAddress, errors.senderEmailAddress)}
+        {renderComboBox("targetEmailAddress", localize("TargetEmailAddress"), form.targetEmailAddress, errors.targetEmailAddress)}
+        {renderComboBox("subject", localize("Subject"), form.subject, errors.subject)}
+        {renderComboBox("body", localize("Body"), form.body, errors.body)}
       </div>
 
       <div className="flex items-center justify-end gap-3 px-7 pt-2 pb-8">
         <button
           onClick={onClose}
-          className="px-6 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-sm rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-95"
+          className="px-5 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
         >
-          Cancel
+          {localize("Cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="px-9 py-2.5 btn-flagship  text-white dark:text-slate-200 font-bold text-sm rounded-xl transition-all shadow-lg  dark:shadow-blue-500/10 active:scale-95 disabled:opacity-50"
+          className="app-primary-button px-6 py-2 text-[10px] uppercase tracking-widest flex items-center justify-center min-w-[120px]"
         >
-          {loading ? "Sending..." : "Send"}
+          {loading ? localize("ProcessingWithThreeDot") : localize("Send")}
         </button>
       </div>
     </Dialog>
   );
 }
-
-
-
-

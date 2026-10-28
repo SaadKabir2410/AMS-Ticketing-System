@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  RefreshCw, CheckCircle2, MoreHorizontal, Calendar, CalendarCheck, BarChart3, BarChart4,
+  RefreshCw, CheckCircle2, Calendar, CalendarCheck, BarChart3, BarChart4,
   CalendarDays, CalendarMinus, X, Users, Search
 } from "lucide-react";
 import dashboardApi from "../services/api/dashboardApi";
 import usersApi from "../services/api/users";
-import { motion as Motion, AnimatePresence } from "framer-motion";
+import { motion as Motion } from "framer-motion";
 import { useAuth } from "../context/AuthContextHook";
 import SearchTextHighlight from "../component/common/SearchTextHighlight";
+import { useBackendLocalization } from "../hooks/useBackendLocalization";
 
 // ─── Utility functions ────────────────────────────────────────────────────────
 const parseDurationToMinutes = (value) => {
@@ -80,7 +81,7 @@ const getDashboardDateLabels = () => {
 
 const getUserLabel = (user) => {
   const fullName = [user?.name, user?.surname].filter(Boolean).join(" ").trim();
-  return fullName || user?.userName || user?.email || "Unnamed user";
+  return fullName || user?.userName || user?.email || "—";
 };
 
 const normalizeDashboardResponse = (response) => {
@@ -111,10 +112,12 @@ const userHasRole = (user, requiredRole) => {
 export default function Dashboard() {
   const { user } = useAuth();
   const isAdmin = userHasRole(user, "admin");
+  const localize = useBackendLocalization("Billing");
+  // Captions the Blazor dashboard also hardcodes keep its wording until a backend key exists.
+  const text = (key, fallback) => localize(key) || fallback;
   const [dashboards, setDashboards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dashboardError, setDashboardError] = useState("");
-  const [showBanner, setShowBanner] = useState(true);
 
   // Admin state
   const [availableUsers, setAvailableUsers] = useState([]);
@@ -122,14 +125,6 @@ export default function Dashboard() {
   const [userSearch, setUserSearch] = useState("");
   const [isUserPickerOpen, setIsUserPickerOpen] = useState(false);
   const userPickerRef = useRef(null);
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour === 12) return "Good Noon";
-    if (hour < 17) return "Good Afternoon";
-    return "Good Evening";
-  };
 
   const loadAvailableUsers = useCallback(async () => {
     try {
@@ -150,11 +145,7 @@ export default function Dashboard() {
     } catch (e) {
       console.error("Failed to load dashboard data", e);
       setDashboards([]);
-      setDashboardError(
-        e.response?.data?.error?.message ||
-          e.message ||
-          "Dashboard data could not be loaded.",
-      );
+      setDashboardError(e.response?.data?.error?.message || e.message || "");
     } finally {
       setLoading(false);
     }
@@ -264,7 +255,8 @@ export default function Dashboard() {
       ),
     );
   const normalizedSearch = userSearch.trim().toLowerCase();
-  const showAllUsersOption = "all users".includes(normalizedSearch);
+  const allUsersLabel = text("AllUsers", "All Users");
+  const showAllUsersOption = allUsersLabel.toLowerCase().includes(normalizedSearch);
   const filteredUsers = availableUsers.filter((availableUser) =>
     [
       getUserLabel(availableUser),
@@ -288,7 +280,7 @@ export default function Dashboard() {
     const dates = getDashboardDateLabels();
     const periods = [
       {
-        title: "Today",
+        title: localize("Today"),
         icon: Calendar,
         accent: "#1268e8",
         date: dates.today,
@@ -298,7 +290,7 @@ export default function Dashboard() {
         goal: dto.dailyGoalMinutes
       },
       {
-        title: "Yesterday",
+        title: text("Yesterday", "Yesterday"),
         icon: CalendarCheck,
         accent: "#18b957",
         date: dates.yesterday,
@@ -308,7 +300,7 @@ export default function Dashboard() {
         goal: dto.dailyGoalMinutes
       },
       {
-        title: "Current Week",
+        title: text("CurrentWeek", "Current Week"),
         icon: BarChart3,
         accent: "#7445ed",
         date: dates.currentWeek,
@@ -318,7 +310,7 @@ export default function Dashboard() {
         goal: dto.weeklyGoalMinutes
       },
       {
-        title: "Last Week",
+        title: text("LastWeek", "Last Week"),
         icon: BarChart4,
         accent: "#f08300",
         date: dates.lastWeek,
@@ -328,7 +320,7 @@ export default function Dashboard() {
         goal: dto.weeklyGoalMinutes
       },
       {
-        title: "Current Month",
+        title: text("CurrentMonth", "Current Month"),
         icon: CalendarDays,
         accent: "#2487e8",
         date: dates.currentMonth,
@@ -338,7 +330,7 @@ export default function Dashboard() {
         goal: dto.monthlyGoalMinutes
       },
       {
-        title: "Previous Month",
+        title: text("PreviousMonth", "Previous Month"),
         icon: CalendarMinus,
         accent: "#60788d",
         date: dates.previousMonth,
@@ -351,12 +343,12 @@ export default function Dashboard() {
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
-        {periods.map((period) => {
+        {periods.map((period, index) => {
           const PeriodIcon = period.icon;
           const progress = calculateProgress(period.total, period.goal);
           return (
             <div
-              key={period.title}
+              key={index}
               className="min-h-[362px] rounded-xl border border-slate-200 bg-white p-5 shadow-[0_4px_14px_rgba(15,23,42,0.04)] dark:border-slate-700 dark:bg-slate-900 flex flex-col"
             >
               <h3
@@ -378,7 +370,7 @@ export default function Dashboard() {
                     {normalizeTime(period.total)}
                   </div>
                   <div className="mt-1 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
-                    of {formatMinutes(period.goal)} goal
+                    {text("OfGoal{0}", "of {0} goal").replace("{0}", formatMinutes(period.goal))}
                   </div>
                 </div>
               </div>
@@ -387,14 +379,14 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                     <span className="h-2 w-2 rounded-full" style={{ backgroundColor: period.accent }} />
-                    AMS
+                    {localize("AMS")}
                   </div>
                   <span className="font-bold text-slate-800 dark:text-slate-100">{normalizeTime(period.ams)}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                     <span className="h-2 w-2 rounded-full bg-slate-400" />
-                    Non-AMS
+                    {localize("Non-AMS")}
                   </div>
                   <span className="font-bold text-slate-800 dark:text-slate-100">{normalizeTime(period.nonAms)}</span>
                 </div>
@@ -429,59 +421,41 @@ export default function Dashboard() {
 
         {!isAdmin && (
           <>
-            {/* ── Header ── */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-6">
-                <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Overview</h1>
+            {/* ── Banner ── */}
+            <Motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-2xl p-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between shadow-sm"
+            >
+              <div className="flex items-start gap-4">
+                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mt-1">
+                  <CheckCircle2 size={18} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-indigo-900 dark:text-indigo-100">
+                    {localize("Welcome")}{user?.name || user?.userName ? `, ${user?.name || user?.userName}` : ""}
+                  </h3>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mt-0.5">
+                    {localize("JobsheetWorkSummary")}
+                  </p>
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="text-sm font-medium text-slate-500 dark:text-slate-400 hidden sm:flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-sm font-medium text-slate-500 dark:text-slate-400">
+                  <Calendar className="h-4 w-4" />
                   {new Date().toLocaleDateString(undefined, { weekday: "short", day: "2-digit", month: "short", year: "numeric" })}
                 </div>
                 <button
+                  type="button"
                   onClick={handleRefresh}
                   disabled={loading || selectedUserIds.length === 0}
-                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
+                  className="app-primary-button inline-flex shrink-0 items-center justify-center gap-2 px-5 py-2.5 text-xs"
                 >
-                  <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                  Refresh
+                  <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                  {loading ? localize("Loading") : localize("Refresh")}
                 </button>
               </div>
-            </div>
-
-            {/* ── Banner ── */}
-            <AnimatePresence>
-              {showBanner && (
-                <Motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 rounded-2xl p-4 flex items-start justify-between shadow-sm"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 mt-1">
-                      <CheckCircle2 size={18} />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-black text-indigo-900 dark:text-indigo-100">
-                        {getGreeting()}, {user?.name || user?.userName || "User"}!
-                      </h3>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mt-0.5">
-                        Here's a summary of Jobsheet and AMS activities.
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowBanner(false)}
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1"
-                    aria-label="Dismiss greeting"
-                  >
-                    <MoreHorizontal size={20} className="rotate-45" />
-                  </button>
-                </Motion.div>
-              )}
-            </AnimatePresence>
+            </Motion.div>
           </>
         )}
 
@@ -489,7 +463,7 @@ export default function Dashboard() {
         {isAdmin && (
           <div className="relative z-30 rounded-2xl border border-slate-100 bg-white px-6 py-7 shadow-[0_3px_14px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900">
             <label className="mb-2 block text-sm font-semibold text-slate-600 dark:text-slate-300">
-              Select Users
+              {localize("SelectUsers")}
             </label>
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
               <div ref={userPickerRef} className="relative flex-1">
@@ -503,7 +477,7 @@ export default function Dashboard() {
                 >
                   {allUsersSelected ? (
                     <span className="flex h-8 items-center gap-1.5 rounded-lg bg-blue-700 px-3 text-xs font-semibold text-white">
-                      All Users
+                      {allUsersLabel}
                       <button
                         type="button"
                         onClick={(event) => {
@@ -511,7 +485,7 @@ export default function Dashboard() {
                           clearSelectedUsers();
                         }}
                         className="rounded p-0.5 hover:bg-white/15"
-                        aria-label="Clear all users"
+                        aria-label={localize("Clear")}
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -529,7 +503,7 @@ export default function Dashboard() {
                           toggleUser(selectedUser.id);
                         }}
                         className="rounded p-0.5 hover:bg-white/15"
-                        aria-label={`Remove ${getUserLabel(selectedUser)}`}
+                        aria-label={`${localize("Remove")} ${getUserLabel(selectedUser)}`}
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -544,9 +518,9 @@ export default function Dashboard() {
                         setIsUserPickerOpen(true);
                       }}
                       onFocus={() => setIsUserPickerOpen(true)}
-                      placeholder="Search and select users..."
+                      placeholder={localize("SearchInTablePlaceholder")}
                       className="h-8 w-full bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 dark:text-slate-100"
-                      aria-label="Search users"
+                      aria-label={localize("SelectUsers")}
                     />
                   </div>
                 </div>
@@ -571,7 +545,7 @@ export default function Dashboard() {
                           className="h-4 w-4 rounded border-slate-300 accent-pink-500"
                         />
                         <span>
-                          <SearchTextHighlight text="All Users" query={userSearch} />
+                          <SearchTextHighlight text={allUsersLabel} query={userSearch} />
                         </span>
                       </label>
                     )}
@@ -606,7 +580,7 @@ export default function Dashboard() {
                       })
                     ) : !showAllUsersOption ? (
                       <div className="px-4 py-5 text-center text-sm text-slate-500">
-                        No users match your search.
+                        {localize("NoUserMatching")}
                       </div>
                     ) : null}
                   </div>
@@ -620,16 +594,14 @@ export default function Dashboard() {
                 className="inline-flex h-11 items-center justify-center gap-2 self-end rounded-xl border border-indigo-500 px-5 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-indigo-500/10 lg:self-center"
               >
                 <X className="h-4 w-4" />
-                Clear
+                {localize("Clear")}
               </button>
             </div>
 
             <div className="mt-10 flex items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
               <Users className="h-5 w-5" />
               <span>
-                {allUsersSelected
-                  ? `All ${selectedUserIds.length} users selected`
-                  : `${selectedUserIds.length} ${selectedUserIds.length === 1 ? "user" : "users"} selected`}
+                {selectedUserIds.length} / {availableUsers.length}
               </span>
               {loading && <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />}
             </div>
@@ -641,8 +613,10 @@ export default function Dashboard() {
           <div className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-5 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
               <div>
-                <h3 className="font-semibold">Unable to load dashboard data</h3>
-                <p className="mt-1 text-sm opacity-90">{dashboardError}</p>
+                <h3 className="font-semibold">{localize("DashboardDataLoadError")}</h3>
+                {dashboardError && dashboardError !== localize("DashboardDataLoadError") && (
+                  <p className="mt-1 text-sm opacity-90">{dashboardError}</p>
+                )}
               </div>
               <button
                 type="button"
@@ -650,7 +624,7 @@ export default function Dashboard() {
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-rose-400 px-4 text-sm font-semibold hover:bg-rose-100 dark:hover:bg-rose-500/10"
               >
                 <RefreshCw className="h-4 w-4" />
-                Retry
+                {localize("Refresh")}
               </button>
             </div>
           </div>
@@ -659,16 +633,16 @@ export default function Dashboard() {
             <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
               <Users className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">No Users Selected</h3>
-            <p className="text-slate-500 dark:text-slate-400">Select one or more users above to view their dashboard data.</p>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">{localize("SelectUsers")}</h3>
+            <p className="text-slate-500 dark:text-slate-400">{localize("SelectDashboardUser")}</p>
           </div>
         ) : dashboards.length === 0 && !loading ? (
           <div className="py-16 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl">
             <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
               <BarChart3 className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">No Dashboard Data</h3>
-            <p className="text-slate-500 dark:text-slate-400">No jobsheet information could be found for the selected user(s).</p>
+            <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-200 mb-1">{localize("NoDashboardData")}</h3>
+            <p className="text-slate-500 dark:text-slate-400">{localize("NoJobsheetInfo")}</p>
           </div>
         ) : (
           /* ── Dashboards List ── */
@@ -681,10 +655,10 @@ export default function Dashboard() {
                 <div className="mb-7 flex items-center justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-                      {db.userName || (isAdmin ? "User Dashboard" : "My Dashboard")}
+                      {db.userName || (isAdmin ? text("UserDashboard", "User Dashboard") : text("MyDashboard", "My Dashboard"))}
                     </h2>
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                      {isAdmin ? "Jobsheet Activity Summary" : "User Activity Summary"}
+                      {isAdmin ? localize("JobsheetActivitySummary") : localize("AMSAndNonAMSActivitySummary")}
                     </p>
                   </div>
                   {isAdmin && (
@@ -692,10 +666,10 @@ export default function Dashboard() {
                       type="button"
                       onClick={() => removeUser(db.userId)}
                       className="inline-flex h-10 items-center gap-2 rounded-xl border border-rose-500 px-4 text-sm font-semibold text-rose-600 transition hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                      title="Remove User"
+                      title={localize("Remove")}
                     >
                       <X className="h-4 w-4" />
-                      Remove
+                      {localize("Remove")}
                     </button>
                   )}
                 </div>

@@ -59,25 +59,23 @@ export const jobsheetsApi = {
       .then((r) => r.data);
   },
 
-  getReport: ({ filters, currentUserId }) => {
-    // Use the exact same flat key format as getAll — proven to work with the backend.
-    // The global qs serializer (arrayFormat: "repeat") turns arrays into:
-    //   JobsheetSearch.UserIdsSearchValues=id1&JobsheetSearch.UserIdsSearchValues=id2
-    const userIds = Array.isArray(filters.user)
-      ? filters.user.filter(isGuid)
-      : filters.user && isGuid(filters.user) ? [filters.user] : [];
-
-    const collabIds = Array.isArray(filters.collaborator)
-      ? filters.collaborator.filter(isGuid)
-      : filters.collaborator && isGuid(filters.collaborator) ? [filters.collaborator] : [];
+  // Takes the backend JobsheetSearchDto fields (CurrentUserId, UserIdsSearchValues,
+  // JobsheetDetailUserIdsSearchValues, ProjectIdSearchValue, DateFrom, DateTo).
+  // The global qs serializer (arrayFormat: "repeat") turns arrays into
+  //   UserIdsSearchValues=id1&UserIdsSearchValues=id2
+  getReport: (search = {}) => {
+    const guidList = (value) => {
+      const ids = (Array.isArray(value) ? value : [value]).filter(isGuid);
+      return ids.length > 0 ? ids : undefined;
+    };
 
     const params = {
-      CurrentUserId: currentUserId && isGuid(currentUserId) ? currentUserId : undefined,
-      UserIdsSearchValues: userIds.length > 0 ? userIds : undefined,
-      JobsheetDetailUserIdsSearchValues: collabIds.length > 0 ? collabIds : undefined,
-      ProjectIdSearchValue: filters.project && isGuid(filters.project) ? filters.project : undefined,
-      DateFrom: filters.dateFrom ? formatDateStart(filters.dateFrom) : undefined,
-      DateTo: filters.dateTo ? formatDateEnd(filters.dateTo) : undefined,
+      CurrentUserId: isGuid(search.CurrentUserId) ? search.CurrentUserId : undefined,
+      UserIdsSearchValues: guidList(search.UserIdsSearchValues),
+      JobsheetDetailUserIdsSearchValues: guidList(search.JobsheetDetailUserIdsSearchValues),
+      ProjectIdSearchValue: isGuid(search.ProjectIdSearchValue) ? search.ProjectIdSearchValue : undefined,
+      DateFrom: search.DateFrom ? formatDateStart(search.DateFrom) : undefined,
+      DateTo: search.DateTo ? formatDateEnd(search.DateTo) : undefined,
     };
 
     return apiClient.get("/api/app/jobsheet/jobsheet-report", {

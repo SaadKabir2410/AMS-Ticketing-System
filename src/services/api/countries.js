@@ -23,10 +23,6 @@ export const countriesApi = {
     console.log("[DB.countries] updating:", id, data);
     return apiClient.put(`/api/app/country/${id}`, data).then((r) => r.data);
   },
-  delete: (id) => {
-    console.log("[DB.countries] deleting:", id);
-    return apiClient.delete(`/api/app/country/${id}`).then((r) => r.data);
-  },
 };
 
 export default countriesApi;

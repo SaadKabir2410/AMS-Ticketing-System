@@ -1,5 +1,3 @@
-import qs from "qs";
-
 // ── Helper: get XSRF token from cookie ───────────────────────────────────────
 const getXsrfToken = () => {
     const cookie = document.cookie
@@ -37,9 +35,17 @@ const publicPost = async (url, body) => {
         body: JSON.stringify(body),
     });
 
-    // 204 No Content = success (no body)
-    if (response.status === 204 || response.status === 200) {
-        return true;
+    if (response.ok) {
+        if (response.status === 204) return true;
+
+        const text = await response.text();
+        if (!text) return true;
+
+        try {
+            return JSON.parse(text);
+        } catch {
+            return text;
+        }
     }
 
     // Any other status = error — try to parse error body
@@ -47,7 +53,7 @@ const publicPost = async (url, body) => {
     try {
         const text = await response.text();
         errorData = text ? JSON.parse(text) : null;
-    } catch (_) {
+    } catch {
         // ignore parse errors
     }
 
@@ -70,7 +76,9 @@ export const accountApi = {
         publicPost("/api/account/send-password-reset-code", {
             email: email.trim(),
             appName: "MVC",
-            returnUrl: "https://sureze.ddns.net:3001/reset-password",
+            returnUrl:
+                import.meta.env.VITE_PASSWORD_RESET_RETURN_URL ||
+                `${window.location.origin}/reset-password`,
             returnUrlHash: "",
         }),
 

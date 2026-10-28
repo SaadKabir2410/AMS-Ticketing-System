@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
 import { taskCategoryProjectsApi } from "../services/api/taskCategoryProjects";
 import codeDetailsApi from "../services/api/CodeDetails";
@@ -8,13 +7,19 @@ import { ActionsMenu } from "../component/common/ResourcePage";
 import TaskCategoryProjectModal from "../component/common/TaskCategoryProjectModal";
 import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { usePermission } from "../hooks/usePermission";
 import { getApiErrorMessage } from "../utils/apiError";
+import AppSelect from "../component/common/AppSelect";
+import ListPager from "../component/common/ListPager";
+import { useBackendLocalization } from "../hooks/useBackendLocalization";
 
 export default function TaskCategoryProjectsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const localize = useBackendLocalization("Billing");
+  // Like ABP, a key the backend does not define is shown as the key itself.
+  const text = (key) => localize(key) || key;
   const canCreate = usePermission("Billing.TaskCategoryProjects.Create");
   const canEdit = usePermission("Billing.TaskCategoryProjects.Edit");
   const canDelete = usePermission("Billing.TaskCategoryProjects.Delete");
@@ -97,7 +102,7 @@ export default function TaskCategoryProjectsPage() {
     setActionLoading(true);
     try {
       await taskCategoryProjectsApi.delete(actionItem.projectId || actionItem.id);
-      toast("Mapping removed !successfully");
+      toast(localize("OperationSuccessfull"));
       fetchMappings();
     } catch (err) {
       const message = getApiErrorMessage(err);
@@ -109,7 +114,12 @@ export default function TaskCategoryProjectsPage() {
     }
   };
 
-  const breadcrumb = ["Home", "Management", "Lookups", "Task Category Projects"];
+  const breadcrumb = [
+    { key: "Home", isHome: true },
+    { key: "Menu:Administration" },
+    { key: "Lookups" },
+    { key: "TaskCategoryProjects" },
+  ];
 
   return (
     <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial] text-slate-900 dark:text-white">
@@ -135,21 +145,21 @@ export default function TaskCategoryProjectsPage() {
 
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
         {/* Header */}
-        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+        <div className="app-page-header flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
           <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
             {breadcrumb.map((b, i) => (
-              <span key={i} className="flex items-center gap-1.5">
+              <span key={b.key} className="flex items-center gap-1.5">
                 <span
-                  onClick={() => b === "Home" && navigate("/")}
+                  onClick={() => b.isHome && navigate("/")}
                   className={
                     i === breadcrumb.length - 1
                       ? "text-pink-500 font-black"
-                      : b === "Home"
+                      : b.isHome
                         ? "hover:opacity-80 cursor-pointer transition-all hover:text-pink-500"
                         : "text-slate-500 dark:text-slate-400"
                   }
                 >
-                  {b}
+                  {text(b.key)}
                 </span>
                 {i < breadcrumb.length - 1 && <span className="text-slate-300 dark:text-slate-700">/</span>}
               </span>
@@ -157,7 +167,7 @@ export default function TaskCategoryProjectsPage() {
           </nav>
           <div className="flex items-center justify-between">
             <h1 className="text-4xl font-black tracking-tighter">
-              Task Category Projects
+              {localize("TaskCategoryProjects")}
             </h1>
             <div className="flex items-center gap-4">
               {canCreate && (
@@ -166,7 +176,7 @@ export default function TaskCategoryProjectsPage() {
                   className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs"
                 >
                   <Plus size={16} className="mr-2" strokeWidth={3} />
-                  Add New
+                  {localize("NewTaskCategoryProject")}
                 </button>
               )}
             </div>
@@ -176,7 +186,7 @@ export default function TaskCategoryProjectsPage() {
           <div className="flex items-end gap-3 w-full max-w-3xl">
             <div className="flex flex-col gap-1 flex-1">
               <label className="text-[9.5px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none px-1">
-                Project
+                {localize("ProjectId")}
               </label>
               <div className="relative">
                 <AppSelect
@@ -185,7 +195,7 @@ export default function TaskCategoryProjectsPage() {
                   disabled={loadingProjects}
                   className="w-full h-10 appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold rounded-lg pl-3 pr-8 outline-none transition-all cursor-pointer shadow-sm text-slate-900 dark:text-white focus:border-pink-500"
                 >
-                  <option value="">Choose An Option</option>
+                  <option value="">{localize("SelectBoxEmptyValueText")}</option>
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
@@ -201,7 +211,7 @@ export default function TaskCategoryProjectsPage() {
               onClick={handleClear}
               className="app-primary-button h-10 px-4 inline-flex items-center justify-center text-xs shrink-0"
             >
-              Clear
+              {localize("ClearFilter")}
             </button>
           </div>
         </div>
@@ -210,23 +220,23 @@ export default function TaskCategoryProjectsPage() {
         <div className="flex flex-col w-full h-auto relative">
           {loadingMappings ? (
             <div className="flex-1 flex items-center justify-center text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-20 text-slate-500 dark:text-slate-400">
-              Loading Data...
+              {localize("LoadingWithThreeDot")}
             </div>
           ) : mappings.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-[11px] font-black uppercase tracking-[0.2em] py-20 text-slate-500 dark:text-slate-400">
-              No Data Found
+              {localize("NoDataAvailableInDatatable")}
             </div>
           ) : (
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar">
-              <table className="w-full table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
+              <table className="w-full min-w-[560px] table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
                 <colgroup>
                   <col style={{ width: '80%' }} />
                   <col style={{ width: '20%' }} />
                 </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
-                    <th className="px-5 pl-10 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">Project Name</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Actions</th>
+                    <th className="px-5 pl-10 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">{localize("ProjectName")}</th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">{localize("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -260,90 +270,14 @@ export default function TaskCategoryProjectsPage() {
           )}
         </div>
 
-        {/* Pagination Section */}
-        <div className="px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-              <AppSelect
-                value={pageSize}
-                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
-              >
-                {[5, 10, 25, 50].map((s) => (
-                  <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
-                ))}
-              </AppSelect>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                <span className="text-slate-900 dark:text-white tabular-nums">
-                  {totalCount > 0 ? (page - 1) * pageSize + 1 : 0}
-                </span>
-                <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
-                <span className="text-slate-900 dark:text-white tabular-nums">
-                  {Math.min(page * pageSize, totalCount)}
-                </span>
-                <span className="text-slate-400 dark:text-slate-500 mx-2 lowercase font-bold tracking-normal italic">of</span>
-                <span className="text-slate-900 dark:text-white tabular-nums font-black">
-                  {totalCount}
-                </span>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
-              <button
-                onClick={() => setPage(1)}
-                disabled={page === 1 || loadingMappings}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="First Page"
-              >
-                <ChevronsLeft size={14} strokeWidth={2.5} />
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1 || loadingMappings}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Previous Page"
-              >
-                <ChevronLeft size={14} strokeWidth={2.5} />
-              </button>
-
-              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-              <div className="px-3 flex items-center gap-2 py-1">
-                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Page</span>
-                <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
-                  <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{page}</span>
-                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-600">/</span>
-                  <span className="text-[10px] font-black text-slate-900 dark:text-white tabular-nums leading-none">{Math.ceil(totalCount / pageSize) || 1}</span>
-                </div>
-              </div>
-
-              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= Math.ceil(totalCount / pageSize) || loadingMappings}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Next Page"
-              >
-                <ChevronRight size={14} strokeWidth={2.5} />
-              </button>
-              <button
-                onClick={() => setPage(Math.ceil(totalCount / pageSize))}
-                disabled={page >= Math.ceil(totalCount / pageSize) || loadingMappings}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Last Page"
-              >
-                <ChevronsRight size={14} strokeWidth={2.5} />
-              </button>
-            </div>
-          </div>
-        </div>
+        <ListPager
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          loading={loadingMappings}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+        />
       </div>
 
       <TaskCategoryProjectModal
@@ -364,9 +298,11 @@ export default function TaskCategoryProjectsPage() {
           open={true}
           item={actionItem}
           loading={actionLoading}
-          title="Delete Task Category Project"
-          message="Are you sure you want to delete this task category project mapping?"
-          confirmText="Delete"
+          title={localize("DeleteButtonText")}
+          message={localize("DeleteConfirmationMessage")}
+          confirmText={localize("DeleteButtonText")}
+          cancelText={localize("CancelButtonText")}
+          processingText={localize("ProcessingWithThreeDot")}
           blurBackdrop={false}
           onClose={() => { setActionItem(null); setActionType(""); }}
           onConfirm={handleDelete}

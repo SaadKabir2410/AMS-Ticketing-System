@@ -10,6 +10,9 @@ import codeDetailsApi from "../../services/api/CodeDetails";
 import { taskCategoryProjectsApi } from "../../services/api/taskCategoryProjects";
 import { getApiErrorMessage } from "../../utils/apiError";
 import { useAuth } from "../../context/AuthContextHook";
+import { useBackendLocalization } from "../../hooks/useBackendLocalization";
+import { useBackendEnumOptions } from "../../hooks/useBackendEnumOptions";
+import { useToast } from "./ToastContext";
 import {
   JOBSHEET_SIGNALR_EVENTS,
   normalizeTicketDetailsUpdate,
@@ -18,20 +21,17 @@ import {
 } from "../../services/jobsheetSignalR";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.css";
-import "flatpickr/dist/themes/dark.css";
 
 
 
 
-// ─── Attendance enum (fixed by API contract) ──────────────────────
-const ATTENDANCE_OPTIONS = [
-  { label: "Select An Option", value: 0 },
-  { label: "Present", value: 1 },
-  { label: "Emergency Leave", value: 2 },
-  { label: "Medical Certificate", value: 3 },
-  { label: "Annual Leave", value: 4 },
-  { label: "Unpaid Leave", value: 5 },
-];
+// ─── Attendance options come from the backend AttendanceStatusEnum ─
+// Same list as Blazor: every member except "All".
+const ATTENDANCE_EXCLUDED = ["All"];
+
+// Same collaborator list as Blazor (Sureze and Abbott vendor users);
+// these are backend OrganizationTypeEnum member names.
+const COLLABORATOR_ORGANIZATION_TYPES = ["VendorSureze", "VendorAbbott"];
 
 // ─── Lookup codes — match your codesApi lookupCode values ─────────
 const LOOKUP_CODES = {
@@ -52,24 +52,15 @@ const emptyDetail = {
   amsTicketDetailId: "",
   cmsNextTicketNo: "",
   jobsheetDetailUserIds: [],
+  // Set from the backend when a task / sub task category is chosen (as in Blazor).
+  hasSubTaskCategory: false,
+  isCollaboratorsRequired: false,
 };
-
-const TIME_OVERLAP_MESSAGE =
-  "This time range overlaps with an existing jobsheet record. Please select a different start and end time.";
 
 // ─── Helpers ──────────────────────────────────────────────────────
 function dateToTimeString(value) {
   if (!(value instanceof Date) || Number.isNaN(value.getTime())) return "";
   return `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
-}
-
-function timeTo12Hour(timeStr) {
-  if (!timeStr) return "";
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return timeStr;
-  const period = hours >= 12 ? "PM" : "AM";
-  const displayHours = hours % 12 || 12;
-  return `${String(displayHours).padStart(2, "0")}:${String(minutes).padStart(2, "0")} ${period}`;
 }
 
 function timeToMinutes(timeStr) {
@@ -227,7 +218,7 @@ function buildPayload(date, attendanceStatus, details, jobsheet) {
 
 
 // ─── Reusable dynamic select ──────────────────────────────────────
-function DynSelect({ name, value, onChange, options, loading, placeholder = "Choose An Option", disabled = false, hasError = false, styles }) {
+function DynSelect({ name, value, onChange, options, loading, placeholder, loadingText, disabled = false, hasError = false, styles }) {
   return (
     <AppSelect
       name={name}
@@ -243,7 +234,7 @@ function DynSelect({ name, value, onChange, options, loading, placeholder = "Cho
         border: hasError ? "1px solid #ff4d4f" : styles.input.border
       }}
     >
-      <option value="">{loading ? "Loading…" : placeholder}</option>
+      <option value="">{loading ? loadingText : placeholder}</option>
       {options.map((o) => (
         <option key={o.id} value={o.id}>{o.name}</option>
       ))}
@@ -252,15 +243,15 @@ function DynSelect({ name, value, onChange, options, loading, placeholder = "Cho
 }
 
 // ─── Collaborator pill picker ─────────────────────────────────────
-function CollaboratorPicker({ users, selected, onChange, loading, disabled = false, fieldErrors = {}, styles }) {
+// Users are shown by Name, as in Blazor.
+function CollaboratorPicker({ users, selected, onChange, loading, placeholder, loadingText, disabled = false, fieldErrors = {}, styles }) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const isDark = styles?._isDark;
 
-  const filtered = users.filter((u) => {
-    const full = `${u.name || ""} ${u.surname || ""}`.toLowerCase();
-    return full.includes(query.toLowerCase());
-  });
+  const filtered = users.filter((u) =>
+    (u.name || u.userName || "").toLowerCase().includes(query.toLowerCase()),
+  );
 
   const selectedUsers = useMemo(() =>
     selected.map(id => users.find(u => u.id === id)).filter(Boolean),
@@ -295,7 +286,7 @@ function CollaboratorPicker({ users, selected, onChange, loading, disabled = fal
       >
         {selectedUsers.map((u) => (
           <span key={u.id} style={{ ...styles.pill, margin: 0 }}>
-            {u.name} {u.surname}
+            {u.name || u.userName}
             {!disabled && (
               <button
                 type="button"
@@ -322,7 +313,7 @@ function CollaboratorPicker({ users, selected, onChange, loading, disabled = fal
             color: isDark ? "#e2e8f0" : "#1e293b",
             padding: "4px 0"
           }}
-          placeholder={loading ? "Loading users…" : selected.length === 0 ? "Search users…" : ""}
+          placeholder={loading ? loadingText : selected.length === 0 ? placeholder : ""}
           disabled={loading || disabled}
           value={isOpen ? query : ""}
           onChange={(e) => {
@@ -360,10 +351,7 @@ function CollaboratorPicker({ users, selected, onChange, loading, disabled = fal
                 }}
               >
                 <span>
-                  <SearchTextHighlight
-                    text={`${u.name || ""} ${u.surname || ""}`.trim()}
-                    query={query}
-                  />
+                  <SearchTextHighlight text={u.name || u.userName || ""} query={query} />
                 </span>
                 {isSel && <Check size={14} color="#ec4899" />}
               </div>
@@ -380,6 +368,18 @@ function CollaboratorPicker({ users, selected, onChange, loading, disabled = fal
 // ─── Main component ───────────────────────────────────────────────
 export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly = false, jobsheet = null }) {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const localize = useBackendLocalization("Billing");
+  const requiredMessage = (fieldName) =>
+    localize("The {0} field is required.").replace("{0}", fieldName);
+  const timeOverlapMessage = localize("SA:JobsheetDetailOverlappingErrorMessage");
+  const emptyOptionText = localize("SelectBoxEmptyValueText");
+  const loadingText = localize("LoadingWithThreeDot");
+  // The backend has no "Remarks" key; ClosingTicketRemarks holds the same label.
+  const remarksLabel = localize("Remarks") || localize("ClosingTicketRemarks");
+  const attendanceOptions = useBackendEnumOptions("AttendanceStatusEnum", localize, {
+    exclude: ATTENDANCE_EXCLUDED,
+  });
   // ── Dark mode detection ──
   const isDark = document.documentElement.classList.contains("dark");
   const styles = getStyles(isDark);
@@ -395,7 +395,6 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
   const [allowedCategoryIds, setAllowedCategoryIds] = useState(null); // Filtered by Project
   const [editingIndex, setEditingIndex] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [hasExistingJobsheet, setHasExistingJobsheet] = useState(false);
   const [confirmation, setConfirmation] = useState(null); // { type, message, confirmLabel, cancelLabel }
 
   const isDirty = useMemo(() => {
@@ -428,7 +427,6 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     setAllowedCategoryIds(null);
     setSubTaskCategories([]);
     setFetchError("");
-    setHasExistingJobsheet(false);
     setConfirmation(null);
   };
 
@@ -440,9 +438,9 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     }
     setConfirmation({
       type: "EXIT",
-      message: "Are you sure to exit without saving data?",
-      confirmLabel: "Yes",
-      cancelLabel: "Cancel"
+      message: localize("CloseModalMessage"),
+      confirmLabel: localize("Yes"),
+      cancelLabel: localize("CancelButtonText"),
     });
   };
 
@@ -487,10 +485,10 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
           .filter(d => d.isActive !== false)
           .map(item => ({ id: item.id, name: item.description || item.newCode }));
 
-        // Users — same as CollaboratorPicker in JobsheetsPage (all users)
-        const usrs = await usersApi.getUsersList().then((data) =>
-          Array.isArray(data) ? data : data?.items || []
-        );
+        // Collaborators — same user list as the Blazor modal (AllUsers)
+        const usrs = await usersApi
+          .getUsersList({ organizationTypes: COLLABORATOR_ORGANIZATION_TYPES })
+          .then((data) => (Array.isArray(data) ? data : data?.items || []));
 
         setProjects(proj);
         setTaskCategories(cats);
@@ -498,78 +496,50 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
         setUsers(usrs);
       } catch (err) {
         console.error("Failed to load lookup data:", err);
-        setFetchError("Failed to load dropdown options. Please refresh and try again.");
+        setFetchError(getApiErrorMessage(err) || localize("DefaultErrorMessage"));
       } finally {
         setLoadingOptions(false);
       }
     };
 
     fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Notify the user when the selected date already has a different jobsheet.
-  // Passing the current jobsheet id makes the same check safe during updates.
-  useEffect(() => {
-    if (!open || !date || viewOnly) {
-      setHasExistingJobsheet(false);
-      return;
-    }
-
-    let ignoreResult = false;
-    const selectedDate = dateToLocalDateString(date);
-
-    const checkForExistingJobsheet = async () => {
-      try {
-        const exists = await jobsheetsApi.checkExists({
-          date: `${selectedDate}T00:00:00.000Z`,
-          id: jobsheet?.id || undefined,
-        });
-        if (!ignoreResult) setHasExistingJobsheet(Boolean(exists));
-      } catch (err) {
-        console.error("Failed to check for an existing jobsheet:", err);
-        if (!ignoreResult) setHasExistingJobsheet(false);
-      }
-    };
-
-    setHasExistingJobsheet(false);
-    checkForExistingJobsheet();
-
-    return () => {
-      ignoreResult = true;
-    };
-  }, [open, date, jobsheet?.id, viewOnly]);
-
-  // ── Fetch allowed task categories when project changes ──
-  // NOTE: This effect ONLY fetches the allowed-category list for whatever
-  // project is currently selected. It intentionally does NOT clear
-  // taskCategoryId/subTaskCategoryId anymore — that used to run on every
-  // projectId change, including when handleEditDetail loaded a saved
-  // record into the form, which wiped out the record's task category the
-  // instant you clicked "edit". Clearing on a genuine user-driven project
-  // change is now handled directly in the Project <AppSelect>'s onChange.
+  // ── Task categories for the selected project, straight from the backend ──
+  // Same call as Blazor (TaskCategoryProjectAppService.GetTaskCategoriesByProjectIdAsync).
+  // This only loads the list; it never clears the chosen category, so editing a
+  // saved record keeps its task category. A user-driven project change clears
+  // it in handleProjectChange.
   useEffect(() => {
     if (!detail.projectId) {
       setAllowedCategoryIds(null);
       return;
     }
 
-    const fetchAllowed = async () => {
+    let ignoreResult = false;
+    const fetchProjectCategories = async () => {
       try {
-        const ids = await taskCategoryProjectsApi.getCategoryIdsByProjectId(detail.projectId);
-        setAllowedCategoryIds(Array.isArray(ids) ? ids : []);
+        const data = await taskCategoryProjectsApi.getCategoriesByProjectId(detail.projectId);
+        const list = (Array.isArray(data) ? data : data?.items || [])
+          .map((item) => ({ id: item.id, name: item.description || item.newCode }));
+        if (!ignoreResult) setAllowedCategoryIds(list);
       } catch (err) {
-        console.error("Failed to fetch allowed categories:", err);
-        setAllowedCategoryIds([]); // fallback to empty if error
+        console.error("Failed to fetch task categories for the project:", err);
+        if (!ignoreResult) setAllowedCategoryIds([]);
       }
     };
 
-    fetchAllowed();
+    fetchProjectCategories();
+    return () => {
+      ignoreResult = true;
+    };
   }, [detail.projectId]);
 
-  // ── Compute filtered Task Categories ──
+  // ── Task categories offered for the selected project ──
   const filteredTaskCategories = useMemo(() => {
-    if (!detail.projectId || !allowedCategoryIds) return taskCategories;
-    const filtered = taskCategories.filter(cat => allowedCategoryIds.includes(cat.id));
+    if (!detail.projectId || !allowedCategoryIds) return [];
+    const filtered = allowedCategoryIds;
     // Safety net: if the record being edited has a taskCategoryId that
     // isn't in the "allowed for this project" list (e.g. older data),
     // still show it so the select doesn't silently render blank.
@@ -634,46 +604,6 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     }
   }, [open, jobsheet]);
 
-  // A ticket may have been created before this modal was opened. When the
-  // user chooses its activity date, load those AMS rows immediately instead
-  // of relying only on a future SignalR notification.
-  useEffect(() => {
-    if (!open || !date || !user?.id || jobsheet?.id) return undefined;
-
-    const selectedDate = dateToLocalDateString(date);
-    let disposed = false;
-
-    const loadExistingTicketDetails = async () => {
-      try {
-        const ticketDetails = await jobsheetsApi.getTicketDetails({
-          date: selectedDateParameter(selectedDate),
-          userId: user.id,
-        });
-
-        if (disposed) return;
-
-        const automaticDetails = mapJobsheetDetails(
-          getTicketDetailItems(ticketDetails),
-        );
-
-        setDetails((currentDetails) => [
-          ...currentDetails.filter((item) => !item.amsTicketDetailId),
-          ...automaticDetails,
-        ].sort((left, right) =>
-          (left.startTimeDisplay || "").localeCompare(right.startTimeDisplay || ""),
-        ));
-      } catch (err) {
-        console.error("Failed to load AMS ticket details for the selected date:", err);
-      }
-    };
-
-    loadExistingTicketDetails();
-
-    return () => {
-      disposed = true;
-    };
-  }, [open, date, jobsheet?.id, user?.id]);
-
   // Keep AMS-generated rows in an open jobsheet in sync while preserving any
   // manual rows the user is currently drafting in the modal.
   useEffect(() => {
@@ -703,6 +633,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
           : await jobsheetsApi.getTicketDetails({
             date: selectedDateParameter(selectedDate),
             userId: user.id,
+            isActive: true,
           });
 
         if (disposed) return;
@@ -764,23 +695,155 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     }));
   };
 
+  // Same flow as Blazor OnChangedJobsheetDate:
+  // 1. If another jobsheet exists on the new date, show the backend message and
+  //    keep the previous date.
+  // 2. Otherwise load the user's active AMS ticket activities for that date as
+  //    jobsheet rows (replacing the previous date's AMS rows). If they overlap the
+  //    existing rows, show the backend message and keep the previous date.
+  const handleDateChange = async (newDate) => {
+    const oldDate = date;
+    setDate(newDate);
+    setFieldErrors((prev) => ({ ...prev, date: null }));
+    setError("");
+    if (!newDate) return;
+
+    try {
+      const exists = await jobsheetsApi.checkExists({
+        date: selectedDateParameter(newDate),
+        id: jobsheet?.id || undefined,
+      });
+      if (exists) {
+        setError(
+          localize("SA:JobsheetAlreadyExistsErrorMessage_2").replace("{0}", formatDisplayDate(newDate)),
+        );
+        setDate(oldDate);
+        return;
+      }
+
+      if (!user?.id) return;
+      const ticketDetails = await jobsheetsApi.getTicketDetails({
+        date: selectedDateParameter(newDate),
+        userId: user.id,
+        isActive: true,
+      });
+      const automaticDetails = mapJobsheetDetails(getTicketDetailItems(ticketDetails));
+      const manualDetails = details.filter((item) => !item.amsTicketDetailId);
+      const previousAmsDetails = details.filter((item) => item.amsTicketDetailId);
+      const combinedDetails = [...manualDetails, ...automaticDetails].sort((left, right) =>
+        (left.startTimeDisplay || "").localeCompare(right.startTimeDisplay || ""),
+      );
+
+      if (automaticDetails.length > 0) {
+        const hasOverlap = await jobsheetsApi.hasOverlappingJobsheetDetails(
+          buildOverlapPayload(combinedDetails),
+        );
+        if (hasOverlap) {
+          setError(localize("SA:JobsheetDetailOverlappingWithAMSTicketsErrorMessage"));
+          setDate(oldDate);
+          return;
+        }
+      }
+
+      // Saved AMS rows of the previous date are removed on save, as in Blazor.
+      const removedAmsDetails = previousAmsDetails.filter(
+        (item) => item.id && !automaticDetails.some((automatic) => automatic.id === item.id),
+      );
+      if (removedAmsDetails.length > 0) {
+        setDeletedDetails((prev) => [
+          ...prev,
+          ...removedAmsDetails
+            .filter((item) => !prev.some((deleted) => deleted.id === item.id))
+            .map((item) => ({ ...item, isDeleted: true })),
+        ]);
+      }
+      setDetails(combinedDetails);
+    } catch (err) {
+      setError(getApiErrorMessage(err) || localize("DefaultErrorMessage"));
+    }
+  };
+
   const handleCollaboratorsChange = (ids) =>
     setDetail((prev) => ({ ...prev, jobsheetDetailUserIds: ids }));
 
+  // Same as Blazor OnChangedTaskCategory: ask the backend whether this category
+  // has sub task categories and whether it makes collaborators required.
+  const handleTaskCategoryChange = async (e) => {
+    const taskCategoryId = e.target.value;
+    setDetail((prev) => ({
+      ...prev,
+      taskCategoryId,
+      subTaskCategoryId: "",
+      hasSubTaskCategory: false,
+      isCollaboratorsRequired: false,
+    }));
+    setFieldErrors((prev) => ({
+      ...prev,
+      taskCategoryId: null,
+      subTaskCategoryId: null,
+      jobsheetDetailUserIds: null,
+    }));
+    if (!taskCategoryId) return;
+
+    try {
+      const [isCollaboratorsRequired, hasSubTaskCategory] = await Promise.all([
+        codeDetailsApi.isRequiredField(taskCategoryId),
+        codeDetailsApi.hasSubTaskCategory(taskCategoryId),
+      ]);
+      setDetail((prev) =>
+        prev.taskCategoryId === taskCategoryId
+          ? { ...prev, isCollaboratorsRequired, hasSubTaskCategory }
+          : prev,
+      );
+    } catch (err) {
+      setError(getApiErrorMessage(err) || localize("DefaultErrorMessage"));
+    }
+  };
+
+  // Same as Blazor OnChangeSubTaskCategoryId: the sub task category decides
+  // whether collaborators are required.
+  const handleSubTaskCategoryChange = async (e) => {
+    const subTaskCategoryId = e.target.value;
+    setDetail((prev) => ({ ...prev, subTaskCategoryId, isCollaboratorsRequired: false }));
+    setFieldErrors((prev) => ({ ...prev, subTaskCategoryId: null, jobsheetDetailUserIds: null }));
+    if (!subTaskCategoryId) return;
+
+    try {
+      const isCollaboratorsRequired = await codeDetailsApi.isRequiredField(subTaskCategoryId);
+      setDetail((prev) =>
+        prev.subTaskCategoryId === subTaskCategoryId ? { ...prev, isCollaboratorsRequired } : prev,
+      );
+    } catch (err) {
+      setError(getApiErrorMessage(err) || localize("DefaultErrorMessage"));
+    }
+  };
+
+  const showSubTaskCategory = detail.hasSubTaskCategory || subTaskCategories.length > 0;
+
   const validateDetail = () => {
     const errors = {};
-    if (!detail.projectId) errors.projectId = "Project is required";
-    if (!detail.taskCategoryId) errors.taskCategoryId = "Category is required";
-    if (!detail.startTimeDisplay) errors.startTimeDisplay = "Start time is required";
-    if (!detail.endTimeDisplay) errors.endTimeDisplay = "End time is required";
-    if (!detail.statusId) errors.statusId = "Status is required";
-    if (!detail.remarks?.trim()) errors.remarks = "Remarks are required";
+    if (!detail.projectId) errors.projectId = requiredMessage(localize("ProjectId"));
+    if (!detail.taskCategoryId) errors.taskCategoryId = requiredMessage(localize("TaskCategoryId"));
+    if (showSubTaskCategory && !detail.subTaskCategoryId) {
+      errors.subTaskCategoryId = requiredMessage(localize("SubTaskCategoryId"));
+    }
+    if (detail.isCollaboratorsRequired && (detail.jobsheetDetailUserIds || []).length === 0) {
+      errors.jobsheetDetailUserIds = requiredMessage(localize("Collaborators"));
+    }
+    if (!detail.startTimeDisplay) errors.startTimeDisplay = requiredMessage(localize("StartTime"));
+    if (!detail.endTimeDisplay) errors.endTimeDisplay = requiredMessage(localize("EndTime"));
+    if (!detail.statusId) errors.statusId = requiredMessage(localize("StatusId"));
+    if (!detail.remarks?.trim()) {
+      errors.remarks = requiredMessage(remarksLabel);
+    }
 
     if (detail.startTimeDisplay && detail.endTimeDisplay) {
       if (detail.startTimeDisplay >= detail.endTimeDisplay) {
-        errors.endTimeDisplay = "End time must be after start time";
+        const rule = localize("ThisFieldMustBeGreaterThan{0}") ||
+          localize("ThisFieldMustBeGreaterThanOrEqual{0}");
+        errors.endTimeDisplay = `${localize("EndTime")}: ${rule.replace("{0}", localize("StartTime"))}`;
       } else if (hasTimeRangeOverlap(detail, details, editingIndex)) {
-        errors.endTimeDisplay = TIME_OVERLAP_MESSAGE;
+        errors.endTimeDisplay = timeOverlapMessage;
       }
     }
 
@@ -799,15 +862,26 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     if (viewOnly) return;
     setConfirmation({
       type: "DETAIL_CANCEL",
-      message: "Are you sure you want to cancel?",
-      confirmLabel: "Yes",
-      cancelLabel: "No"
+      message: localize("CancelConfirmationMessage"),
+      confirmLabel: localize("Yes"),
+      cancelLabel: localize("No"),
+    });
+  };
+
+  // Blazor asks before removing a detail row.
+  const handleDeleteRequest = (idx) => {
+    setConfirmation({
+      type: "DELETE",
+      index: idx,
+      message: localize("DeleteConfirmationMessage"),
+      confirmLabel: localize("Yes"),
+      cancelLabel: localize("No"),
     });
   };
 
   const handleAddDetail = () => {
     if (!validateDetail()) {
-      setError("Please fill all required jobsheet detail fields.");
+      setError(localize("ValidationErrorMessage"));
       return;
     }
     setError("");
@@ -862,12 +936,15 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
 
   const handleCreate = async () => {
     const errors = {};
-    if (!date) errors.date = "Date is required";
-    if (attendanceStatus === "") errors.attendanceStatus = "Choose one";
+    if (!date) errors.date = requiredMessage(localize("Date") || localize("Datetime"));
+    // "Select An Option" (0) counts as empty, like the backend EnumRequired rule.
+    if (attendanceValue === "" || Number(attendanceValue) === 0) {
+      errors.attendanceStatus = requiredMessage(localize("AttendanceStatus"));
+    }
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(prev => ({ ...prev, ...errors }));
-      setError("Please fill in all required fields before creating.");
+      setError(localize("ValidationErrorMessage"));
       return;
     }
 
@@ -876,7 +953,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
     let finalDetails = details;
     if (editingIndex !== null) {
       if (!validateDetail()) {
-        setError("Please correct the jobsheet detail fields before updating.");
+        setError(localize("ValidationErrorMessage"));
         return;
       }
 
@@ -893,7 +970,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
       // A new jobsheet still requires its first detail. During an update an
       // empty array is intentional and allows the last existing row to delete.
       if (!validateDetail()) {
-        setError("Please fill in all required detail fields or add at least one record.");
+        setError(localize("ValidationErrorMessage"));
         return;
       }
       const enrichedDetail = {
@@ -912,7 +989,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
       const detailsToSave = jobsheet?.id
         ? [...finalDetails, ...deletedDetails]
         : finalDetails;
-      const payload = buildPayload(date, attendanceStatus, detailsToSave, jobsheet);
+      const payload = buildPayload(date, attendanceValue, detailsToSave, jobsheet);
       console.log("Submitting jobsheet payload:", JSON.stringify(payload, null, 2));
 
       const hasOverlap = finalDetails.length > 0
@@ -920,9 +997,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
         : false;
 
       if (hasOverlap) {
-        setError(
-          "One or more jobsheet records have overlapping time ranges. Please correct the start and end times before saving.",
-        );
+        setError(timeOverlapMessage);
         return;
       }
 
@@ -933,6 +1008,9 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
         result = await jobsheetsApi.create(payload);
       }
 
+      // Blazor shows "Operation is successfull" after saving.
+      toast(localize("OperationSuccessfull"));
+
       // Support both onSave (JobsheetsPage) and onSubmit patterns
       if (onSave) onSave(result);
       if (onSubmit) onSubmit(result);
@@ -940,7 +1018,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
       onClose();
     } catch (err) {
       console.error("Failed to save jobsheet:", err, err.response?.data);
-      setError(getApiErrorMessage(err));
+      setError(getApiErrorMessage(err) || localize("DefaultErrorMessage"));
     } finally {
       setSubmitting(false);
     }
@@ -948,11 +1026,18 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
 
   // Resolve display name from id for the table
   const nameOf = (list, id) => list.find((o) => o.id === id)?.name ?? "—";
-  const usersOf = (ids) =>
+  // Collaborator names joined like Blazor (Name, comma separated).
+  const usersOf = (ids = []) =>
     ids.map((id) => {
       const u = users.find((u) => u.id === id);
-      return u ? `${u.name} ${u.surname}` : id;
-    }).join(", ") || "—";
+      return u ? u.name || u.userName : id;
+    }).join(",") || "—";
+
+  // The API may send the attendance status as its enum name or its number.
+  const attendanceValue =
+    attendanceOptions.find(
+      (option) => option.name === attendanceStatus || String(option.value) === String(attendanceStatus),
+    )?.value ?? attendanceStatus;
 
   return (
     <div
@@ -964,7 +1049,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
         {/* Header */}
         <div style={styles.header}>
           <span style={styles.title}>
-            {viewOnly ? "Jobsheet Details" : (jobsheet && jobsheet.id ? "Update Jobsheet" : "New Jobsheet")}
+            {jobsheet && jobsheet.id ? localize("EditJobsheet") : localize("NewJobsheet")}
           </span>
           <button
 
@@ -978,43 +1063,35 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
 
         {fetchError && <div style={styles.warningBanner}>{fetchError}</div>}
         {error && <div style={styles.errorBanner}>{error}</div>}
-        {hasExistingJobsheet && (
-          <div style={styles.existingJobsheetCard} role="status">
-            <AlertCircle size={20} strokeWidth={2} />
-            <span>
-              Another Jobsheet exists on this Date: &apos;{formatDisplayDate(date)}&apos;.
-            </span>
-          </div>
-        )}
 
         {/* Date + Attendance Status */}
         <div style={styles.row}>
           <div style={styles.fieldGroup}>
-            <label style={styles.label}>Date <span style={styles.req}>*</span></label>
+            <label style={styles.label}>{localize("Date")} <span style={styles.req}>*</span></label>
             <div style={styles.inputWrapper}>
               <Flatpickr
-                value={date}
-                onChange={([d]) => {
-                  setDate(dateToLocalDateString(d));
-                  setFieldErrors(prev => ({ ...prev, date: null }));
-                }}
+                // Exact text the picker shows (dd/mm/yyyy), so it is not reset on re-render.
+                value={formatDisplayDate(date)}
+                onChange={([d]) => handleDateChange(dateToLocalDateString(d))}
                 disabled={viewOnly}
                 options={{
-                  dateFormat: "Y-m-d",
+                  // Shown and typed as dd/MM/yyyy like the backend; one input only.
+                  dateFormat: "d/m/Y",
                   allowInput: true,
                   disableMobile: "true",
                   clickOpens: !viewOnly
                 }}
                 className="flatpickr-date-custom"
                 style={{ ...styles.input, border: fieldErrors.date ? "1px solid #ff4d4f" : styles.input.border }}
-                placeholder="Select Date"
+                // Same date hint as the Blazor DatePicker.
+                placeholder="DD/MM/YYYY"
               />
             </div>
             {fieldErrors.date && <span style={styles.errorText}>{fieldErrors.date}</span>}
           </div>
 
           <div style={styles.fieldGroup}>
-            <label style={styles.label}>Attendance Status <span style={styles.req}>*</span></label>
+            <label style={styles.label}>{localize("AttendanceStatus")} <span style={styles.req}>*</span></label>
             <AppSelect
               style={{
                 ...styles.input,
@@ -1026,16 +1103,15 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 opacity: viewOnly ? 0.7 : 1,
                 border: fieldErrors.attendanceStatus ? "1px solid #ff4d4f" : styles.input.border
               }}
-              value={attendanceStatus}
+              value={attendanceValue === "" ? 0 : attendanceValue}
               onChange={(e) => {
                 setAttendanceStatus(e.target.value);
                 setFieldErrors(prev => ({ ...prev, attendanceStatus: null }));
               }}
               disabled={viewOnly}
             >
-
-              {ATTENDANCE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
+              {attendanceOptions.map((o) => (
+                <option key={o.name} value={o.value}>{o.label}</option>
               ))}
             </AppSelect>
             {fieldErrors.attendanceStatus && <span style={styles.errorText}>{fieldErrors.attendanceStatus}</span>}
@@ -1044,20 +1120,22 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
 
 
         {/* Section label */}
-        <div style={styles.sectionLabel}>{viewOnly ? "Jobsheet Records" : "Jobsheet Details"}</div>
+        <div style={styles.sectionLabel}>{localize("JobsheetDetails")}</div>
 
         {/* Detail form - now ALWAYS visible, but disabled in View mode */}
         <div style={{ opacity: viewOnly ? 0.85 : 1 }}>
           <div style={styles.detailGrid}>
 
             <div>
-              <label style={styles.label}>Project <span style={styles.req}>*</span></label>
+              <label style={styles.label}>{localize("ProjectId")} <span style={styles.req}>*</span></label>
               <DynSelect
                 name="projectId"
                 value={detail.projectId}
                 onChange={handleProjectChange}
                 options={projects}
                 loading={loadingOptions}
+                placeholder={emptyOptionText}
+                loadingText={loadingText}
                 disabled={viewOnly}
                 hasError={!!fieldErrors.projectId}
                 styles={styles}
@@ -1066,16 +1144,15 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
             </div>
 
             <div>
-              <label style={styles.label}>Task Category <span style={styles.req}>*</span></label>
+              <label style={styles.label}>{localize("TaskCategoryId")} <span style={styles.req}>*</span></label>
               <DynSelect
                 name="taskCategoryId"
                 value={detail.taskCategoryId}
-                onChange={(e) => {
-                  handleDetailChange(e);
-                  setFieldErrors(prev => ({ ...prev, taskCategoryId: null, subTaskCategoryId: null }));
-                }}
+                onChange={handleTaskCategoryChange}
                 options={filteredTaskCategories}
                 loading={loadingOptions}
+                placeholder={emptyOptionText}
+                loadingText={loadingText}
                 disabled={viewOnly || !detail.projectId}
                 hasError={!!fieldErrors.taskCategoryId}
                 styles={styles}
@@ -1083,31 +1160,30 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
               {fieldErrors.taskCategoryId && <span style={styles.errorText}>{fieldErrors.taskCategoryId}</span>}
             </div>
 
-            {/* Sub Task Category - only show if they exist for selection */}
-            {subTaskCategories.length > 0 && (
+            {/* Sub Task Category - shown and required when the task category has sub categories (as in Blazor) */}
+            {showSubTaskCategory && (
               <div>
-                <label style={styles.label}>Sub Task Category</label>
+                <label style={styles.label}>{localize("SubTaskCategoryId")} <span style={styles.req}>*</span></label>
                 <DynSelect
                   name="subTaskCategoryId"
                   value={detail.subTaskCategoryId}
-                  onChange={(e) => {
-                    handleDetailChange(e);
-                    setFieldErrors(prev => ({ ...prev, subTaskCategoryId: null }));
-                  }}
+                  onChange={handleSubTaskCategoryChange}
                   options={subTaskCategories}
                   loading={loadingSubCats}
-                  placeholder={loadingSubCats ? "Fetching..." : "Choose Sub Category"}
+                  placeholder={emptyOptionText}
+                  loadingText={loadingText}
                   disabled={viewOnly}
+                  hasError={!!fieldErrors.subTaskCategoryId}
                   styles={styles}
                 />
-
+                {fieldErrors.subTaskCategoryId && <span style={styles.errorText}>{fieldErrors.subTaskCategoryId}</span>}
               </div>
             )}
 
             <div>
-              <label style={styles.label}>Start Time <span style={styles.req}>*</span></label>
+              <label style={styles.label}>{localize("StartTime")} <span style={styles.req}>*</span></label>
               <Flatpickr
-                value={timeTo12Hour(detail.startTimeDisplay)}
+                value={detail.startTimeDisplay}
                 onChange={([selectedTime]) => {
                   setDetail((prev) => ({
                     ...prev,
@@ -1119,8 +1195,8 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 options={{
                   enableTime: true,
                   noCalendar: true,
-                  dateFormat: "h:i K",
-                  time_24hr: false,
+                  dateFormat: "H:i",
+                  time_24hr: true,
                   allowInput: true,
                   disableMobile: true,
                   clickOpens: !viewOnly,
@@ -1129,15 +1205,14 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                   ...styles.input,
                   border: (fieldErrors.startTimeDisplay || currentTimeOverlap) ? "1px solid #ff4d4f" : styles.input.border,
                 }}
-                placeholder="Select Start Time"
               />
               {fieldErrors.startTimeDisplay && <span style={styles.errorText}>{fieldErrors.startTimeDisplay}</span>}
             </div>
 
             <div>
-              <label style={styles.label}>End Time <span style={styles.req}>*</span></label>
+              <label style={styles.label}>{localize("EndTime")} <span style={styles.req}>*</span></label>
               <Flatpickr
-                value={timeTo12Hour(detail.endTimeDisplay)}
+                value={detail.endTimeDisplay}
                 onChange={([selectedTime]) => {
                   setDetail((prev) => ({
                     ...prev,
@@ -1149,8 +1224,8 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 options={{
                   enableTime: true,
                   noCalendar: true,
-                  dateFormat: "h:i K",
-                  time_24hr: false,
+                  dateFormat: "H:i",
+                  time_24hr: true,
                   allowInput: true,
                   disableMobile: true,
                   clickOpens: !viewOnly,
@@ -1159,17 +1234,16 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                   ...styles.input,
                   border: (fieldErrors.endTimeDisplay || currentTimeOverlap) ? "1px solid #ff4d4f" : styles.input.border,
                 }}
-                placeholder="Select End Time"
               />
               {(fieldErrors.endTimeDisplay || currentTimeOverlap) && (
                 <span style={styles.errorText}>
-                  {fieldErrors.endTimeDisplay || TIME_OVERLAP_MESSAGE}
+                  {fieldErrors.endTimeDisplay || timeOverlapMessage}
                 </span>
               )}
             </div>
 
             <div>
-              <label style={styles.label}>Status <span style={styles.req}>*</span></label>
+              <label style={styles.label}>{localize("StatusId")} <span style={styles.req}>*</span></label>
               <DynSelect
                 name="statusId"
                 value={detail.statusId}
@@ -1179,6 +1253,8 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 }}
                 options={statuses}
                 loading={loadingOptions}
+                placeholder={emptyOptionText}
+                loadingText={loadingText}
                 disabled={viewOnly}
                 hasError={!!fieldErrors.statusId}
                 styles={styles}
@@ -1187,7 +1263,10 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
             </div>
 
             <div style={{ gridColumn: "1 / -1" }}>
-              <label style={styles.label}>Collaborators</label>
+              <label style={styles.label}>
+                {localize("Collaborators")}
+                {detail.isCollaboratorsRequired && <span style={styles.req}> *</span>}
+              </label>
               <CollaboratorPicker
                 users={users}
                 selected={detail.jobsheetDetailUserIds}
@@ -1196,16 +1275,19 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                   setFieldErrors(prev => ({ ...prev, jobsheetDetailUserIds: null }));
                 }}
                 loading={loadingOptions}
+                placeholder={emptyOptionText}
+                loadingText={loadingText}
                 disabled={viewOnly}
                 fieldErrors={fieldErrors}
                 styles={styles}
               />
+              {fieldErrors.jobsheetDetailUserIds && <span style={styles.errorText}>{fieldErrors.jobsheetDetailUserIds}</span>}
             </div>
           </div>
 
           {/* Remarks */}
           <div style={{ marginBottom: 12 }}>
-            <label style={styles.label}>Remarks <span style={styles.req}>*</span></label>
+            <label style={styles.label}>{remarksLabel} <span style={styles.req}>*</span></label>
             <textarea
               name="remarks"
               style={{ ...styles.textarea, border: fieldErrors.remarks ? "1px solid #ff4d4f" : styles.textarea.border }}
@@ -1228,7 +1310,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 style={styles.cancelBtn}
                 onClick={handleDetailCancel}
               >
-                Cancel
+                {localize("CancelButtonText")}
               </button>
               <button
                 style={{
@@ -1238,9 +1320,9 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                 }}
                 onClick={handleAddDetail}
                 disabled={currentTimeOverlap}
-                title={currentTimeOverlap ? TIME_OVERLAP_MESSAGE : ""}
+                title={currentTimeOverlap ? timeOverlapMessage : ""}
               >
-                {editingIndex !== null ? "Update Record" : "Add Record"}
+                {editingIndex !== null ? localize("UpdateButtonText") : localize("CreateButtonText")}
               </button>
             </div>
           )}
@@ -1254,7 +1336,18 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
           <table style={styles.table}>
             <thead>
               <tr>
-                {["Task Category", "Sub Task Category", "Project", "Start Time", "End Time", "Collaborators", "Status", "CMS Next Ticket No", "Remarks", "Actions"].map((h, i) => (
+                {[
+                  localize("TaskCategoryName"),
+                  localize("SubTaskCategoryName"),
+                  localize("ProjectName"),
+                  localize("StartTime"),
+                  localize("EndTime"),
+                  localize("Collaborators"),
+                  localize("StatusName"),
+                  localize("CMSNextTicketNo"),
+                  remarksLabel,
+                  localize("Actions"),
+                ].map((h, i) => (
                   <th key={i} style={styles.th}>{h.toUpperCase()}</th>
                 ))}
               </tr>
@@ -1262,7 +1355,7 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
             <tbody>
               {details.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={styles.emptyCell}>No records added yet</td>
+                  <td colSpan={10} style={styles.emptyCell}>{localize("NoDataAvailableInDatatable")}</td>
                 </tr>
               ) : (
                 details.map((d, i) => (
@@ -1270,8 +1363,8 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                     <td style={styles.td}>{d._taskCategoryName || nameOf(taskCategories, d.taskCategoryId)}</td>
                     <td style={styles.td}>{d._subTaskCategoryName || nameOf(subTaskCategories, d.subTaskCategoryId)}</td>
                     <td style={styles.td}>{d._projectName || nameOf(projects, d.projectId)}</td>
-                    <td style={styles.td}>{timeTo12Hour(d.startTimeDisplay)}</td>
-                    <td style={styles.td}>{timeTo12Hour(d.endTimeDisplay)}</td>
+                    <td style={styles.td}>{d.startTimeDisplay}</td>
+                    <td style={styles.td}>{d.endTimeDisplay}</td>
                     <td style={styles.td}>{usersOf(d.jobsheetDetailUserIds)}</td>
                     <td style={styles.td}>{d._statusName || nameOf(statuses, d.statusId)}</td>
                     <td style={styles.td}>{d.cmsNextTicketNo || "—"}</td>
@@ -1279,8 +1372,11 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                     <td style={styles.td}>
                       {!viewOnly && !d.amsTicketDetailId && (
                         <ActionsMenu
+                          actionButtonText={localize("Actions")}
+                          editButtonText={localize("EditButtonText")}
+                          deleteButtonText={localize("DeleteButtonText")}
                           onEdit={() => handleEditDetail(i)}
-                          onDelete={() => handleRemoveDetail(i)}
+                          onDelete={() => handleDeleteRequest(i)}
                         />
                       )}
                     </td>
@@ -1297,14 +1393,16 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
         {!viewOnly && (
           <div style={styles.footer}>
             <button style={styles.cancelBtn} onClick={handleCloseAttempt} disabled={submitting}>
-              Cancel
+              {localize("CancelButtonText")}
             </button>
             <button
               style={{ ...styles.createBtn, opacity: submitting ? 0.7 : 1 }}
               onClick={handleCreate}
               disabled={submitting}
             >
-              {submitting ? (jobsheet && jobsheet.id ? "Updating…" : "Creating…") : (jobsheet && jobsheet.id ? "Update Jobsheet" : "Create Jobsheet")}
+              {submitting
+                ? localize("ProcessingWithThreeDot")
+                : (jobsheet && jobsheet.id ? localize("UpdateButtonText") : localize("CreateButtonText"))}
             </button>
           </div>
         )}
@@ -1323,9 +1421,6 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
             <h3 style={styles.confirmTitle}>
               {confirmation.message}
             </h3>
-            <p style={styles.confirmMessage}>
-              {confirmation.type === "EXIT" ? "You have unsaved changes. Choose how you would like to proceed." : "Your current form entries will be cleared."}
-            </p>
             <div style={{ display: "flex", gap: 12, width: "100%" }}>
               {confirmation.type === "EXIT" ? (
                 <>
@@ -1356,8 +1451,14 @@ export default function NewJobsheet({ open, onClose, onSave, onSubmit, viewOnly 
                   <button
                     style={{ ...styles.exitBtn, flex: 1, padding: "12px" }}
                     onClick={() => {
+                      if (confirmation.type === "DELETE") {
+                        handleRemoveDetail(confirmation.index);
+                        setConfirmation(null);
+                        return;
+                      }
                       setDetail(emptyDetail);
                       setEditingIndex(null);
+                      setFieldErrors({});
                       setError("");
                       setConfirmation(null);
                     }}
@@ -1401,7 +1502,8 @@ function getStyles(isDark) {
       backgroundColor: bg, borderRadius: 12,
       width: "min(96vw, 1200px)",
       height: "min(96vh, 1200px)",
-      overflowY: "auto", padding: "32px 36px",
+      // Smaller padding on phones, full padding on wide screens.
+      overflowY: "auto", padding: "clamp(16px, 4vw, 32px) clamp(14px, 4vw, 36px)",
       boxShadow: isDark ? "0 12px 60px rgba(0,0,0,0.6)" : "0 12px 60px rgba(0,0,0,0.22)",
       display: "flex", flexDirection: "column",
     },
@@ -1429,8 +1531,8 @@ function getStyles(isDark) {
       color: isDark ? "#fcd34d" : "#9a3412",
       fontSize: 13, fontWeight: 600, marginBottom: 18,
     },
-    row: { display: "flex", gap: 16, marginBottom: 16 },
-    fieldGroup: { flex: 1 },
+    row: { display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 16 },
+    fieldGroup: { flex: "1 1 220px", minWidth: 0 },
     label: { fontSize: 12.5, fontWeight: 600, color: textMuted, display: "block", marginBottom: 5 },
     req: { color: "#e74c3c" },
     inputWrapper: { display: "flex", alignItems: "center" },
@@ -1452,7 +1554,7 @@ function getStyles(isDark) {
     },
     detailGrid: {
       display: "grid",
-      gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+      gridTemplateColumns: "repeat(auto-fill, minmax(min(220px, 100%), 1fr))",
       gap: 16, marginBottom: 12,
     },
     pill: {
@@ -1526,7 +1628,7 @@ function getStyles(isDark) {
     },
     confirmCard: {
       backgroundColor: confirmBg, borderRadius: 16,
-      width: "400px", padding: "32px",
+      width: "min(400px, 92vw)", padding: "clamp(20px, 5vw, 32px)",
       display: "flex", flexDirection: "column", alignItems: "center",
       boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
       border: `1px solid ${border}`,

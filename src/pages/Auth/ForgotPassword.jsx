@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { AlertCircle, ArrowLeft, Mail, CheckCircle2 } from "lucide-react";
 import Logo from "../../assets/Sureze_Logo.png";
 import { accountApi } from "../../services/api/AccountApi";
+import { useBackendLocalization } from "../../hooks/useBackendLocalization";
 
 function InputField({ label, id, type = "text", value, onChange, placeholder, icon: Icon, error, disabled }) {
   return (
@@ -39,6 +40,7 @@ function InputField({ label, id, type = "text", value, onChange, placeholder, ic
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
+  const localize = useBackendLocalization("AbpAccount");
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,14 +58,19 @@ export default function ForgotPasswordPage() {
     setError("");
 
     if (!email.trim()) {
-      setError("Please enter your email address.");
+      setError(
+        localize("The {0} field is required.").replace(
+          "{0}",
+          localize("EmailAddress"),
+        ),
+      );
       triggerShake();
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      setError("Please enter a valid email address.");
+      setError(localize("ThisFieldIsNotAValidEmailAddress."));
       triggerShake();
       return;
     }
@@ -76,7 +83,7 @@ export default function ForgotPasswordPage() {
       const msg =
         err.response?.data?.error?.message ||
         err.response?.data?.error?.details ||
-        "Failed to send reset email. Please check your email and try again.";
+        localize("DefaultErrorMessage");
       setError(msg);
       triggerShake();
     } finally {
@@ -121,7 +128,7 @@ export default function ForgotPasswordPage() {
               <div className="ray absolute inset-0 -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2 w-[240px] h-[240px] bg-[conic-gradient(from_0deg,transparent,rgba(236,72,153,0.1),transparent_30%)] blur-3xl opacity-50" />
               <div className="absolute inset-0 bg-[#ec4899]/20 blur-[50px] rounded-full scale-[1.4] group-hover:bg-[#ec4899]/30 transition-all duration-1000" />
               <div className="relative z-10 p-5 rounded-[28px] bg-slate-50/50 dark:bg-white/5 border border-slate-100 dark:border-white/10 backdrop-blur-xl shadow-xl overflow-hidden group-hover:border-[#ec4899]/30 transition-colors duration-500">
-                <img src={Logo} alt="Sureze Logo" className="w-24 h-auto object-contain drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]" />
+                <img src={Logo} alt="" className="w-24 h-auto object-contain drop-shadow-[0_0_15px_rgba(236,72,153,0.3)]" />
               </div>
               <div className="absolute -top-2 -right-2 w-2 h-2 bg-[#ec4899] rounded-full blur-[1px] animate-pulse" />
             </div>
@@ -135,16 +142,12 @@ export default function ForgotPasswordPage() {
               </div>
               <div>
                 <h2 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight mb-2">
-                  Check Your Email
+                  {localize("PasswordReset")}
                 </h2>
                 <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
-                  We sent a password reset link to
+                  {localize("PasswordResetMailSentMessage")}
                 </p>
                 <p className="text-pink-500 font-bold text-sm mt-1">{email}</p>
-                <p className="text-slate-400 dark:text-slate-500 text-xs mt-3 leading-relaxed">
-                  Click the link in the email to reset your password.
-                  The link will expire in 24 hours.
-                </p>
               </div>
 
               <div className="w-full space-y-3 mt-2">
@@ -152,14 +155,14 @@ export default function ForgotPasswordPage() {
                   onClick={() => { setSent(false); setEmail(""); setError(""); }}
                   className="w-full py-3 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                 >
-                  Try a different email
+                  {localize("Back")}
                 </button>
                 <button
                   onClick={() => navigate("/login")}
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-[#ec4899] text-white font-black text-[10px] uppercase tracking-widest shadow-lg shadow-pink-500/25 hover:bg-[#d946ef] transition-all"
                 >
                   <ArrowLeft size={12} />
-                  Back to Login
+                  {localize("BackToLogin")}
                 </button>
               </div>
             </div>
@@ -168,11 +171,17 @@ export default function ForgotPasswordPage() {
               {/* Title */}
               <div className="mb-8 text-center">
                 <h1 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">
-                  Forgot Password
+                  {localize("ForgotPassword")}
                 </h1>
-                <p className="text-slate-500 dark:text-slate-400 mt-2 text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
-                  Enter your email to receive a reset link
-                </p>
+                <div className="mt-4 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-left dark:border-red-500/20 dark:bg-red-500/10">
+                  <AlertCircle
+                    size={16}
+                    className="mt-0.5 shrink-0 text-red-500 dark:text-red-400"
+                  />
+                  <p className="text-xs font-semibold leading-relaxed text-red-600 dark:text-red-400">
+                    {localize("SendPasswordResetLink_Information")}
+                  </p>
+                </div>
               </div>
 
               {/* Error */}
@@ -187,11 +196,11 @@ export default function ForgotPasswordPage() {
               <form onSubmit={handleSubmit} className="space-y-5">
                 <InputField
                   id="email"
-                  label="Email Address"
+                  label={localize("EmailAddress")}
                   type="email"
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); setError(""); }}
-                  placeholder="Enter your registered email"
+                  placeholder={localize("EmailAddress")}
                   icon={Mail}
                   disabled={loading}
                 />
@@ -206,12 +215,12 @@ export default function ForgotPasswordPage() {
                     {loading ? (
                       <>
                         <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        Sending...
+                        {localize("LoadingWithThreeDot")}
                       </>
                     ) : (
                       <>
                         <Mail size={14} />
-                        Send Reset Link
+                        {localize("Submit")}
                       </>
                     )}
                   </span>
@@ -225,7 +234,7 @@ export default function ForgotPasswordPage() {
                   className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 hover:text-pink-500 transition-colors"
                 >
                   <ArrowLeft size={12} />
-                  Back to Login
+                  {localize("BackToLogin")}
                 </button>
               </div>
             </>

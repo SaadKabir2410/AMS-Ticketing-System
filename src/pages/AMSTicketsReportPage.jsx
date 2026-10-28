@@ -22,7 +22,6 @@ import amsTicketApi, {
 } from "../services/api/amsTicketApi";
 import flatpickr from "flatpickr";
 import "flatpickr/dist/flatpickr.css";
-import "flatpickr/dist/themes/dark.css";
 
 import { DataGrid } from "@mui/x-data-grid";
 import ExcelJS from "exceljs";
@@ -30,6 +29,8 @@ import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
 import { buildDateRangeReportFileName } from "../utils/reportFileName";
 
+// Labels mirror the backend enum [Display] names (StatusEnum / TicketTypeEnum);
+// the backend has no localization keys for these enum values.
 const TICKET_TYPE_OPTIONS = [
   { value: "ServicePlanned", label: "Service Planned" },
   { value: "ServiceDemand", label: "Service Demand" },
@@ -47,9 +48,10 @@ const STATUS_API_VALUES = { Opened: 1, Closed: 2, Void: 3 };
 const TICKET_TYPE_API_VALUES = {
   ServicePlanned: 1,
   ServiceDemand: 2,
-  Complaint: 3,
-  Inquiry: 4,
+  Inquiry: 3,
+  Complaint: 4,
 };
+const MAX_COMPARE_FILE_SIZE = 10000000;
 const normalizeSpreadsheetHeader = (value) =>
   String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 
@@ -162,26 +164,71 @@ function EditableFlatpickrInput({ value, onChange, className }) {
   );
 }
 
+// headerKeys are backend localization keys; several keys are joined with a space.
+// `header` is only used for columns that have no backend localization key.
 const REPORT_GRID_COLUMNS = [
-  { field: "countryName", header: "Country", keys: ["countryName", "country"] },
-  { field: "customerName", header: "Customer Name", keys: ["customerName", "customer"] },
-  { field: "cmsNextTicketNo", header: "Ticket", keys: ["cmsNextTicketNo", "cMSNextTicketNo", "ticketNo", "ticketNumber", "ticket"] },
-  { field: "issueDescription", header: "Summary Description", keys: ["issueDescription", "issueDiscription", "summaryDescription", "ticketNotes"] },
-  { field: "ticketType", header: "Type", keys: ["ticketType", "ticketTypeStr", "type"] },
-  { field: "ticketStatus", header: "Status", keys: ["ticketStatus", "status"] },
-  { field: "ticketReceivedDate", header: "Receipt Date", keys: ["ticketReceivedDate", "receiptDate", "creationTime", "receivedAt"] },
-  { field: "cmsTicketClosedOn", header: "Close Date", keys: ["cmsTicketClosedOn", "cMSTicketClosedOn", "serviceClosedDate", "closeDate", "ticketCloseDate"] },
-  { field: "workDoneCode", header: "Work Done Code", keys: ["workDoneCode", "workDoneCodeName"] },
-  { field: "workDoneDescription", header: "Work Done Description", keys: ["workDoneDescription", "workDoneCodeDescription"] },
-  { field: "activityType", header: "Activity Type", keys: ["activityType", "activityTypeName"] },
-  { field: "startTime", header: "Start Time", keys: ["startTime", "startDate", "startTimeUTC_8"] },
-  { field: "endTime", header: "End Time", keys: ["endTime", "endDate", "endTimeUTC_8"] },
-  { field: "duration", header: "Total Duration (Minutes)", keys: ["duration", "totalDurationMinutes", "totalDuration", "activityTotalDuration", "totalDurationInMinutes"] },
+  { field: "countryName", headerKeys: ["CountryName"], keys: ["countryName", "country"] },
+  { field: "customerName", headerKeys: ["CustomerUserId"], keys: ["customerName", "customer"] },
+  { field: "cmsNextTicketNo", headerKeys: ["CMSNextTicketNo"], keys: ["cmsNextTicketNo", "cMSNextTicketNo", "ticketNo", "ticketNumber", "ticket"] },
+  { field: "issueDescription", headerKeys: ["IssueDescription"], keys: ["issueDescription", "issueDiscription", "summaryDescription", "ticketNotes"] },
+  { field: "ticketType", headerKeys: ["TicketType"], keys: ["ticketType", "ticketTypeStr", "type"] },
+  { field: "ticketStatus", headerKeys: ["Status"], keys: ["ticketStatus", "status"] },
+  { field: "ticketReceivedDate", headerKeys: ["TicketReceivedDate"], keys: ["ticketReceivedDate", "receiptDate", "creationTime", "receivedAt"] },
+  { field: "cmsTicketClosedOn", headerKeys: ["CMSTicketClosedOn"], keys: ["cmsTicketClosedOn", "cMSTicketClosedOn", "serviceClosedDate", "closeDate", "ticketCloseDate"] },
+  { field: "workDoneCode", headerKeys: ["WorkDoneCode"], keys: ["workDoneCode", "workDoneCodeName"] },
+  { field: "workDoneDescription", headerKeys: ["WorkDoneCode", "Description"], keys: ["workDoneDescription", "workDoneCodeDescription"] },
+  { field: "activityType", headerKeys: ["ActivityType"], keys: ["activityType", "activityTypeName"] },
+  { field: "startTime", headerKeys: ["StartTime"], keys: ["startTime", "startDate", "startTimeUTC_8"] },
+  { field: "endTime", headerKeys: ["EndTime"], keys: ["endTime", "endDate", "endTimeUTC_8"] },
+  { field: "duration", headerKeys: ["TotalDurationMinutes"], keys: ["duration", "totalDurationMinutes", "totalDuration", "activityTotalDuration", "totalDurationInMinutes"] },
   { field: "totalMinutesSpendInsideOfWorkingHours", header: "Office Hours Duration (Minutes)", keys: ["totalMinutesSpendInsideOfWorkingHours", "totalMinutesOfficeHoursWholeTicket", "officeHoursDurationMinutes", "officeHoursDuration", "officeHours"] },
   { field: "totalMinutesSpendOutsideOfWorkingHours", header: "After Office Hours Duration (Minutes)", keys: ["totalMinutesSpendOutsideOfWorkingHours", "totalMinutesAfterOfficeHoursWholeTicket", "afterOfficeHoursDurationMinutes", "afterOfficeHoursDuration", "afterOfficeHours"] },
-  { field: "performedBy", header: "Performed By", keys: ["performedBy", "performedByName", "ticketClosedBy", "ticketAssignedToName", "performer"] },
-  { field: "isWorkingHours", header: "Working Hours", keys: ["isWorkingHours", "isActivityDuringWorkingHours", "workingHours", "hoursType", "startWithinBusinessHours"] },
+  { field: "performedBy", headerKeys: ["PerformedBy"], keys: ["performedBy", "performedByName", "ticketClosedBy", "ticketAssignedToName", "performer"] },
+  { field: "isWorkingHours", headerKeys: ["WorkingHoursFlag"], keys: ["isWorkingHours", "isActivityDuringWorkingHours", "workingHours", "hoursType", "startWithinBusinessHours"] },
 ];
+
+const REPORT_GRID_COLUMN_WIDTHS = {
+  countryName: 100,
+  customerName: 140,
+  cmsNextTicketNo: 140,
+  issueDescription: 220,
+  ticketType: 110,
+  ticketStatus: 80,
+  ticketReceivedDate: 130,
+  cmsTicketClosedOn: 130,
+  workDoneCode: 100,
+  workDoneDescription: 180,
+  activityType: 110,
+  startTime: 130,
+  endTime: 130,
+  duration: 95,
+  totalMinutesSpendInsideOfWorkingHours: 105,
+  totalMinutesSpendOutsideOfWorkingHours: 115,
+  performedBy: 130,
+  isWorkingHours: 90,
+};
+const WIDE_REPORT_GRID_FIELDS = new Set(["issueDescription", "workDoneDescription"]);
+
+const getReportColumnHeader = (applicationConfig, column) =>
+  column.headerKeys
+    ? column.headerKeys
+      .map((key) => getBackendLocalizationText(applicationConfig, key))
+      .filter(Boolean)
+      .join(" ")
+    : column.header;
+
+// Excel exports raw row fields; label each with its grid column's backend text
+// when one matches, otherwise with a backend key of the same name.
+const getExcelColumnHeader = (applicationConfig, fieldName) => {
+  const normalizedField = fieldName.toLowerCase();
+  const column = REPORT_GRID_COLUMNS.find((reportColumn) =>
+    reportColumn.keys.some((key) => key.toLowerCase() === normalizedField),
+  );
+  if (column) return getReportColumnHeader(applicationConfig, column);
+
+  const pascalCaseField = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+  return getBackendLocalizationText(applicationConfig, pascalCaseField) || fieldName;
+};
 
 const getReportValue = (row, keys) => {
   for (const key of keys) {
@@ -264,11 +311,6 @@ const getBackendLocalizationText = (applicationConfig, key) => {
 
   return "";
 };
-
-const formatBackendLocalizationText = (text, ...values) =>
-  text.replace(/\{(\d+)\}/g, (placeholder, index) =>
-    values[Number(index)] ?? placeholder
-  );
 
 const getBackendErrorFallbackKey = (error) => {
   if (!error?.response) return "InternetConnectionInfo";
@@ -445,6 +487,16 @@ export default function AMSTicketsReportPage() {
 
   const handleGetReport = async (asFile = false) => {
     const setRequestLoading = asFile ? setExcelLoading : setReportLoading;
+    const requiredDateErrorKey = !filters.dateFrom
+      ? "DateFromRequiredMessage"
+      : !filters.dateTo ? "DateToRequiredMessage" : "";
+    if (requiredDateErrorKey) {
+      const backendConfig = applicationConfig || await fetchBackendApplicationConfig();
+      if (backendConfig && !applicationConfig) setApplicationConfig(backendConfig);
+      setFormError(getBackendLocalizationText(backendConfig, requiredDateErrorKey));
+      return;
+    }
+
     try {
       setRequestLoading(true);
       setFormError("");
@@ -506,10 +558,14 @@ export default function AMSTicketsReportPage() {
         }
 
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet("AMS Tickets Report");
+        const worksheet = workbook.addWorksheet(
+          getBackendLocalizationText(backendConfig, "AMSTicketsReport") || "AMSTicketReport",
+        );
 
         const headers = Object.keys(dataArray[0]);
-        const headerRow = worksheet.addRow(headers);
+        const headerRow = worksheet.addRow(
+          headers.map((header) => getExcelColumnHeader(backendConfig, header)),
+        );
 
         headerRow.eachCell((cell) => {
           cell.fill = {
@@ -526,6 +582,7 @@ export default function AMSTicketsReportPage() {
         });
 
         const reportSummary = data && !Array.isArray(data) ? data : {};
+        // Same labels as the Blazor export; the backend has no localization keys for them.
         const summaryRows = [
           ["Generated By:", getReportValue(reportSummary, ["currentUser", "generatedBy"]) ?? ""],
           ["Generated On:", getReportValue(reportSummary, ["currentDateTime", "generatedOn"]) ?? ""],
@@ -673,17 +730,21 @@ export default function AMSTicketsReportPage() {
       if (backendConfig && !applicationConfig) setApplicationConfig(backendConfig);
       const internalOnlyText = getBackendLocalizationText(
         backendConfig,
-        "TicketNumbersExistInSystemOnly",
+        "TicketNumbersExistInInternalSystemOnly",
       );
       const externalOnlyText = getBackendLocalizationText(
         backendConfig,
-        "TicketNumbersExistInExternalReportOnly",
+        "TicketNumbersExistInAbbottReportOnly",
+      );
+      const wdcDifferenceText = getBackendLocalizationText(
+        backendConfig,
+        "TicketNumbersWithWDCDifferences",
       );
 
       const dataArray = [
         ...existInInternalOnly.map((t) => ({ ticketNo: t, difference: internalOnlyText })),
         ...existInAbbottOnly.map((t) => ({ ticketNo: t, difference: externalOnlyText })),
-        ...wdcDifferences.map((t) => ({ ticketNo: t, difference: "WDC Difference" })),
+        ...wdcDifferences.map((t) => ({ ticketNo: t, difference: wdcDifferenceText })),
       ];
 
       setReportData(dataArray);
@@ -697,13 +758,14 @@ export default function AMSTicketsReportPage() {
             backendConfig,
             "AllTheTicketsExistsInTheSystem",
           ),
-          actionText: getBackendLocalizationText(backendConfig, "Ok"),
+          actionText: getBackendLocalizationText(backendConfig, "OKButtonText"),
           isSuccess: true,
         });
       } else {
         const comparisonMessages = [
-          existInInternalOnly.length > 0 ? internalOnlyText : "",
           existInAbbottOnly.length > 0 ? externalOnlyText : "",
+          existInInternalOnly.length > 0 ? internalOnlyText : "",
+          wdcDifferences.length > 0 ? wdcDifferenceText : "",
         ].filter(Boolean);
         setCompareResultDialog({
           open: true,
@@ -711,7 +773,7 @@ export default function AMSTicketsReportPage() {
           message: getBackendResponseText(response) ||
             comparisonMessages.join("\n") ||
             getBackendLocalizationText(backendConfig, "CompareTickets"),
-          actionText: getBackendLocalizationText(backendConfig, "Ok"),
+          actionText: getBackendLocalizationText(backendConfig, "OKButtonText"),
           isSuccess: false,
         });
       }
@@ -739,20 +801,15 @@ export default function AMSTicketsReportPage() {
     }
 
     const extension = file.name.split(".").pop()?.toLowerCase();
-    if (extension !== "xlsx" && extension !== "xls") {
+    const fileErrorKey = extension !== "xlsx" && extension !== "xls"
+      ? "FileTypeErrorMessage"
+      : file.size >= MAX_COMPARE_FILE_SIZE ? "FileSizeErrorMessage" : "";
+    if (fileErrorKey) {
       setFilters((current) => ({ ...current, compareFile: null }));
       event.target.value = "";
       const backendConfig = applicationConfig || await fetchBackendApplicationConfig();
       if (backendConfig && !applicationConfig) setApplicationConfig(backendConfig);
-      setFormError(
-        formatBackendLocalizationText(
-          getBackendLocalizationText(
-            backendConfig,
-            "ThisFieldOnlyAcceptsFilesWithTheFollowingExtensions:{0}",
-          ),
-          ".xlsx, .xls",
-        ),
-      );
+      setFormError(getBackendLocalizationText(backendConfig, fileErrorKey));
       return;
     }
 
@@ -763,47 +820,41 @@ export default function AMSTicketsReportPage() {
   const columns = useMemo(() => {
     const dataKeys = reportData.length > 0 ? Object.keys(reportData[0]) : [];
     const isCompareResult = dataKeys.includes("difference");
-
-    let finalColumns = [];
+    const renderReportCell = (params) => {
+      const val = params.value;
+      if (typeof val === "boolean") {
+        return getBackendLocalizationText(applicationConfig, val ? "Yes" : "No");
+      }
+      if (val === null || val === undefined) return "-";
+      return String(val);
+    };
 
     if (isCompareResult) {
-      finalColumns = dataKeys
-        .filter((key) => {
-          const val = reportData[0][key];
-          return val === null || val === undefined || (typeof val !== "object" && !Array.isArray(val));
-        })
-        .map((key) => ({
-          field: key,
-          headerName: key.replace(/([A-Z])/g, " $1").trim().toUpperCase(),
-          minWidth: 150,
-          flex: 1,
-          renderCell: (params) => {
-            const val = params.value;
-            if (typeof val === "boolean") return val ? "Yes" : "No";
-            if (val === null || val === undefined) return "-";
-            return String(val);
-          },
-        }));
-    } else {
-      finalColumns = REPORT_GRID_COLUMNS.map((column) => {
-        return {
-          field: column.field,
-          headerName: column.header,
-          minWidth: 150,
-          flex: 1,
-          valueGetter: (_value, row) => getReportValue(row, column.keys),
-          renderCell: (params) => {
-            const val = params.value;
-            if (typeof val === "boolean") return val ? "Yes" : "No";
-            if (val === null || val === undefined) return "-";
-            return String(val);
-          },
-        };
-      });
+      const compareHeaderKeys = { ticketNo: "CMSNextTicketNo", difference: "Description" };
+      return dataKeys.map((key) => ({
+        field: key,
+        headerName: getBackendLocalizationText(applicationConfig, compareHeaderKeys[key] || key),
+        minWidth: key === "difference" ? 260 : 150,
+        flex: key === "difference" ? 3 : 1,
+        renderCell: renderReportCell,
+      }));
     }
 
-    return finalColumns;
-  }, [reportData]);
+    // Text wraps inside cells, so columns only need to fit short values;
+    // free-text columns get extra room and may grow with the grid.
+    return REPORT_GRID_COLUMNS.map((column) => {
+      const width = REPORT_GRID_COLUMN_WIDTHS[column.field] || 110;
+      return {
+        field: column.field,
+        headerName: getReportColumnHeader(applicationConfig, column),
+        minWidth: width,
+        width,
+        flex: WIDE_REPORT_GRID_FIELDS.has(column.field) ? 1 : 0,
+        valueGetter: (_value, row) => getReportValue(row, column.keys),
+        renderCell: renderReportCell,
+      };
+    });
+  }, [reportData, applicationConfig]);
 
   const filterInputClass =
     "h-[42px] min-h-[42px] px-3 py-2 text-xs bg-white dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-xl outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all placeholder:text-slate-400 w-full shadow-sm";
@@ -832,7 +883,7 @@ export default function AMSTicketsReportPage() {
     customer: getBackendLocalizationText(applicationConfig, "CustomerUserId"),
     workDoneCode: getBackendLocalizationText(applicationConfig, "WorkDoneCode"),
     performedBy: getBackendLocalizationText(applicationConfig, "PerformedBy"),
-    compareTickets: getBackendLocalizationText(applicationConfig, "CompareTicketsButton"),
+    compareTickets: getBackendLocalizationText(applicationConfig, "CompareTicketsLable"),
     search: getBackendLocalizationText(applicationConfig, "Search"),
     all: getBackendLocalizationText(applicationConfig, "All"),
     home: getBackendLocalizationText(applicationConfig, "Home"),
@@ -890,8 +941,8 @@ export default function AMSTicketsReportPage() {
       `}</style>
 
       <div className="flex-1 min-h-0 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-hidden">
-        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50 shrink-0">
-          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
+        <div className="app-page-header flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50 shrink-0">
+          <nav className="flex flex-wrap items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
             <span
               onClick={() => navigate("/")}
               className="hover:text-pink-500 cursor-pointer transition-colors"
@@ -906,14 +957,14 @@ export default function AMSTicketsReportPage() {
             <span className="text-pink-500">{pageText.title}</span>
           </nav>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
                 {pageText.title}
               </h1>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={handleClear}
                 className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all active:scale-95 focus:outline-none"
@@ -1086,7 +1137,7 @@ export default function AMSTicketsReportPage() {
                 >
                   {servicePlannedTypeOptions.map((t) => (
                     <option key={t.value} value={t.value}>
-                      {t.label}
+                      {t.value === "" ? pageText.all : t.label}
                     </option>
                   ))}
                 </AppSelect>
@@ -1275,8 +1326,9 @@ export default function AMSTicketsReportPage() {
             getRowId={(row) => row.id || row.ticketNo || row.ticket || Math.random().toString()}
             disableRowSelectionOnClick
             loading={loading || reportLoading}
-            rowHeight={52}
-            columnHeaderHeight={48}
+            getRowHeight={() => "auto"}
+            getEstimatedRowHeight={() => 52}
+            columnHeaderHeight={56}
             hideFooter
             showColumnVerticalBorder={true}
             showCellVerticalBorder={true}
@@ -1289,36 +1341,36 @@ export default function AMSTicketsReportPage() {
                 isolation: "isolate",
               },
               "& .MuiDataGrid-columnHeaders": {
-                bgcolor: "rgba(248, 250, 252, 1)",
-                borderBottom: "1px solid rgba(226, 232, 240, 1)",
                 position: "sticky",
                 top: 0,
                 zIndex: 10,
-                "& .MuiDataGrid-columnHeaderTitle": {
-                  fontWeight: 800,
-                  fontSize: "10px",
-                  color: "rgb(71, 85, 105)",
-                  letterSpacing: "0.05em",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                },
+              },
+              "& .MuiDataGrid-columnHeader": {
+                bgcolor: "rgb(248, 250, 252)",
+                borderBottom: "1px solid rgb(226, 232, 240)",
+                padding: "0 8px",
+              },
+              "& .MuiDataGrid-columnHeaderTitle": {
+                fontWeight: 800,
+                fontSize: "10px",
+                color: "rgb(51, 65, 85)",
+                letterSpacing: "0.03em",
+                lineHeight: 1.25,
+                whiteSpace: "normal",
+                overflow: "visible",
+                textOverflow: "clip",
               },
               "& .MuiDataGrid-cell": {
-                borderBottom: "1px solid rgba(241, 245, 249, 1)",
+                borderBottom: "1px solid rgb(241, 245, 249)",
                 fontSize: "11px",
-                color: "rgb(71, 85, 105)",
+                lineHeight: 1.4,
+                color: "rgb(30, 41, 59)",
                 display: "flex",
                 alignItems: "center",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
+                whiteSpace: "normal",
+                overflowWrap: "anywhere",
                 padding: "8px",
-              },
-              "& .MuiDataGrid-cellContent": {
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
+                minHeight: "44px !important",
               },
               "& .MuiDataGrid-virtualScroller": {
                 position: "relative",
@@ -1326,6 +1378,23 @@ export default function AMSTicketsReportPage() {
               },
               "& .MuiDataGrid-row:hover": {
                 bgcolor: "rgba(244, 114, 182, 0.05)",
+              },
+              ".dark & .MuiDataGrid-columnHeader": {
+                bgcolor: "rgb(30, 41, 59)",
+                borderBottomColor: "rgb(51, 65, 85)",
+              },
+              ".dark & .MuiDataGrid-columnHeaderTitle": {
+                color: "rgb(226, 232, 240)",
+              },
+              ".dark & .MuiDataGrid-cell": {
+                color: "rgb(226, 232, 240)",
+                borderBottomColor: "rgb(30, 41, 59)",
+              },
+              ".dark & .MuiDataGrid-columnSeparator, .dark & .MuiDataGrid-cell, .dark & .MuiDataGrid-columnHeader": {
+                borderColor: "rgb(51, 65, 85)",
+              },
+              ".dark & .MuiDataGrid-filler, .dark & .MuiDataGrid-scrollbarFiller": {
+                bgcolor: "rgb(30, 41, 59)",
               },
             }}
             />

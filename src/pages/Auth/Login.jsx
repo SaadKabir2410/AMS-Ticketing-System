@@ -3,6 +3,31 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContextHook";
 import { AlertCircle } from "lucide-react";
 import Logo from "../../assets/Sureze_Logo.png";
+import { oidcConfig } from "./authConfig";
+import { useBackendLocalization } from "../../hooks/useBackendLocalization";
+
+// Injected by vite.config.js at build time.
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || "";
+const buildDate = new Date(import.meta.env.VITE_APP_BUILD_DATE || "");
+const APP_BUILD_DATE = Number.isNaN(buildDate.getTime())
+  ? ""
+  : buildDate.toLocaleDateString(undefined, {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
+const openBackendForgotPassword = () => {
+  const forgotPasswordUrl = new URL(
+    "/Account/ForgotPassword",
+    oidcConfig.authority,
+  );
+  forgotPasswordUrl.searchParams.set(
+    "returnUrl",
+    `${window.location.origin}/login`,
+  );
+  window.location.assign(forgotPasswordUrl.toString());
+};
 
 function InputField({
   label,
@@ -65,16 +90,20 @@ function InputField({
 
 export default function LoginPage() {
   const { user, login, error: authContextError, clearError } = useAuth();
+  const localize = useBackendLocalization("AbpAccount");
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || "/";
+  // Every user lands on the dashboard after signing in.
+  const from = "/";
 
   const [username, setUsername] = useState(() => localStorage.getItem("remembered_username") || "");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(() => !!localStorage.getItem("remembered_username"));
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [localError, setLocalError] = useState("");
-  const [showLoggedOutMessage, setShowLoggedOutMessage] = useState(false);
+  const [showLoggedOutMessage, setShowLoggedOutMessage] = useState(
+    () => Boolean(location.state?.loggedOut) || sessionStorage.getItem("auth:logged-out") === "true",
+  );
   const [shouldShake, setShouldShake] = useState(false);
 
   // If already authenticated, skip login page
@@ -85,12 +114,12 @@ export default function LoginPage() {
   }, [user, navigate, from]);
 
   useEffect(() => {
-    if (location.state?.loggedOut) {
-      setShowLoggedOutMessage(true);
+    if (showLoggedOutMessage) {
+      sessionStorage.removeItem("auth:logged-out");
       const timer = setTimeout(() => setShowLoggedOutMessage(false), 3000);
       return () => clearTimeout(timer);
     }
-  }, [location]);
+  }, [showLoggedOutMessage]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -181,10 +210,10 @@ export default function LoginPage() {
 
           <div className="mb-10 text-center">
             <h1 className="text-3xl font-black text-slate-800 dark:text-white uppercase tracking-tight">
-              Welcome back
+              {localize("Welcome")}
             </h1>
             <p className="text-slate-500 dark:text-slate-400 mt-2 text-[10px] font-black uppercase tracking-[0.2em] opacity-60">
-              Sign in with credentials
+              {localize("Login")}
             </p>
           </div>
 
@@ -192,7 +221,7 @@ export default function LoginPage() {
           {showLoggedOutMessage && (
             <div className="mb-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs animate-in fade-in slide-in-from-top-4 duration-500">
               <AlertCircle size={16} />
-              <p>You have been logged out successfully.</p>
+              <p>{localize("LoggedOutTitle")}</p>
             </div>
           )}
 
@@ -207,25 +236,25 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <InputField
               id="username"
-              label="Username or Email"
+              label={localize("UserNameOrEmailAddress")}
               type="text"
               value={username}
               onChange={(e) => {
                 setUsername(e.target.value);
                 clearError();
               }}
-              placeholder="Enter your username"
+              placeholder={localize("UserNameOrEmailAddress")}
             />
             <InputField
               id="password"
-              label="Password"
+              label={localize("Password")}
               type="password"
               value={password}
               onChange={(e) => {
                 setPassword(e.target.value);
                 clearError();
               }}
-              placeholder="Enter your password"
+              placeholder={localize("Password")}
             />
 
             <div className="flex items-center gap-2 mt-2 ml-1">
@@ -237,31 +266,36 @@ export default function LoginPage() {
                 className="w-4 h-4 text-[#ec4899] bg-white border-slate-300 rounded focus:ring-[#ec4899] dark:focus:ring-[#ec4899]/50 focus:ring-2 dark:bg-slate-800 dark:border-slate-700 transition-all cursor-pointer"
               />
               <label htmlFor="rememberMe" className="text-sm font-medium text-slate-600 dark:text-slate-400 cursor-pointer select-none">
-                Remember me
+                {localize("RememberMe")}
               </label>
             </div>
 
             <button
               type="submit"
               disabled={isLoggingIn}
-              className="w-full flex items-center justify-center gap-2 py-5 rounded-2xl bg-[#ec4899] text-white font-black text-[11px] uppercase tracking-[0.2em] transition-all shadow-xl shadow-pink-500/25 hover:bg-[#d946ef] hover:-translate-y-0.5 active:translate-y-0 mt-6 disabled:opacity-50 disabled:cursor-not-allowed group/btn overflow-hidden relative"
+              className="w-full flex items-center justify-center gap-2 py-5 rounded-2xl bg-[#ec4899] text-white font-black text-[11px] uppercase tracking-[0.2em] transition-all shadow-xl shadow-pink-500/25 hover:bg-[#db2777] hover:-translate-y-0.5 active:translate-y-0 mt-6 disabled:opacity-50 disabled:cursor-not-allowed group/btn overflow-hidden relative"
             >
               <div className="absolute inset-0 bg-white/10 translate-y-full group-hover/btn:translate-y-0 transition-transform duration-300" />
               <span className="relative z-10">
-                {isLoggingIn ? "Verifying..." : "Login"}
+                {isLoggingIn ? localize("ProcessingWithThreeDot") : localize("Login")}
               </span>
             </button>
 
             <div className="mt-4 text-center">
               <button
                 type="button"
-                onClick={() => navigate("/forgot-password")}
+                onClick={openBackendForgotPassword}
                 className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 hover:text-[#ec4899] transition-colors"
               >
-                Forgot Password?
+                {localize("ForgotPassword")}
               </button>
             </div>
           </form>
+
+          <p className="mt-8 text-center text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 select-none">
+            v{APP_VERSION}
+            {APP_BUILD_DATE && <> · {APP_BUILD_DATE}</>}
+          </p>
         </div>
       </div>
     </div>

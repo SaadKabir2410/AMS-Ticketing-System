@@ -8,15 +8,8 @@ export const sitesApi = {
     sortKey,
     sortDir = "desc",
     columnFilter,
-    filterOperator,
     advancedFilters,
   } = {}) => {
-    const operatorMap = {
-      contains: "Contains",
-      equals: "Equals",
-      startsWith: "StartsWith",
-    };
-    const backendOperator = operatorMap[filterOperator] || "Contains";
     const sortFieldMap = {
       id: "Id",
       name: "Name",
@@ -34,18 +27,13 @@ export const sitesApi = {
     let siteSearchParams = {};
     if (columnFilter?.value && columnFilterParamMap[columnFilter.field]) {
       const backendParam = columnFilterParamMap[columnFilter.field];
-      siteSearchParams = {
-        [backendParam]: columnFilter.value,
-        [`${backendParam}Operator`]:
-          operatorMap[columnFilter.operator] || backendOperator,
-      };
+      siteSearchParams = { [backendParam]: columnFilter.value };
     }
 
     const params = {
       SkipCount: (page - 1) * perPage,
       MaxResultCount: perPage,
       Filter: search || undefined,
-      FilterOperator: backendOperator,
       ...siteSearchParams,
       "SiteSearch.Name": advancedFilters?.name || siteSearchParams["SiteSearch.Name"],
       "SiteSearch.OCN": advancedFilters?.ocn || siteSearchParams["SiteSearch.OCN"],
@@ -60,19 +48,6 @@ export const sitesApi = {
       return r.data;
     });
   },
-  checkOcnExists: (ocn, signal) => {
-    const params = {
-      SkipCount: 0,
-      MaxResultCount: 1,
-      "SiteSearch.OCN": ocn,
-      "SiteSearch.OCNOperator": "Equals",
-      Sorting: "Name asc",
-    };
-    console.log("[DB.sites] checking OCN:", ocn);
-    return apiClient
-      .get("/api/app/site/paged-list", { params, signal })
-      .then((r) => r.data);
-  },
   getById: (id) =>
     apiClient.get(`/api/app/site/${id}/by-id`).then((r) => r.data),
   create: (data) => {
@@ -82,10 +57,6 @@ export const sitesApi = {
   update: (id, data) => {
     console.log("[DB.sites] updating:", id, data);
     return apiClient.put(`/api/app/site/${id}`, data).then((r) => r.data);
-  },
-  delete: (id) => {
-    console.log("[DB.sites] deleting:", id);
-    return apiClient.delete(`/api/app/site/${id}`).then((r) => r.data);
   },
 };
 

@@ -1,48 +1,35 @@
-import { useState } from "react";
-import { Activity, Database } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Database } from "lucide-react";
 import { motion as Motion, AnimatePresence } from "framer-motion";
-
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.015 } },
-};
-
-const rowVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.2, ease: "easeOut" },
-  },
-  exit: { opacity: 0, transition: { duration: 0.1 } },
-};
 
 const OPERATION_COLORS = {
   0: {
-    label: "NONE",
     bg: "bg-slate-50",
     text: "text-slate-600",
     border: "border-slate-200",
   },
   1: {
-    label: "CREATE",
+    labelKey: "Created",
     bg: "bg-emerald-50",
     text: "text-emerald-700",
     border: "border-emerald-200",
   },
   2: {
-    label: "UPDATE",
+    labelKey: "Updated",
     bg: "bg-amber-50",
     text: "text-amber-700",
     border: "border-amber-200",
   },
   3: {
-    label: "DELETE",
+    labelKey: "Deleted",
     bg: "bg-rose-50",
     text: "text-rose-700",
     border: "border-rose-200",
   },
 };
+
+// Operation names are the ABP audit logging texts "Created", "Updated", "Deleted".
+const operationLabel = (op, localize) => (op.labelKey ? localize(op.labelKey) : "—");
 
 function HighlightText({ text, query }) {
   const value = String(text ?? "");
@@ -56,7 +43,7 @@ function HighlightText({ text, query }) {
     part.toLowerCase() === term.toLowerCase() ? (
       <mark
         key={`${part}-${index}`}
-        className="bg-transparent font-bold text-pink-600 dark:text-pink-400"
+        className="rounded-sm bg-pink-200 px-0.5 text-pink-900 dark:bg-pink-500/40 dark:text-pink-100"
       >
         {part}
       </mark>
@@ -132,6 +119,32 @@ function formatVal(val) {
   return String(val);
 }
 
+// AMS Ticket audit records show only these fields, in this order.
+const AMS_TICKET_AUDIT_FIELDS = [
+  "ActivityTotalDuration",
+  "CMSNextTicketNo",
+  "CMSTicketAddedOn",
+  "CreationTime",
+  "IsPRE",
+  "IssueDescription",
+  "IsTicketForwarded",
+  "PossibleRootCause",
+  "ServicePlannedType",
+  "ServicePlannedTypeDisplayName",
+  "Settings",
+  "Status",
+  "StatusDisplayName",
+  "TicketIncomingChannel",
+  "TicketIncomingChannelDisplayName",
+  "TicketNotes",
+  "TicketReceivedDate",
+  "TicketType",
+  "TicketTypeDisplayName",
+].map((field) => field.toLowerCase());
+
+const isAmsTicketEntity = (entityName) =>
+  String(entityName || "").split(".").pop().toLowerCase() === "amsticket";
+
 function buildDetailRows(row) {
   const parsedOld = {
     ...(row.oldValuesDic && typeof row.oldValuesDic === "object" ? row.oldValuesDic : {}),
@@ -142,11 +155,13 @@ function buildDetailRows(row) {
     ...safeParseJson(row.newValues),
   };
   const affectedArr = getAffectedColumns(row);
+  const opType = normalizeOperationType(row.operationType);
+  // The ticket "Settings" snapshot is shown only when the record is created;
+  // on updates and deletes it is internal data, not a user-facing change.
   const allKeys = Array.from(
     new Set([...Object.keys(parsedOld), ...Object.keys(parsedNew), ...affectedArr])
-  ).filter(Boolean);
+  ).filter((key) => key && (opType === 1 || key.toLowerCase() !== "settings"));
 
-  const opType = normalizeOperationType(row.operationType);
   let finalKeys = allKeys;
   if (opType === 2) {
     finalKeys = allKeys.filter(
@@ -156,6 +171,10 @@ function buildDetailRows(row) {
     finalKeys = allKeys.filter((k) => parsedNew[k] !== undefined && parsedNew[k] !== null);
   } else if (opType === 3) {
     finalKeys = allKeys.filter((k) => parsedOld[k] !== undefined && parsedOld[k] !== null);
+  }
+  if (isAmsTicketEntity(row.entityName)) {
+    const order = (key) => AMS_TICKET_AUDIT_FIELDS.indexOf(key.toLowerCase());
+    finalKeys = finalKeys.filter((key) => order(key) !== -1).sort((a, b) => order(a) - order(b));
   }
   return { parsedOld, parsedNew, finalKeys, opType };
 }
@@ -184,60 +203,124 @@ function DetailTable({ row, localize }) {
     );
   }
 
-  const isCreate = opType === 1;
-  const isDelete = opType === 3;
+  return (
+    <DetailGrid
+      parsedOld={parsedOld}
+      parsedNew={parsedNew}
+      finalKeys={finalKeys}
+      opType={opType}
+      localize={localize}
+    />
+  );
+}
+
+// Field changes as a bordered grid: one column per changed field (its name is
+// the header) and one row each for the old and the new values.
+// Each column is as wide as the longest word of its header; the header shows one
+// word per line and the values wrap within that width.
+let measureContext = null;
+const measureText = (text, font) => {
+  if (!measureContext) measureContext = document.createElement("canvas").getContext("2d");
+  measureContext.font = font;
+  return measureContext.measureText(String(text ?? "")).width;
+};
+const HEADER_FONT = '700 12px "Inter", sans-serif';
+const VALUE_FONT = '400 12px "Inter", sans-serif';
+const CELL_PADDING = 14; // px-[7px] on both sides
+// The Settings snapshot is long JSON, so it gets a fixed standard width instead.
+const SETTINGS_COLUMN_WIDTH = 420;
+
+const longestWordWidth = (text, font) =>
+  Math.max(0, ...String(text ?? "").split(/\s+/).map((word) => measureText(word, font)));
+
+const fitColumnWidth = (header) =>
+  Math.ceil(Math.max(longestWordWidth(header, HEADER_FONT), 24) + CELL_PADDING + 1);
+
+// "cMSNextTicketNo" -> "CMS Next Ticket No", "isPRE" -> "Is PRE"
+const splitFieldName = (name) => {
+  // Capitalising the first letter turns "cMS..." back into the "CMS" acronym.
+  const text = String(name);
+  return (text.charAt(0).toUpperCase() + text.slice(1))
+    .replace(/([a-z\d])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2");
+};
+
+function DetailGrid({ parsedOld, parsedNew, finalKeys, localize }) {
+  const rows = useMemo(() => [
+    // "Old value" as requested; the backend has no such text yet, and an
+    // "OldValue" key added later is used automatically.
+    {
+      id: "old",
+      label: [localize("OldValue")].find((text) => text && text !== "OldValue") || "Old value",
+      values: parsedOld,
+    },
+    { id: "new", label: localize("NewValue"), values: parsedNew },
+  ].map((row) => ({
+    ...row,
+    cells: Object.fromEntries(finalKeys.map((key) => [key, formatVal(row.values[key])])),
+  })), [finalKeys, parsedOld, parsedNew, localize]);
+
+  const columns = useMemo(() => finalKeys.map((key) => {
+    const header = splitFieldName(key);
+    const width = key.toLowerCase() === "settings" ? SETTINGS_COLUMN_WIDTH : fitColumnWidth(header);
+    return { key, header, width };
+  }), [finalKeys]);
+
+  const labelWidth = Math.ceil(
+    Math.max(...rows.map((row) => longestWordWidth(row.label, VALUE_FONT)), 24) + CELL_PADDING + 1,
+  );
+  const tableWidth = labelWidth + columns.reduce((total, column) => total + column.width, 0);
+  const border = "border border-slate-300 dark:border-slate-600";
 
   return (
-    <div className="w-full overflow-x-auto pb-2">
-      <table className="border-collapse w-full min-w-max">
-        <thead>
-          <tr>
-            <th className="border border-slate-300 dark:border-slate-600 bg-blue-50 dark:bg-slate-700 px-3 py-2 w-[120px]" />
-            {finalKeys.map((key) => (
-              <th
-                key={key}
-                className="border border-slate-300 dark:border-slate-600 bg-blue-50 dark:bg-slate-700 px-4 py-2 text-center font-bold text-[11px] text-slate-700 dark:text-slate-200 leading-tight align-bottom min-w-[200px]"
-              >
-                {key.replace(/([A-Z])/g, " $1").trim()}
-              </th>
+    // width:0 keeps the grid from stretching the row; it scrolls sideways when wider.
+    <div className="p-3" style={{ width: 0, minWidth: "100%" }}>
+      <div className="overflow-x-auto custom-scrollbar">
+        <table
+          className="table-fixed border-collapse bg-white dark:bg-slate-900 text-[12px]"
+          // Fills the full row width; with many fields it grows wider and scrolls.
+          style={{ width: tableWidth, minWidth: "100%" }}
+        >
+          <colgroup>
+            <col style={{ width: labelWidth }} />
+            {columns.map((column) => (
+              <col key={column.key} style={{ width: column.width }} />
             ))}
-          </tr>
-        </thead>
-        <tbody>
-          {!isCreate && (
+          </colgroup>
+          <thead>
             <tr>
-              <td className="border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-3 py-2 font-semibold text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap align-top">
-                {isDelete ? "Deleted Values" : "Old Values"}
-              </td>
-              {finalKeys.map((key) => (
-                <td
-                  key={key}
-                  className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 align-top"
+              <th className={border} />
+              {columns.map((column) => (
+                <th
+                  key={column.key}
+                  className={`${border} px-[7px] py-2 text-left align-bottom font-bold leading-[1.5] tracking-wide text-slate-700 dark:text-slate-200`}
                 >
-                  <span className="break-words block text-[12px] leading-snug text-slate-400 line-through decoration-slate-300 font-medium">
-                    {formatVal(parsedOld[key])}
-                  </span>
-                </td>
+                  {column.header.split(" ").map((word, index) => (
+                    <span key={index} className="block">{word}</span>
+                  ))}
+                </th>
               ))}
             </tr>
-          )}
-          {!isDelete && <tr>
-            <td className="border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 px-3 py-2 font-semibold text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap align-top">
-              New Values
-            </td>
-            {finalKeys.map((key) => (
-              <td
-                key={key}
-                className="border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-4 py-2 align-top"
-              >
-                <span className="break-words block text-[12px] leading-snug text-emerald-600 dark:text-emerald-400 font-bold">
-                  {formatVal(parsedNew[key])}
-                </span>
-              </td>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id}>
+                <td className={`${border} px-[7px] py-2 align-top leading-[1.5] text-slate-500 dark:text-slate-400`}>
+                  {row.label}
+                </td>
+                {columns.map((column) => (
+                  <td
+                    key={column.key}
+                    className={`${border} px-[7px] py-2 align-top leading-[1.5] text-slate-600 dark:text-slate-300 [overflow-wrap:anywhere]`}
+                  >
+                    {row.cells[column.key]}
+                  </td>
+                ))}
+              </tr>
             ))}
-          </tr>}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -245,19 +328,13 @@ function DetailTable({ row, localize }) {
 function CollapsibleRow({ row, localize, searchTerm }) {
   const [open, setOpen] = useState(false);
   const operationType = normalizeOperationType(row.operationType);
-  const op = OPERATION_COLORS[operationType] || {
-    label: "NONE",
-    bg: "bg-slate-50 dark:bg-slate-800",
-    text: "text-slate-400 dark:text-slate-500",
-    border: "border-slate-200 dark:border-slate-700",
-  };
+  const op = OPERATION_COLORS[operationType] || OPERATION_COLORS[0];
   const date = new Date(row.dateTime);
   const primaryKeyDisplay = getPrimaryKeyDisplay(row);
 
   return (
     <>
-      <Motion.tr
-        variants={rowVariants}
+      <tr
         onClick={() => setOpen(!open)}
         className={`group transition-all duration-200 cursor-pointer hover:brightness-95 ${open
           ? "bg-slate-100 dark:bg-slate-800/50"
@@ -267,29 +344,29 @@ function CollapsibleRow({ row, localize, searchTerm }) {
               ? "bg-amber-50/80 dark:bg-amber-900/30"
               : operationType === 3
                 ? "bg-rose-50/80 dark:bg-rose-900/30"
-              : "bg-white dark:bg-slate-900"
+                : "bg-white dark:bg-slate-900"
           }`}
       >
         <td className="px-5 py-3 text-left w-[50px]">
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
             className={`w-6 h-6 flex items-center justify-center rounded-md text-sm font-bold transition-colors ${open
               ? "bg-pink-100 text-pink-600 dark:bg-pink-500/20 dark:text-pink-400"
               : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
               }`}
+            aria-expanded={open}
           >
             {open ? "−" : "+"}
           </button>
         </td>
         <td className="px-5 py-3 text-left">
-          <div className="flex items-center gap-3">
-            <span className={`text-[10px] px-2.5 py-1 font-semibold rounded-full border ${op.bg} ${op.text} ${op.border}`}>
-              {op.label}
-            </span>
-          </div>
+          <span className={`text-[10px] px-2.5 py-1 font-semibold rounded-full border ${op.bg} ${op.text} ${op.border}`}>
+            {operationLabel(op, localize)}
+          </span>
         </td>
         <td className="px-5 py-3 text-left">
-          <span className="font-mono text-xs text-slate-400">{primaryKeyDisplay}</span>
+          <span className="font-mono text-xs text-slate-400 [overflow-wrap:anywhere]">{primaryKeyDisplay}</span>
         </td>
         <td className="px-5 py-3 text-left">
           <div className="flex items-center gap-2">
@@ -300,18 +377,12 @@ function CollapsibleRow({ row, localize, searchTerm }) {
           </div>
         </td>
         <td className="px-5 py-3 text-left">
-          <span className="text-[11px] text-slate-400 font-medium">{row.schemaName || "public"}</span>
-        </td>
-        <td className="px-5 py-3 text-left">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] text-slate-500 border border-slate-200 dark:border-slate-700">
-              {row.userName?.[0]?.toUpperCase() || "U"}
+              {row.userName?.[0]?.toUpperCase() || "—"}
             </div>
             <span className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-              <HighlightText
-                text={row.userName || "System"}
-                query={searchTerm}
-              />
+              <HighlightText text={row.userName || "—"} query={searchTerm} />
             </span>
           </div>
         </td>
@@ -325,49 +396,20 @@ function CollapsibleRow({ row, localize, searchTerm }) {
             </span>
           </div>
         </td>
-      </Motion.tr>
+      </tr>
 
       <AnimatePresence>
         {open && (
-          <tr style={{ marginTop: 0, marginBottom: 0 }}>
-            <td colSpan={7} className="p-0" style={{ paddingTop: 0, paddingBottom: 0 }}>
+          <tr>
+            <td colSpan={6} className="p-0">
               <Motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="overflow-hidden"
+                className="overflow-hidden bg-slate-50 dark:bg-slate-800/30"
               >
-                <div className="w-full bg-white dark:bg-slate-900">
-                  {/* Metadata bar */}
-                  <div className="flex items-center gap-12 px-5 py-2 bg-slate-500 dark:bg-slate-700 text-white flex-nowrap min-w-max">
-                    <span className={`shrink-0 font-bold text-[10px] px-2.5 py-0.5 rounded ${operationType === 1
-                      ? "bg-emerald-400/30 text-emerald-100"
-                      : operationType === 2
-                        ? "bg-amber-400/30 text-amber-100"
-                        : operationType === 3
-                          ? "bg-rose-400/30 text-rose-100"
-                        : "bg-slate-400/30 text-slate-100"
-                      }`}>
-                      {op.label}
-                    </span>
-                    <span className="font-mono text-[10px] opacity-70 shrink-0">
-                      {row.primaryKey || JSON.stringify({ Id: primaryKeyDisplay })}
-                    </span>
-                    <span className="text-blue-200 text-[10px] shrink-0">{row.entityName}</span>
-                    <span className="text-slate-300 text-[10px] shrink-0">{row.schemaName || "public"}</span>
-                    <span className="text-amber-200 text-[10px] shrink-0">
-                      <HighlightText text={row.userName} query={searchTerm} />
-                    </span>
-                    <span className="ml-auto text-[9px] opacity-60 shrink-0 whitespace-nowrap">
-                      {date.toLocaleDateString("en-GB")} {date.toLocaleTimeString("en-GB")}
-                    </span>
-                  </div>
-                  {/* Property table */}
-                  <div className="overflow-x-auto bg-slate-50 dark:bg-slate-800/30">
-                  <DetailTable row={row} localize={localize} />
-                  </div>
-                </div>
+                <DetailTable row={row} localize={localize} />
               </Motion.div>
             </td>
           </tr>
@@ -383,29 +425,30 @@ export default function CollapsibleAuditLogTable({
   localize = (key) => key,
   searchTerm = "",
 }) {
+  const headerClass = "px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap";
   return (
     <div className="overflow-x-auto custom-scrollbar">
-      <table className="w-full text-left border-separate border-spacing-y-[3px] min-w-max">
+      <table className="w-full min-w-[760px] text-left border-separate border-spacing-y-[3px]">
         <thead>
           <tr className="border-b border-slate-200 dark:border-slate-800 h-[48px] bg-white dark:bg-slate-900">
             <th className="px-5 w-[50px]"></th>
-            <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">OPERATION</th>
-            <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">RECORD KEY</th>
-            <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">ENTITY NAME</th>
-            <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">SCHEMA NAME</th>
-            <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">USER NAME</th>
-            <th className="px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap text-right">DATE TIME</th>
+            {/* ABP audit logging texts; the backend has no schema caption, so that column is not shown. */}
+            <th className={headerClass}>{localize("ChangeType")}</th>
+            <th className={headerClass}>{localize("EntityId")}</th>
+            <th className={headerClass}>{localize("Entity")}</th>
+            <th className={headerClass}>{localize("UserName")}</th>
+            <th className={`${headerClass} text-right`}>{localize("Date")} {localize("Time")}</th>
           </tr>
         </thead>
-        <Motion.tbody variants={containerVariants} initial="hidden" animate="visible">
+        <tbody>
           {(!data || data.length === 0) && !loading ? (
             <tr>
-              <td colSpan={7} className="py-32 text-center text-sm font-medium text-slate-400 uppercase tracking-widest">
+              <td colSpan={6} className="py-32 text-center text-sm font-medium text-slate-400 uppercase tracking-widest">
                 {localize("NoDataAvailableInDatatable")}
               </td>
             </tr>
           ) : (
-            data.map((row, index) => (
+            (data || []).map((row, index) => (
               <CollapsibleRow
                 key={row.id || index}
                 row={row}
@@ -414,7 +457,7 @@ export default function CollapsibleAuditLogTable({
               />
             ))
           )}
-        </Motion.tbody>
+        </tbody>
       </table>
     </div>
   );

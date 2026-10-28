@@ -4,10 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { workCodesApi } from "../services/api/workCodes";
 import { useToast } from "../component/common/ToastContext";
 import { ActionsMenu } from "../component/common/ResourcePage";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Search, X, Filter } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Plus, Search, X, Filter } from "lucide-react";
 import WorkCodeModal from "../component/common/WorkCodeModal";
 import { usePermission } from "../hooks/usePermission";
 import { getApiErrorMessage } from "../utils/apiError";
+import ListPager from "../component/common/ListPager";
+import { useBackendLocalization } from "../hooks/useBackendLocalization";
 
 // Highlighter component for Search term
 const HighlightText = ({ text, searchTerm }) => {
@@ -19,7 +21,7 @@ const HighlightText = ({ text, searchTerm }) => {
   return (
     <span>
       {str.slice(0, idx)}
-      <mark className="bg-pink-100 dark:bg-pink-500/30 text-pink-700 dark:text-pink-100 rounded-[2px] px-[2px]">
+      <mark className="rounded-sm bg-pink-200 px-0.5 text-pink-900 dark:bg-pink-500/40 dark:text-pink-100">
         {str.slice(idx, idx + searchTerm.length)}
       </mark>
       {str.slice(idx + searchTerm.length)}
@@ -30,6 +32,9 @@ const HighlightText = ({ text, searchTerm }) => {
 export default function WorkCodesPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const localize = useBackendLocalization("Billing");
+  // Like ABP, a key the backend does not define is shown as the key itself.
+  const text = (key) => localize(key) || key;
   const canCreate = usePermission("Billing.WorkDoneCodes.Create");
   const canEdit = usePermission("Billing.WorkDoneCodes.Edit");
   const canViewAuditLog = usePermission("Billing.WorkDoneCodes.ViewAuditLog");
@@ -50,10 +55,29 @@ export default function WorkCodesPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
 
+  // Sorting is done by the backend: the column name is the WorkDoneCode field.
+  const [sortKey, setSortKey] = useState("Code");
+  const [sortDir, setSortDir] = useState("asc");
+
+  const handleSort = (field) => {
+    if (sortKey === field) {
+      setSortDir((direction) => (direction === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(field);
+      setSortDir("asc");
+    }
+    setPage(1);
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortKey !== field) return <ArrowUpDown size={13} />;
+    return sortDir === "asc" ? <ArrowUp size={13} /> : <ArrowDown size={13} />;
+  };
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const resp = await workCodesApi.getAll();
+      const resp = await workCodesApi.getAll({ sorting: `${sortKey} ${sortDir}` });
       const allData = Array.isArray(resp) ? resp : (resp?.items || []);
       setData(allData);
     } catch (err) {
@@ -62,7 +86,7 @@ export default function WorkCodesPage() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, sortKey, sortDir]);
 
   useEffect(() => {
     fetchData();
@@ -91,17 +115,21 @@ export default function WorkCodesPage() {
   const handleModalSubmit = async (payload) => {
     if (editItem) {
       await workCodesApi.update(editItem.id, payload);
-      toast("Work code updated");
     } else {
       await workCodesApi.create(payload);
-      toast("Work code created");
     }
+    toast(localize("OperationSuccessfull"));
     setModalOpen(false);
     setEditItem(null);
     fetchData();
   };
 
-  const breadcrumb = ["Home", "Management", "Lookups", "Work Done Codes"];
+  const breadcrumb = [
+    { key: "Home", isHome: true },
+    { key: "Menu:Administration" },
+    { key: "Lookups" },
+    { key: "WorkDoneCodes" },
+  ];
 
   const filteredData = useMemo(() => {
     return data.filter(d => {
@@ -142,21 +170,21 @@ export default function WorkCodesPage() {
 
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
         {/* Header */}
-        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+        <div className="app-page-header flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
           <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
             {breadcrumb.map((b, i) => (
-              <span key={i} className="flex items-center gap-1.5">
+              <span key={b.key} className="flex items-center gap-1.5">
                 <span
-                  onClick={() => b === "Home" && navigate("/")}
+                  onClick={() => b.isHome && navigate("/")}
                   className={
                     i === breadcrumb.length - 1
                       ? "text-pink-500"
-                      : b === "Home"
+                      : b.isHome
                         ? "hover:text-pink-500 cursor-pointer transition-colors"
                         : ""
                   }
                 >
-                  {b}
+                  {text(b.key)}
                 </span>
                 {i < breadcrumb.length - 1 && <span className="text-slate-300 dark:text-slate-700">/</span>}
               </span>
@@ -164,14 +192,14 @@ export default function WorkCodesPage() {
           </nav>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
-              Work Done Codes
+              {text("WorkDoneCodes")}
             </h1>
             {canCreate && <button
               onClick={handleNew}
               className="app-primary-button w-full sm:w-auto inline-flex items-center justify-center px-5 py-2.5 text-xs"
             >
               <Plus size={16} className="mr-2" strokeWidth={3} />
-              Add New
+              {localize("NewWorkDoneCode")}
             </button>}
           </div>
 
@@ -183,7 +211,7 @@ export default function WorkCodesPage() {
                 </div>
                 <input
                   type="text"
-                  placeholder="Search by Code..."
+                  placeholder={localize("SearchInTablePlaceholder")}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-[12px] outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
@@ -203,7 +231,7 @@ export default function WorkCodesPage() {
                 aria-expanded={showAdvanced}
               >
                 <Filter size={14} />
-                Advanced Search
+                {localize("AdvancedSearch")}
               </button>
             </div>
 
@@ -212,7 +240,7 @@ export default function WorkCodesPage() {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Filter by code..."
+                    placeholder={localize("Code")}
                     value={advSearchCode}
                     onChange={(e) => setAdvSearchCode(e.target.value)}
                     className="w-full pl-3 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-700/50 bg-white dark:bg-slate-900 text-[11px] outline-none transition-all focus:border-pink-500 focus:ring-2 focus:ring-pink-500/10 font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
@@ -226,7 +254,7 @@ export default function WorkCodesPage() {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Filter by description..."
+                    placeholder={localize("Description")}
                     value={advSearchDesc}
                     onChange={(e) => setAdvSearchDesc(e.target.value)}
                     className="w-full pl-3 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-700/50 bg-white dark:bg-slate-900 text-[11px] outline-none transition-all focus:border-pink-500 focus:ring-2 focus:ring-pink-500/10 font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
@@ -246,15 +274,15 @@ export default function WorkCodesPage() {
         <div className="flex flex-col w-full h-auto relative">
           {loading ? (
             <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-20">
-              Refreshing data...
+              {localize("LoadingWithThreeDot")}
             </div>
           ) : data.length === 0 ? (
             <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] py-20">
-              No work codes found
+              {localize("NoDataAvailableInDatatable")}
             </div>
           ) : (
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar">
-              <table className="w-full table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
+              <table className="w-full min-w-[520px] table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
                 <colgroup>
                   <col style={{ width: '15%' }} />
                   <col style={{ width: '100%' }} />
@@ -262,9 +290,17 @@ export default function WorkCodesPage() {
                 </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
-                    <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">Code</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Description</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">Actions</th>
+                    <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">
+                      <button type="button" onClick={() => handleSort("Code")} className="inline-flex items-center gap-1.5 uppercase hover:text-pink-600 dark:hover:text-pink-400" aria-label={localize("Code")}>
+                        {localize("Code")} <SortIcon field="Code" />
+                      </button>
+                    </th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">
+                      <button type="button" onClick={() => handleSort("Description")} className="inline-flex items-center gap-1.5 uppercase hover:text-pink-600 dark:hover:text-pink-400" aria-label={localize("Description")}>
+                        {localize("Description")} <SortIcon field="Description" />
+                      </button>
+                    </th>
+                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">{localize("Actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -303,90 +339,14 @@ export default function WorkCodesPage() {
           )}
         </div>
 
-        {/* Pagination Section */}
-        <div className="px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-              <AppSelect
-                value={pageSize}
-                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
-              >
-                {[10, 25, 50, 100].map((s) => (
-                  <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
-                ))}
-              </AppSelect>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                <span className="text-slate-900 dark:text-white tabular-nums">
-                  {totalCount > 0 ? (page - 1) * pageSize + 1 : 0}
-                </span>
-                <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
-                <span className="text-slate-900 dark:text-white tabular-nums">
-                  {Math.min(page * pageSize, totalCount)}
-                </span>
-                <span className="text-slate-400 dark:text-slate-500 mx-2 lowercase font-bold tracking-normal italic">of</span>
-                <span className="text-slate-900 dark:text-white tabular-nums font-black">
-                  {totalCount}
-                </span>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
-              <button
-                onClick={() => setPage(1)}
-                disabled={page === 1 || loading}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="First Page"
-              >
-                <ChevronsLeft size={14} strokeWidth={2.5} />
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1 || loading}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Previous Page"
-              >
-                <ChevronLeft size={14} strokeWidth={2.5} />
-              </button>
-
-              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-              <div className="px-3 flex items-center gap-2 py-1">
-                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Page</span>
-                <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
-                  <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{page}</span>
-                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-600">/</span>
-                  <span className="text-[10px] font-black text-slate-900 dark:text-white tabular-nums leading-none">{Math.ceil(totalCount / pageSize) || 1}</span>
-                </div>
-              </div>
-
-              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= Math.ceil(totalCount / pageSize) || loading}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Next Page"
-              >
-                <ChevronRight size={14} strokeWidth={2.5} />
-              </button>
-              <button
-                onClick={() => setPage(Math.ceil(totalCount / pageSize))}
-                disabled={page >= Math.ceil(totalCount / pageSize) || loading}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Last Page"
-              >
-                <ChevronsRight size={14} strokeWidth={2.5} />
-              </button>
-            </div>
-          </div>
-        </div>
+        <ListPager
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          loading={loading}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+        />
       </div>
 
       <WorkCodeModal

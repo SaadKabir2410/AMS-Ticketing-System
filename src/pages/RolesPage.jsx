@@ -5,6 +5,7 @@ import { rolesApi } from "../services/api/roles";
 import { useToast } from "../component/common/ToastContext";
 import { usePermissionContext } from "../context/PermissionContext";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
+import SearchTextHighlight from "../component/common/SearchTextHighlight";
 import { X, ShieldCheck, ChevronDown, ChevronRight, Search, RefreshCw, ArrowLeft, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react";
 import IconButton from "@mui/material/IconButton";
 import { motion, AnimatePresence } from "framer-motion";
@@ -462,7 +463,7 @@ export default function RolesPage() {
 
   const handleDelete = (role) => {
     if (role.name.toLowerCase() === "admin") {
-      toast("Error: The Admin role cannot be deleted.", "error");
+      toast(localize("Volo.Abp.Identity:010006"), "error");
       return;
     }
     setDeleteRole(role);
@@ -490,7 +491,7 @@ export default function RolesPage() {
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-visible min-h-0">
 
         {/* Header Section */}
-        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50 transition-colors">
+        <div className="app-page-header flex flex-col gap-6 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50 transition-colors">
           <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
             <span>Home</span>
             <span className="text-slate-300 dark:text-slate-700">/</span>
@@ -526,9 +527,9 @@ export default function RolesPage() {
 
         {/* Toolbar Section */}
         <div className="relative z-20 px-4 py-4 sm:px-6 sm:py-6 flex items-center justify-between bg-transparent flex-wrap gap-4 sm:gap-6">
-          <div className="flex items-center gap-4 sm:gap-6 flex-1 min-w-[200px]">
+          <div className="flex items-center gap-4 sm:gap-6 flex-1 min-w-0">
             {/* Search Box */}
-            <div className="relative w-full max-w-[400px] group">
+            <div className="relative w-full max-w-[400px] min-w-0 group">
               <input
                 type="text"
                 placeholder="Search roles by name..."
@@ -607,7 +608,7 @@ export default function RolesPage() {
                         <td className={`px-5 ${ROW_HEIGHT} text-[12px] pl-8 rounded-l-2xl text-slate-800 dark:text-slate-200 font-bold`}>
                           <div className="flex items-center gap-2.5">
                             <span className="text-sm text-slate-800 dark:text-slate-200 font-bold uppercase truncate">
-                              {row.name}
+                              <SearchTextHighlight text={row.name} query={search} />
                             </span>
                             {row.isDefault && (
                               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -643,14 +644,14 @@ export default function RolesPage() {
 
           {/* Pagination Section */}
           {totalPages > 0 && (
-            <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/50 mt-4 pt-4 shrink-0">
+            <div className="flex flex-wrap items-center justify-center sm:justify-between gap-3 border-t border-slate-100 dark:border-slate-800/50 mt-4 pt-4 shrink-0">
               <div className="text-[11px] font-bold text-slate-400 tracking-wider">
                 Showing <span className="text-pink-500">{(page - 1) * pageSize + 1}</span> to{" "}
                 <span className="text-pink-500">{Math.min(page * pageSize, totalCount)}</span> of{" "}
                 <span className="text-pink-500">{totalCount}</span> entries
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-3">
                 {/* Rows per page dropdown */}
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Show:</span>

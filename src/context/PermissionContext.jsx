@@ -23,6 +23,30 @@ const isAmsTicketPermission = (permissionName) =>
   permissionName === AMS_TICKET_PERMISSION ||
   permissionName.startsWith(`${AMS_TICKET_PERMISSION}.`);
 
+// Admin-role ticket permissions are kept for the browser session so pages can
+// render at once; they are refreshed in the background on every load.
+const ADMIN_ROLE_PERMISSIONS_KEY = "ams_admin_role_permissions";
+
+const readCachedAdminRolePermissions = (roleName) => {
+  if (!roleName) return null;
+  try {
+    const stored = JSON.parse(sessionStorage.getItem(ADMIN_ROLE_PERMISSIONS_KEY) || "null");
+    return stored?.roleName === roleName ? stored.permissions : null;
+  } catch {
+    return null;
+  }
+};
+
+const cacheAdminRolePermissions = (roleName, permissions) => {
+  try {
+    sessionStorage.setItem(ADMIN_ROLE_PERMISSIONS_KEY, JSON.stringify({ roleName, permissions }));
+  } catch {
+    // In-memory state still works when browser storage is unavailable.
+  }
+};
+
+const hasEntries = (value) => Boolean(value) && Object.keys(value).length > 0;
+
 const isPolicyGranted = (value) =>
   value === true ||
   (typeof value === "string" && value.trim().toLowerCase() === "true");
@@ -40,10 +64,13 @@ export const PermissionProvider = ({ children }) => {
   // Now we initialize directly from user.permissions (already in storage/state),
   // so permissions are available on the first render with no async round-trip.
   const [permissions, setPermissions] = useState(() => user?.permissions ?? {});
-  const [adminRolePermissions, setAdminRolePermissions] = useState(null);
-  const [adminRolePermissionsLoading, setAdminRolePermissionsLoading] = useState(
-    () => Boolean(getAdminRoleName(user?.role)),
+  const [adminRolePermissions, setAdminRolePermissions] = useState(
+    () => readCachedAdminRolePermissions(getAdminRoleName(user?.role)),
   );
+  const [adminRolePermissionsLoading, setAdminRolePermissionsLoading] = useState(() => {
+    const roleName = getAdminRoleName(user?.role);
+    return Boolean(roleName) && !readCachedAdminRolePermissions(roleName);
+  });
 
   // ── isLoading mirrors authLoading so App.jsx's spinner stays up ───────────
   // until AuthContext has confirmed the session. Once authLoading=false we know
@@ -57,7 +84,8 @@ export const PermissionProvider = ({ children }) => {
       return null;
     }
 
-    setAdminRolePermissionsLoading(true);
+    // With cached role permissions the page keeps rendering during the refresh.
+    if (!readCachedAdminRolePermissions(adminRoleName)) setAdminRolePermissionsLoading(true);
     try {
       const response = await apiClient.get("/api/permission-management/permissions", {
         params: {
@@ -77,6 +105,7 @@ export const PermissionProvider = ({ children }) => {
         });
       });
       setAdminRolePermissions(rolePermissions);
+      cacheAdminRolePermissions(adminRoleName, rolePermissions);
       return rolePermissions;
     } catch (error) {
       // Some users may not be allowed to inspect role permissions. In that
@@ -105,10 +134,13 @@ export const PermissionProvider = ({ children }) => {
       return;
     }
 
-    if (user.permissions && Object.keys(user.permissions).length > 0) {
-      // Seed from the session to keep state stable, then refresh below so
-      // revoked backend permissions never remain visible from stale storage.
+    if (hasEntries(user.permissions)) {
+      // Render at once with the saved permissions, then refresh them in the
+      // background so a revoked permission disappears as soon as the backend answers.
       setPermissions(user.permissions);
+      setIsLoading(false);
+      fetchPermissions({ background: true });
+      return;
     }
 
     fetchPermissions();
@@ -122,14 +154,14 @@ export const PermissionProvider = ({ children }) => {
   }, [authLoading, fetchAdminRolePermissions]);
 
   // ── Fallback fetch — only used when user.permissions is absent ────────────
-  const fetchPermissions = useCallback(async () => {
+  const fetchPermissions = useCallback(async ({ background = false } = {}) => {
     if (!isAuthenticated) {
       setPermissions({});
       setIsLoading(false);
       return;
     }
 
-    setIsLoading(true);
+    if (!background) setIsLoading(true);
     try {
       const applicationConfig = await loadApplicationConfig({ force: true });
       const grantedPolicies = applicationConfig?.auth?.grantedPolicies ?? {};
@@ -153,7 +185,8 @@ export const PermissionProvider = ({ children }) => {
       return grantedPolicies;
     } catch (error) {
       console.error("[PermissionContext] Failed to fetch permissions:", error);
-      setPermissions({});
+      // A failed background refresh keeps the saved permissions.
+      if (!background) setPermissions({});
       return null;
     } finally {
       setIsLoading(false);

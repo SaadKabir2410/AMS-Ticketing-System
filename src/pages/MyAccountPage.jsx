@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
 import { EyeOff, Eye } from "lucide-react";
 import { useAuth } from "../context/AuthContextHook";
+import { useNavigate } from "react-router-dom";
 import myAccountApi from "../services/api/myaccount";
-import toast from "react-hot-toast";
+import { useToast } from "../component/common/ToastContext";
+import { useBackendLocalization } from "../hooks/useBackendLocalization";
+import { getApiErrorMessage } from "../utils/apiError";
+
+const CHANGE_PASSWORD_TAB = "ChangePassword";
+const PERSONAL_INFO_TAB = "PersonalInfo";
 
 function PasswordField({ label, value, onChange, name }) {
   const [show, setShow] = useState(false);
@@ -50,7 +56,10 @@ function InputField({ label, value, onChange, name, required = false }) {
 
 export default function MyAccountPage() {
   const { user, updateUser } = useAuth();
-  const [activeTab, setActiveTab] = useState("Personal info");
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const localize = useBackendLocalization("Billing");
+  const [activeTab, setActiveTab] = useState(PERSONAL_INFO_TAB);
 
   // ── Personal Info State ──────────────────────────────
   const [profileForm, setProfileForm] = useState({
@@ -59,6 +68,7 @@ export default function MyAccountPage() {
     surname: "",
     email: "",
     phoneNumber: "",
+    concurrencyStamp: "",
   });
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
@@ -75,7 +85,7 @@ export default function MyAccountPage() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
 
-  const tabs = ["Change password", "Personal info"];
+  const tabs = [CHANGE_PASSWORD_TAB, PERSONAL_INFO_TAB];
 
   // ── GET profile on mount ─────────────────────────────
   useEffect(() => {
@@ -88,9 +98,12 @@ export default function MyAccountPage() {
           surname: data.surname ?? "",
           email: data.email ?? "",
           phoneNumber: data.phoneNumber ?? "",
+          concurrencyStamp: data.concurrencyStamp ?? "",
         });
       })
-      .catch(() => toast.error("Failed to load profile"));
+      .catch((err) => toast(getApiErrorMessage(err) || localize("DefaultErrorMessage"), "error"));
+    // Load once; localize/toast only format the error message.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Handlers ─────────────────────────────────────────
@@ -136,13 +149,17 @@ export default function MyAccountPage() {
     setProfileError("");
     setProfileSuccess("");
     try {
-      await myAccountApi.updateMyProfile(profileForm);
-      setProfileSuccess("Profile updated successfully");
-      toast.success("Profile updated successfully");
+      // The backend checks ConcurrencyStamp; keep the new one for the next save.
+      const updated = await myAccountApi.updateMyProfile(profileForm);
+      if (updated?.concurrencyStamp) {
+        setProfileForm((p) => ({ ...p, concurrencyStamp: updated.concurrencyStamp }));
+      }
+      setProfileSuccess(localize("PersonalSettingsSaved"));
+      toast(localize("PersonalSettingsSaved"));
     } catch (err) {
-      const msg = err.response?.data?.error?.message || "Failed to update profile";
+      const msg = getApiErrorMessage(err) || localize("DefaultErrorMessage");
       setProfileError(msg);
-      toast.error("Failed to update profile");
+      toast(msg, "error");
     } finally {
       setProfileLoading(false);
     }
@@ -153,20 +170,22 @@ export default function MyAccountPage() {
     setPasswordError("");
     setPasswordSuccess("");
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError("Passwords do not match");
-      toast.error("Passwords do not match");
+      setPasswordError(localize("NewPasswordConfirmFailed"));
       return;
     }
     setPasswordLoading(true);
     try {
-      await myAccountApi.changePassword(passwordForm);
-      setPasswordSuccess("Password changed successfully");
-      toast.success("Password changed successfully");
+      await myAccountApi.changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
+      setPasswordSuccess(localize("PasswordChanged"));
+      toast(localize("PasswordChanged"));
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
     } catch (err) {
-      const msg = err.response?.data?.error?.message || "Failed to change password";
+      const msg = getApiErrorMessage(err) || localize("DefaultErrorMessage");
       setPasswordError(msg);
-      toast.error("Failed to change password");
+      toast(msg, "error");
     } finally {
       setPasswordLoading(false);
     }
@@ -181,13 +200,13 @@ export default function MyAccountPage() {
 
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
         {/* Header */}
-        <div className="flex flex-col gap-2 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50">
+        <div className="app-page-header flex flex-col gap-2 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50">
           <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
-            <span>Home</span>
+            <span onClick={() => navigate("/")} className="hover:text-pink-500 cursor-pointer transition-colors">{localize("Home")}</span>
             <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span className="text-pink-500">My Account</span>
+            <span className="text-pink-500">{localize("MyAccount")}</span>
           </nav>
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">My Account</h1>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{localize("MyAccount")}</h1>
         </div>
 
         <div className="flex flex-col md:flex-row gap-6 lg:gap-14 p-8 lg:p-10 flex-1">
@@ -205,7 +224,7 @@ export default function MyAccountPage() {
                       : "bg-pink-50/70 dark:bg-pink-500/5 text-pink-600 dark:text-pink-400 hover:bg-pink-100 dark:hover:bg-pink-500/15"
                     }`}
                 >
-                  {tab}
+                  {localize(tab)}
                 </button>
               );
             })}
@@ -215,31 +234,31 @@ export default function MyAccountPage() {
           <div className="flex-1 w-full max-w-3xl">
 
             {/* ── Change Password Tab ── */}
-            {activeTab === "Change password" && (
+            {activeTab === CHANGE_PASSWORD_TAB && (
               <div className="animate-in fade-in duration-300">
                 <h1 className="text-[28px] font-medium text-slate-600 dark:text-slate-300 mb-6">
-                  Change password
+                  {localize("ChangePassword")}
                 </h1>
                 <hr className="border-slate-100 dark:border-slate-800 mb-6" />
                 <h2 className="text-[20px] font-medium text-slate-500 dark:text-slate-400 mb-8">
-                  Change password
+                  {localize("ChangePassword")}
                 </h2>
 
                 <div className="max-w-2xl">
                   <PasswordField
-                    label="Current password"
+                    label={localize("DisplayName:CurrentPassword")}
                     name="currentPassword"
                     value={passwordForm.currentPassword}
                     onChange={handlePasswordChange}
                   />
                   <PasswordField
-                    label="New password"
+                    label={localize("DisplayName:NewPassword")}
                     name="newPassword"
                     value={passwordForm.newPassword}
                     onChange={handlePasswordChange}
                   />
                   <PasswordField
-                    label="Confirm new password"
+                    label={localize("DisplayName:NewPasswordConfirm")}
                     name="confirmPassword"
                     value={passwordForm.confirmPassword}
                     onChange={handlePasswordChange}
@@ -261,7 +280,7 @@ export default function MyAccountPage() {
                       disabled={passwordLoading}
                       className="app-primary-button px-6 py-2.5 text-[14px] tracking-wide outline-none"
                     >
-                      {passwordLoading ? "Saving..." : "Submit"}
+                      {passwordLoading ? localize("SavingWithThreeDot") : localize("Submit")}
                     </button>
                   </div>
                 </div>
@@ -269,14 +288,14 @@ export default function MyAccountPage() {
             )}
 
             {/* ── Personal Info Tab ── */}
-            {activeTab === "Personal info" && (
+            {activeTab === PERSONAL_INFO_TAB && (
               <div className="animate-in fade-in duration-300">
                 <h1 className="text-[28px] font-medium text-slate-600 dark:text-slate-300 mb-6">
-                  Personal info
+                  {localize("PersonalInfo")}
                 </h1>
                 <hr className="border-slate-100 dark:border-slate-800 mb-6" />
                 <h2 className="text-[20px] font-medium text-slate-500 dark:text-slate-400 mb-8">
-                  Personal settings
+                  {localize("PersonalSettings")}
                 </h2>
 
                 <div className="max-w-2xl">
@@ -284,19 +303,19 @@ export default function MyAccountPage() {
                   <div className="mb-8 flex items-center gap-6">
                     <div className="relative group w-24 h-24 rounded-full shadow-md overflow-hidden bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0 border-2 border-slate-200 dark:border-slate-700">
                       {profilePic ? (
-                        <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />
+                        <img src={profilePic} alt={localize("ProfilePicture")} className="w-full h-full object-cover" />
                       ) : (
                         <span className="text-3xl font-bold text-slate-400">{user?.avatar || "U"}</span>
                       )}
                       <label className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity backdrop-blur-[2px]">
-                        <span className="text-[11px] font-bold uppercase tracking-wider">Change</span>
+                        <span className="text-[11px] font-bold uppercase tracking-wider">{localize("ProfilePicture")}</span>
                         <input type="file" accept="image/*" className="hidden" onChange={handleProfilePicChange} />
                       </label>
                     </div>
                     <div className="flex flex-col items-start gap-2.5">
                       <div>
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white">{user?.name || profileForm.name || "User"}</h3>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Update your photo and personal details.</p>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white">{user?.name || profileForm.name || profileForm.userName}</h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{localize("ProfilePicture")}</p>
                       </div>
                       {profilePic && (
                         <button
@@ -304,14 +323,14 @@ export default function MyAccountPage() {
                           onClick={handleRemoveProfilePic}
                           className="text-[11px] font-bold uppercase tracking-wider text-pink-600 hover:text-white transition-colors bg-pink-50 hover:bg-pink-600 dark:bg-pink-500/10 dark:text-pink-400 dark:hover:bg-pink-600 dark:hover:text-white px-3 py-1.5 rounded-md"
                         >
-                          Remove picture
+                          {localize("Remove")}
                         </button>
                       )}
                     </div>
                   </div>
 
                   <InputField
-                    label="Username"
+                    label={localize("DisplayName:UserName")}
                     name="userName"
                     value={profileForm.userName}
                     onChange={handleProfileChange}
@@ -320,13 +339,13 @@ export default function MyAccountPage() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4">
                     <InputField
-                      label="Name"
+                      label={localize("DisplayName:Name")}
                       name="name"
                       value={profileForm.name}
                       onChange={handleProfileChange}
                     />
                     <InputField
-                      label="Surname"
+                      label={localize("DisplayName:Surname")}
                       name="surname"
                       value={profileForm.surname}
                       onChange={handleProfileChange}
@@ -334,14 +353,14 @@ export default function MyAccountPage() {
                   </div>
 
                   <InputField
-                    label="Email"
+                    label={localize("DisplayName:Email")}
                     name="email"
                     value={profileForm.email}
                     onChange={handleProfileChange}
                     required
                   />
                   <InputField
-                    label="Phone number"
+                    label={localize("DisplayName:PhoneNumber")}
                     name="phoneNumber"
                     value={profileForm.phoneNumber}
                     onChange={handleProfileChange}
@@ -363,7 +382,7 @@ export default function MyAccountPage() {
                       disabled={profileLoading}
                       className="app-primary-button px-6 py-2.5 text-[14px] tracking-wide outline-none"
                     >
-                      {profileLoading ? "Saving..." : "Submit"}
+                      {profileLoading ? localize("SavingWithThreeDot") : localize("Submit")}
                     </button>
                   </div>
                 </div>

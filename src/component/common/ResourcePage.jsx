@@ -7,6 +7,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { DataGrid, getGridStringOperators } from "@mui/x-data-grid";
 import { useResource } from "../hooks/useResource";
 import { useToast } from "./ToastContext";
+import { useBackendLocalization } from "../../hooks/useBackendLocalization";
 import { ArrowLeft, ChevronDown, ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Database, Search } from "lucide-react";
 import { Menu, MenuItem, ListItemIcon, ListItemText, Box, Popper, Fade, Paper, ClickAwayListener } from "@mui/material";
 
@@ -19,15 +20,26 @@ export function ActionsMenu({
   onDisable,
   onEnable,
   customActions = [],
-  deleteButtonText = "Delete",
-  actionButtonText = "Actions",
-  editButtonText = "Update Data",
-  permissionButtonText = "Permissions",
-  auditLogButtonText = "Audit Log",
-  disableButtonText = "Disable",
-  enableButtonText = "Enable",
+  deleteButtonText,
+  actionButtonText,
+  editButtonText,
+  detailButtonText,
+  permissionButtonText,
+  auditLogButtonText,
+  disableButtonText,
+  enableButtonText,
   className = "text-pink-500 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-950/30 border hover:border-pink-500 transition-all text-[11px] px-4 py-1.5 flex items-center justify-center gap-1 rounded-xl font-bold tracking-wider bg-transparent hover:border-pink-500 shadow-sm",
 }) {
+  // Labels a page does not pass come from the backend localization.
+  const localize = useBackendLocalization("Billing");
+  deleteButtonText ??= localize("DeleteButtonText");
+  actionButtonText ??= localize("Actions");
+  editButtonText ??= localize("EditButtonText");
+  detailButtonText ??= localize("Details");
+  permissionButtonText ??= localize("Permissions");
+  auditLogButtonText ??= localize("AuditLogsButtonText");
+  disableButtonText ??= localize("DisableButtonText");
+  enableButtonText ??= localize("EnableButtonText");
 
   const { dark } = useTheme();
   const isDark = dark === "dark";
@@ -84,7 +96,7 @@ export function ActionsMenu({
             <Box sx={{ py: 0.5 }}>
               {onDetail && (
                 <MenuItem onClick={() => { onDetail(); handleClose(); }} sx={menuItemHover}>
-                  <ListItemText primary="View" primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
+                  <ListItemText primary={detailButtonText} primaryTypographyProps={{ fontSize: "12px", fontWeight: 600 }} />
                 </MenuItem>
               )}
 
@@ -493,7 +505,7 @@ export default function ResourcePage({
       return (
         <div className={baseClass} title={str}>
           {str.slice(0, idx)}
-          <mark className="bg-pink-200 dark:bg-pink-500/40 text-pink-900 dark:text-pink-100 rounded-[2px] px-[2px] ">
+          <mark className="rounded-sm bg-pink-200 px-0.5 text-pink-900 dark:bg-pink-500/40 dark:text-pink-100">
             {str.slice(idx, idx + searchTerm.length)}
           </mark>
           {str.slice(idx + searchTerm.length)}
@@ -635,33 +647,10 @@ export default function ResourcePage({
         *::-webkit-scrollbar { display: none !important; }
         * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
       `}</style>
-      {/* Breadcrumb - Moved outside the card to match reference */}
-      {breadcrumb.length > 0 && !hideHeader && (
-        <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
-          {breadcrumb.map((b, i) => (
-            <span key={i} className="flex items-center gap-1.5">
-              <span
-                onClick={() => b === "Home" && navigate("/")}
-                className={
-                  i === breadcrumb.length - 1
-                    ? "text-pink-500"
-                    : b === "Home"
-                      ? "hover:text-pink-500 cursor-pointer transition-colors"
-                      : ""
-                }
-              >
-                {b}
-              </span>
-              {i < breadcrumb.length - 1 && <span className="text-slate-300 dark:text-slate-700">/</span>}
-            </span>
-          ))}
-        </nav>
-      )}
-
       <div className={containerClassName}>
         {/* Header Section */}
         {!hideHeader && (
-          <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+          <div className="app-page-header flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
             {breadcrumb.length > 0 && (
               <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
                 {breadcrumb.map((b, i) => (
@@ -714,7 +703,7 @@ export default function ResourcePage({
         {/* Toolbar Section */}
         {(showSearchBar || showFilterBar || customFilterArea) && (
           <div className="relative z-20 px-4 py-4 sm:px-6 sm:py-6 flex items-center justify-between bg-transparent shrink-0 flex-wrap gap-4 sm:gap-6">
-            <div className={`flex items-center gap-4 sm:gap-6 flex-1 min-w-[200px] ${wideSearch === "full" ? "max-w-none" : (wideSearch ? "max-w-2xl" : "max-w-[400px]")}`}>
+            <div className={`flex items-center gap-4 sm:gap-6 flex-1 min-w-0 ${wideSearch === "full" ? "max-w-none" : (wideSearch ? "max-w-2xl" : "max-w-[400px]")}`}>
 
               {showSearchBar && (
                 <div className="relative w-full group">
@@ -850,7 +839,7 @@ export default function ResourcePage({
 
             {/* Pagination Footer */}
             {showPagination && (
-              <div className="px-6 py-4 bg-slate-50/80 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 transition-colors">
+              <div className="px-3 sm:px-6 py-4 bg-slate-50/80 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-center sm:justify-between gap-3 shrink-0 transition-colors">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2.5">
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Page Size:</span>
@@ -943,7 +932,7 @@ export default function ResourcePage({
 
           {/* Side Panel */}
           {sidePanelOpen && SecondaryDetailComponent && (
-            <div className="w-[600px] border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col shadow-2xl animate-in slide-in-from-right duration-500 z-50">
+            <div className="w-full sm:w-[600px] max-w-full border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col shadow-2xl animate-in slide-in-from-right duration-500 z-50">
               <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
                 <div>
                   <h3 className="text-lg text-slate-800 dark:text-white tracking-tighter">

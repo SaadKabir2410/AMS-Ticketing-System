@@ -11,29 +11,41 @@ import PermissionGuard from "./component/auth/PermissionGuard";
 // Auth pages — loaded eagerly (needed before auth resolves)
 import LoginPage from "./pages/Auth/Login";
 import ForgotPasswordPage from "./pages/Auth/ForgotPassword";
+import ResetPasswordPage from "./pages/Auth/ResetPaswordPage";
 
-// App pages — lazy-loaded so only the current route's code is fetched
-const Dashboard = lazy(() => import("./pages/Dashboard"));
-const AMSTicketsPage = lazy(() => import("./pages/AMSTicketsPage"));
-const SitesPage = lazy(() => import("./pages/SitesPage"));
-const CountriesPage = lazy(() => import("./pages/CountriesPage"));
-const AuditLogsPage = lazy(() => import("./pages/AuditLogsPage"));
-const WorkCodesPage = lazy(() => import("./pages/WorkCodesPage"));
-const CodePage = lazy(() => import("./pages/CodePage"));
-const HolidaysPage = lazy(() => import("./pages/HolidaysPage"));
-const UserWorkingHoursPage = lazy(() => import("./pages/UserWorkingHoursPage"));
-const JobsheetsPage = lazy(() => import("./pages/JobsheetsPage"));
-const TicketCommissionReportPage = lazy(() => import("./pages/TicketCommissionReportPage"));
-const AMSTicketsReportPage = lazy(() => import("./pages/AMSTicketsReportPage"));
-const GeneralReportPage = lazy(() => import("./pages/GeneralReportPage"));
-const UserYearlyReportPage = lazy(() => import("./pages/UserYearlyReportPage"));
-const AfterWorkingHoursReportPage = lazy(() => import("./pages/AfterWorkingHoursReportPage"));
-const UsersPage = lazy(() => import("./pages/UsersPage"));
-const RolesPage = lazy(() => import("./pages/RolesPage"));
-const TaskCategoryProjectsPage = lazy(() => import("./pages/TaskCategoryProjectsPage"));
-const CodeDetailsPage = lazy(() => import("./pages/CodeDetailsPage"));
-const SettingsPage = lazy(() => import("./pages/SettingsPage"));
-const MyAccountPage = lazy(() => import("./pages/MyAccountPage"));
+// The dashboard is the default page, so it ships with the app.
+import Dashboard from "./pages/Dashboard";
+
+// Other pages are lazy-loaded, then fetched in the background once the app is
+// idle, so opening any page later is instant.
+const pageLoaders = [];
+const lazyPage = (loader) => {
+  pageLoaders.push(loader);
+  return lazy(loader);
+};
+
+const AMSTicketsPage = lazyPage(() => import("./pages/AMSTicketsPage"));
+const SitesPage = lazyPage(() => import("./pages/SitesPage"));
+const CountriesPage = lazyPage(() => import("./pages/CountriesPage"));
+const AuditLogsPage = lazyPage(() => import("./pages/AuditLogsPage"));
+const WorkCodesPage = lazyPage(() => import("./pages/WorkCodesPage"));
+const CodePage = lazyPage(() => import("./pages/CodePage"));
+const HolidaysPage = lazyPage(() => import("./pages/HolidaysPage"));
+const UserWorkingHoursPage = lazyPage(() => import("./pages/UserWorkingHoursPage"));
+const JobsheetsPage = lazyPage(() => import("./pages/JobsheetsPage"));
+const TicketCommissionReportPage = lazyPage(() => import("./pages/TicketCommissionReportPage"));
+const AMSTicketsReportPage = lazyPage(() => import("./pages/AMSTicketsReportPage"));
+const GeneralReportPage = lazyPage(() => import("./pages/GeneralReportPage"));
+const UserYearlyReportPage = lazyPage(() => import("./pages/UserYearlyReportPage"));
+const AfterWorkingHoursReportPage = lazyPage(() => import("./pages/AfterWorkingHoursReportPage"));
+const UsersPage = lazyPage(() => import("./pages/UsersPage"));
+const RolesPage = lazyPage(() => import("./pages/RolesPage"));
+const TaskCategoryProjectsPage = lazyPage(() => import("./pages/TaskCategoryProjectsPage"));
+const CodeDetailsPage = lazyPage(() => import("./pages/CodeDetailsPage"));
+const SettingsPage = lazyPage(() => import("./pages/SettingsPage"));
+const MyAccountPage = lazyPage(() => import("./pages/MyAccountPage"));
+
+const preloadPages = () => pageLoaders.forEach((load) => load().catch(() => null));
 
 const AUDIT_LOG_PERMISSIONS = [
   "Billing.AMSTickets.ViewAuditLog",
@@ -61,6 +73,13 @@ function PageLoader() {
 
 function Layout({ collapsed, setCollapsed }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    const schedule = window.requestIdleCallback || ((callback) => window.setTimeout(callback, 1500));
+    const cancel = window.cancelIdleCallback || window.clearTimeout;
+    const handle = schedule(preloadPages);
+    return () => cancel(handle);
+  }, []);
 
   return (
     <div className="flex h-screen w-screen dark:bg-slate-950 bg-slate-100 text-slate-900 dark:text-white transition-colors duration-300 relative">
@@ -90,21 +109,15 @@ function Layout({ collapsed, setCollapsed }) {
       {/* Sidebar for Desktop */}
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-      <div className="flex flex-col flex-1 h-screen overflow-y-auto overflow-x-hidden">
+      <div className="app-content-scroll flex flex-col flex-1 h-screen overflow-y-auto overflow-x-hidden">
         <Navbar setCollapsed={setCollapsed} setMobileOpen={setMobileOpen} />
 
         <main className="flex-1 p-3 sm:p-6 bg-slate-100 dark:bg-slate-950 transition-colors duration-300 min-h-full">
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              {/* Dashboard / Home */}
-              <Route
-                path="/"
-                element={
-                  <PermissionGuard permission="Billing.Dashboards">
-                    <Dashboard />
-                  </PermissionGuard>
-                }
-              />
+              {/* Dashboard / Home: the default page for every signed-in user
+                  (as in Blazor); its data request still needs Billing.Dashboards. */}
+              <Route path="/" element={<Dashboard />} />
 
               {/* Main Menu */}
               <Route
@@ -344,6 +357,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
         path="/*"
         element={

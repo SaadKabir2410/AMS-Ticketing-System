@@ -1,11 +1,12 @@
 import apiClient from "../apiClient";
 
 export const workCodesApi = {
-  getAll: () => {
+  // sorting is passed to the backend as-is, e.g. "Code asc" or "Description desc".
+  getAll: ({ sorting = "Code asc" } = {}) => {
     const params = {
       SkipCount: 0,
       MaxResultCount: 1000,
-      Sorting: "Code asc",
+      Sorting: sorting,
     };
     return apiClient
       .get("/api/app/work-done-code/paged-list", { params })
@@ -14,9 +15,10 @@ export const workCodesApi = {
   checkCodeExists: (code, signal) => {
     const params = {
       SkipCount: 0,
-      MaxResultCount: 1,
+      // The backend matches codes with "contains", so fetch every match and
+      // let the modal look for the exact one.
+      MaxResultCount: 1000,
       "WorkDoneCodeSearch.Code": code,
-      "WorkDoneCodeSearch.CodeOperator": "Equals",
       Sorting: "Code asc",
     };
     console.log("[DB.workCodes] checking code:", code);
@@ -32,12 +34,6 @@ export const workCodesApi = {
     console.log("[DB.workCodes] updating:", id, data);
     return apiClient
       .put(`/api/app/work-done-code/${id}`, data)
-      .then((r) => r.data);
-  },
-  delete: (id) => {
-    console.log("[DB.workCodes] deleting:", id);
-    return apiClient
-      .delete(`/api/app/work-done-code/${id}`)
       .then((r) => r.data);
   },
 };

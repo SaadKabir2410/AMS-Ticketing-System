@@ -22,6 +22,7 @@ import {
   loadApplicationConfig,
 } from "../services/applicationConfigCache";
 import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
+import SearchTextHighlight from "../component/common/SearchTextHighlight";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
@@ -228,7 +229,11 @@ export default function UsersPage() {
       setUsers(res.items || res.data || []);
       setTotalCount(res.totalCount || 0);
     } catch (err) {
-      toast("Failed to load users", "error");
+      toast(
+        err.message ||
+          getLocalizationValue(getCachedApplicationConfig(), "DefaultErrorMessage"),
+        "error",
+      );
     } finally {
       setLoading(false);
     }
@@ -395,6 +400,7 @@ export default function UsersPage() {
   const handleDelete = (row) => {
     if (!canDelete) return;
 
+    // The backend has no localization key for this message.
     if (row.userName?.toLowerCase() === "admin") {
       toast("Error: The Admin user cannot be deleted.", "error");
       return;
@@ -421,10 +427,10 @@ export default function UsersPage() {
       setModalLoading(true);
       if (activeItem) {
         await usersApi.update(activeItem.id, payload);
-        toast("User updated successfully");
+        toast(localize("SavedSuccessfully"));
       } else {
         await usersApi.create(payload);
-        toast("User created successfully");
+        toast(localize("SavedSuccessfully"));
       }
       setIsModalOpen(false);
       fetchUsers();
@@ -569,31 +575,33 @@ export default function UsersPage() {
       const formData = new FormData(e.target);
       const data = Object.fromEntries(formData.entries());
 
+      const requiredMessage = (fieldKey) =>
+        localize("The {0} field is required.").replace("{0}", localize(fieldKey));
       const errors = {};
       if (!data.userName?.trim())
-        errors.userName = "The User name field is required";
-      if (!data.name?.trim()) errors.name = "The Name field is required";
+        errors.userName = requiredMessage("DisplayName:UserName");
+      if (!data.name?.trim()) errors.name = requiredMessage("DisplayName:Name");
       if (!item && !data.password?.trim()) {
-        errors.password = "The Password field is required";
+        errors.password = requiredMessage("DisplayName:Password");
       } else if (data.password?.trim()) {
         const pwd = data.password.trim();
-        const hasUpper = /[A-Z]/.test(pwd);
-        const hasLower = /[a-z]/.test(pwd);
-        const hasSpecial = /[^A-Za-z0-9]/.test(pwd);
-        if (!hasUpper || !hasLower || !hasSpecial) {
-          errors.password = "Password must contain uppercase, lowercase, and special character";
-        }
+        const passwordErrors = [
+          !/[A-Z]/.test(pwd) && "Volo.Abp.Identity:PasswordRequiresUpper",
+          !/[a-z]/.test(pwd) && "Volo.Abp.Identity:PasswordRequiresLower",
+          !/[^A-Za-z0-9]/.test(pwd) && "Volo.Abp.Identity:PasswordRequiresNonAlphanumeric",
+        ].filter(Boolean).map(localize);
+        if (passwordErrors.length > 0) errors.password = passwordErrors.join(" ");
       }
       if (!data.phoneNumber?.trim())
-        errors.phoneNumber = "The Phone number field is required";
+        errors.phoneNumber = requiredMessage("DisplayName:PhoneNumber");
       if (!orgType || orgType === "" || orgType === "0") {
-        errors.organizationType = "The Organization Type field is required";
+        errors.organizationType = requiredMessage("DisplayName:OrganizationType");
       }
       if (orgType === "1" && !selectedSite) {
-        errors.siteId = "Site is required for Customer organization type";
+        errors.siteId = requiredMessage("DisplayName:SiteId");
       }
       if (canManageUserRoles && !item && selectedRoles.length === 0) {
-        errors.roles = "At least one role is required when creating a user";
+        errors.roles = requiredMessage("Roles");
       }
 
       if (Object.keys(errors).length > 0) {
@@ -1421,7 +1429,7 @@ export default function UsersPage() {
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-visible min-h-0">
 
         {/* Header Section */}
-        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50 transition-colors">
+        <div className="app-page-header flex flex-col gap-6 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50 transition-colors">
           <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
             <span>Home</span>
             <span className="text-slate-300 dark:text-slate-700">/</span>
@@ -1453,9 +1461,9 @@ export default function UsersPage() {
 
         {/* Toolbar Section */}
         <div className="relative z-20 px-4 py-4 sm:px-6 sm:py-6 flex items-center justify-between bg-transparent flex-wrap gap-4 sm:gap-6">
-          <div className="flex items-center gap-4 sm:gap-6 flex-1 min-w-[200px]">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6 flex-1 min-w-0">
             {/* Search Box */}
-            <div className="relative w-full max-w-[400px] group">
+            <div className="relative w-full sm:w-auto sm:flex-1 max-w-[400px] min-w-0 group">
               <input
                 type="text"
                 placeholder="Search users by name, email or phone..."
@@ -1576,22 +1584,22 @@ export default function UsersPage() {
                           }`}
                       >
                         <td className={`px-5 ${ROW_HEIGHT} text-[12px] pl-8 rounded-l-2xl text-slate-800 dark:text-slate-200 font-bold`}>
-                          {row.name}
+                          <SearchTextHighlight text={row.name} query={search} />
                         </td>
                         <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-700 dark:text-slate-300`}>
-                          {row.userName}
+                          <SearchTextHighlight text={row.userName} query={search} />
                         </td>
                         <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-500 dark:text-slate-400`}>
-                          {row.email || "-"}
+                          <SearchTextHighlight text={row.email || "-"} query={search} />
                         </td>
                         <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-500 dark:text-slate-400`}>
-                          {row.phoneNumber || "-"}
+                          <SearchTextHighlight text={row.phoneNumber || "-"} query={search} />
                         </td>
                         <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-500 dark:text-slate-400`}>
                           {getOrganizationTypeName(orgTypeVal)}
                         </td>
                         <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-500 dark:text-slate-400`}>
-                          {row.siteName || "-"}
+                          <SearchTextHighlight text={row.siteName || "-"} query={search} />
                         </td>
                         <td className={`px-5 ${ROW_HEIGHT} text-[12px] font-medium text-slate-500 dark:text-slate-400 text-center`}>
                           <div className="flex items-center justify-center">
@@ -1616,8 +1624,8 @@ export default function UsersPage() {
 
           {/* Pagination Section */}
           {totalPages > 0 && (
-            <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/50 mt-4 pt-4 shrink-0">
-              <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center justify-center sm:justify-between gap-3 border-t border-slate-100 dark:border-slate-800/50 mt-4 pt-4 shrink-0">
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4">
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-bold text-slate-400 tracking-wider">Rows per page:</span>
                   <AppSelect

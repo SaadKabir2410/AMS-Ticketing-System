@@ -1,9 +1,32 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import SettingsService from "../services/api/settings";
 import { useToast } from "../component/common/ToastContext";
+import SendTestEmailModal from "../component/common/SendTestEmailModal";
+import {
+  getCachedApplicationConfig,
+  loadApplicationConfig,
+} from "../services/applicationConfigCache";
+
+const getLocalizationValue = (applicationConfig, key) => {
+  const resources = applicationConfig?.localization?.values;
+  if (!resources || typeof resources !== "object") return key;
+
+  const defaultResourceName = applicationConfig?.localization?.defaultResourceName;
+  const defaultValue = resources[defaultResourceName]?.[key];
+  if (typeof defaultValue === "string" && defaultValue.trim()) {
+    return defaultValue.trim();
+  }
+
+  for (const resource of Object.values(resources)) {
+    const value = resource?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  return key;
+};
 
 const InputField = ({ label, required, value, name, onChange, type = "text", placeholder }) => {
   const [show, setShow] = useState(false);
@@ -45,12 +68,28 @@ const InputField = ({ label, required, value, name, onChange, type = "text", pla
 
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("Emailing");
+  const [activeTab, setActiveTab] = useState("emailing");
   const [loading, setLoading] = useState(false);
   const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [testEmailModalOpen, setTestEmailModalOpen] = useState(false);
   const [systemLoading, setSystemLoading] = useState(false);
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const [applicationConfig, setApplicationConfig] = useState(getCachedApplicationConfig);
+  const localize = useCallback(
+    (key) => getLocalizationValue(applicationConfig, key),
+    [applicationConfig],
+  );
+
+  React.useEffect(() => {
+    let isCurrent = true;
+    loadApplicationConfig().then((config) => {
+      if (isCurrent) setApplicationConfig(config);
+    });
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   const [emailSettings, setEmailSettings] = useState({
     defaultFromDisplayName: "",
@@ -96,18 +135,18 @@ export default function SettingsPage() {
 
       } catch (error) {
         console.error("Failed to fetch email settings:", error);
-        showToast("Failed to load email settings", "error");
+        showToast(localize("DefaultErrorMessage"), "error");
       } finally {
         setLoading(false);
       }
     };
 
     fetchEmailSettings();
-  }, []);
+  }, [localize, showToast]);
 
   // Fetch system settings when System Settings tab is opened
   React.useEffect(() => {
-    if (activeTab !== "System Settings") return;
+    if (activeTab !== "system") return;
 
     const fetchSystemSettings = async () => {
       setSystemLoading(true);
@@ -126,14 +165,14 @@ export default function SettingsPage() {
         });
       } catch (error) {
         console.error("Failed to fetch system settings:", error);
-        showToast("Failed to load system settings", "error");
+        showToast(localize("DefaultErrorMessage"), "error");
       } finally {
         setSystemLoading(false);
       }
     };
 
     fetchSystemSettings();
-  }, [activeTab]);
+  }, [activeTab, localize, showToast]);
 
   const handleEmailChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -152,25 +191,26 @@ export default function SettingsPage() {
     setLoading(true);
     try {
       await SettingsService.updateEmailSettings(emailSettings);
-      showToast("Email settings saved successfully", "success");
+      showToast(localize("SavedSuccessfully"), "success");
 
     } catch (error) {
       console.error("Save Email Settings Error:", error);
-      showToast("Failed to save email settings", "error");
+      showToast(localize("DefaultErrorMessage"), "error");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSendTestEmail = async () => {
+  const handleSendTestEmail = async (testEmail) => {
     setTestEmailLoading(true);
     try {
-      await SettingsService.sendTestEmail(emailSettings);
-      showToast("Test email sent successfully", "success");
+      await SettingsService.sendTestEmail(testEmail);
+      showToast(localize("SuccessfullySent"), "success");
+      setTestEmailModalOpen(false);
 
     } catch (error) {
       console.error("Send Test Email Error:", error);
-      showToast("Failed to send test email", "error");
+      showToast(localize("DefaultErrorMessage"), "error");
     } finally {
       setTestEmailLoading(false);
     }
@@ -180,11 +220,11 @@ export default function SettingsPage() {
     setSystemLoading(true);
     try {
       await SettingsService.updateSystemSettings(systemSettings);
-      showToast("System settings saved successfully", "success");
+      showToast(localize("SavedSuccessfully"), "success");
 
     } catch (error) {
       console.error("Save System Settings Error:", error);
-      showToast("Failed to save system settings", "error");
+      showToast(localize("DefaultErrorMessage"), "error");
     } finally {
       setSystemLoading(false);
     }
@@ -199,15 +239,15 @@ export default function SettingsPage() {
 
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
         {/* Header */}
-        <div className="flex flex-col gap-2 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50">
+        <div className="app-page-header flex flex-col gap-2 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50">
           <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
-            <span onClick={() => navigate("/")} className="hover:text-pink-500 cursor-pointer transition-colors">Home</span>
+            <span onClick={() => navigate("/")} className="hover:text-pink-500 cursor-pointer transition-colors">{localize("Home")}</span>
             <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span className="text-pink-500">Settings</span>
+            <span className="text-pink-500">{localize("Settings")}</span>
           </nav>
           <div className="flex items-center gap-4">
 
-            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">Settings</h1>
+            <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{localize("Settings")}</h1>
           </div>
         </div>
 
@@ -216,16 +256,19 @@ export default function SettingsPage() {
 
           {/* Sidebar */}
           <div className="w-full md:w-64 flex flex-col gap-1 pr-6 shrink-0 border-r border-slate-100 dark:border-slate-800/50 mb-8 md:mb-0">
-            {["Emailing", "System Settings"].map((tab) => (
+            {[
+              { id: "emailing", label: localize("Menu:Emailing") },
+              { id: "system", label: localize("Permission:BillingPermissionsSettings.SystemSettings") },
+            ].map((tab) => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`w-full text-left px-5 py-2.5 rounded-lg text-sm transition-all ${activeTab === tab
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`w-full text-left px-5 py-2.5 rounded-lg text-sm transition-all ${activeTab === tab.id
                   ? "bg-[#ffebf3] text-[#ec4899] font-semibold dark:bg-pink-500/10 dark:text-pink-400"
                   : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 font-medium"
                   }`}
               >
-                {tab}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -234,30 +277,30 @@ export default function SettingsPage() {
           <div className="flex-1 md:pl-10">
 
             {/* Emailing Tab */}
-            {activeTab === "Emailing" && (
+            {activeTab === "emailing" && (
               <div className="animate-in fade-in duration-300">
                 <InputField
-                  label="Default from display name"
+                  label={localize("DefaultFromDisplayName")}
                   required
                   name="defaultFromDisplayName"
                   value={emailSettings.defaultFromDisplayName}
                   onChange={handleEmailChange}
                 />
                 <InputField
-                  label="Default from address"
+                  label={localize("DefaultFromAddress")}
                   required
                   name="defaultFromAddress"
                   value={emailSettings.defaultFromAddress}
                   onChange={handleEmailChange}
                 />
                 <InputField
-                  label="Host"
+                  label={localize("SmtpHost")}
                   name="host"
                   value={emailSettings.host}
                   onChange={handleEmailChange}
                 />
                 <InputField
-                  label="Port"
+                  label={localize("SmtpPort")}
                   type="number"
                   name="port"
                   value={emailSettings.port}
@@ -273,7 +316,7 @@ export default function SettingsPage() {
                     className="w-4 h-4 rounded border-slate-300 accent-pink-500 cursor-pointer"
                   />
                   <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-slate-900 transition-colors">
-                    Enable ssl
+                    {localize("SmtpEnableSsl")}
                   </span>
                 </div>
                 <div className="flex items-center gap-3 mb-8 cursor-pointer group w-max">
@@ -285,26 +328,26 @@ export default function SettingsPage() {
                     className="w-4 h-4 rounded border-pink-500 text-pink-500 accent-pink-500 cursor-pointer"
                   />
                   <span className="text-[13px] font-medium text-slate-600 dark:text-slate-300 group-hover:text-slate-900 transition-colors">
-                    Use default credentials
+                    {localize("SmtpUseDefaultCredentials")}
                   </span>
                 </div>
 
                 <div className={`overflow-hidden transition-all duration-500 ease-in-out ${!emailSettings.useDefaultCredentials ? "max-h-[500px] opacity-100 mt-4" : "max-h-0 opacity-0 pointer-events-none"}`}>
                   <div className="space-y-1">
                     <InputField
-                      label="Domain"
+                      label={localize("SmtpDomain")}
                       name="domain"
                       value={emailSettings.domain}
                       onChange={handleEmailChange}
                     />
                     <InputField
-                      label="User name"
+                      label={localize("SmtpUserName")}
                       name="username"
                       value={emailSettings.username}
                       onChange={handleEmailChange}
                     />
                     <InputField
-                      label="Password"
+                      label={localize("SmtpPassword")}
                       type="password"
                       name="password"
                       value={emailSettings.password}
@@ -316,34 +359,34 @@ export default function SettingsPage() {
 
                 <div className="flex gap-4 pt-6 border-t border-slate-100 dark:border-slate-800 pb-2">
                   <button
-                    onClick={handleSendTestEmail}
+                    onClick={() => setTestEmailModalOpen(true)}
                     disabled={testEmailLoading || loading}
-                    className="btn-flagship border-pink-500/50! text-pink-500! hover:bg-pink-500/5!"
+                    className="app-primary-button inline-flex items-center justify-center px-5 py-2.5 text-xs"
                   >
-                    {testEmailLoading ? "Sending..." : "Send test email"}
+                    {localize("SendTestEmail")}
                   </button>
                   <button
                     onClick={handleSaveEmailSettings}
                     disabled={loading}
-                    className="btn-flagship"
+                    className="app-primary-button inline-flex items-center justify-center px-5 py-2.5 text-xs"
                   >
-                    {loading ? "Saving..." : "Save"}
+                    {loading ? localize("SavingWithThreeDot") : localize("Save")}
                   </button>
                 </div>
               </div>
             )}
 
             {/* System Settings Tab */}
-            {activeTab === "System Settings" && (
+            {activeTab === "system" && (
               <div className="animate-in fade-in duration-300">
                 {systemLoading ? (
                   <div className="flex items-center justify-center h-40 text-slate-400 text-sm">
-                    Loading system settings...
+                    {localize("LoadingWithThreeDot")}
                   </div>
                 ) : (
                   <>
                     <InputField
-                      label="Base Number Of Tickets For After Office Hours"
+                      label={localize("BaseNumberOfTicketsForAfterOfficeHours")}
                       required
                       type="number"
                       name="baseNumberOfTicketsForAfterOfficeHours"
@@ -351,7 +394,7 @@ export default function SettingsPage() {
                       onChange={handleSystemChange}
                     />
                     <InputField
-                      label="Jobsheet can be modified up to (days)"
+                      label={localize("EditableJobsheetDays")}
                       required
                       type="number"
                       name="jobsheetCanBeModifiedUpToDays"
@@ -359,7 +402,7 @@ export default function SettingsPage() {
                       onChange={handleSystemChange}
                     />
                     <InputField
-                      label="Working Hours From"
+                      label={localize("WorkingHoursFrom")}
                       required
                       type="number"
                       name="workingHoursFrom"
@@ -367,7 +410,7 @@ export default function SettingsPage() {
                       onChange={handleSystemChange}
                     />
                     <InputField
-                      label="Working Hours To"
+                      label={localize("WorkingHoursTo")}
                       required
                       type="number"
                       name="workingHoursTo"
@@ -375,7 +418,7 @@ export default function SettingsPage() {
                       onChange={handleSystemChange}
                     />
                     <InputField
-                      label="Specific Tickets Commission Percentage (%)"
+                      label={localize("AMSTicketCommissionPercentage")}
                       required
                       type="number"
                       name="specificTicketsCommissionPercentage"
@@ -383,7 +426,7 @@ export default function SettingsPage() {
                       onChange={handleSystemChange}
                     />
                     <InputField
-                      label="Service Demand Tickets Maximum Closed Hours"
+                      label={localize("ServiceDemandTicketsMaximumClosedHours")}
                       required
                       type="number"
                       name="serviceDemandTicketsMaximumClosedHours"
@@ -391,7 +434,7 @@ export default function SettingsPage() {
                       onChange={handleSystemChange}
                     />
                     <InputField
-                      label="Daily Goal (Minutes)"
+                      label={localize("DailyGoalMinutes")}
                       required
                       type="number"
                       name="dailyGoalMinutes"
@@ -399,7 +442,7 @@ export default function SettingsPage() {
                       onChange={handleSystemChange}
                     />
                     <InputField
-                      label="Weekly Goal (Minutes)"
+                      label={localize("WeeklyGoalMinutes")}
                       required
                       type="number"
                       name="weeklyGoalMinutes"
@@ -407,7 +450,7 @@ export default function SettingsPage() {
                       onChange={handleSystemChange}
                     />
                     <InputField
-                      label="Monthly Goal (Minutes)"
+                      label={localize("MonthlyGoalMinutes")}
                       required
                       type="number"
                       name="monthlyGoalMinutes"
@@ -418,9 +461,9 @@ export default function SettingsPage() {
                       <button
                         onClick={handleSaveSystemSettings}
                         disabled={systemLoading}
-                        className="btn-flagship"
+                        className="app-primary-button inline-flex items-center justify-center px-5 py-2.5 text-xs"
                       >
-                        {systemLoading ? "Saving..." : "Save"}
+                        {systemLoading ? localize("SavingWithThreeDot") : localize("Save")}
                       </button>
                     </div>
                   </>
@@ -431,6 +474,16 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+      {testEmailModalOpen && (
+        <SendTestEmailModal
+          open
+          onClose={() => setTestEmailModalOpen(false)}
+          onSend={handleSendTestEmail}
+          loading={testEmailLoading}
+          defaultSender={emailSettings.defaultFromAddress}
+          localize={localize}
+        />
+      )}
     </div>
   );
 }

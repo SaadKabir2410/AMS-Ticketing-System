@@ -1,277 +1,308 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Autocomplete, Checkbox, TextField } from "@mui/material";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ChevronUp,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  Plus,
+  X,
+} from "lucide-react";
+import Flatpickr from "react-flatpickr";
+import "flatpickr/dist/flatpickr.css";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+
 import AppSelect from "../component/common/AppSelect";
 import SearchTextHighlight from "../component/common/SearchTextHighlight";
-import { useNavigate } from "react-router-dom"; // Add this
-import ResourcePage from "../component/common/ResourcePage";
-
+import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
+import JobsheetModal from "../component/common/JobsheetModal";
+import { ActionsMenu } from "../component/common/ResourcePage";
 import { jobsheetsApi } from "../services/api/jobsheets";
+import { usersApi } from "../services/api/users";
+import codeDetailsApi from "../services/api/CodeDetails";
 import {
   JOBSHEET_SIGNALR_EVENTS,
   processTicketDetailsUpdate,
   subscribeToJobsheetEvent,
 } from "../services/jobsheetSignalR";
-import { usersApi } from "../services/api/users";
-import codeDetailsApi from "../services/api/CodeDetails";
-import {
-  AlertTriangle,
-  Search,
-  X,
-  Calendar,
-  FileText,
-  History,
-  Eye,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Loader2,
-  Plus,
-} from "lucide-react";
-
-
-
-import Flatpickr from "react-flatpickr";
-import "flatpickr/dist/flatpickr.css";
-import "flatpickr/dist/themes/dark.css";
+import { loadReportTemplateTexts } from "../services/reportTemplateCache";
 import { useAuth } from "../context/AuthContextHook";
-import JobsheetModal from "../component/common/JobsheetModal";
-import { ActionsMenu } from "../component/common/ResourcePage";
 import { usePermission } from "../hooks/usePermission";
+import { useBackendLocalization } from "../hooks/useBackendLocalization";
+import { useBackendEnumOptions } from "../hooks/useBackendEnumOptions";
+import { useReportTemplateLines } from "../hooks/useReportTemplateLines";
+import { getApiErrorMessage } from "../utils/apiError";
 import { buildReportFileName } from "../utils/reportFileName";
 
+// Same page sizes and default as the Blazor data grid.
+const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
+const DEFAULT_PAGE_SIZE = 10;
 
+// Date filters work like the Blazor DatePicker: shown and typed as dd/MM/yyyy
+// with a "DD/MM/YYYY" hint. One input only (no flatpickr altInput); the filter
+// state keeps YYYY-MM-DD for the API.
+const DATE_PLACEHOLDER = "DD/MM/YYYY";
+// Each picker needs its own options object: react-flatpickr adds its change
+// handlers to the object it is given, so one shared object made a date picked in
+// Date From also fill Date To.
+const DATE_FROM_OPTIONS = { dateFormat: "d/m/Y", allowInput: true };
+const DATE_TO_OPTIONS = { dateFormat: "d/m/Y", allowInput: true };
 
+// The picker gets the exact text it shows (dd/mm/yyyy). react-flatpickr resets the
+// input whenever the value differs from the input text, so a Date object (never
+// equal to the text) would reset it on every render.
+const toPickerDate = (value) => {
+  if (!value) return "";
+  const [year, month, day] = value.split("-");
+  return `${day}/${month}/${year}`;
+};
+const fromPickerDates = ([date]) =>
+  date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : "";
+
+// Backend enum member names, used as identifiers only.
+const ORGANIZATION_VENDOR_SUREZE = "VendorSureze";
+const ORGANIZATION_VENDOR_ABBOTT = "VendorAbbott";
+const ENUM_EXCLUDED = ["SelectAnOption", "All"];
+
+// Grid columns as in Blazor Pages/Public/Jobsheets/Jobsheets.razor; labels are
+// backend localization keys, sortField is the backend sorting field.
+const GRID_COLUMNS = [
+  { field: "date", labelKey: "Date", sortField: "Date", type: "date" },
+  { field: "attendanceStatus", labelKey: "AttendanceStatus", sortField: "AttendanceStatus", type: "attendance" },
+  { field: "userName", labelKey: "CreatedBy" },
+  { field: "totalDurationHours", labelKey: "TotalDurationHours" },
+  { field: "totalDurationMinutes", labelKey: "TotalDurationMinutes" },
+  { field: "creationTime", labelKey: "CreationTime", sortField: "CreationTime", type: "dateTime" },
+  { field: "holidayName", labelKey: "HolidayName", sortField: "Holiday.Name" },
+];
+
+// Detail rows shown when a jobsheet row is expanded (Blazor DetailRowTemplate).
+const DETAIL_COLUMNS = [
+  { field: "projectName", labelKey: "ProjectName" },
+  { field: "taskCategoryName", labelKey: "TaskCategoryName" },
+  { field: "subTaskCategoryName", labelKey: "SubTaskCategoryName" },
+  { field: "startTime", labelKey: "StartTime", type: "time" },
+  { field: "endTime", labelKey: "EndTime", type: "time" },
+  { field: "jobsheetDetailUsers", labelKey: "Collaborators", type: "collaborators" },
+  { field: "statusName", labelKey: "StatusName" },
+  { field: "cmsNextTicketNo", labelKey: "CMSNextTicketNo", type: "ticket" },
+  { field: "workingHoursFlag", labelKey: "WorkingHoursFlag", type: "workingHours" },
+];
+
+// Report columns follow the backend template (Reports/JobsheetReport.mrt):
+// Date, Created By, then the "Details" group.
+const REPORT_COLUMNS = [
+  { field: "Date", labelKey: "Date" },
+  { field: "UserName", labelKey: "CreatedBy" },
+];
+const REPORT_DETAIL_COLUMNS = [
+  { field: "ProjectName", labelKey: "ProjectName" },
+  { field: "TaskCategoryName", labelKey: "TaskCategoryName" },
+  { field: "SubTaskCategoryName", labelKey: "SubTaskCategoryName" },
+  { field: "StartTime", labelKey: "StartTime" },
+  { field: "EndTime", labelKey: "EndTime" },
+  { field: "StatusName", labelKey: "StatusName" },
+  { field: "JobsheetDetailUsers", labelKey: "Collaborators" },
+  { field: "Remarks", labelKey: "ClosingTicketRemarks" },
+];
+const ALL_REPORT_COLUMNS = [...REPORT_COLUMNS, ...REPORT_DETAIL_COLUMNS];
+
+// Admin-only report totals (the backend sets ShowCells for admins). Labels come
+// from the backend template; until it loads, from the backend field names.
+const ADMIN_TOTAL_FIELDS = [
+  "OfficeHoursDuration",
+  "AfterOfficeHoursDuration",
+  "WorkingHoursCost",
+  "AfterWorkingHoursCost",
+  "TotalPayout",
+];
+
+const splitFieldName = (name) => String(name).replace(/([a-z\d])([A-Z])/g, "$1 $2");
+
+// The API may camelCase the DTO property names, so match them case-insensitively.
+const getRowValue = (row, field) => {
+  if (!row) return undefined;
+  const matchingKey = Object.keys(row).find(
+    (key) => key.toLowerCase() === field.toLowerCase(),
+  );
+  return matchingKey ? row[matchingKey] : undefined;
+};
+
+const isEmptyValue = (value) => value === null || value === undefined || value === "";
+const pad = (value) => String(value).padStart(2, "0");
+
+// Same display formats as the backend DateTimeExtensions.
+const formatDate = (value) => {
+  if (isEmptyValue(value)) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+};
+const formatDateTime = (value) => {
+  if (isEmptyValue(value)) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return `${formatDate(value)} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+const formatTime = (value) => {
+  if (isEmptyValue(value)) return "";
+  const match = String(value).match(/(\d{1,2}):(\d{2})/);
+  return match ? `${pad(match[1])}:${match[2]}` : String(value);
+};
+
+// Blazor sends each selected day at 23:59:59; the backend compares dates only.
+const toApiDate = (value) => (value ? `${value}T23:59:59` : undefined);
+
+const getUserDisplayName = (user) => user?.name || user?.userName || "";
+
+const userHasRole = (user, requiredRole) => {
+  const roles = user?.roles ?? user?.role ?? [];
+  const normalizedRoles = Array.isArray(roles) ? roles : String(roles).split(",");
+  return normalizedRoles.some(
+    (role) => String(role).trim().toLowerCase() === requiredRole.toLowerCase(),
+  );
+};
+
+const getItems = (data) => (Array.isArray(data) ? data : data?.items || []);
+
+const renderCheckboxOption = (props, option, { selected, inputValue }) => {
+  const { key, ...restProps } = props;
+  return (
+    <li key={key} {...restProps} style={{ fontSize: "11px", padding: "4px 8px" }} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+      <Checkbox style={{ marginRight: 8, padding: 0 }} checked={selected} size="small" sx={{ "&.Mui-checked": { color: "#ec4899" } }} />
+      <span className="text-slate-900 dark:text-white">
+        <SearchTextHighlight text={getUserDisplayName(option)} query={inputValue} />
+      </span>
+    </li>
+  );
+};
+
+const multiSelectSx = {
+  "& .MuiSvgIcon-root": { color: "inherit" },
+  "& .MuiChip-root": {
+    height: "22px",
+    backgroundColor: "rgba(236, 72, 153, 0.1)",
+    color: "#db2777",
+    "& .MuiChip-deleteIcon": { color: "#db2777" },
+  },
+};
+
+const multiSelectPaperProps = {
+  paper: { className: "bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg" },
+};
+
+const EMPTY_FILTERS = {
+  project: "",
+  users: [],
+  dateFrom: "",
+  dateTo: "",
+  collaborators: [],
+};
 
 export default function JobsheetsPage() {
   const { user } = useAuth();
-  const navigate = useNavigate(); // Add this
-  const isAdmin = user?.role?.toLowerCase().includes("admin");
+  const navigate = useNavigate();
+  const localize = useBackendLocalization("Billing");
+  const isAdmin = userHasRole(user, "admin");
+
+  // Same permissions as Blazor: admins never create jobsheets.
   const canCreate = usePermission("Billing.Jobsheets.Create") && !isAdmin;
   const canEdit = usePermission("Billing.Jobsheets.Edit");
   const canViewAuditLog = usePermission("Billing.Jobsheets.ViewAuditLog");
 
+  const attendanceOptions = useBackendEnumOptions("AttendanceStatusEnum", localize, { exclude: ENUM_EXCLUDED });
+  const workingHoursOptions = useBackendEnumOptions("WorkingHoursFlagEnum", localize, { exclude: ENUM_EXCLUDED });
 
-
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [projects, setProjects] = useState([]);
-  const [loadingProjects, setLoadingProjects] = useState(false);
-
-  const [filters, setFilters] = useState({
-    user: [],
-    collaborator: [],
-    project: "",
-    dateFrom: "",
-    dateTo: "",
-  });
-
-  // ── User dropdown (Vendor-Sureze only) ──
-  const [userSearch, setUserSearch] = useState("");
-  const [userResults, setUserResults] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
-  const [hasFetchedUsers, setHasFetchedUsers] = useState(false);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const userRef = useRef(null);
+  const [jobsheetUsers, setJobsheetUsers] = useState([]);
 
-  // ── Collaborator dropdown (all users) ──
-  const [collaboratorSearch, setCollaboratorSearch] = useState("");
-  const [collaboratorResults, setCollaboratorResults] = useState([]);
-  const [allCollaborators, setAllCollaborators] = useState([]);
-  const [hasFetchedCollaborators, setHasFetchedCollaborators] = useState(false);
-  const [isLoadingCollaborators, setIsLoadingCollaborators] = useState(false);
-  const [showCollaboratorDropdown, setShowCollaboratorDropdown] = useState(false);
-  const collaboratorRef = useRef(null);
-
-  // ── Report state ──
-  const [reportData, setReportData] = useState(null);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [reportError, setReportError] = useState(null);
-  const clearReportData = () => setReportData(null);
-  const clearReportError = () => setReportError(null);
-  const [reportDownloading, setReportDownloading] = useState(false);
-
-  const handleGetReport = async () => {
-    setReportDownloading(true);
-    setReportError(null);
-
-    try {
-      const finalFilters = isAdmin
-        ? filters
-        : { ...filters, user: [user?.id].filter(Boolean) };
-
-      const selectedUserIds = finalFilters.user?.length > 0
-        ? finalFilters.user
-        : undefined;
-      const selectedCollaboratorIds = finalFilters.collaborator?.length > 0
-        ? finalFilters.collaborator
-        : undefined;
-
-      // Check the jobsheet records themselves. A valid jobsheet may have no
-      // detail rows yet, but it must still be allowed to produce a report.
-      const availability = await jobsheetsApi.getAll({
-        page: 1,
-        perPage: 1,
-        FromDate: finalFilters.dateFrom,
-        ToDate: finalFilters.dateTo,
-        Project: finalFilters.project,
-        UserIdsSearchValues: selectedUserIds,
-        JobsheetDetailUserIdsSearchValues: selectedCollaboratorIds,
-        CurrentUserId: user?.id,
-      });
-      const availableItems = Array.isArray(availability)
-        ? availability
-        : availability?.items || availability?.data || [];
-      const availableCount = availability?.totalCount;
-      const hasJobsheets = availableCount != null && Number.isFinite(Number(availableCount))
-        ? Number(availableCount) > 0
-        : availableItems.length > 0;
-
-      if (!hasJobsheets) {
-        setReportError("No jobsheets are available for the selected filters.");
-        return;
-      }
-
-      const response = await jobsheetsApi.getReport({
-        filters: finalFilters,
-        currentUserId: user?.id,
-      });
-
-      // Normalize both camelCase and PascalCase payloads. Some deployments
-      // wrap application-service responses in a `result` property.
-      const reportData = response.data?.result || response.data || {};
-      const rawReportRows = reportData.jobsheetDetails || reportData.JobsheetDetails || [];
-
-      const formatCollaborators = (value) => {
-        if (typeof value === "string") return value;
-        if (!Array.isArray(value)) return "";
-        return value
-          .map((entry) =>
-            typeof entry === "string"
-              ? entry
-              : entry?.userName ||
-                entry?.UserName ||
-                entry?.name ||
-                entry?.Name ||
-                entry?.userId ||
-                entry?.UserId ||
-                "",
-          )
-          .filter(Boolean)
-          .join(", ");
-      };
-
-      const normalizeRow = (row = {}, jobsheet = {}) => ({
-        date: row.date || row.Date || jobsheet.date || jobsheet.Date || "",
-        userName:
-          row.userName || row.UserName || jobsheet.userName || jobsheet.UserName || "",
-        taskCategoryName: row.taskCategoryName || row.TaskCategoryName || "",
-        subTaskCategoryName: row.subTaskCategoryName || row.SubTaskCategoryName || "",
-        projectName: row.projectName || row.ProjectName || "",
-        startTime: row.startTime || row.StartTime || "",
-        endTime: row.endTime || row.EndTime || "",
-        statusName: row.statusName || row.StatusName || "",
-        remarks: row.remarks || row.Remarks || "",
-        jobsheetDetailUsers: formatCollaborators(
-          row.jobsheetDetailUsers || row.JobsheetDetailUsers,
-        ),
-      });
-
-      let reportRows = Array.isArray(rawReportRows)
-        ? rawReportRows.map((row) => normalizeRow(row))
-        : [];
-
-      // The report DTO should normally contain detail rows. If an older
-      // backend returns only jobsheet records, flatten their details locally;
-      // a jobsheet without details still gets a visible summary row.
-      if (reportRows.length === 0) {
-        const fallbackPageSize = Math.min(
-          Math.max(Number(availableCount) || availableItems.length || 1, 1),
-          10000,
-        );
-        const fallbackResult = await jobsheetsApi.getAll({
-          page: 1,
-          perPage: fallbackPageSize,
-          FromDate: finalFilters.dateFrom,
-          ToDate: finalFilters.dateTo,
-          Project: finalFilters.project,
-          UserIdsSearchValues: selectedUserIds,
-          JobsheetDetailUserIdsSearchValues: selectedCollaboratorIds,
-          CurrentUserId: user?.id,
-        });
-        const fetchedJobsheets = Array.isArray(fallbackResult)
-          ? fallbackResult
-          : fallbackResult?.items || fallbackResult?.data || [];
-        const fallbackJobsheets = fetchedJobsheets.length > 0
-          ? fetchedJobsheets
-          : availableItems;
-
-        reportRows = fallbackJobsheets.flatMap((jobsheet) => {
-          const details = jobsheet.jobsheetDetails || jobsheet.JobsheetDetails || [];
-          if (Array.isArray(details) && details.length > 0) {
-            return details.map((detail) => normalizeRow(detail, jobsheet));
-          }
-          return [
-            normalizeRow(
-              { remarks: "No detail entries" },
-              jobsheet,
-            ),
-          ];
-        });
-      }
-
-      const ExcelJS = await import("exceljs");
-      const { saveAs } = await import("file-saver");
-
-      const workbook = new ExcelJS.Workbook();
-      const sheet = workbook.addWorksheet("Jobsheet Report");
-
-      sheet.columns = [
-        { header: "Date", key: "date", width: 14 },
-        { header: "User", key: "userName", width: 22 },
-        { header: "Task Category", key: "taskCategoryName", width: 20 },
-        { header: "Sub Task Category", key: "subTaskCategoryName", width: 20 },
-        { header: "Project", key: "projectName", width: 20 },
-        { header: "Start Time", key: "startTime", width: 12 },
-        { header: "End Time", key: "endTime", width: 12 },
-        { header: "Status", key: "statusName", width: 15 },
-        { header: "Remarks", key: "remarks", width: 30 },
-        { header: "Collaborators", key: "jobsheetDetailUsers", width: 24 },
-      ];
-
-      reportRows.forEach((d) => sheet.addRow(d));
-
-      sheet.addRow({});
-      sheet.addRow({ taskCategoryName: "Total Duration (Hrs):", subTaskCategoryName: reportData.totalDurationHours ?? reportData.TotalDurationHours ?? "" });
-      sheet.addRow({ taskCategoryName: "Total Payout:", subTaskCategoryName: reportData.totalPayout ?? reportData.TotalPayout ?? "" });
-      sheet.addRow({ taskCategoryName: "Generated By:", subTaskCategoryName: reportData.generatedBy ?? reportData.GeneratedBy ?? "" });
-      sheet.addRow({ taskCategoryName: "Generated On:", subTaskCategoryName: reportData.generatedOn ?? reportData.GeneratedOn ?? "" });
-
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-      saveAs(blob, buildReportFileName("Jobsheets"));
-
-    } catch (error) {
-      console.error("Failed to generate jobsheet report:", error);
-      let errorMessage = "Failed to generate report.";
-
-      if (error.response?.status === 403) {
-        errorMessage = "You do not have permission to generate this report.";
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      setReportError(errorMessage);
-    } finally {
-      setReportDownloading(false);
-    }
-  };
-
-  const [showModal, setShowModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedJobsheet, setSelectedJobsheet] = useState(null);
+  const [jobsheets, setJobsheets] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [sorting, setSorting] = useState({ field: "", direction: "" });
+  const [gridLoading, setGridLoading] = useState(false);
+  const [expandedIds, setExpandedIds] = useState([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [pageError, setPageError] = useState("");
 
-  // AMS ticket activities are converted to jobsheet rows by the backend.
-  // Refresh this grid as soon as that transaction broadcasts its completion.
+  const [report, setReport] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [adminTotalLabels, setAdminTotalLabels] = useState({});
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedJobsheet, setSelectedJobsheet] = useState(null);
+
+  const showError = (error) =>
+    setPageError(getApiErrorMessage(error) || localize("DefaultErrorMessage"));
+
+  // ── Filter data: projects (PRJ lookup), users, collaborators ──
+  useEffect(() => {
+    let active = true;
+    const loadFilterData = async () => {
+      try {
+        const [projectData, allUserData, jobsheetUserData] = await Promise.all([
+          codeDetailsApi.getByLookupCodes(["PRJ"]),
+          usersApi.getUsersList({
+            organizationTypes: [ORGANIZATION_VENDOR_SUREZE, ORGANIZATION_VENDOR_ABBOTT],
+          }),
+          usersApi.getUsersList({
+            organizationTypes: [ORGANIZATION_VENDOR_SUREZE],
+            mustCompleteJobsheet: true,
+          }),
+        ]);
+        if (!active) return;
+        setProjects(getItems(projectData));
+        setAllUsers(getItems(allUserData));
+        setJobsheetUsers(getItems(jobsheetUserData));
+      } catch (error) {
+        if (active) showError(error);
+      }
+    };
+    loadFilterData();
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Admin-only report total labels from the backend report template ──
+  useEffect(() => {
+    let active = true;
+    loadReportTemplateTexts("JobsheetReport")
+      .then((texts) => {
+        const labels = texts
+          .map((text) => text.match(/ShowCells == true \? "([^"]+)"/)?.[1])
+          .filter(Boolean);
+        const fields = texts
+          .map((text) => text.match(/ShowCells == true \? root\.(\w+)/)?.[1])
+          .filter(Boolean);
+        if (!active) return;
+        setAdminTotalLabels(
+          Object.fromEntries(fields.map((field, index) => [field, labels[index]]).filter(([, label]) => label)),
+        );
+      })
+      .catch(() => {
+        // Labels fall back to the backend field names.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // ── AMS ticket activities update jobsheets through SignalR ──
   useEffect(() => {
     const refreshJobsheets = () => setRefreshTrigger((value) => value + 1);
     const updateTicketDetails = async (firstArgument, secondArgument) => {
@@ -291,841 +322,731 @@ export default function JobsheetsPage() {
       JOBSHEET_SIGNALR_EVENTS.updateTicketDetails,
       updateTicketDetails,
     );
-
     return () => {
       unsubscribeReload();
       unsubscribeTicketDetails();
     };
   }, []);
 
+  // Search values sent to the backend, the same way Blazor builds JobsheetSearchDto.
+  const searchParams = useMemo(() => ({
+    CurrentUserId: user?.id,
+    UserIdsSearchValues: isAdmin ? filters.users : [],
+    JobsheetDetailUserIdsSearchValues: filters.collaborators,
+    ProjectIdSearchValue: filters.project || undefined,
+    DateFrom: toApiDate(filters.dateFrom),
+    DateTo: toApiDate(filters.dateTo),
+  }), [filters, isAdmin, user?.id]);
 
-
-
-  // ── Fetch projects on mount ──
+  // ── Grid data ──
   useEffect(() => {
-    const loadProjects = async () => {
-      setLoadingProjects(true);
+    let active = true;
+    const loadJobsheets = async () => {
+      setGridLoading(true);
       try {
-        const allLookups = await codeDetailsApi.getByLookupCodes(['TSK', 'STS', 'PRJ']);
-        const projects = allLookups.filter(item => item.lookupCode === 'PRJ');
-        setProjects(
-          projects
-            .filter((d) => d.isActive !== false)
-            .map((item) => ({ id: item.newCode, name: item.description || item.newCode }))
-        );
-      } catch (err) {
-        console.error("Error loading projects:", err);
-      } finally {
-        setLoadingProjects(false);
-      }
-    };
-    loadProjects();
-  }, []);
-
-  // ── Fetch Vendor-Sureze users ONCE when User dropdown opens ──
-  useEffect(() => {
-    if (!showUserDropdown || hasFetchedUsers) return;
-    const fetch = async () => {
-      setIsLoadingUsers(true);
-      try {
-        const data = await usersApi.getUsersList({ organizationTypes: [2] });
-        const arr = Array.isArray(data) ? data : data.items || [];
-        setAllUsers(arr);
-        setHasFetchedUsers(true);
-      } catch (err) {
-        console.error("Error fetching vendor users:", err);
-      } finally {
-        setIsLoadingUsers(false);
-      }
-    };
-    fetch();
-  }, [showUserDropdown, hasFetchedUsers]);
-
-  // ── Fetch all users ONCE when Collaborator dropdown opens ──
-  useEffect(() => {
-    if (!showCollaboratorDropdown || hasFetchedCollaborators) return;
-    const fetch = async () => {
-      setIsLoadingCollaborators(true);
-      try {
-        const data = await usersApi.getUsersList();
-        const arr = Array.isArray(data) ? data : data.items || [];
-        setAllCollaborators(arr);
-        setHasFetchedCollaborators(true);
-      } catch (err) {
-        console.error("Error fetching collaborators:", err);
-      } finally {
-        setIsLoadingCollaborators(false);
-      }
-    };
-    fetch();
-  }, [showCollaboratorDropdown, hasFetchedCollaborators]);
-
-  // ── Local filter for User dropdown ──
-  useEffect(() => {
-    if (!userSearch) {
-      setUserResults(allUsers.slice(0, 50));
-    } else {
-      const lower = userSearch.toLowerCase();
-      setUserResults(
-        allUsers.filter((u) => {
-          const full = `${u.name || ""} ${u.surname || ""}`.toLowerCase();
-          return full.includes(lower) || (u.email || "").toLowerCase().includes(lower);
-        }).slice(0, 50)
-      );
-    }
-  }, [userSearch, allUsers]);
-
-  // ── Local filter for Collaborator dropdown ──
-  useEffect(() => {
-    if (!collaboratorSearch) {
-      setCollaboratorResults(allCollaborators.slice(0, 50));
-    } else {
-      const lower = collaboratorSearch.toLowerCase();
-      setCollaboratorResults(
-        allCollaborators.filter((u) => {
-          const full = `${u.name || ""} ${u.surname || ""}`.toLowerCase();
-          return full.includes(lower) || (u.email || "").toLowerCase().includes(lower);
-        }).slice(0, 50)
-      );
-    }
-  }, [collaboratorSearch, allCollaborators]);
-
-  // ── Click outside to close dropdowns independently ──
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (userRef.current && !userRef.current.contains(event.target)) {
-        setShowUserDropdown(false);
-      }
-      if (collaboratorRef.current && !collaboratorRef.current.contains(event.target)) {
-        setShowCollaboratorDropdown(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleClear = () => {
-    setFilters({
-      user: [],
-      collaborator: [],
-      project: "",
-      dateFrom: "",
-      dateTo: "",
-    });
-    setUserSearch("");
-    setCollaboratorSearch("");
-  };
-
-
-
-
-
-  const columns = useMemo(() => [
-    {
-      key: "date",
-      label: "DATE",
-      render: (val) => {
-        if (!val) return "—";
-        const d = new Date(val);
-        return (
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] font-bold text-slate-900 dark:text-white uppercase tracking-tight">
-              {d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      key: "attendanceStatus",
-      label: "ATTENDANCE",
-      render: (val) => (
-        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${val === "Present"
-          ? "bg-green-50 text-green-600 border-green-100 dark:bg-green-500/10 dark:border-green-500/20"
-          : val === "Absent"
-            ? "bg-red-50 text-red-600 border-red-100 dark:bg-red-500/10 dark:border-red-500/20"
-            : "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800 dark:border-slate-700"
-          }`}>
-          {val || "—"}
-        </span>
-      ),
-    },
-    {
-      key: "userName",
-      label: "CREATED BY",
-      sortable: true, // paged api supports sorting
-      render: (val) => (
-        <div className="flex items-center gap-2">
-          <span className="text-slate-900 dark:text-white text-[11px] font-semibold uppercase tracking-tight">
-            {val || "—"}
-          </span>
-        </div>
-      ),
-    },
-
-    {
-      key: "totalDurationHours",
-      label: "Total Duration (Hours)",
-      sortable: false,
-      render: (val) => (
-        <span className="text-slate-900 dark:text-white font-mono font-black text-[12px]">
-          {val ?? "—"}
-        </span>
-      ),
-    },
-    {
-      key: "totalDurationMinutes",
-      label: "Total Duration (Minutes)",
-      sortable: false,
-      render: (val) => (
-        <span className="text-slate-900 dark:text-white font-mono font-black text-[12px]">
-          {val ?? "—"}
-        </span>
-      ),
-    },
-    {
-      key: "creationTime",
-      label: "CREATION TIME",
-      render: (val) => {
-        if (!val) return "—";
-        return (
-          <span className="text-slate-900 dark:text-white text-[10px] font-medium font-mono uppercase">
-            {new Date(val).toLocaleString("en-GB", {
-              day: "2-digit", month: "short", year: "numeric",
-              hour: "2-digit", minute: "2-digit",
-            })}
-          </span>
-        );
-      },
-    },
-    {
-      key: "holiday",
-      label: "HOLIDAY",
-      render: (val) => {
-        if (!val) return <span className="text-slate-300 dark:text-slate-700">—</span>;
-        return (
-          <span className="px-2 py-0.5 rounded-lg text-[9px] font-black border transition-all bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-500/10 dark:border-purple-500/20 uppercase tracking-wide">
-            {val}
-          </span>
-        );
-      },
-    },
-  ], []);
-
-  const selectedUserNames = filters.user
-    .map(id => allUsers.find(u => u.id === id))
-    .filter(Boolean)
-    .map(u => `${u.name || ''} ${u.surname || ''}`.trim());
-
-  const userPlaceholder = selectedUserNames.length === 1
-    ? selectedUserNames[0]
-    : selectedUserNames.length > 1
-      ? `${selectedUserNames.length} selected`
-      : "Search User...";
-
-  const selectedCollaboratorNames = filters.collaborator
-    .map(id => allCollaborators.find(u => u.id === id))
-    .filter(Boolean)
-    .map(u => `${u.name || ''} ${u.surname || ''}`.trim());
-
-  const collaboratorPlaceholder = selectedCollaboratorNames.length === 1
-    ? selectedCollaboratorNames[0]
-    : selectedCollaboratorNames.length > 1
-      ? `${selectedCollaboratorNames.length} selected`
-      : "Search Collaborator...";
-
-  const filterInputClass =
-    "pl-3 pr-8 py-2 text-[11px] bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all placeholder:text-slate-400 shadow-sm w-full font-semibold text-slate-700 dark:text-slate-200";
-
-  const clearButtonClass = "absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 p-0.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors z-10";
-
-  const customFilterArea = (
-    <div className="flex items-center gap-4 bg-slate-50/30 dark:bg-[#0f172a]/50 p-2.5 rounded-[22px] border border-slate-100 dark:border-slate-800 backdrop-blur-sm shadow-inner w-full flex-nowrap overflow-visible">
-
-      {/* Project */}
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Project</label>
-          <div className="relative">
-            <AppSelect
-              value={filters.project}
-              onChange={(e) => setFilters({ ...filters, project: e.target.value })}
-              className={`${filterInputClass} appearance-none cursor-pointer pr-8`}
-              disabled={loadingProjects}
-            >
-              <option value="">{loadingProjects ? "Loading..." : "Choose An Option"}</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </AppSelect>
-            {filters.project && (
-              <button
-                className={clearButtonClass}
-                onClick={() => setFilters({ ...filters, project: "" })}
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Date From */}
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Date From</label>
-          <div className="relative">
-            <Flatpickr
-              value={filters.dateFrom}
-              onChange={(dates, dateStr) => setFilters({ ...filters, dateFrom: dateStr })}
-              options={{ dateFormat: "Y-m-d", allowInput: true }}
-              placeholder="YYYY-MM-DD"
-              className={filterInputClass}
-            />
-            {filters.dateFrom && (
-              <button
-                className={clearButtonClass}
-                onClick={() => setFilters({ ...filters, dateFrom: "" })}
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Date To */}
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Date To</label>
-          <div className="relative">
-            <Flatpickr
-              value={filters.dateTo}
-              onChange={(dates, dateStr) => setFilters({ ...filters, dateTo: dateStr })}
-              options={{ dateFormat: "Y-m-d", allowInput: true }}
-              placeholder="YYYY-MM-DD"
-              className={filterInputClass}
-            />
-            {filters.dateTo && (
-              <button
-                className={clearButtonClass}
-                onClick={() => setFilters({ ...filters, dateTo: "" })}
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* User — Vendor-Sureze only (ADMIN ONLY) */}
-      {isAdmin && (
-        <div className="flex-1 min-w-0 relative" ref={userRef}>
-          <div className="flex flex-col gap-1">
-            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">User</label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder={userPlaceholder}
-                value={userSearch}
-                onFocus={() => setShowUserDropdown(true)}
-                onChange={(e) => {
-                  setUserSearch(e.target.value);
-                  setShowUserDropdown(true);
-                }}
-                className={filterInputClass}
-              />
-              {(userSearch || filters.user.length > 0) && (
-                <button
-                  className={clearButtonClass}
-                  onClick={() => { setUserSearch(""); setFilters({ ...filters, user: [] }); }}
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-            {showUserDropdown && (
-              <div className="app-modern-dropdown-menu absolute top-[105%] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 max-h-56 overflow-y-auto no-scrollbar">
-                {isLoadingUsers ? (
-                  <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-black uppercase tracking-widest">Loading...</div>
-                ) : userResults.length > 0 ? (
-                  userResults.map((u) => {
-                    const isChecked = filters.user.includes(u.id);
-                    return (
-                      <div
-                        key={u.id}
-                        className="px-4 py-2.5 cursor-pointer border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-pink-50 dark:hover:bg-pink-500/5 flex items-center gap-3 group"
-                        onClick={() => {
-                          const newUsers = isChecked
-                            ? filters.user.filter(id => id !== u.id)
-                            : [...filters.user, u.id];
-                          setFilters({ ...filters, user: newUsers });
-                          setUserSearch("");
-                        }}
-                      >
-                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isChecked ? 'bg-[#ec4899] border-[#ec4899]' : 'border-slate-200 dark:border-slate-700'}`}>
-                          {isChecked && <div className="w-2 h-2 bg-white rounded-[1px] rotate-45 border-b-2 border-r-2" style={{ transform: 'rotate(45deg) translate(-1px, -1px)' }}></div>}
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-bold text-[11px] text-slate-800 dark:text-white uppercase tracking-tight group-hover:text-[#ec4899] transition-colors">
-                            <SearchTextHighlight
-                              text={`${u.name || ""} ${u.surname || ""}`.trim()}
-                              query={userSearch}
-                            />
-                          </span>
-                          <span className="text-[9px] text-slate-400 lowercase">
-                            <SearchTextHighlight text={u.email || "no email"} query={userSearch} />
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-black uppercase tracking-widest">No matches</div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-
-      {/* Collaborators — all users */}
-      <div className="flex-1 min-w-0 relative" ref={collaboratorRef}>
-        <div className="flex flex-col gap-1">
-          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Collaborators</label>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder={collaboratorPlaceholder}
-              value={collaboratorSearch}
-              onFocus={() => setShowCollaboratorDropdown(true)}
-              onChange={(e) => {
-                setCollaboratorSearch(e.target.value);
-                setShowCollaboratorDropdown(true);
-              }}
-              className={filterInputClass}
-            />
-            {(collaboratorSearch || filters.collaborator.length > 0) && (
-              <button
-                className={clearButtonClass}
-                onClick={() => { setCollaboratorSearch(""); setFilters({ ...filters, collaborator: [] }); }}
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-          {showCollaboratorDropdown && (
-            <div className="app-modern-dropdown-menu absolute top-[105%] left-0 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-50 max-h-56 overflow-y-auto no-scrollbar">
-              {isLoadingCollaborators ? (
-                <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-black uppercase tracking-widest">Loading...</div>
-              ) : collaboratorResults.length > 0 ? (
-                collaboratorResults.map((u) => {
-                  const isChecked = filters.collaborator.includes(u.id);
-                  return (
-                    <div
-                      key={u.id}
-                      className="px-4 py-2.5 cursor-pointer border-b border-slate-50 dark:border-slate-800 last:border-0 hover:bg-pink-50 dark:hover:bg-[#ec4899]/5 flex items-center gap-3 group"
-                      onClick={() => {
-                        const newCollabs = isChecked
-                          ? filters.collaborator.filter(id => id !== u.id)
-                          : [...filters.collaborator, u.id];
-                        setFilters({ ...filters, collaborator: newCollabs });
-                        setCollaboratorSearch("");
-                      }}
-                    >
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-all ${isChecked ? 'bg-[#ec4899] border-[#ec4899]' : 'border-slate-200 dark:border-slate-700'}`}>
-                        {isChecked && <div className="w-2 h-2 bg-white rounded-[1px] rotate-45 border-b-2 border-r-2" style={{ transform: 'rotate(45deg) translate(-1px, -1px)' }}></div>}
-                      </div>
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-bold text-[11px] text-slate-800 dark:text-white uppercase tracking-tight group-hover:text-[#ec4899] transition-colors">
-                          <SearchTextHighlight
-                            text={`${u.name || ""} ${u.surname || ""}`.trim()}
-                            query={collaboratorSearch}
-                          />
-                        </span>
-                        <span className="text-[9px] text-slate-400 lowercase">
-                          <SearchTextHighlight text={u.email || "no email"} query={collaboratorSearch} />
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="px-4 py-8 text-center text-[10px] text-slate-400 font-black uppercase tracking-widest">No matches</div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 self-end">
-        <button
-          onClick={handleClear}
-          className="btn-flagship border-slate-200! dark:border-slate-800! text-slate-500! hover:text-pink-600! hover:border-pink-500/30!"
-        >
-          Clear All
-        </button>
-      </div>
-    </div>
-  );
-
-  const extraParams = useMemo(() => {
-    const p = {};
-    if (user?.id) p.CurrentUserId = user.id;
-    if (filters.project) p.Project = filters.project;
-    if (filters.dateFrom) p.FromDate = filters.dateFrom;
-    if (filters.dateTo) p.ToDate = filters.dateTo;
-    if (filters.collaborator) p.UserIdsSearchValues = filters.collaborator;
-
-    // Force current user if not admin
-    p.userId = isAdmin ? filters.user : [user?.id];
-
-    return p;
-  }, [filters, user, isAdmin]);
-
-
-  const headerActions = (
-    <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
-      {reportError && (
-        <div className="flex w-full items-center rounded-xl bg-red-50 px-3 py-2 text-xs text-red-500 dark:bg-red-500/10 sm:w-auto">
-          <AlertTriangle size={14} className="mr-1.5" />
-          <span className="min-w-0 flex-1">{reportError}</span>
-          <button type="button" onClick={clearReportError} className="ml-2 shrink-0 text-red-700 hover:text-red-900">
-            <X size={12} />
-          </button>
-        </div>
-      )}
-
-      <div className="grid w-full grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:flex sm:w-auto">
-        <button
-          type="button"
-          onClick={handleGetReport}
-          disabled={reportDownloading}
-          aria-busy={reportDownloading}
-          className="app-primary-button btn-flagship-solid w-full min-w-[124px] gap-2 whitespace-nowrap sm:w-auto"
-        >
-          {reportDownloading ? (
-            <Loader2 size={15} className="animate-spin" aria-hidden="true" />
-          ) : (
-            <FileText size={15} aria-hidden="true" />
-          )}
-          <span>{reportDownloading ? "Generating..." : "Get Report"}</span>
-        </button>
-
-        {canCreate && (
-          <button
-            type="button"
-            className="app-primary-button btn-flagship w-full min-w-[124px] gap-2 whitespace-nowrap sm:w-auto"
-            onClick={() => setShowModal(true)}
-          >
-            <Plus size={15} aria-hidden="true" />
-            <span>New Jobsheet</span>
-          </button>
-        )}
-      </div>
-    </div>
-  );
-
-  const handleAction = async (action, row) => {
-    if (action === "view") {
-      try {
-        const fullData = await jobsheetsApi.getById(row.id);
-        setSelectedJobsheet(fullData);
-        setShowViewModal(true);
-      } catch (error) {
-        console.error("Failed to fetch jobsheet details:", error);
-      }
-    } else if (action === "audit") {
-      navigate(`/audit-logs?primaryKey=${row.id}&entityName=Jobsheet`);
-    }
-  };
-
-
-
-  const customActions = [
-    {
-      key: "view",
-      label: canEdit ? "View / Update" : "View",
-      onClick: (row) => handleAction("view", row),
-      className: "text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-bold",
-    },
-    canViewAuditLog ? {
-      key: "audit",
-      label: "Audit Log",
-      onClick: (row) => handleAction("audit", row),
-      className: "text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-bold",
-    } : null,
-  ].filter(Boolean);
-
-
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(14);
-  const [serverTotalCount, setServerTotalCount] = useState(0);
-
-  // Initial load / Pagination change / Filter change
-  useEffect(() => {
-    const fetchGridData = async () => {
-      setReportLoading(true);
-      try {
-        const finalFilters = isAdmin ? filters : { ...filters, user: [user?.id] };
-        const selectedUserIds = finalFilters.user?.length > 0 ? finalFilters.user : undefined;
-        const selectedCollabIds = finalFilters.collaborator?.length > 0 ? finalFilters.collaborator : undefined;
-
-        // Combine user + collaborator IDs for the search (API searches across both fields)
-        const combinedIds = [
-          ...(finalFilters.user || []),
-          ...(finalFilters.collaborator || []),
-        ].filter(Boolean);
-        const userIdsParam = combinedIds.length > 0 ? combinedIds : undefined;
-
         const data = await jobsheetsApi.getAll({
           page,
           perPage: pageSize,
-          FromDate: finalFilters.dateFrom,
-          ToDate: finalFilters.dateTo,
-          Project: finalFilters.project,
-          UserIdsSearchValues: selectedUserIds,
-          JobsheetDetailUserIdsSearchValues: selectedCollabIds,
-          CurrentUserId: user?.id,
+          sortKey: sorting.field || undefined,
+          sortDir: sorting.direction,
+          ...searchParams,
         });
-        setReportData(data);
-        setServerTotalCount(data?.totalCount || data?.items?.length || 0);
-      } catch (err) {
-        console.error("Failed to load jobsheets:", err);
+        if (!active) return;
+        setJobsheets(getItems(data));
+        setTotalCount(Number(data?.totalCount) || 0);
+      } catch (error) {
+        if (active) showError(error);
       } finally {
-        setReportLoading(false);
+        if (active) setGridLoading(false);
       }
     };
-    fetchGridData();
-  }, [page, pageSize, isAdmin, user?.id, filters, refreshTrigger]);
+    loadJobsheets();
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, sorting, searchParams, refreshTrigger]);
 
-  // Reset to page 1 when filters change
-  useEffect(() => {
+  const updateFilters = (changes) => {
+    setFilters((current) => ({ ...current, ...changes }));
     setPage(1);
-  }, [filters]);
+    setExpandedIds([]);
+  };
 
-  const tableData = Array.isArray(reportData)
-    ? reportData
-    : reportData?.items || reportData?.data || [];
+  const handleClear = () => {
+    setFilters(EMPTY_FILTERS);
+    setPage(1);
+    setExpandedIds([]);
+    setReport(null);
+    setPageError("");
+  };
 
-  const overrideData = tableData.map((t, i) => ({ ...t, id: t.id || i }));
-  const totalCount = serverTotalCount;
+  const handleSort = (column) => {
+    if (!column.sortField) return;
+    setSorting((current) => {
+      if (current.field !== column.sortField) return { field: column.sortField, direction: "asc" };
+      if (current.direction === "asc") return { field: column.sortField, direction: "desc" };
+      return { field: "", direction: "" };
+    });
+  };
 
-  const paginatedData = overrideData; // We are now using server-side pagination
+  const toggleExpanded = (id) =>
+    setExpandedIds((current) =>
+      current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
+    );
+
+  const afterSave = () => {
+    setExpandedIds([]);
+    setRefreshTrigger((value) => value + 1);
+  };
+
+  const openEditModal = async (id) => {
+    try {
+      const jobsheet = await jobsheetsApi.getById(id);
+      setSelectedJobsheet(jobsheet);
+      setShowEditModal(true);
+    } catch (error) {
+      showError(error);
+    }
+  };
+
+  // ── Report (Blazor shows the backend JobsheetReport under the grid) ──
+  const handleGetReport = async () => {
+    setPageError("");
+    setReportLoading(true);
+    try {
+      const response = await jobsheetsApi.getReport(searchParams);
+      const data = response?.data?.result || response?.data || null;
+      const details = getRowValue(data, "JobsheetDetails") || [];
+      if (details.length === 0) {
+        setReport(null);
+        setPageError(localize("NoReportFound"));
+      } else {
+        setReport(data);
+      }
+    } catch (error) {
+      setReport(null);
+      showError(error);
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const reportDetails = getRowValue(report, "JobsheetDetails") || [];
+  const { generatedItems: templateGeneratedItems } = useReportTemplateLines(
+    "JobsheetReport",
+    (field) => getRowValue(report, field),
+  );
+  const generatedItems = ["GeneratedBy", "GeneratedOn"].map((field) => ({
+    field,
+    label:
+      templateGeneratedItems.find((item) => item.field === field)?.label || splitFieldName(field),
+    value: getRowValue(report, field),
+  }));
+  const reportTotals = [
+    { field: "TotalDurationHours", label: localize("TotalDurationHours") },
+    ...(getRowValue(report, "ShowCells")
+      ? ADMIN_TOTAL_FIELDS.map((field) => ({
+        field,
+        label: adminTotalLabels[field] || splitFieldName(field),
+      }))
+      : []),
+  ].map((item) => ({ ...item, value: getRowValue(report, item.field) }));
+
+  const reportFileName = (extension) => buildReportFileName("JobsheetReport", new Date(), extension);
+
+  const handleExportExcel = async () => {
+    if (reportDetails.length === 0) return;
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet(localize("Jobsheets") || "Jobsheets");
+      const headerStyle = (cell) => {
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEC4899" } };
+        cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
+      };
+
+      // Two header rows, like the template: Date, Created By, then "Details" over the rest.
+      const groupRow = worksheet.addRow([
+        ...REPORT_COLUMNS.map((column) => localize(column.labelKey)),
+        localize("Details"),
+      ]);
+      const columnRow = worksheet.addRow([
+        ...REPORT_COLUMNS.map(() => ""),
+        ...REPORT_DETAIL_COLUMNS.map((column) => localize(column.labelKey)),
+      ]);
+      REPORT_COLUMNS.forEach((column, index) =>
+        worksheet.mergeCells(groupRow.number, index + 1, columnRow.number, index + 1),
+      );
+      worksheet.mergeCells(
+        groupRow.number,
+        REPORT_COLUMNS.length + 1,
+        groupRow.number,
+        ALL_REPORT_COLUMNS.length,
+      );
+      [groupRow, columnRow].forEach((row) => {
+        for (let index = 1; index <= ALL_REPORT_COLUMNS.length; index += 1) headerStyle(row.getCell(index));
+      });
+
+      reportDetails.forEach((row) => {
+        worksheet.addRow(ALL_REPORT_COLUMNS.map((column) => getRowValue(row, column.field) ?? ""));
+      });
+
+      worksheet.addRow([]);
+      const totalsLabelRow = worksheet.addRow(reportTotals.map((item) => item.label));
+      totalsLabelRow.eachCell((cell) => {
+        cell.font = { bold: true };
+      });
+      worksheet.addRow(reportTotals.map((item) => item.value ?? ""));
+
+      worksheet.addRow([]);
+      generatedItems.forEach((item) => worksheet.addRow([`${item.label} : ${item.value ?? ""}`]));
+
+      worksheet.columns.forEach((column, index) => {
+        column.width = index === ALL_REPORT_COLUMNS.length - 1 ? 40 : 18;
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      saveAs(
+        new Blob([buffer], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        }),
+        reportFileName("xlsx"),
+      );
+    } catch (error) {
+      showError(error);
+    }
+  };
+
+  const handleExportPdf = () => {
+    if (reportDetails.length === 0) return;
+    try {
+      const document = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      document.setFontSize(14);
+      document.text(localize("Jobsheets"), 40, 35);
+
+      autoTable(document, {
+        startY: 50,
+        head: [
+          [
+            ...REPORT_COLUMNS.map((column) => ({ content: localize(column.labelKey), rowSpan: 2 })),
+            { content: localize("Details"), colSpan: REPORT_DETAIL_COLUMNS.length },
+          ],
+          REPORT_DETAIL_COLUMNS.map((column) => localize(column.labelKey)),
+        ],
+        body: reportDetails.map((row) =>
+          ALL_REPORT_COLUMNS.map((column) => getRowValue(row, column.field) ?? ""),
+        ),
+        styles: { fontSize: 7, cellPadding: 3, overflow: "linebreak", valign: "middle" },
+        headStyles: { fillColor: [253, 242, 248], textColor: [190, 24, 93], fontStyle: "bold", halign: "center" },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+      });
+
+      autoTable(document, {
+        startY: document.lastAutoTable.finalY + 12,
+        head: [reportTotals.map((item) => item.label)],
+        body: [reportTotals.map((item) => item.value ?? "")],
+        styles: { fontSize: 8, cellPadding: 4, halign: "center" },
+        headStyles: { fillColor: [253, 242, 248], textColor: [190, 24, 93], fontStyle: "bold" },
+      });
+
+      document.setFontSize(9);
+      generatedItems.forEach((item, index) =>
+        document.text(`${item.label} : ${item.value ?? ""}`, 40, document.lastAutoTable.finalY + 20 + index * 14),
+      );
+      document.save(reportFileName("pdf"));
+    } catch (error) {
+      showError(error);
+    }
+  };
+
+  // ── Display helpers ──
+  const getEnumLabel = (options, value) => {
+    if (isEmptyValue(value)) return "";
+    const option = options.find(
+      (item) => item.name === value || String(item.value) === String(value),
+    );
+    return option?.label ?? String(value);
+  };
+
+  const getCollaboratorNames = (detailUsers) =>
+    (detailUsers || [])
+      .map((entry) => {
+        const userId = getRowValue(entry, "UserId");
+        return getUserDisplayName(allUsers.find((item) => item.id === userId));
+      })
+      .filter(Boolean)
+      .join(",");
+
+  const renderGridCell = (column, row) => {
+    const value = getRowValue(row, column.field);
+    if (column.type === "date") return formatDate(value);
+    if (column.type === "dateTime") return formatDateTime(value);
+    if (column.type === "attendance") return getEnumLabel(attendanceOptions, value);
+    return isEmptyValue(value) ? "" : String(value);
+  };
+
+  const renderDetailCell = (column, detail) => {
+    const value = getRowValue(detail, column.field);
+    if (column.type === "time") return formatTime(value);
+    if (column.type === "collaborators") return getCollaboratorNames(value);
+    if (column.type === "workingHours") return getEnumLabel(workingHoursOptions, value);
+    if (column.type === "ticket" && !isEmptyValue(value)) {
+      return (
+        <a
+          href={`/ams-tickets/${encodeURIComponent(value)}`}
+          target="_blank"
+          rel="noreferrer"
+          className="text-blue-600 dark:text-blue-400 underline"
+        >
+          {value}
+        </a>
+      );
+    }
+    return isEmptyValue(value) ? "" : String(value);
+  };
+
+  const getRowActions = (row) => [
+    canEdit && {
+      key: "edit",
+      label: localize("ViewEditButtonText"),
+      onClick: () => openEditModal(row.id),
+      className: "text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-bold",
+    },
+    canViewAuditLog && {
+      key: "audit",
+      label: localize("AuditLogsButtonText"),
+      onClick: () => navigate(`/audit-logs?primaryKey=${row.id}&entityName=Jobsheet`),
+      className: "text-black dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-bold",
+    },
+  ].filter(Boolean);
+
+  // ── Pager (ABP pager texts from backend localization) ──
+  const pageCount = Math.max(Math.ceil(totalCount / pageSize), 1);
+  const firstEntry = totalCount > 0 ? (page - 1) * pageSize + 1 : 0;
+  const lastEntry = Math.min(page * pageSize, totalCount);
+  const pagerInfo = totalCount > 0
+    ? localize("PagerInfo{0}{1}{2}")
+      .replace("{0}", firstEntry)
+      .replace("{1}", lastEntry)
+      .replace("{2}", totalCount)
+    : localize("PagerInfoEmpty");
+  const [pagerShowBefore, pagerShowAfter = ""] = localize("PagerShowMenuEntries").split("_MENU_");
+
+  const filterLabelClass = "text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1";
+  const filterInputClass = "w-full px-3 pr-8 text-xs font-semibold";
+  const clearDateButtonClass = "absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors";
+  const gridHeaderClass = "border-b border-r last:border-r-0 border-pink-100 dark:border-slate-700 bg-pink-50 dark:bg-slate-800 px-3 py-3 text-[10px] font-black uppercase tracking-wide text-pink-700 dark:text-pink-200 text-center align-middle leading-tight";
+  const gridCellClass = "border-b border-r last:border-r-0 border-slate-100 dark:border-slate-800 px-3 py-2.5 text-[12px] font-semibold text-slate-800 dark:text-slate-100 text-center align-middle break-words";
+  const pagerButtonClass = "w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all";
+
+  const renderUserFilter = (labelKey, options, value, onChange) => (
+    <div className="flex flex-col gap-1 w-full min-w-0">
+      <label className={filterLabelClass}>{localize(labelKey)}</label>
+      <Autocomplete
+        size="small"
+        multiple
+        limitTags={1}
+        options={options}
+        disableCloseOnSelect
+        componentsProps={multiSelectPaperProps}
+        getOptionLabel={getUserDisplayName}
+        isOptionEqualToValue={(option, selected) => option.id === selected.id}
+        value={options.filter((option) => value.includes(option.id))}
+        onChange={(event, selected) => onChange(selected.map((option) => option.id))}
+        renderOption={renderCheckboxOption}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            size="small"
+            placeholder={value.length ? "" : localize("SelectBoxEmptyValueText")}
+            className="rounded-xl"
+            sx={multiSelectSx}
+          />
+        )}
+        sx={{ width: "100%", color: "inherit" }}
+      />
+    </div>
+  );
 
   return (
     <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial] text-slate-900 dark:text-white">
-      <style>{`
-        *::-webkit-scrollbar { display: none !important; }
-        * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
-        td, tr { overflow: visible !important; }
-
-        .custom-scrollbar::-webkit-scrollbar:horizontal { height: 8px; display: block !important; }
-        .custom-scrollbar::-webkit-scrollbar:vertical { display: none !important; width: 0 !important; }
-        .custom-scrollbar { scrollbar-width: thin !important; }
-        .custom-scrollbar::-webkit-scrollbar-track:horizontal { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #cbd5e1; border-radius: 20px; }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb:horizontal { background-color: #475569; }
-        .no-scrollbar::-webkit-scrollbar { display: none !important; }
-        .no-scrollbar { -ms-overflow-style: none !important; scrollbar-width: none !important; }
-      `}</style>
-
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
-
         {/* Header */}
-        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
-          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
-            <span onClick={() => navigate("/")} className="hover:opacity-80 cursor-pointer transition-all hover:text-pink-500">Home</span>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span className="text-slate-500 dark:text-slate-400">Management</span>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span className="text-pink-500 font-black">Jobsheets</span>
-          </nav>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <h1 className="text-4xl font-black tracking-tighter">
-                Jobsheets
+        <div className="app-page-header flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
+                <span onClick={() => navigate("/")} className="hover:opacity-80 cursor-pointer transition-all hover:text-pink-500">
+                  {localize("Home")}
+                </span>
+                <span className="text-slate-300 dark:text-slate-700">/</span>
+                <span className="text-pink-500 font-black">{localize("Jobsheets")}</span>
+              </nav>
+              <h1 className="text-4xl font-black tracking-tighter flex items-center gap-3">
+                {localize("Jobsheets")}
+                {gridLoading && <span className="w-4 h-4 border-2 border-slate-800 dark:border-white border-t-transparent rounded-full animate-spin"></span>}
               </h1>
             </div>
-            <div className="flex w-full items-center gap-3 sm:w-auto">
-              {headerActions}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleClear}
+                className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold hover:border-slate-400 dark:hover:border-slate-500 transition-all active:scale-95 shadow-sm text-slate-700 dark:text-slate-300"
+              >
+                {localize("Clear")}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleGetReport}
+                disabled={reportLoading}
+                className="app-primary-button flex items-center gap-2 px-4 py-1.5 text-[11px]"
+              >
+                {reportLoading ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+                {reportLoading ? localize("LoadingWithThreeDot") : localize("GetReport")}
+              </button>
+
+              {canCreate && (
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(true)}
+                  className="app-primary-button flex items-center gap-2 px-4 py-1.5 text-[11px]"
+                >
+                  <Plus size={13} />
+                  {localize("New")}
+                </button>
+              )}
             </div>
+          </div>
+
+          {/* Filters (same fields and order as Blazor) */}
+          <div className={`grid grid-cols-1 sm:grid-cols-2 ${isAdmin ? "lg:grid-cols-5" : "lg:grid-cols-4"} items-end gap-4 w-full report-filters`}>
+            <div className="flex flex-col gap-1 w-full min-w-0">
+              <label className={filterLabelClass}>{localize("Project")}</label>
+              <AppSelect
+                value={filters.project}
+                onChange={(event) => updateFilters({ project: event.target.value })}
+                className="w-full text-xs font-semibold"
+              >
+                <option value="">{localize("SelectBoxEmptyValueText")}</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>{project.description}</option>
+                ))}
+              </AppSelect>
+            </div>
+
+            {isAdmin &&
+              renderUserFilter("User", jobsheetUsers, filters.users, (users) => updateFilters({ users }))}
+
+            <div className="flex flex-col gap-1 w-full min-w-0">
+              <label className={filterLabelClass}>{localize("DateFrom")}</label>
+              <div className="relative">
+                <Flatpickr
+                  value={toPickerDate(filters.dateFrom)}
+                  onChange={(dates) => updateFilters({ dateFrom: fromPickerDates(dates) })}
+                  options={DATE_FROM_OPTIONS}
+                  placeholder={DATE_PLACEHOLDER}
+                  className={filterInputClass}
+                />
+                {filters.dateFrom && (
+                  <button type="button" onClick={() => updateFilters({ dateFrom: "" })} className={clearDateButtonClass}>
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1 w-full min-w-0">
+              <label className={filterLabelClass}>{localize("DateTo")}</label>
+              <div className="relative">
+                <Flatpickr
+                  value={toPickerDate(filters.dateTo)}
+                  onChange={(dates) => updateFilters({ dateTo: fromPickerDates(dates) })}
+                  options={DATE_TO_OPTIONS}
+                  placeholder={DATE_PLACEHOLDER}
+                  className={filterInputClass}
+                />
+                {filters.dateTo && (
+                  <button type="button" onClick={() => updateFilters({ dateTo: "" })} className={clearDateButtonClass}>
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {renderUserFilter("Collaborators", allUsers, filters.collaborators, (collaborators) =>
+              updateFilters({ collaborators }))}
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="relative z-20 px-4 py-4 sm:px-6 sm:py-6 flex items-center justify-between bg-transparent shrink-0 flex-wrap gap-4 sm:gap-6">
-          <div className="flex items-center gap-4 sm:gap-6 flex-1 min-w-[200px]">
-            {customFilterArea}
-          </div>
-        </div>
+        <div className="flex-1 flex flex-col gap-4 p-4 w-full">
+          {pageError && (
+            <PremiumErrorAlert open={!!pageError} message={pageError} onClose={() => setPageError("")} />
+          )}
 
-        {/* Table */}
-        <div className="flex flex-col w-full h-auto relative">
-          {reportLoading && !reportData ? (
-            <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-20 w-full">
-              Refreshing data...
+          {/* Jobsheet grid */}
+          <div className="w-full max-h-[70vh] overflow-auto rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+            <table className="w-full border-separate border-spacing-0 min-w-[900px]">
+              <thead className="sticky top-0 z-10">
+                <tr>
+                  <th className={`${gridHeaderClass} w-10`}></th>
+                  {GRID_COLUMNS.map((column) => (
+                    <th
+                      key={column.field}
+                      className={`${gridHeaderClass} ${column.sortField ? "cursor-pointer select-none hover:bg-pink-100 dark:hover:bg-slate-700" : ""}`}
+                      onClick={() => handleSort(column)}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        {localize(column.labelKey)}
+                        {sorting.field === column.sortField && sorting.direction === "asc" && <ChevronUp size={12} />}
+                        {sorting.field === column.sortField && sorting.direction === "desc" && <ChevronDown size={12} />}
+                      </span>
+                    </th>
+                  ))}
+                  <th className={`${gridHeaderClass} w-[140px]`}>{localize("Actions")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {jobsheets.length === 0 ? (
+                  <tr>
+                    <td colSpan={GRID_COLUMNS.length + 2} className="px-4 py-12 text-center text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                      {gridLoading ? localize("LoadingWithThreeDot") : localize("NoDataAvailableInDatatable")}
+                    </td>
+                  </tr>
+                ) : (
+                  jobsheets.map((row, rowIndex) => {
+                    const isExpanded = expandedIds.includes(row.id);
+                    const details = getRowValue(row, "JobsheetDetails") || [];
+                    const actions = getRowActions(row);
+                    const rowClass = rowIndex % 2 === 0 ? "bg-white dark:bg-[#161920]" : "bg-slate-50/80 dark:bg-white/[0.03]";
+                    return (
+                      <Fragment key={row.id}>
+                        <tr className={`transition-colors hover:bg-pink-50/60 dark:hover:bg-pink-500/5 ${rowClass}`}>
+                          <td className={gridCellClass}>
+                            <button
+                              type="button"
+                              onClick={() => toggleExpanded(row.id)}
+                              className="w-6 h-6 inline-flex items-center justify-center rounded-md text-pink-600 hover:bg-pink-100 dark:hover:bg-pink-500/10"
+                              aria-expanded={isExpanded}
+                            >
+                              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            </button>
+                          </td>
+                          {GRID_COLUMNS.map((column) => (
+                            <td key={column.field} className={gridCellClass}>
+                              {renderGridCell(column, row)}
+                            </td>
+                          ))}
+                          <td className={gridCellClass}>
+                            {actions.length > 0 && (
+                              <ActionsMenu actionButtonText={localize("Actions")} customActions={actions} />
+                            )}
+                          </td>
+                        </tr>
+
+                        {isExpanded && (
+                          <tr>
+                            <td colSpan={GRID_COLUMNS.length + 2} className="border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 px-4 py-3">
+                              <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
+                                <table className="w-full border-separate border-spacing-0 text-[11px]">
+                                  <thead>
+                                    <tr>
+                                      {DETAIL_COLUMNS.map((column) => (
+                                        <th key={column.field} className="border-b border-r last:border-r-0 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-2 text-[9px] font-black uppercase tracking-wide text-slate-600 dark:text-slate-300 text-center">
+                                          {localize(column.labelKey)}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {details.length === 0 ? (
+                                      <tr>
+                                        <td colSpan={DETAIL_COLUMNS.length} className="px-3 py-4 text-center text-slate-500 dark:text-slate-400">
+                                          {localize("NoDataAvailableInDatatable")}
+                                        </td>
+                                      </tr>
+                                    ) : (
+                                      details.map((detail, detailIndex) => (
+                                        <tr key={detail.id || detailIndex} className="bg-white dark:bg-[#161920]">
+                                          {DETAIL_COLUMNS.map((column) => (
+                                            <td key={column.field} className="border-b border-r last:border-r-0 border-slate-100 dark:border-slate-800 px-2 py-2 text-center font-semibold text-slate-800 dark:text-slate-100 break-words">
+                                              {renderDetailCell(column, detail)}
+                                            </td>
+                                          ))}
+                                        </tr>
+                                      ))
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pager */}
+          {totalCount > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 px-2">
+              <div className="flex flex-wrap items-center gap-4 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-2">
+                  {pagerShowBefore}
+                  <AppSelect
+                    value={pageSize}
+                    onChange={(event) => {
+                      setPageSize(Number(event.target.value));
+                      setPage(1);
+                    }}
+                    className="h-7 text-[11px] font-bold"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </AppSelect>
+                  {pagerShowAfter}
+                </span>
+                <span>{pagerInfo}</span>
+              </div>
+
+              <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
+                <button type="button" onClick={() => setPage(1)} disabled={page === 1 || gridLoading} className={pagerButtonClass} title={localize("PagerFirst")}>
+                  <ChevronsLeft size={14} strokeWidth={2.5} />
+                </button>
+                <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={page === 1 || gridLoading} className={pagerButtonClass} title={localize("PagerPrevious")}>
+                  <ChevronLeft size={14} strokeWidth={2.5} />
+                </button>
+                <span className="px-3 text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums">
+                  {page} / {pageCount}
+                </span>
+                <button type="button" onClick={() => setPage((value) => Math.min(pageCount, value + 1))} disabled={page >= pageCount || gridLoading} className={pagerButtonClass} title={localize("PagerNext")}>
+                  <ChevronRight size={14} strokeWidth={2.5} />
+                </button>
+                <button type="button" onClick={() => setPage(pageCount)} disabled={page >= pageCount || gridLoading} className={pagerButtonClass} title={localize("PagerLast")}>
+                  <ChevronsRight size={14} strokeWidth={2.5} />
+                </button>
+              </div>
             </div>
-          ) : !overrideData || overrideData.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] py-20 w-full">
-              No jobsheets found.
-            </div>
-          ) : (
-            <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar w-full h-full">
-              <div className="min-w-max flex flex-col">
-                <table className="text-left border-separate border-spacing-y-1 table-auto text-[11px] transition-opacity duration-200">
-                  <thead className="sticky top-0 z-10 text-slate-500 dark:text-slate-400">
-                    <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">
-                      {columns.map((col, idx) => (
-                        <th key={col.key} className={`px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-left ${idx === 0 ? "pl-8" : ""}`}>
-                          {col.label}
+          )}
+
+          {/* Jobsheet report, laid out like the backend JobsheetReport template */}
+          {reportDetails.length > 0 && (
+            <div className="flex flex-col gap-3 mt-2">
+              <div className="flex items-center justify-end gap-2">
+                {/* The backend has no localization key for a PDF export, so this label is fixed text. */}
+                <button
+                  type="button"
+                  onClick={handleExportPdf}
+                  className="flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-bold text-rose-700 shadow-sm transition-all hover:border-rose-300 hover:bg-rose-100 active:scale-95 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300 dark:hover:bg-rose-500/20"
+                >
+                  <FileText size={13} />
+                  Export PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportExcel}
+                  className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold text-emerald-700 shadow-sm transition-all hover:border-emerald-300 hover:bg-emerald-100 active:scale-95 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
+                >
+                  <FileSpreadsheet size={13} />
+                  {localize("GetExcelReport")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReport(null)}
+                  className="w-8 h-8 inline-flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-red-500"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <div className="w-full max-h-[70vh] overflow-auto rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <table className="w-full border-separate border-spacing-0 min-w-[1100px]">
+                  <thead className="sticky top-0 z-10">
+                    <tr>
+                      {REPORT_COLUMNS.map((column) => (
+                        <th key={column.field} rowSpan={2} className={gridHeaderClass}>
+                          {localize(column.labelKey)}
                         </th>
                       ))}
-                      <th className="w-[120px] px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">
-                        Actions
+                      <th colSpan={REPORT_DETAIL_COLUMNS.length} className={gridHeaderClass}>
+                        {localize("Details")}
                       </th>
+                    </tr>
+                    <tr>
+                      {REPORT_DETAIL_COLUMNS.map((column) => (
+                        <th key={column.field} className={gridHeaderClass}>
+                          {localize(column.labelKey)}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedData.map((row, idx) => {
-                      const isEven = idx % 2 === 0;
-                      return (
-                        <tr
-                          key={row.id || idx}
-                          className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
-                        >
-                          {columns.map((col, colIdx) => (
-                            <td key={col.key} className={`px-5 h-[60px] text-left transition-colors font-bold text-[12px] text-slate-700 dark:text-slate-200 ${colIdx === 0 ? "pl-8 rounded-l-2xl" : ""}`}>
-                              {col.render ? col.render(row[col.key], row) : (row[col.key] || "—")}
-                            </td>
-                          ))}
-                          <td className="w-[120px] px-5 rounded-r-2xl h-[60px] text-center transition-colors">
-                            <ActionsMenu
-                              customActions={customActions.map(ca => ({ ...ca, onClick: () => ca.onClick(row) }))}
-                            />
+                    {reportDetails.map((row, rowIndex) => (
+                      <tr
+                        key={rowIndex}
+                        className={rowIndex % 2 === 0 ? "bg-white dark:bg-[#161920]" : "bg-slate-50/80 dark:bg-white/[0.03]"}
+                      >
+                        {ALL_REPORT_COLUMNS.map((column) => (
+                          <td
+                            key={column.field}
+                            className={`${gridCellClass} ${column.field === "Remarks" ? "text-left" : ""}`}
+                          >
+                            {getRowValue(row, column.field) ?? ""}
                           </td>
-                        </tr>
-                      );
-                    })}
+                        ))}
+                      </tr>
+                    ))}
                   </tbody>
+                  <tfoot className="sticky bottom-0 z-10">
+                    <tr>
+                      <td colSpan={ALL_REPORT_COLUMNS.length} className="border-t-2 border-pink-200 dark:border-slate-600 bg-pink-50 dark:bg-slate-800 px-3 py-3">
+                        <div className="flex flex-wrap gap-x-8 gap-y-2 text-[12px] font-black text-slate-900 dark:text-white">
+                          {reportTotals.map((item) => (
+                            <span key={item.field}>
+                              <span className="text-pink-700 dark:text-pink-200">{item.label} :</span> {item.value ?? ""}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-x-8 gap-y-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                          {generatedItems.map((item) => (
+                            <span key={item.field}>
+                              {item.label} : <span className="text-slate-900 dark:text-white">{item.value ?? ""}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
           )}
         </div>
-
-        {/* Pagination Section */}
-        {totalCount > 0 && (
-          <div className="px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-                <AppSelect
-                  value={pageSize}
-                  onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                  className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
-                >
-                  {[10, 14, 25, 50, 100].map((s) => (
-                    <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
-                  ))}
-                </AppSelect>
-              </div>
-
-              <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                  <span className="text-slate-900 dark:text-white tabular-nums">
-                    {totalCount > 0 ? (page - 1) * pageSize + 1 : 0}
-                  </span>
-                  <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
-                  <span className="text-slate-900 dark:text-white tabular-nums">
-                    {Math.min(page * pageSize, totalCount)}
-                  </span>
-                  <span className="text-slate-400 dark:text-slate-500 mx-2 lowercase font-bold tracking-normal italic">of</span>
-                  <span className="text-slate-900 dark:text-white tabular-nums font-black">
-                    {totalCount}
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
-                <button
-                  onClick={() => setPage(1)}
-                  disabled={page === 1 || reportLoading}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                  title="First Page"
-                >
-                  <ChevronsLeft size={14} strokeWidth={2.5} />
-                </button>
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1 || reportLoading}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                  title="Previous Page"
-                >
-                  <ChevronLeft size={14} strokeWidth={2.5} />
-                </button>
-
-                <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-                <div className="px-3 flex items-center gap-2 py-1">
-                  <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Page</span>
-                  <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
-                    <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{page}</span>
-                    <span className="text-[10px] font-black text-slate-400 dark:text-slate-600">/</span>
-                    <span className="text-[10px] font-black text-slate-900 dark:text-white tabular-nums leading-none">{Math.ceil(totalCount / pageSize) || 1}</span>
-                  </div>
-                </div>
-
-                <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-                <button
-                  onClick={() => setPage((p) => p + 1)}
-                  disabled={page >= Math.ceil(totalCount / pageSize) || reportLoading}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                  title="Next Page"
-                >
-                  <ChevronRight size={14} strokeWidth={2.5} />
-                </button>
-                <button
-                  onClick={() => setPage(Math.ceil(totalCount / pageSize) || 1)}
-                  disabled={page >= Math.ceil(totalCount / pageSize) || reportLoading}
-                  className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                  title="Last Page"
-                >
-                  <ChevronsRight size={14} strokeWidth={2.5} />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       <JobsheetModal
-        open={showModal}
-        onClose={() => setShowModal(false)}
-        onSave={() => {
-          setRefreshTrigger(prev => prev + 1);
-        }}
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSave={afterSave}
       />
 
       <JobsheetModal
-        open={showViewModal}
+        open={showEditModal}
         onClose={() => {
-          setShowViewModal(false);
+          setShowEditModal(false);
           setSelectedJobsheet(null);
         }}
         jobsheet={selectedJobsheet}
-        viewOnly={!canEdit}
-        onSave={() => {
-          setRefreshTrigger(prev => prev + 1);
-        }}
+        // Blazor locks the form when the backend marks the jobsheet as not editable.
+        viewOnly={!canEdit || Boolean(getRowValue(selectedJobsheet, "IsJobsheetNotEditable"))}
+        onSave={afterSave}
       />
     </div>
   );
 }
-
-
-

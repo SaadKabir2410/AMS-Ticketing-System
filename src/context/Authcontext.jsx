@@ -1,8 +1,9 @@
-import { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect, useRef } from "react";
 import {
   loginWithPassword,
   clearSession,
   getValidAccessToken,
+  logoutSession,
 } from "../services/tokenAuth";
 import {
   clearApplicationConfigCache,
@@ -62,7 +63,9 @@ export function AuthProvider({ children }) {
   });
 
   const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState("");
+  const logoutInProgressRef = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -231,27 +234,38 @@ export function AuthProvider({ children }) {
 
   // Manual logout — triggered by the user
   const logout = async () => {
+    if (logoutInProgressRef.current) return;
+    logoutInProgressRef.current = true;
+    setLoggingOut(true);
+
     try {
       console.log("[Auth] User-initiated logout.");
 
-      // Clear ALL storage keys related to auth
+      // Remove the application session before awaiting the backend so the UI
+      // becomes unauthenticated immediately and no further API calls can renew it.
       localStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(LOGIN_TIME_KEY);
       localStorage.removeItem("auth_token");
-      localStorage.removeItem("spike_session");
-
-      // Clear manual password-token session (from tokenAuth.js)
-      clearSession();
       clearApplicationConfigCache();
-
-      // Clear reactive state
       setUser(null);
 
-      // Redirect to login
-      window.location.href = "/login";
+      // Remove any legacy react-oidc-context records without touching unrelated
+      // preferences such as the remembered username or selected theme.
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith("oidc.user:"))
+        .forEach((key) => localStorage.removeItem(key));
+
+      // Sent without waiting: the login page opens at once.
+      logoutSession().catch((err) =>
+        console.warn("[Auth] Backend logout did not complete; local session was cleared:", err),
+      );
     } catch (err) {
-      console.error("[Auth] Logout error fallback:", err);
-      window.location.href = "/login";
+      // Network/backend failures cannot keep the browser authenticated.
+      console.warn("[Auth] Backend logout did not complete; local session was cleared:", err);
+      clearSession();
+    } finally {
+      sessionStorage.setItem("auth:logged-out", "true");
+      window.location.replace("/login");
     }
   };
 
@@ -261,6 +275,7 @@ export function AuthProvider({ children }) {
         user,
         isAuthenticated: !!user,
         loading,
+        loggingOut,
         error,
         clearError,
         register,

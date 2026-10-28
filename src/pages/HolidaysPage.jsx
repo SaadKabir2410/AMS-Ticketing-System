@@ -1,100 +1,33 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import AppSelect from "../component/common/AppSelect";
 import { holidaysApi } from "../services/api/holidays";
-import { countriesApi } from "../services/api/countries";
 import { useToast } from "../component/common/ToastContext";
 import Flatpickr from "react-flatpickr";
 import "flatpickr/dist/flatpickr.css";
-import "flatpickr/dist/themes/dark.css";
 import { usePermission } from "../hooks/usePermission";
 import { useNavigate } from "react-router-dom";
 import { ActionsMenu } from "../component/common/ResourcePage";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Check, ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { getApiErrorMessage } from "../utils/apiError";
+import DeleteConfirmModal from "../component/common/DeleteConfirmation";
+import ListPager from "../component/common/ListPager";
+import { useBackendLocalization } from "../hooks/useBackendLocalization";
 
 const FILTER_CONTROL_CLASS =
   "w-full h-9 min-h-9 max-h-9 box-border px-3 bg-white/80 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-lg text-[11px] leading-none outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-pink-600/10 focus:border-pink-600 transition-all text-slate-900 dark:text-white shadow-sm font-bold";
 
-const highlightComboBoxText = (value, query) => {
-  const text = String(value ?? "");
-  const normalizedQuery = query.trim();
-  if (!normalizedQuery) return text;
-
-  const escapedQuery = normalizedQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return text.split(new RegExp(`(${escapedQuery})`, "gi")).map((part, index) =>
-    part.toLowerCase() === normalizedQuery.toLowerCase() ? (
-      <mark
-        key={`${part}-${index}`}
-        className="rounded-sm bg-pink-200 px-0.5 text-pink-900 dark:bg-pink-500/40 dark:text-pink-100"
-      >
-        {part}
-      </mark>
-    ) : (
-      part
-    ),
-  );
-};
-
-function CompactFilterSelect({ value, onChange, options, placeholder = "Select...", getLabel, getValue }) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const ref = useRef(null);
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-  const filtered = options.filter((o) =>
-    String(getLabel ? getLabel(o) : o).toLowerCase().includes(search.toLowerCase())
-  );
-  const displayLabel = value !== "" && value !== null && value !== undefined
-    ? (getLabel ? getLabel(options.find(o => (getValue ? getValue(o) : o) === value) ?? value) : value)
-    : null;
-  return (
-    <div ref={ref} className="relative w-full">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={`${FILTER_CONTROL_CLASS} flex items-center justify-between cursor-pointer hover:border-pink-500`}
-      >
-        <span className={displayLabel ? "text-slate-900 dark:text-white truncate" : "text-slate-400 dark:text-slate-500"}>
-          {displayLabel ?? placeholder}
-        </span>
-        <ChevronDown size={12} strokeWidth={2.5} className={`shrink-0 ml-1 text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <div className="app-modern-dropdown-menu absolute z-[9999] left-0 top-[calc(100%+3px)] w-[200px] min-w-full bg-white dark:bg-[#1e2330] border border-slate-200 dark:border-slate-700/60 rounded-xl shadow-xl overflow-hidden">
-          <div className="p-1.5 border-b border-slate-100 dark:border-slate-800">
-            <input autoFocus type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search..." className="w-full px-2 py-1 text-[10px] rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 outline-none text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:border-pink-500 transition-all" />
-          </div>
-          <ul className="max-h-40 overflow-y-auto py-0.5" style={{ scrollbarWidth: "none" }}>
-            <li className="px-2.5 py-1 text-[10px] text-slate-400 dark:text-slate-500 hover:bg-pink-50 dark:hover:bg-pink-500/10 cursor-pointer transition-colors" onClick={() => { onChange(""); setOpen(false); setSearch(""); }}>{placeholder}</li>
-            {filtered.length === 0 && <li className="px-2.5 py-1.5 text-[10px] text-slate-400 text-center">No results</li>}
-            {filtered.map((o) => {
-              const val = getValue ? getValue(o) : o;
-              const lbl = getLabel ? getLabel(o) : o;
-              const selected = val === value;
-              return (
-                <li key={String(val)} onClick={() => { onChange(val); setOpen(false); setSearch(""); }}
-                  className={`flex items-center justify-between px-2.5 py-1 text-[10px] cursor-pointer transition-colors ${selected ? "bg-pink-50 dark:bg-pink-500/15 text-pink-600 dark:text-pink-400 font-semibold" : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"}`}>
-                  <span className="truncate">{highlightComboBoxText(lbl, search)}</span>
-                  {selected && <Check size={10} strokeWidth={3} className="text-pink-500" />}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
+// Each picker gets its own options object (react-flatpickr writes hooks into it).
+const DATE_FILTER_OPTIONS = { dateFormat: "d/m/Y", allowInput: true };
+// Local calendar day; toISOString() shifted the day back in timezones east of UTC.
+const toIsoDay = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
 const highlightText = (text, query) => {
   if (!query || !text) return text;
   const parts = String(text).split(new RegExp(`(${query})`, 'gi'));
   return parts.map((part, i) => 
     part.toLowerCase() === query.toLowerCase() ? (
-      <mark key={i} className="bg-pink-100 dark:bg-pink-500/30 text-pink-700 dark:text-pink-100 rounded-[2px] px-[2px]">
+      <mark key={i} className="rounded-sm bg-pink-200 px-0.5 text-pink-900 dark:bg-pink-500/40 dark:text-pink-100">
         {part}
       </mark>
     ) : part
@@ -104,6 +37,9 @@ const highlightText = (text, query) => {
 export default function HolidaysPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const localize = useBackendLocalization("Billing");
+  // Like ABP, a key the backend does not define is shown as the key itself.
+  const text = (key) => localize(key) || key;
 
   const canDisable = usePermission("Billing.Disable");
   const canEnable = usePermission("Billing.Enable");
@@ -131,79 +67,86 @@ export default function HolidaysPage() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
-  const [totalCount, setTotalCount] = useState(0);
-  const [yearOptions, setYearOptions] = useState([]);
-  const [countryOptions, setCountryOptions] = useState([]);
+  // The backend paged list leaves disabled holidays out, so the page loads the
+  // full list (GET /api/app/holiday, which includes them) like the Blazor
+  // Holidays page, then filters and sorts it here with the same fields.
+  const [sortKey, setSortKey] = useState("Date");
+  const [sortDir, setSortDir] = useState("desc");
 
-  useEffect(() => {
-    let active = true;
-
-    const loadFilterOptions = async () => {
-      try {
-        const [holidays, countries] = await Promise.all([
-          holidaysApi.getFilterOptions(),
-          countriesApi.getAll(),
-        ]);
-        if (!active) return;
-
-        const years = [...new Set(
-          holidays
-            .map((holiday) => holiday.year ?? new Date(holiday.date).getFullYear())
-            .filter((year) => Number.isFinite(Number(year))),
-        )].map(Number).sort((a, b) => b - a);
-
-        setYearOptions(years);
-        setCountryOptions(
-          [...countries].sort((a, b) => String(a.name).localeCompare(String(b.name))),
-        );
-      } catch (error) {
-        const message = getApiErrorMessage(error);
-        if (active && message) toast(message, "error");
-      }
-    };
-
-    loadFilterOptions();
-    return () => {
-      active = false;
-    };
-  }, [toast]);
+  const handleSort = (field) => {
+    if (sortKey === field) {
+      setSortDir((direction) => (direction === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(field);
+      setSortDir("asc");
+    }
+    setPage(1);
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const extraParams = {};
-      if (debouncedFilters.name) extraParams.Name = debouncedFilters.name;
-      if (debouncedFilters.description) extraParams.Description = debouncedFilters.description;
-      if (debouncedFilters.type) extraParams.Type = debouncedFilters.type;
-      if (debouncedFilters.date) extraParams.Date = debouncedFilters.date;
-      if (debouncedFilters.year) extraParams.Year = debouncedFilters.year;
-      if (debouncedFilters.country) extraParams.CountryISOCode = debouncedFilters.country;
-
-      const resp = await holidaysApi.getAll(extraParams);
-      setData(resp?.items || []);
-      setTotalCount(resp?.totalCount || 0);
+      setData(await holidaysApi.getFilterOptions());
     } catch (err) {
       const message = getApiErrorMessage(err);
       if (message) toast(message, "error");
     } finally {
       setLoading(false);
     }
-  }, [debouncedFilters, toast]);
+  }, [toast]);
 
   useEffect(() => {
     fetchData();
-    setPage(1); // reset to first page when filters change
   }, [fetchData]);
+
+  useEffect(() => {
+    setPage(1); // back to the first page when the filters change
+  }, [debouncedFilters]);
+
+  const filteredData = useMemo(() => {
+    // Text filters match with "contains", as the backend search does.
+    const contains = (value, search) =>
+      !search || String(value ?? "").toLowerCase().includes(search.trim().toLowerCase());
+    const sortField = {
+      Name: "name",
+      Description: "description",
+      Date: "date",
+      Year: "year",
+      CountryName: "countryName",
+      Locations: "locations",
+      Type: "type",
+      IsDeleted: "isDeleted",
+    }[sortKey];
+
+    return data
+      .filter((holiday) => {
+        if (!contains(holiday.name, debouncedFilters.name)) return false;
+        if (!contains(holiday.description, debouncedFilters.description)) return false;
+        if (!contains(holiday.type, debouncedFilters.type)) return false;
+        if (!contains(holiday.locations, debouncedFilters.locations)) return false;
+        if (debouncedFilters.date && String(holiday.date || "").slice(0, 10) !== debouncedFilters.date) return false;
+        if (!contains(holiday.countryName, debouncedFilters.country) &&
+          !contains(holiday.countryISOCode, debouncedFilters.country)) return false;
+        if (!contains(holiday.year ?? new Date(holiday.date).getFullYear(), debouncedFilters.year)) return false;
+        return true;
+      })
+      .sort((first, second) => {
+        const a = first[sortField];
+        const b = second[sortField];
+        const order = typeof a === "number" || typeof a === "boolean"
+          ? Number(a) - Number(b)
+          : String(a ?? "").localeCompare(String(b ?? ""), undefined, { sensitivity: "base" });
+        return sortDir === "asc" ? order : -order;
+      });
+  }, [data, debouncedFilters, sortKey, sortDir]);
+
+  const totalCount = filteredData.length;
 
   const paginatedData = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return data.slice(start, start + pageSize);
-  }, [data, page, pageSize]);
+    return filteredData.slice(start, start + pageSize);
+  }, [filteredData, page, pageSize]);
 
-  const selectedCountryName = useMemo(
-    () => countryOptions.find((country) => country.code === debouncedFilters.country)?.name || "",
-    [countryOptions, debouncedFilters.country],
-  );
 
   const handleClear = () => {
     setFilters({
@@ -217,31 +160,38 @@ export default function HolidaysPage() {
     });
   };
 
-  const handleDisable = async (row) => {
-    try {
-      await holidaysApi.disable(row);
-      toast("Holiday disabled");
-      fetchData();
-    } catch (e) {
-      const message = getApiErrorMessage(e);
-      if (message) toast(message, "error");
-    }
-  };
+  // Disable / enable ask first, as the Blazor Holidays page does.
+  const [pendingAction, setPendingAction] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const handleEnable = async (row) => {
+  const confirmPendingAction = async () => {
+    if (!pendingAction) return;
+    setActionLoading(true);
     try {
-      await holidaysApi.enable(row);
-      toast("Holiday enabled");
+      if (pendingAction.type === "disable") {
+        await holidaysApi.disable(pendingAction.row);
+      } else {
+        await holidaysApi.enable(pendingAction.row);
+      }
+      toast(localize("OperationSuccessfull"));
       fetchData();
     } catch (e) {
       const message = getApiErrorMessage(e);
       if (message) toast(message, "error");
+    } finally {
+      setActionLoading(false);
+      setPendingAction(null);
     }
   };
 
   const filterInputClass = FILTER_CONTROL_CLASS;
 
-  const breadcrumb = ["Home", "Management", "Lookups", "Holidays"];
+  const breadcrumb = [
+    { key: "Home", isHome: true },
+    { key: "Menu:Administration" },
+    { key: "Lookups" },
+    { key: "Holidays" },
+  ];
 
   return (
     <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial] text-slate-900 dark:text-white">
@@ -260,21 +210,21 @@ export default function HolidaysPage() {
 
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
         {/* Header */}
-        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+        <div className="app-page-header flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
           <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
             {breadcrumb.map((b, i) => (
-              <span key={i} className="flex items-center gap-1.5">
+              <span key={b.key} className="flex items-center gap-1.5">
                 <span
-                  onClick={() => b === "Home" && navigate("/")}
+                  onClick={() => b.isHome && navigate("/")}
                   className={
                     i === breadcrumb.length - 1
                       ? "text-pink-500"
-                      : b === "Home"
+                      : b.isHome
                       ? "hover:text-pink-500 cursor-pointer transition-colors"
                       : ""
                   }
                 >
-                  {b}
+                  {text(b.key)}
                 </span>
                 {i < breadcrumb.length - 1 && <span className="text-slate-300 dark:text-slate-700">/</span>}
               </span>
@@ -282,7 +232,7 @@ export default function HolidaysPage() {
           </nav>
           <div className="flex items-center">
             <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
-              Holidays
+              {localize("Holidays")}
             </h1>
           </div>
         </div>
@@ -292,102 +242,104 @@ export default function HolidaysPage() {
             <div className="min-w-[1400px] flex flex-col w-full">
               {/* Custom Filter Area (Aligned with Table) */}
               <div className="w-full bg-transparent p-0 flex flex-col gap-6 border-b border-slate-100 dark:border-slate-800/50 pb-6 mb-2">
-                <div className="grid grid-cols-[12%_1fr_10%_12%_12%_12%_12%_120px] items-end w-full">
+                <div className="grid grid-cols-[12%_1fr_10%_8%_12%_12%_12%_90px_120px] items-end w-full">
                   {/* Labels */}
                   {[
-                    { label: "NAME" },
-                    { label: "DESCRIPTION" },
-                    { label: "DATE", center: true },
-                    { label: "YEAR", center: true },
-                    { label: "COUNTRY", center: true },
-                    { label: "LOCATIONS", center: true },
-                    { label: "HOLIDAY TYPE", center: true },
+                    { key: "Name", sortField: "Name" },
+                    { key: "Description", sortField: "Description" },
+                    { key: "Date", sortField: "Date", center: true },
+                    { key: "Year", sortField: "Year", center: true },
+                    { key: "CountryName", sortField: "CountryName", center: true },
+                    { key: "Locations", sortField: "Locations", center: true },
+                    { key: "HolidayType", sortField: "Type", center: true },
+                    { key: "IsDisabled", sortField: "IsDeleted", center: true },
                   ].map((l) => (
-                    <div key={l.label} className={`px-[10px] text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-1 ${l.center ? 'justify-center' : ''}`}>
-                      {l.label}
+                    <div key={l.key} className={`px-[10px] text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-1 ${l.center ? 'justify-center' : ''}`}>
+                      <button
+                        type="button"
+                        onClick={() => handleSort(l.sortField)}
+                        className={`inline-flex items-center gap-1 uppercase tracking-widest hover:text-pink-600 dark:hover:text-pink-400 ${sortKey === l.sortField ? "text-pink-600 dark:text-pink-400" : ""}`}
+                        aria-label={localize(l.key)}
+                      >
+                        {localize(l.key)}
+                        {sortKey !== l.sortField
+                          ? <ArrowUpDown size={11} />
+                          : sortDir === "asc" ? <ArrowUp size={11} /> : <ArrowDown size={11} />}
+                      </button>
                     </div>
                   ))}
                   <div></div>
 
                   {/* Inputs */}
-                  <div className="px-[10px] w-full"><input type="text" placeholder="Filter Name..." value={filters.name} onChange={(e) => setFilters({ ...filters, name: e.target.value })} className={filterInputClass} /></div>
-                  <div className="px-[10px] w-full"><input type="text" placeholder="Search details..." value={filters.description} onChange={(e) => setFilters({ ...filters, description: e.target.value })} className={filterInputClass} /></div>
+                  <div className="px-[10px] w-full"><input type="text" placeholder={localize("Name")} value={filters.name} onChange={(e) => setFilters({ ...filters, name: e.target.value })} className={filterInputClass} /></div>
+                  <div className="px-[10px] w-full"><input type="text" placeholder={localize("Description")} value={filters.description} onChange={(e) => setFilters({ ...filters, description: e.target.value })} className={filterInputClass} /></div>
 
                   <div className="px-[10px] w-full">
                     <Flatpickr
-                      value={filters.date}
-                      onChange={([date]) => setFilters({ ...filters, date: date ? date.toISOString().split('T')[0] : "" })}
-                      options={{ dateFormat: "Y-m-d", allowInput: true }}
-                      placeholder="YYYY-MM-DD"
+                      value={filters.date ? filters.date.split("-").reverse().join("/") : ""}
+                      onChange={([date]) => setFilters({ ...filters, date: date ? toIsoDay(date) : "" })}
+                      options={DATE_FILTER_OPTIONS}
+                      placeholder="DD/MM/YYYY"
                       className={filterInputClass}
                     />
                   </div>
 
                   <div className="px-[10px] w-full">
-                    <CompactFilterSelect
-                      value={filters.year || ""}
-                      onChange={(val) => setFilters({ ...filters, year: val !== "" ? Number(val) : "" })}
-                      options={yearOptions}
-                      placeholder="All Years"
-                    />
+                    <input type="text" inputMode="numeric" placeholder={localize("Year")} value={filters.year} onChange={(e) => setFilters({ ...filters, year: e.target.value })} className={filterInputClass} />
                   </div>
 
                   <div className="px-[10px] w-full">
-                    <CompactFilterSelect
-                      value={filters.country}
-                      onChange={(val) => setFilters({ ...filters, country: val })}
-                      options={countryOptions}
-                      placeholder="All Countries"
-                      getLabel={(o) => (typeof o === "object" ? o.name : o)}
-                      getValue={(o) => (typeof o === "object" ? o.code : o)}
-                    />
+                    <input type="text" placeholder={localize("CountryName")} value={filters.country} onChange={(e) => setFilters({ ...filters, country: e.target.value })} className={filterInputClass} />
                   </div>
 
-                  <div className="px-[10px] w-full"><input type="text" placeholder="Region..." value={filters.locations} onChange={(e) => setFilters({ ...filters, locations: e.target.value })} className={filterInputClass} /></div>
+                  <div className="px-[10px] w-full"><input type="text" placeholder={localize("Locations")} value={filters.locations} onChange={(e) => setFilters({ ...filters, locations: e.target.value })} className={filterInputClass} /></div>
 
                   <div className="px-[10px] w-full">
                     <input
                       type="text"
-                      placeholder="Holiday Type..."
+                      placeholder={localize("HolidayType")}
                       value={filters.type}
                       onChange={(e) => setFilters({ ...filters, type: e.target.value })}
                       className={filterInputClass}
                     />
                   </div>
 
-                  <div className="flex justify-end px-[10px] w-full">
+                  <div></div>
+
+                  {/* Sits right after the last filter box, same height as the boxes. */}
+                  <div className="flex justify-start pr-[10px] w-full">
                     <button
                       onClick={handleClear}
-                      className="inline-flex h-9 box-border justify-center items-center px-4 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors w-full"
-                      title="Reset All Filters"
+                      className="app-primary-button inline-flex h-9 items-center justify-center px-4 text-[11px]"
                     >
-                      Clear
+                      {localize("ClearFilter")}
                     </button>
                   </div>
                 </div>
               </div>
 
               {/* Table */}
-              {loading && data.length === 0 ? (
+              {loading && filteredData.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] animate-pulse py-20 w-full">
-                  Refreshing data...
+                  {localize("LoadingWithThreeDot")}
                 </div>
-              ) : data.length === 0 ? (
+              ) : filteredData.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center text-slate-500 dark:text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] py-20 w-full">
-                  No holidays found
+                  {localize("NoDataAvailableInDatatable")}
                 </div>
               ) : (
                 <table className={`w-full text-left border-separate border-spacing-y-1 table-fixed text-[11px] transition-opacity duration-200 ${loading ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
                   <thead className="sticky top-0 z-10 hidden">
                     <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">
-                      <th className="w-[12%]">Name</th>
-                      <th className="w-auto">Description</th>
-                      <th className="w-[10%]">Date</th>
-                      <th className="w-[12%]">Year</th>
-                      <th className="w-[12%]">Country</th>
-                      <th className="w-[12%]">Locations</th>
-                      <th className="w-[12%]">Holiday Type</th>
-                      <th className="w-[120px]">Actions</th>
+                      <th className="w-[12%]">{localize("Name")}</th>
+                      <th className="w-auto">{localize("Description")}</th>
+                      <th className="w-[10%]">{localize("Date")}</th>
+                      <th className="w-[8%]">{localize("Year")}</th>
+                      <th className="w-[12%]">{localize("CountryName")}</th>
+                      <th className="w-[12%]">{localize("Locations")}</th>
+                      <th className="w-[12%]">{localize("HolidayType")}</th>
+                      <th className="w-[90px]">{localize("IsDisabled")}</th>
+                      <th className="w-[120px]">{localize("Actions")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -409,11 +361,11 @@ export default function HolidaysPage() {
                         <td className="w-[10%] px-5 h-[60px] text-center transition-colors">
                           {row.date ? new Date(row.date).toLocaleDateString("en-GB") : "—"}
                         </td>
-                        <td className="w-[12%] px-5 h-[60px] text-center transition-colors">
-                          {row.year || "—"}
+                        <td className="w-[8%] px-5 h-[60px] text-center transition-colors">
+                          {row.year ? highlightText(String(row.year), debouncedFilters.year) : "—"}
                         </td>
                         <td className="w-[12%] px-5 h-[60px] text-center transition-colors">
-                          <div className="truncate w-full block" title={row.countryName || "Global"}>{highlightText(row.countryName || "Global", selectedCountryName)}</div>
+                          <div className="truncate w-full block" title={row.countryName || text("Global")}>{highlightText(row.countryName || text("Global"), debouncedFilters.country)}</div>
                         </td>
                         <td className="w-[12%] px-5 h-[60px] text-center transition-colors">
                           <div className="truncate w-full block" title={row.locations}>{highlightText(row.locations || "—", debouncedFilters.locations)}</div>
@@ -421,10 +373,19 @@ export default function HolidaysPage() {
                         <td className="w-[12%] px-5 h-[60px] text-center transition-colors">
                           <div className="truncate w-full block" title={row.type}>{highlightText(row.type || "—", debouncedFilters.type)}</div>
                         </td>
+                        <td className="w-[90px] px-5 h-[60px] text-center transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={!!row.isDeleted}
+                            readOnly
+                            aria-label={localize("IsDisabled")}
+                            className="w-4 h-4 accent-pink-500 pointer-events-none"
+                          />
+                        </td>
                         <td className="w-[120px] px-5 rounded-r-2xl h-[60px] text-center transition-colors">
                           <ActionsMenu
-                            onDisable={canDisable && !row.isDeleted ? () => handleDisable(row) : undefined}
-                            onEnable={canEnable && row.isDeleted ? () => handleEnable(row) : undefined}
+                            onDisable={canDisable && !row.isDeleted ? () => setPendingAction({ type: "disable", row }) : undefined}
+                            onEnable={canEnable && row.isDeleted ? () => setPendingAction({ type: "enable", row }) : undefined}
                           />
                         </td>
                       </tr>
@@ -436,91 +397,29 @@ export default function HolidaysPage() {
           </div>
         </div>
 
-        {/* Pagination Section */}
-        <div className="px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2.5">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
-              <AppSelect
-                value={pageSize}
-                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                className="px-3 h-7 text-[10px] font-black bg-white dark:bg-slate-800 text-pink-600 dark:text-pink-400 border border-slate-200 dark:border-slate-700/50 rounded-lg outline-none transition-all cursor-pointer shadow-sm hover:border-pink-500/50 uppercase tracking-widest"
-              >
-                {[10, 25, 50, 100].map((s) => (
-                  <option key={s} value={s} className="font-sans text-slate-900 dark:text-white">{s}</option>
-                ))}
-              </AppSelect>
-            </div>
-
-            <div className="hidden sm:flex items-center gap-2 pl-4 border-l border-slate-200 dark:border-slate-800">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                <span className="text-slate-900 dark:text-white tabular-nums">
-                  {totalCount > 0 ? (page - 1) * pageSize + 1 : 0}
-                </span>
-                <span className="text-slate-400 dark:text-slate-600 mx-1.5">—</span>
-                <span className="text-slate-900 dark:text-white tabular-nums">
-                  {Math.min(page * pageSize, totalCount)}
-                </span>
-                <span className="text-slate-400 dark:text-slate-500 mx-2 lowercase font-bold tracking-normal italic">of</span>
-                <span className="text-slate-900 dark:text-white tabular-nums font-black">
-                  {totalCount}
-                </span>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
-              <button
-                onClick={() => setPage(1)}
-                disabled={page === 1 || loading}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="First Page"
-              >
-                <ChevronsLeft size={14} strokeWidth={2.5} />
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1 || loading}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Previous Page"
-              >
-                <ChevronLeft size={14} strokeWidth={2.5} />
-              </button>
-
-              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-              <div className="px-3 flex items-center gap-2 py-1">
-                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Page</span>
-                <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
-                  <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">{page}</span>
-                  <span className="text-[10px] font-black text-slate-400 dark:text-slate-600">/</span>
-                  <span className="text-[10px] font-black text-slate-900 dark:text-white tabular-nums leading-none">{Math.ceil(totalCount / pageSize) || 1}</span>
-                </div>
-              </div>
-
-              <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= Math.ceil(totalCount / pageSize) || loading}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Next Page"
-              >
-                <ChevronRight size={14} strokeWidth={2.5} />
-              </button>
-              <button
-                onClick={() => setPage(Math.ceil(totalCount / pageSize))}
-                disabled={page >= Math.ceil(totalCount / pageSize) || loading}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Last Page"
-              >
-                <ChevronsRight size={14} strokeWidth={2.5} />
-              </button>
-            </div>
-          </div>
-        </div>
+        <ListPager
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          loading={loading}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+        />
       </div>
+
+      <DeleteConfirmModal
+        open={!!pendingAction}
+        item={pendingAction?.row}
+        loading={actionLoading}
+        blurBackdrop={false}
+        title={pendingAction?.type === "enable" ? localize("EnableButtonText") : localize("DisableButtonText")}
+        message={pendingAction?.type === "enable" ? localize("EnableHolidayMessage") : localize("DisableHolidayMessage")}
+        confirmText={pendingAction?.type === "enable" ? localize("EnableButtonText") : localize("DisableButtonText")}
+        cancelText={localize("CancelButtonText")}
+        processingText={localize("ProcessingWithThreeDot")}
+        onClose={() => setPendingAction(null)}
+        onConfirm={confirmPendingAction}
+      />
     </div>
   );
 }

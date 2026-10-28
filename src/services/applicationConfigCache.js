@@ -22,9 +22,34 @@ const readSessionCache = () => {
 let cachedApplicationConfig = readSessionCache();
 let applicationConfigRequest = null;
 
+// The localization texts are public (the backend serves them to anonymous
+// users too), so they are kept separately and survive a logout. The login page
+// can then show its texts at once instead of waiting for a new download.
+const LOCALIZATION_CACHE_KEY = "ams_localization";
+
+const readLocalizationCache = () => {
+  try {
+    return JSON.parse(localStorage.getItem(LOCALIZATION_CACHE_KEY) || "null");
+  } catch {
+    return null;
+  }
+};
+
+let cachedLocalizationConfig = readLocalizationCache();
+
+export const getCachedLocalizationConfig = () => cachedLocalizationConfig;
+
 const cacheApplicationConfig = (config) => {
   if (!config) return null;
   cachedApplicationConfig = config;
+  if (config.localization) {
+    cachedLocalizationConfig = { localization: config.localization };
+    try {
+      localStorage.setItem(LOCALIZATION_CACHE_KEY, JSON.stringify(cachedLocalizationConfig));
+    } catch {
+      // In-memory caching still works when browser storage is unavailable.
+    }
+  }
   try {
     sessionStorage.setItem(
       CACHE_KEY,

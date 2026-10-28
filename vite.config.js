@@ -1,9 +1,19 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { readFileSync } from "node:fs";
+
+const { version } = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf-8"),
+);
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Shown on the login page: app version and when this build was made.
+  define: {
+    "import.meta.env.VITE_APP_VERSION": JSON.stringify(version),
+    "import.meta.env.VITE_APP_BUILD_DATE": JSON.stringify(new Date().toISOString()),
+  },
   server: {
     port: 5173,
     proxy: {
@@ -38,6 +48,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // Backend report templates (labels for the report pages).
+      "^/Reports/.*\\.mrt$": {
+        target: "https://sureze.ddns.net:3333",
+        changeOrigin: true,
+        secure: false,
+      },
     },
   },
 
@@ -49,12 +65,11 @@ export default defineConfig({
           const chunkGroups = {
             // Core React runtime — changes rarely, gets cached aggressively
             "vendor-react": ["react", "react-dom", "react-router-dom"],
-            // MUI — very large, worth its own cache bucket
+            // MUI core — the theme is needed at startup. The DataGrid and tree
+            // view are left out so they load only with the pages that use them.
             "vendor-mui": [
               "@mui/material",
               "@mui/icons-material",
-              "@mui/x-data-grid",
-              "@mui/x-tree-view",
               "@emotion/react",
               "@emotion/styled",
             ],
@@ -62,12 +77,9 @@ export default defineConfig({
             "vendor-charts": ["recharts"],
             // Utility libraries
             "vendor-utils": ["axios", "qs", "clsx", "tailwind-merge", "framer-motion"],
-            // Drag-and-drop
-            "vendor-dnd": ["@dnd-kit/core", "@dnd-kit/sortable", "@dnd-kit/utilities"],
-            // Excel/export — only needed for export actions
-            "vendor-excel": ["exceljs", "file-saver", "xlsx"],
-            // Date pickers
-            "vendor-dates": ["flatpickr", "react-flatpickr"],
+            // Drag-and-drop, Excel/PDF export and date pickers are not grouped
+            // here: named chunks get pulled into the startup download, while
+            // ungrouped they load only with the pages that use them.
           };
 
           for (const [chunkName, packages] of Object.entries(chunkGroups)) {

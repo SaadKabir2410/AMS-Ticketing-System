@@ -8,6 +8,29 @@ import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, ChevronsLef
 import SiteModal from "../component/common/SiteModal";
 import { usePermission } from "../hooks/usePermission";
 import { getApiErrorMessage } from "../utils/apiError";
+import {
+  getCachedApplicationConfig,
+  loadApplicationConfig,
+} from "../services/applicationConfigCache";
+
+const getLocalizationValue = (applicationConfig, key) => {
+  const resources = applicationConfig?.localization?.values;
+  if (!resources || typeof resources !== "object") return key;
+
+  const defaultResourceName =
+    applicationConfig?.localization?.defaultResourceName;
+  const defaultValue = resources[defaultResourceName]?.[key];
+  if (typeof defaultValue === "string" && defaultValue.trim()) {
+    return defaultValue.trim();
+  }
+
+  for (const resource of Object.values(resources)) {
+    const value = resource?.[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+
+  return key;
+};
 
 // Highlighter component for Search term
 const HighlightText = ({ text, searchTerm }) => {
@@ -19,7 +42,7 @@ const HighlightText = ({ text, searchTerm }) => {
   return (
     <span>
       {str.slice(0, idx)}
-      <mark className="bg-pink-100 dark:bg-pink-500/30 text-pink-700 dark:text-pink-100 rounded-[2px] px-[2px]">
+      <mark className="rounded-sm bg-pink-200 px-0.5 text-pink-900 dark:bg-pink-500/40 dark:text-pink-100">
         {str.slice(idx, idx + searchTerm.length)}
       </mark>
       {str.slice(idx + searchTerm.length)}
@@ -30,6 +53,13 @@ const HighlightText = ({ text, searchTerm }) => {
 export default function SitesPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [applicationConfig, setApplicationConfig] = useState(
+    getCachedApplicationConfig,
+  );
+  const localize = useCallback(
+    (key) => getLocalizationValue(applicationConfig, key),
+    [applicationConfig],
+  );
   const canCreate = usePermission("Billing.Sites.Create");
   const canEdit = usePermission("Billing.Sites.Edit");
   const canViewAuditLog = usePermission("Billing.Sites.ViewAuditLog");
@@ -59,6 +89,19 @@ export default function SitesPage() {
   const [submitError, setSubmitError] = useState(null);
 
   useEffect(() => {
+    let isCurrent = true;
+    loadApplicationConfig()
+      .then((config) => {
+        if (isCurrent) setApplicationConfig(config);
+      })
+      .catch(() => null);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
       setDebouncedAdvancedSearch(advancedSearch);
@@ -81,12 +124,11 @@ export default function SitesPage() {
       setData(resp.items || resp.data || []);
       setTotalCount(resp.totalCount || resp.total || 0);
     } catch (err) {
-      const message = getApiErrorMessage(err);
-      if (message) toast(message, "error");
+      toast(getApiErrorMessage(err) || localize("DefaultErrorMessage"), "error");
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, debouncedSearch, sortKey, sortDir, debouncedAdvancedSearch, toast]);
+  }, [page, pageSize, debouncedSearch, sortKey, sortDir, debouncedAdvancedSearch, localize, toast]);
 
   useEffect(() => {
     fetchData();
@@ -109,16 +151,16 @@ export default function SitesPage() {
     try {
       if (editItem) {
         await sitesApi.update(editItem.id, payload);
-        toast("Site updated successfully");
+        toast(localize("SavedSuccessfully"));
       } else {
         await sitesApi.create(payload);
-        toast("Site created successfully");
+        toast(localize("SavedSuccessfully"));
       }
       setModalOpen(false);
       setEditItem(null);
       fetchData();
     } catch (err) {
-      setSubmitError(getApiErrorMessage(err));
+      setSubmitError(err);
     } finally {
       setSubmitLoading(false);
     }
@@ -166,7 +208,7 @@ export default function SitesPage() {
 
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl">
         {/* Header */}
-        <div className="flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
+        <div className="app-page-header flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50">
           <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
             {breadcrumb.map((b, i) => (
               <span key={i} className="flex items-center gap-1.5">
@@ -279,7 +321,7 @@ export default function SitesPage() {
             </div>
           ) : (
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar text-slate-900 dark:text-white">
-              <table className="w-full table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
+              <table className="w-full min-w-[760px] table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
                 <colgroup>
                   <col style={{width: '20%'}} />
                   <col style={{width: '20%'}} />
@@ -350,7 +392,7 @@ export default function SitesPage() {
         </div>
 
         {/* Pagination Section */}
-        <div className="px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0 transition-colors rounded-b-3xl">
+        <div className="px-3 sm:px-6 py-4 bg-white/80 dark:bg-[#161920] border-t border-slate-100 dark:border-slate-800/50 flex flex-wrap items-center justify-center sm:justify-between gap-3 shrink-0 transition-colors rounded-b-3xl">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2.5">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Page Size:</span>
@@ -443,6 +485,7 @@ export default function SitesPage() {
         loading={submitLoading}
         submitError={submitError}
         onSubmitErrorClose={() => setSubmitError(null)}
+        localize={localize}
       />
 
     </div>

@@ -22,7 +22,7 @@ function IconBtn({ children, className = "", badge = false, onClick, title = "" 
 
 export default function Navbar({ setMobileOpen }) {
   const { dark, setDark } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, logout, loggingOut } = useAuth();
   const navigate = useNavigate();
 
   const [showMenu, setShowMenu] = useState(false);
@@ -218,8 +218,12 @@ export default function Navbar({ setMobileOpen }) {
                 My Account
               </button>
               <button
-                onClick={logout}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 font-medium hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                onClick={() => {
+                  setShowMenu(false);
+                  logout();
+                }}
+                disabled={loggingOut}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-500 font-medium hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50 disabled:pointer-events-none"
               >
                 <LogOut size={16} />
                 Logout

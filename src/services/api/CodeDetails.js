@@ -136,6 +136,19 @@ export const codeDetailsApi = {
     return response.data;
   },
 
+  // Backend LookupDetailAppService.HasSubTaskCategoryAsync / IsRequiredFieldAsync:
+  // whether a task category has sub task categories, and whether choosing it
+  // makes collaborators required. Both return true/false.
+  hasSubTaskCategory: async (id) => {
+    const response = await apiClient.post(`${BASE}/${id}/has-sub-task-category`);
+    return Boolean(response.data);
+  },
+
+  isRequiredField: async (id) => {
+    const response = await apiClient.post(`${BASE}/${id}/is-required-field`);
+    return Boolean(response.data);
+  },
+
   id: "lookupDetail",
   entityName: "LookupDetail",
 };

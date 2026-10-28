@@ -6,9 +6,11 @@ import { taskCategoryProjectsApi } from "../../services/api/taskCategoryProjects
 import { useToast } from "./ToastContext";
 import { getApiErrorMessage } from "../../utils/apiError";
 import PremiumErrorAlert from "./PremiumErrorAlert";
+import { useBackendLocalization } from "../../hooks/useBackendLocalization";
 
 export default function TaskCategoryProjectModal({ open, onClose, onSave, preSelectedProject }) {
   const { toast } = useToast();
+  const localize = useBackendLocalization("Billing");
 
   const [projectId, setProjectId] = useState("");        // UUID
   const [projects, setProjects] = useState([]);
@@ -135,14 +137,14 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
           taskCategoryIds: selectedCategories,
           concurrencyStamp: existingRecord.concurrencyStamp
         });
-        toast("Task Category Project(s) updated !successfully");
+        toast(localize("OperationSuccessfull"));
       } else {
         // Create new record
         await taskCategoryProjectsApi.create({
           projectId,
           taskCategoryIds: selectedCategories,
         });
-        toast("Task Category Project(s) created !successfully");
+        toast(localize("OperationSuccessfull"));
       }
 
       if (onSave) onSave();
@@ -187,7 +189,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-4 pb-2">
         <h2 className="text-[18px] font-black text-slate-800 dark:text-slate-100 tracking-tighter uppercase leading-none">
-          {isHandoffEdit ? "Edit Task Category Project" : "New Task Category Project"}
+          {isHandoffEdit ? localize("EditTaskCategoryProject") : localize("NewTaskCategoryProject")}
         </h2>
         <IconButton onClick={onClose} size="small" disabled={submitting}>
           <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,7 +202,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
         {/* Project Combobox */}
         <div className="mb-4 mt-2">
           <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-            Project <span className="required-asterisk">*</span>
+            {localize("ProjectId")} <span className="required-asterisk">*</span>
           </label>
           <Autocomplete
             options={projects}
@@ -212,8 +214,8 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
             loading={loading}
             autoHighlight
             openOnFocus
-            noOptionsText="No projects found"
-            loadingText="Loading projects..."
+            noOptionsText={localize("NoDataAvailableInDatatable")}
+            loadingText={localize("LoadingWithThreeDot")}
             slotProps={{
               paper: {
                 sx: {
@@ -264,7 +266,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
             renderInput={(params) => (
               <TextField
                 {...params}
-                placeholder="Search or select a project..."
+                placeholder={localize("SelectBoxEmptyValueText")}
               />
             )}
           />
@@ -272,16 +274,16 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
 
         {/* Category Checkbox List */}
         <label className="block text-[10.5px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-          Select Categories <span className="required-asterisk">*</span>
+          {localize("TaskCategoryId")} <span className="required-asterisk">*</span>
         </label>
         <div className="space-y-1.5 pr-1 max-h-[300px] overflow-y-auto no-scrollbar py-1">
           {loading ? (
             <div className="py-10 text-center text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              Loading...
+              {localize("LoadingWithThreeDot")}
             </div>
           ) : categories.length === 0 ? (
             <div className="py-10 text-center text-[10px] font-black uppercase text-slate-400 tracking-widest">
-              No categories found in lookup
+              {localize("NoDataAvailableInDatatable")}
             </div>
           ) : (
             paginatedCategories.map((cat) => (
@@ -316,14 +318,17 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
         {!loading && categories.length > catPageSize && (
           <div className="mt-4 pt-4 border-t border-slate-50 dark:border-slate-800 flex items-center justify-between">
             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest tabular-nums">
-              {Math.min((catPage - 1) * catPageSize + 1, totalCatCount)} - {Math.min(catPage * catPageSize, totalCatCount)} of {totalCatCount}
+              {localize("PagerInfo{0}{1}{2}")
+                .replace("{0}", Math.min((catPage - 1) * catPageSize + 1, totalCatCount))
+                .replace("{1}", Math.min(catPage * catPageSize, totalCatCount))
+                .replace("{2}", totalCatCount)}
             </div>
             <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm">
               <button
                 disabled={catPage === 1}
                 onClick={() => setCatPage(1)}
                 className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="First Page"
+                title={localize("PagerFirst")}
               >
                 <ChevronsLeft size={14} strokeWidth={2.5} />
               </button>
@@ -331,7 +336,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
                 disabled={catPage === 1}
                 onClick={() => setCatPage(prev => prev - 1)}
                 className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Previous Page"
+                title={localize("PagerPrevious")}
               >
                 <ChevronLeft size={14} strokeWidth={2.5} />
               </button>
@@ -352,7 +357,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
                 disabled={catPage >= Math.ceil(totalCatCount / catPageSize)}
                 onClick={() => setCatPage(prev => prev + 1)}
                 className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Next Page"
+                title={localize("PagerNext")}
               >
                 <ChevronRight size={14} strokeWidth={2.5} />
               </button>
@@ -360,7 +365,7 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
                 disabled={catPage >= Math.ceil(totalCatCount / catPageSize)}
                 onClick={() => setCatPage(Math.ceil(totalCatCount / catPageSize))}
                 className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                title="Last Page"
+                title={localize("PagerLast")}
               >
                 <ChevronsRight size={14} strokeWidth={2.5} />
               </button>
@@ -376,14 +381,14 @@ export default function TaskCategoryProjectModal({ open, onClose, onSave, preSel
           disabled={submitting}
           className="h-[30px] px-6 rounded-lg text-[10px] font-black uppercase text-slate-400 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-all"
         >
-          Cancel
+          {localize("CancelButtonText")}
         </button>
         <button
           onClick={handleSave}
           disabled={submitting || loading}
           className="app-primary-button h-[30px] px-8 text-[10.5px] uppercase"
         >
-          {submitting ? "Processing..." : "Save"}
+          {submitting ? localize("ProcessingWithThreeDot") : localize("SaveButtonText")}
         </button>
       </div>
 

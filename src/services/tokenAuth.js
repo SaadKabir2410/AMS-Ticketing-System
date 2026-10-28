@@ -12,6 +12,7 @@ const STORAGE_KEY = "tokenAuth:session";
 const EXPIRY_BUFFER_MS = 60_000;
 
 let refreshPromise = null;
+let sessionRevision = 0;
 
 function readSession() {
   try {
@@ -41,7 +42,11 @@ async function requestToken(body) {
   return data;
 }
 
-function persistSession(data, fallbackRefreshToken = null) {
+function persistSession(data, fallbackRefreshToken = null, expectedRevision = sessionRevision) {
+  // A logout may complete while a token request is still in flight. Never let
+  // that stale response recreate a session that the user already cleared.
+  if (expectedRevision !== sessionRevision) return null;
+
   const session = {
     access_token: data.access_token,
     refresh_token: data.refresh_token ?? fallbackRefreshToken,
@@ -57,6 +62,7 @@ function persistSession(data, fallbackRefreshToken = null) {
  * Returns the parsed token response or throws an Error.
  */
 export async function loginWithPassword(username, password) {
+  const requestRevision = sessionRevision;
   const body = new URLSearchParams({
     grant_type: "password",
     client_id: CLIENT_ID,
@@ -66,7 +72,9 @@ export async function loginWithPassword(username, password) {
   });
 
   const data = await requestToken(body);
-  return persistSession(data);
+  const session = persistSession(data, null, requestRevision);
+  if (!session) throw new Error("Authentication request was cancelled.");
+  return session;
 }
 
 /** Read the current session from storage. */
@@ -94,6 +102,7 @@ export async function getValidAccessToken({ forceRefresh = false } = {}) {
 
   // All requests arriving around token expiry share one refresh operation.
   if (!refreshPromise) {
+    const refreshRevision = sessionRevision;
     refreshPromise = (async () => {
       const body = new URLSearchParams({
         grant_type: "refresh_token",
@@ -103,7 +112,11 @@ export async function getValidAccessToken({ forceRefresh = false } = {}) {
 
       try {
         const data = await requestToken(body);
-        return persistSession(data, currentSession.refresh_token).access_token;
+        return persistSession(
+          data,
+          currentSession.refresh_token,
+          refreshRevision,
+        )?.access_token ?? null;
       } catch (error) {
         // An HTTP rejection means the refresh token is no longer valid. A
         // network failure is temporary, so keep the session for a later retry.
@@ -120,7 +133,34 @@ export async function getValidAccessToken({ forceRefresh = false } = {}) {
 
 /** Remove the stored session. */
 export function clearSession() {
+  sessionRevision += 1;
   localStorage.removeItem(STORAGE_KEY);
+}
+
+/**
+ * End the backend session and invalidate local tokens immediately.
+ * Backend failures must never prevent a local logout.
+ */
+export function logoutSession() {
+  const session = readSession();
+  clearSession();
+
+  const headers = {
+    Accept: "application/json",
+    "X-Requested-With": "XMLHttpRequest",
+  };
+  if (session?.access_token) {
+    headers.Authorization = `Bearer ${session.access_token}`;
+  }
+
+  // keepalive lets the request finish after the page has moved to the login
+  // screen, so the user never waits for the backend to answer.
+  return fetch("/api/account/logout", {
+    method: "GET",
+    headers,
+    credentials: "include",
+    keepalive: true,
+  });
 }
 
 /** Simple helper — returns { isAuthenticated, accessToken } */

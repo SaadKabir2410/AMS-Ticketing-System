@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { NAV_GROUPS } from "../../data/navData";
 import { useAuth } from "../../context/AuthContextHook";
 import { usePermissionContext } from "../../context/PermissionContext";
+import SearchTextHighlight from "../common/SearchTextHighlight";
 import {
   Search,
   Settings,
@@ -96,7 +97,8 @@ export default function Sidebar({
         "bg-black shrink-0",
         !isMobile
           ? "hidden lg:flex ml-1.5 mt-6 mb-1 h-[calc(100vh-2.5rem)] sticky top-5 rounded-4xl"
-          : "w-[160px] h-full",
+          // Phone menu: wide enough for full menu names, never wider than the screen.
+          : "w-[min(280px,85vw)] h-full overflow-y-auto",
         !isMobile && (collapsed ? "w-[70px]" : "w-[170px]"),
       )}
     >
@@ -183,6 +185,7 @@ export default function Sidebar({
                   collapsed={collapsed}
                   closeMobile={closeMobile}
                   isMobile={isMobile}
+                  searchQuery={searchQuery}
                 />
               ))}
             </ul>
@@ -193,13 +196,15 @@ export default function Sidebar({
   );
 }
 
-function NavItem({ item, collapsed, closeMobile, isMobile }) {
+function NavItem({ item, collapsed, closeMobile, isMobile, searchQuery = "" }) {
   const hasSubMenu = item.subMenu && item.subMenu.length > 0;
   const isChildActive =
     hasSubMenu &&
     item.subMenu.some((sub) => window.location.pathname === sub.href);
   const active = window.location.pathname === item.href || isChildActive;
   const [isOpen, setIsOpen] = useState(isChildActive);
+  // While searching, sub menus stay open so the matching items are visible.
+  const showSubMenu = isOpen || Boolean(searchQuery.trim());
   const Icon = item.icon;
 
   const handleClick = (e) => {
@@ -252,7 +257,7 @@ function NavItem({ item, collapsed, closeMobile, isMobile }) {
               active ? "text-white" : "text-inherit",
             )}
           >
-            {item.name}
+            <SearchTextHighlight text={item.name} query={searchQuery} />
           </span>
         )}
 
@@ -272,7 +277,7 @@ function NavItem({ item, collapsed, closeMobile, isMobile }) {
             size={16}
             className={clsx(
               "text-slate-400 transition-all duration-300 ml-auto",
-              isOpen ? "rotate-0" : "-rotate-90",
+              showSubMenu ? "rotate-0" : "-rotate-90",
             )}
           />
         )}
@@ -286,7 +291,7 @@ function NavItem({ item, collapsed, closeMobile, isMobile }) {
       )}
 
       {/* Submenu */}
-      {!collapsed && hasSubMenu && isOpen && (
+      {!collapsed && hasSubMenu && showSubMenu && (
         <ul className="mt-1.5 mb-3 ml-6 space-y-1.5 animate-fade-in">
           {item.subMenu.map((sub) => {
             const subActive = window.location.pathname === sub.href;
@@ -310,7 +315,7 @@ function NavItem({ item, collapsed, closeMobile, isMobile }) {
                       !subActive && "ml-4"
                     )}
                   >
-                    {sub.name}
+                    <SearchTextHighlight text={sub.name} query={searchQuery} />
                   </span>
                 </a>
               </li>
