@@ -135,8 +135,6 @@ export default function LoginPage() {
       } else {
         localStorage.removeItem("remembered_username");
       }
-      // Ensure the unclosed tickets modal will show after this fresh login
-      sessionStorage.removeItem("hasSeenUnclosedTicketsModal");
       navigate(from, { replace: true });
     } else {
       setIsLoggingIn(false);

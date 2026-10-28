@@ -38,7 +38,6 @@ import amsTicketApi from "../services/api/amsTicketApi";
 import { useToast } from "../component/common/ToastContext";
 import TicketModal from "../component/common/TicketModal";
 import DeleteConfirmModal from "../component/common/DeleteConfirmation";
-import UnclosedTicketsModal from "../component/common/UnclosedTicketsModal";
 import { ActionsMenu } from "../component/common/ResourcePage";
 import { usePermission } from "../hooks/usePermission";
 import { useBackendEnumOptions } from "../hooks/useBackendEnumOptions";
@@ -400,7 +399,6 @@ export default function AMSTicketsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [isUnclosedModalOpen, setIsUnclosedModalOpen] = useState(false);
   const openedTicketNumberRef = useRef(null);
   const [sortKey, setSortKey] = useState("status");
   const [sortDir, setSortDir] = useState("asc");
@@ -587,23 +585,6 @@ export default function AMSTicketsPage() {
     }, generalSearch.trim() ? 300 : activeFilterCount > 0 ? 100 : 250);
     return () => clearTimeout(timer);
   }, [generalSearch, currentPage, pageSize, sortKey, sortDir, filterStatus, filterIsPRE, filterIsVerified, filterCreatedBy, filterTicketDelayed, filterSiteName, filterSiteOCN, filterCmsNextTicketNo, filterTicketReceivedDate, filterTicketClosedBy]);
-
-  useEffect(() => {
-    if (ticketNumber) return;
-    if (sessionStorage.getItem("hasSeenUnclosedTicketsModal") === "true") return;
-
-    let cancelled = false;
-    sessionStorage.setItem("hasSeenUnclosedTicketsModal", "true");
-    amsTicketApi.isAnyOpen()
-      .then((hasOpenTickets) => {
-        if (!cancelled && hasOpenTickets) setIsUnclosedModalOpen(true);
-      })
-      .catch((error) => console.error("Failed to check for open tickets:", error));
-
-    return () => {
-      cancelled = true;
-    };
-  }, [ticketNumber]);
 
   useEffect(() => {
     if (!ticketNumber || openedTicketNumberRef.current === ticketNumber) return;
@@ -1526,18 +1507,6 @@ export default function AMSTicketsPage() {
           />
         </>
       )}
-
-      <UnclosedTicketsModal
-        open={isUnclosedModalOpen}
-        onClose={() => setIsUnclosedModalOpen(false)}
-        onTicketSelect={(ticket) => {
-          setIsUnclosedModalOpen(false);
-          if (canEdit || canViewMode) {
-            setActionItem(ticket);
-            setActionType(canEdit && !isVoidedTicket(ticket) ? "edit" : "detail");
-          }
-        }}
-      />
 
     </motion.div>
   );
