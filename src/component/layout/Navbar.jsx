@@ -89,7 +89,7 @@ export default function Navbar({ setMobileOpen }) {
   const displayLang = lang?.substring(0, 2).toUpperCase() || "EN";
 
   return (
-    <header className="relative z-50 flex items-center justify-between gap-2 sm:gap-4 px-4 sm:px-8 py-3 sm:py-4 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 mx-3 sm:mx-6 mt-3 sm:mt-6 rounded-2xl shadow-[0_10px_35px_rgba(0,0,0,0.06)]">
+    <header className="relative z-50 flex items-center justify-between gap-2 sm:gap-4 px-4 sm:px-6 py-1.5 sm:py-2 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 mx-3 sm:mx-6 mt-2 sm:mt-3 rounded-xl shadow-[0_10px_35px_rgba(0,0,0,0.06)]">
 
       {/* ── Left: Hamburger ── */}
       <div className="flex items-center gap-2 sm:gap-4">
@@ -188,7 +188,7 @@ export default function Navbar({ setMobileOpen }) {
             onClick={() => setShowMenu(!showMenu)}
             className="flex items-center gap-2 sm:gap-3 p-1 pr-1 sm:pr-3 hover:text-[#ec4899] dark:hover:text-[#ec4899] rounded-xl transition-colors"
           >
-            <div className="w-8 h-8 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 border border-slate-200 dark:border-slate-700">
+            <div className="w-7 h-7 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 border border-slate-200 dark:border-slate-700">
               {user?.customAvatar ? (
                 <img src={user.customAvatar} alt="Profile" className="w-full h-full object-cover" />
               ) : (

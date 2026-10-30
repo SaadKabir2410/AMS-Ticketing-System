@@ -665,7 +665,7 @@ export default function CodeDetailsPage() {
                       >
                         <Loader2
                           size={15}
-                          className="animate-spin text-indigo-400"
+                          className="animate-spin text-pink-500"
                         />
                       </Motion.span>
                     )}

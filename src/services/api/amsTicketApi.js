@@ -435,6 +435,7 @@ export const amsTicketApi = {
         search,
         sortKey,
         sortDir = "desc",
+        openFirst = false,
         userId = "",
         siteName = "",
         siteOcn = "",
@@ -478,9 +479,18 @@ export const amsTicketApi = {
                 `${sortKey.charAt(0).toUpperCase()}${sortKey.slice(1)}`
             : "CreationTime";
 
+        // openFirst keeps Opened tickets (lowest status) on top, ordered by the chosen column within each status.
+        // Ties fall back to the newest received date and then Id, so every page has a stable, repeatable order.
+        const sortParts = backendSortKey === "Status"
+            ? [`Status ${sortDir}`]
+            : [...(openFirst ? ["Status asc"] : []), `${backendSortKey} ${sortDir}`];
+        if (backendSortKey !== "TicketReceivedDate") sortParts.push("TicketReceivedDate desc");
+        sortParts.push("Id desc");
+        const sorting = sortParts.join(", ");
+
         const params = {
             Filter: search || "",
-            Sorting: `${backendSortKey} ${sortDir}`,
+            Sorting: sorting,
             SkipCount: (page - 1) * perPage,
             MaxResultCount: perPage,
             "api-version": "1.0",

@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { countriesApi } from "../services/api/countries";
 import { useToast } from "../component/common/ToastContext";
 import { ActionsMenu } from "../component/common/ResourcePage";
-import { Plus, Search, X, Filter } from "lucide-react";
+import { Plus, Search, X, Filter, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import CountryModal from "../component/common/CountryModal";
 import { usePermission } from "../hooks/usePermission";
 import { getApiErrorMessage } from "../utils/apiError";
@@ -123,10 +123,46 @@ export default function CountriesPage() {
 
   const totalCount = filteredData.length;
 
+  // Click cycle on a header: A to Z -> Z to A -> back to the order the backend returned.
+  const [sortKey, setSortKey] = useState("");
+  const [sortDir, setSortDir] = useState("asc");
+  const handleSort = (key) => {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir("asc");
+    } else if (sortDir === "asc") {
+      setSortDir("desc");
+    } else {
+      setSortKey("");
+      setSortDir("asc");
+    }
+    setPage(1);
+  };
+
+  const sortedData = useMemo(() => {
+    if (!sortKey) return filteredData;
+    return [...filteredData].sort((a, b) => {
+      const result = String(a[sortKey] ?? "").localeCompare(String(b[sortKey] ?? ""), undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+      return sortDir === "desc" ? -result : result;
+    });
+  }, [filteredData, sortKey, sortDir]);
+
+  const renderSortIcon = (key) =>
+    sortKey !== key ? (
+      <ArrowUpDown size={11} className="shrink-0 text-slate-300 dark:text-slate-600" />
+    ) : sortDir === "asc" ? (
+      <ArrowUp size={12} className="shrink-0 text-pink-500" />
+    ) : (
+      <ArrowDown size={12} className="shrink-0 text-pink-500" />
+    );
+
   const paginatedData = useMemo(() => {
     const start = (page - 1) * pageSize;
-    return filteredData.slice(start, start + pageSize);
-  }, [filteredData, page, pageSize]);
+    return sortedData.slice(start, start + pageSize);
+  }, [sortedData, page, pageSize]);
 
   return (
     <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial] text-slate-900 dark:text-white">
@@ -265,8 +301,27 @@ export default function CountriesPage() {
                 </colgroup>
                 <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900">
                   <tr className="border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
-                    <th className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-left">{localize("Name")}</th>
-                    <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest" style={{ textAlign: 'center' }}>{localize("Code")}</th>
+                    <th
+                      onClick={() => handleSort("name")}
+                      aria-sort={sortKey === "name" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                      className="px-5 pl-8 h-[56px] text-[10px] font-black uppercase tracking-widest text-left cursor-pointer select-none hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        {localize("Name")}
+                        {renderSortIcon("name")}
+                      </div>
+                    </th>
+                    <th
+                      onClick={() => handleSort("code")}
+                      aria-sort={sortKey === "code" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+                      className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest cursor-pointer select-none hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                      style={{ textAlign: 'center' }}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        {localize("Code")}
+                        {renderSortIcon("code")}
+                      </div>
+                    </th>
                     <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-center">{localize("Actions")}</th>
                   </tr>
                 </thead>

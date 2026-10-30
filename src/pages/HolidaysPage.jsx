@@ -254,7 +254,7 @@ export default function HolidaysPage() {
                     { key: "HolidayType", sortField: "Type", center: true },
                     { key: "IsDisabled", sortField: "IsDeleted", center: true },
                   ].map((l) => (
-                    <div key={l.key} className={`px-[10px] text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-1 ${l.center ? 'justify-center' : ''}`}>
+                    <div key={l.key} className={`${l.center ? 'px-[10px]' : 'pl-[23px] pr-[10px]'} text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-1 ${l.center ? 'justify-center' : ''}`}>
                       <button
                         type="button"
                         onClick={() => handleSort(l.sortField)}
@@ -350,12 +350,12 @@ export default function HolidaysPage() {
                         key={row.id || idx}
                         className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
                       >
-                        <td className="w-[12%] px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
+                        <td className="w-[12%] pl-[23px] pr-5 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
                           <div className="flex items-center gap-3 w-full overflow-hidden">
                             <span className="truncate block w-full">{highlightText(row.name || "—", debouncedFilters.name)}</span>
                           </div>
                         </td>
-                        <td className="w-auto px-5 h-[60px] text-left transition-colors" title={row.description}>
+                        <td className="w-auto pl-[23px] pr-5 h-[60px] text-left transition-colors" title={row.description}>
                           <div className="line-clamp-2 w-full break-words whitespace-normal overflow-hidden leading-tight" style={{ overflow: "hidden" }}>{highlightText(row.description || "—", debouncedFilters.description)}</div>
                         </td>
                         <td className="w-[10%] px-5 h-[60px] text-center transition-colors">

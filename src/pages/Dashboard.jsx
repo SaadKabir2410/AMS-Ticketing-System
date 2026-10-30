@@ -270,7 +270,7 @@ export default function Dashboard() {
   if (loading && dashboards.length === 0 && !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#f4f6fa] dark:bg-slate-950">
-        <div className="animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -603,7 +603,7 @@ export default function Dashboard() {
               <span>
                 {selectedUserIds.length} / {availableUsers.length}
               </span>
-              {loading && <RefreshCw className="h-4 w-4 animate-spin text-blue-600" />}
+              {loading && <RefreshCw className="h-4 w-4 animate-spin text-pink-600" />}
             </div>
           </div>
         )}

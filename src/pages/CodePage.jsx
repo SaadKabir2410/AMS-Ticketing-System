@@ -470,7 +470,7 @@ export default function CodePage() {
                         exit={{ opacity: 0, scale: 0.7 }}
                         transition={{ duration: 0.15 }}
                       >
-                        <Loader2 size={15} className="animate-spin text-indigo-400" />
+                        <Loader2 size={15} className="animate-spin text-pink-500" />
                       </Motion.span>
                     )}
                   </AnimatePresence>

@@ -2,11 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import {
   AlertCircle,
   X,
-  Search,
   ChevronDown,
   Check,
   Plus,
-  Activity,
+  AlignLeft,
+  Clock,
   Ticket,
   ShieldCheck,
   History,
@@ -33,12 +33,13 @@ import {
 } from "../../services/api/amsTicketApi";
 import { loadBackendEnumTypes } from "../../services/backendEnumCache";
 import DateTimePicker from "./DateTimePicker";
+import { formatDurationHours } from "../../utils/formatDuration";
 
 function Field({ label, error, children }) {
   return (
-    <div className="space-y-0 flex flex-col group/field">
+    <div className="flex flex-col gap-0.5 group/field">
       {label && (
-        <label className="text-[11px] leading-4 font-semibold text-slate-700 dark:text-slate-400 group-focus-within/field:text-pink-600 transition-colors flex items-center gap-1">
+        <label className="text-[11px] leading-4 font-medium text-slate-500 dark:text-slate-400 group-focus-within/field:text-pink-600 transition-colors flex items-center gap-1">
           {label.includes("*") ? (
             <>
               {label.split("*")[0]}
@@ -263,11 +264,6 @@ function Combobox({
           } ${error ? "border-rose-500" : ""}`}
       >
         <div className="flex items-center gap-2 w-full truncate">
-          <Search
-            size={14}
-            className={`text-slate-400 shrink-0 group-focus-within:text-pink-500 transition-colors ${!hasResolvedValue ? "opacity-50" : "opacity-100"
-              }`}
-          />
           <input
             type="text"
             autoComplete="off"
@@ -341,14 +337,14 @@ function Combobox({
               {loading ? (
                 <div className="p-8 text-center flex flex-col items-center gap-2">
                   <div className="w-4 h-4 border-2 border-pink-500/20 border-t-pink-500 rounded-full animate-spin" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  <span className="text-[10px] font-bold text-slate-400">
                     Loading...
                   </span>
                 </div>
               ) : filteredOptions.length === 0 ? (
                 <div className="p-10 text-center flex flex-col items-center gap-1.5">
                   <AlertCircle size={20} className="text-slate-300" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  <span className="text-[10px] font-bold text-slate-400">
                     No results found
                   </span>
                 </div>
@@ -546,6 +542,21 @@ export default function TicketModal({
 
   const [activeTab, setActiveTab] = useState("Ticket");
   const [isTabTransitioning, setIsTabTransitioning] = useState(false);
+  // The other tabs are kept at least as tall as the Ticket tab, so switching tabs
+  // doesn't shrink the modal; the Ticket tab itself is never padded.
+  const ticketContentRef = useRef(null);
+  const [tabMinHeight, setTabMinHeight] = useState(0);
+  useEffect(() => {
+    if (!open) {
+      setTabMinHeight(0);
+      return undefined;
+    }
+    const content = ticketContentRef.current;
+    if (activeTab !== "Ticket" || !content) return undefined;
+    const observer = new ResizeObserver(() => setTabMinHeight(content.offsetHeight));
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, [open, activeTab]);
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const hasClosedStatus = (status) =>
@@ -1644,7 +1655,7 @@ export default function TicketModal({
     <>
       <AnimatePresence>
         {open && (
-          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto custom-scrollbar px-1 md:px-2">
+          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto custom-scrollbar p-1 md:p-2">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1656,51 +1667,46 @@ export default function TicketModal({
               initial={{ opacity: 0, scale: 0.98, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.98, y: 10 }}
-              className={`relative my-1 md:my-2 w-full ${activeTab === "Ticket Verification"
-                ? "max-w-2xl min-h-0"
-                : "max-w-6xl min-h-[calc(100vh-0.5rem)] md:min-h-[calc(100vh-1rem)]"
-                } ${isTabTransitioning ? "overflow-hidden" : ""} transition-[max-width,min-height] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col font-[Arial]`}
+              className={`relative my-auto w-full max-w-3xl ${isTabTransitioning ? "overflow-hidden" : ""} bg-white dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col font-[Arial]`}
             >
               <div className="flex flex-col gap-0 rounded-t-2xl bg-white dark:bg-slate-900">
-                <div className="flex items-center justify-between gap-2 px-3 sm:px-5 py-2">
+                <div className="flex items-center justify-between gap-2 px-4 sm:px-5 pt-3 pb-2">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0">
-                      <Ticket size={17} />
+                    <div className="w-9 h-9 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0">
+                      <Ticket size={18} />
                     </div>
                     <div>
-                      <nav className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 dark:text-slate-500 mb-0.5">
+                      <nav className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
                         <span>{localize("AMSTickets")}</span>
                         <span className="text-slate-300 dark:text-slate-700">
                           /
                         </span>
-                        <span className="text-pink-600">{localize("Ticket")}</span>
+                        <span>{localize("Ticket")}</span>
                       </nav>
-                      <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2 flex-wrap leading-7">
-                        {isReadOnly
-                          ? `${localize("View")} ${localize("Ticket")}`
-                          : isEdit
-                            ? `${localize("UpdateButtonText")} ${localize("Ticket")}`
-                            : localize("NewAMSTicket")}
-                        {isEdit && form.cmsNextTicketNo && (
-                          <span className="inline-flex h-6 items-center px-2.5 rounded-md bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400 text-[11px] leading-none font-bold tracking-wide border border-pink-200/60 dark:border-pink-500/20 select-none">
-                            {form.cmsNextTicketNo}
-                          </span>
-                        )}
-                        {form.ticketResolutionVerifiedBy ? (
-                          <span className="inline-flex h-6 items-center gap-1.5 px-2.5 rounded-md bg-emerald-50/50 dark:bg-emerald-500/5 text-emerald-500/80 dark:text-emerald-400/80 text-[11px] leading-none font-bold tracking-wide uppercase border border-emerald-200/50 dark:border-emerald-500/20 select-none pointer-events-none">
-                            <Check size={12} strokeWidth={3} />
-                            {localize("TicketVerification")}: {localize("Yes")}
-                          </span>
-                        ) : isEdit ? (
-                          <span className="inline-flex h-6 items-center px-2.5 rounded-md bg-rose-50/50 dark:bg-rose-500/5 text-rose-500/80 dark:text-rose-400/80 text-[11px] leading-none font-bold tracking-wide uppercase border border-rose-200/50 dark:border-rose-500/20 select-none pointer-events-none">
-                            {localize("TicketVerification")}: {localize("No")}
-                          </span>
-                        ) : null}
+                      <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight leading-7 truncate">
+                        {isEdit && form.cmsNextTicketNo
+                          ? `${localize("Ticket")} #${form.cmsNextTicketNo}`
+                          : isReadOnly
+                            ? `${localize("View")} ${localize("Ticket")}`
+                            : isEdit
+                              ? `${localize("UpdateButtonText")} ${localize("Ticket")}`
+                              : localize("NewAMSTicket")}
                       </h2>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
+                    {form.ticketResolutionVerifiedBy ? (
+                      <span className="inline-flex h-7 items-center gap-1.5 px-3 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[11px] font-medium select-none">
+                        <ShieldCheck size={13} />
+                        Verified
+                      </span>
+                    ) : isEdit ? (
+                      <span className="inline-flex h-7 items-center gap-1.5 px-3 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 text-[11px] font-medium select-none">
+                        <AlertCircle size={13} />
+                        Not verified
+                      </span>
+                    ) : null}
                     {!isReadOnly && currentTabHasErrors && (
                       <button
                         type="button"
@@ -1714,14 +1720,14 @@ export default function TicketModal({
                     <button
                       type="button"
                       onClick={() => setShowExitConfirm(true)}
-                      className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-rose-500 transition-all border border-slate-200 dark:border-slate-700"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
                     >
-                      <X size={20} strokeWidth={2} />
+                      <X size={18} strokeWidth={2} />
                     </button>
                   </div>
                 </div>
 
-                <div className="flex px-3 sm:px-5 gap-4 sm:gap-6 overflow-x-auto">
+                <div className="flex px-4 sm:px-5 gap-5 sm:gap-6 overflow-x-auto border-b border-slate-200 dark:border-slate-800">
                   {[
                     { id: "Ticket", labelKey: "Ticket" },
                     { id: "Activities", labelKey: "Activities" },
@@ -1738,7 +1744,7 @@ export default function TicketModal({
                           setIsTabTransitioning(true);
                           setActiveTab(tab.id);
                         }}
-                        className={`relative py-2 text-[11px] font-semibold transition-all flex items-center gap-2 group ${activeTab === tab.id
+                        className={`relative pb-2 pt-0.5 text-xs font-medium transition-all flex items-center gap-2 group ${activeTab === tab.id
                            ? "text-pink-600"
                            : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                            }`}
@@ -1747,7 +1753,7 @@ export default function TicketModal({
                         {activeTab === tab.id && (
                           <motion.div
                             layoutId="activeTab"
-                            className="absolute bottom-0 left-0 right-0 h-1 bg-pink-600 rounded-t-full shadow-[0_-4px_12px_rgba(236,72,153,0.2)]"
+                            className="absolute -bottom-px left-0 right-0 h-0.5 bg-pink-600 rounded-full"
                           />
                         )}
                       </button>
@@ -1756,7 +1762,7 @@ export default function TicketModal({
                 </div>
               </div>
 
-              <div className="flex-1 px-3 py-1">
+              <div className="flex-1 px-4 sm:px-5 py-3">
                 {optionsError && (
                   <div className="max-w-5xl mx-auto mb-6 flex items-start gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-xs animate-in fade-in slide-in-from-top-4 duration-500">
                     <AlertCircle size={16} className="shrink-0 mt-0.5" />
@@ -1780,6 +1786,7 @@ export default function TicketModal({
                     aria-disabled={isReadOnly}
                     className={`w-full ${isReadOnly ? "pointer-events-none opacity-90" : ""
                       }`}
+                    style={activeTab !== "Ticket" && tabMinHeight ? { minHeight: tabMinHeight } : undefined}
                   >
                     {errors.server && (
                       <PremiumErrorAlert
@@ -1792,500 +1799,447 @@ export default function TicketModal({
                     )}
 
                     {activeTab === "Ticket" && (
-                      <div className="flex flex-col space-y-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-600 shrink-0">
-                            <Activity size={15} />
-                          </div>
-                          <div>
-                            <h3 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
-                              Ticket Information
-                            </h3>
-
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 items-start gap-x-3 gap-y-1.5">
-                          {!isEdit && !isReadOnly && (
-                            <div className="md:col-span-2">
-                              <Field label="Upload PDF" error={errors.pdfFile}>
-                              <div className="relative group/file">
-                                <input
-                                  key={form.pdfFile ? form.pdfFile.name : "empty"}
-                                  type="file"
-                                  accept=".pdf"
-                                  disabled={pdfUploading}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    setField("pdfFile")(e);
-                                    handleUploadViaPDF(file);
-                                  }}
-                                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
-                                />
-                                <div className={`w-full p-1.5 border border-dashed rounded-xl flex flex-row items-center justify-center gap-2 transition-all ${pdfUploading
-                                  ? "border-violet-400 bg-violet-50/60 dark:bg-violet-500/5"
-                                  : pdfError
-                                    ? "border-rose-400 bg-rose-50/40 dark:bg-rose-500/5 group-hover/file:border-rose-500"
-                                    : form.pdfFile
-                                      ? "border-emerald-400 bg-emerald-50/40 dark:bg-emerald-500/5 group-hover/file:border-emerald-500"
-                                      : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover/file:border-pink-500/50 group-hover/file:bg-pink-500/[0.02]"
-                                  }`}>
-                                  {pdfUploading ? (
-                                    <>
-                                      <div className="w-10 h-10 rounded-2xl bg-violet-100 dark:bg-violet-500/15 flex items-center justify-center">
-                                        <Loader2 size={20} className="text-violet-600 animate-spin" />
-                                      </div>
-                                      <div className="text-center">
-                                        <p className="text-sm font-bold text-violet-700 dark:text-violet-400">{localize("LoadingWithThreeDot")}</p>
-                                      </div>
-                                    </>
-                                  ) : pdfError ? (
-                                    <>
-                                      <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-500/15 flex items-center justify-center">
-                                        <AlertCircle size={20} className="text-rose-500" />
-                                      </div>
-                                      <div className="text-center">
-                                        <p className="text-sm font-bold text-rose-600 dark:text-rose-400">{localize("Error")}</p>
-                                        <p className="text-[11px] font-semibold text-rose-400/80 mt-1 max-w-xs">{pdfError}</p>
-                                      <p className="text-[10px] text-slate-400 mt-1">{localize("UploadPDF")}</p>
-                                      </div>
-                                    </>
-                                  ) : form.pdfFile ? (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          setForm((prev) => ({ ...prev, pdfFile: null }));
-                                        }}
-                                        className="absolute top-4 right-4 z-20 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
-                                        title={localize("DeleteButtonText")}
-                                      >
-                                        <X size={16} />
-                                      </button>
-                                      <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center">
-                                        <FileText size={20} className="text-emerald-600 dark:text-emerald-400" />
-                                      </div>
-                                      <div className="text-center">
-                                        <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{form.pdfFile.name}</p>
-                                        <p className="text-[11px] font-semibold text-slate-400 mt-1">
-                                          {(form.pdfFile.size / 1024 / 1024).toFixed(2)} MB &middot; Click to change
-                                        </p>
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <div className="text-center">
-                                      <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{localize("UploadPDF")}</p>
-                                      <p className="text-[11px] font-semibold text-slate-400 mt-1">PDF format only (Max 10MB) &middot; AI will auto-fill the form</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              </Field>
-                            </div>
-                          )}
-
-                          <Field
-                            label={`${localize("TicketReceivedDate")} *`}
-                            error={errors.receivedAt}
-                          >
-                            <div className="relative group/input">
-                              <DateTimePicker
-                                value={form.receivedAt}
-                                onChange={(dateStr, date) => {
-                                  updateValidatedDate("receivedAt", dateStr, date);
+                      <div ref={ticketContentRef} className="flex flex-col gap-2.5">
+                        <div className="grid grid-cols-1 md:grid-cols-3 items-start gap-x-3 gap-y-2">
+                        {!isEdit && !isReadOnly && (
+                          <div className="md:col-span-3">
+                            <Field label="Upload PDF" error={errors.pdfFile}>
+                            <div className="relative group/file">
+                              <input
+                                key={form.pdfFile ? form.pdfFile.name : "empty"}
+                                type="file"
+                                accept=".pdf"
+                                disabled={pdfUploading}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  setField("pdfFile")(e);
+                                  handleUploadViaPDF(file);
                                 }}
-                                className={`${inputClass} !bg-gray-100 dark:!bg-gray-800 !pr-10 ${errors.receivedAt
-                                  ? "border-rose-500 text-rose-600"
-                                  : ""
-                                  }`}
-                                placeholder="YYYY-MM-DD HH:mm"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
                               />
-                              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-pink-500 transition-colors pointer-events-none">
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                  />
-                                </svg>
-                              </div>
-                            </div>
-                          </Field>
-
-                          <Field
-                            label={`${localize("CMSNextTicketNo")} *`}
-                            error={errors.cmsNextTicketNo}
-                          >
-                            <input
-                              type="text"
-                              value={form.cmsNextTicketNo}
-                              onChange={setField("cmsNextTicketNo")}
-                              className={`${inputClass} !bg-gray-100 dark:!bg-gray-800 ${errors.cmsNextTicketNo ? "border-rose-500 text-rose-600" : ""}`}
-                            />
-                          </Field>
-
-                          <div>
-                            <Field
-                              label={`${localize("SiteName")} *`}
-                              error={errors.siteName}
-                            >
-                              <div className="flex items-center gap-2">
-                                <Combobox
-                                  value={form.siteName}
-                                  onChange={handleSiteChange}
-                                  options={apiData.siteNames}
-                                  placeholder={
-                                    loadingApis
-                                      ? localize("LoadingWithThreeDot")
-                                      : localize("Search")
-                                  }
-                                  loading={loadingApis}
-                                  error={errors.siteName}
-                                  wide
-                                />
-                                {!isAdmin && (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setSiteSubmitError(null);
-                                      setIsSiteModalOpen(true);
-                                    }}
-                                    className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-pink-600 rounded-lg hover:bg-pink-600 hover:text-white transition-all shadow-sm active:scale-95 shrink-0"
-                                    title={localize("NewSite")}
-                                  >
-                                    <Plus size={18} strokeWidth={2.5} />
-                                  </button>
+                              <div className={`w-full p-1.5 border border-dashed rounded-xl flex flex-row items-center justify-center gap-2 transition-all ${pdfUploading
+                                ? "border-violet-400 bg-violet-50/60 dark:bg-violet-500/5"
+                                : pdfError
+                                  ? "border-rose-400 bg-rose-50/40 dark:bg-rose-500/5 group-hover/file:border-rose-500"
+                                  : form.pdfFile
+                                    ? "border-emerald-400 bg-emerald-50/40 dark:bg-emerald-500/5 group-hover/file:border-emerald-500"
+                                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover/file:border-pink-500/50 group-hover/file:bg-pink-500/[0.02]"
+                                }`}>
+                                {pdfUploading ? (
+                                  <>
+                                    <div className="w-10 h-10 rounded-2xl bg-violet-100 dark:bg-violet-500/15 flex items-center justify-center">
+                                      <Loader2 size={20} className="text-pink-600 animate-spin" />
+                                    </div>
+                                    <div className="text-center">
+                                      <p className="text-sm font-bold text-violet-700 dark:text-violet-400">{localize("LoadingWithThreeDot")}</p>
+                                    </div>
+                                  </>
+                                ) : pdfError ? (
+                                  <>
+                                    <div className="w-10 h-10 rounded-2xl bg-rose-100 dark:bg-rose-500/15 flex items-center justify-center">
+                                      <AlertCircle size={20} className="text-rose-500" />
+                                    </div>
+                                    <div className="text-center">
+                                      <p className="text-sm font-bold text-rose-600 dark:text-rose-400">{localize("Error")}</p>
+                                      <p className="text-[11px] font-semibold text-rose-400/80 mt-1 max-w-xs">{pdfError}</p>
+                                    <p className="text-[10px] text-slate-400 mt-1">{localize("UploadPDF")}</p>
+                                    </div>
+                                  </>
+                                ) : form.pdfFile ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setForm((prev) => ({ ...prev, pdfFile: null }));
+                                      }}
+                                      className="absolute top-4 right-4 z-20 p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                      title={localize("DeleteButtonText")}
+                                    >
+                                      <X size={16} />
+                                    </button>
+                                    <div className="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-500/15 flex items-center justify-center">
+                                      <FileText size={20} className="text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                    <div className="text-center">
+                                      <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{form.pdfFile.name}</p>
+                                      <p className="text-[11px] font-semibold text-slate-400 mt-1">
+                                        {(form.pdfFile.size / 1024 / 1024).toFixed(2)} MB &middot; Click to change
+                                      </p>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="text-center">
+                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{localize("UploadPDF")}</p>
+                                    <p className="text-[11px] font-semibold text-slate-400 mt-1">PDF format only (Max 10MB) &middot; AI will auto-fill the form</p>
+                                  </div>
                                 )}
                               </div>
+                            </div>
                             </Field>
                           </div>
+                        )}
 
-                          <div>
-                            <Field label={`${localize("CustomerUserId")} *`} error={errors.customer}>
-                              <div className="flex items-center gap-2">
-                                <Combobox
-                                  value={form.customer}
-                                  onChange={setField("customer")}
-                                  options={apiData.customers}
-                                  placeholder={
-                                    !form.siteName
-                                      ? localize("SelectBoxEmptyValueText")
-                                      : loadingCustomers
-                                        ? localize("LoadingWithThreeDot")
-                                        : localize("Search")
-                                  }
-                                  loading={loadingCustomers}
-                                  disabled={
-                                    loadingApis ||
-                                    loadingCustomers ||
-                                    !form.siteName
-                                  }
-                                  error={errors.customer}
-                                  wide
-                                  menuAlign="right"
-                                />
+                        <div>
+                          <Field
+                            label={`${localize("SiteName")} *`}
+                            error={errors.siteName}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Combobox
+                                value={form.siteName}
+                                onChange={handleSiteChange}
+                                options={apiData.siteNames}
+                                placeholder={
+                                  loadingApis
+                                    ? localize("LoadingWithThreeDot")
+                                    : localize("Search")
+                                }
+                                loading={loadingApis}
+                                error={errors.siteName}
+                                wide
+                              />
+                              {!isAdmin && (
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setCustomerFormErrors({});
-                                    setIsCustomerModalOpen(true);
+                                    setSiteSubmitError(null);
+                                    setIsSiteModalOpen(true);
                                   }}
-                                  disabled={!form.siteName || loadingApis || loadingCustomers}
-                                  className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-pink-600 rounded-lg hover:bg-pink-600 hover:text-white transition-all shadow-sm active:scale-95 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-100 disabled:hover:text-pink-600 dark:disabled:hover:bg-slate-800"
-                                  title={localize(
-                                    !form.siteName
-                                      ? "SelectBoxEmptyValueText"
-                                      : "NewCustomer",
-                                  )}
+                                  className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-pink-600 rounded-lg hover:bg-pink-600 hover:text-white transition-all shadow-sm active:scale-95 shrink-0"
+                                  title={localize("NewSite")}
                                 >
                                   <Plus size={18} strokeWidth={2.5} />
                                 </button>
-                              </div>
+                              )}
+                            </div>
+                          </Field>
+                        </div>
+
+                        <div>
+                          <Field label={`${localize("CustomerUserId")} *`} error={errors.customer}>
+                            <div className="flex items-center gap-2">
+                              <Combobox
+                                value={form.customer}
+                                onChange={setField("customer")}
+                                options={apiData.customers}
+                                placeholder={
+                                  !form.siteName
+                                    ? localize("SelectBoxEmptyValueText")
+                                    : loadingCustomers
+                                      ? localize("LoadingWithThreeDot")
+                                      : localize("Search")
+                                }
+                                loading={loadingCustomers}
+                                disabled={
+                                  loadingApis ||
+                                  loadingCustomers ||
+                                  !form.siteName
+                                }
+                                error={errors.customer}
+                                wide
+                                menuAlign="right"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCustomerFormErrors({});
+                                  setIsCustomerModalOpen(true);
+                                }}
+                                disabled={!form.siteName || loadingApis || loadingCustomers}
+                                className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 text-pink-600 rounded-lg hover:bg-pink-600 hover:text-white transition-all shadow-sm active:scale-95 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-slate-100 disabled:hover:text-pink-600 dark:disabled:hover:bg-slate-800"
+                                title={localize(
+                                  !form.siteName
+                                    ? "SelectBoxEmptyValueText"
+                                    : "NewCustomer",
+                                )}
+                              >
+                                <Plus size={18} strokeWidth={2.5} />
+                              </button>
+                            </div>
+                          </Field>
+                        </div>
+
+                        <Field
+                          label={`${localize("TicketAssignedToId")} *`}
+                          error={errors.ticketAssignedTo}
+                        >
+                          <Combobox
+                            value={form.ticketAssignedTo}
+                            onChange={setField("ticketAssignedTo")}
+                            options={withSelectedOption(
+                              apiData.itsAssignableUsers,
+                              form.ticketAssignedTo,
+                              apiData.itsUsers,
+                            )}
+                            placeholder={
+                              loadingApis
+                                ? "Loading Users..."
+                                : "Search users..."
+                            }
+                            loading={loadingApis}
+                            error={errors.ticketAssignedTo}
+                          />
+                        </Field>
+
+                        <Field
+                          label={`${localize("TicketType")} *`}
+                          error={errors.ticketType}
+                        >
+                          <Combobox
+                            value={form.ticketType}
+                            onChange={handleTicketTypeChange}
+                            options={apiData.ticketTypes}
+                            placeholder={
+                              loadingApis
+                                ? "Loading Types..."
+                                : "Select An Option"
+                            }
+                            loading={loadingApis}
+                            error={errors.ticketType}
+                          />
+                        </Field>
+
+                        {form.ticketType === "Service Planned" && (
+                          <div className="animate-in fade-in zoom-in duration-200">
+                            <Field
+                              label={`${localize("ServicePlannedType")} *`}
+                              error={errors.servicePlannedType}
+                            >
+                              <Combobox
+                                value={form.servicePlannedType}
+                                onChange={setField("servicePlannedType")}
+                                options={apiData.servicePlannedTypes}
+                                placeholder={localize("SelectBoxEmptyValueText")}
+                                loading={loadingApis}
+                                error={errors.servicePlannedType}
+                              />
                             </Field>
                           </div>
+                        )}
 
                           <Field
-                            label={`${localize("TicketAssignedToId")} *`}
-                            error={errors.ticketAssignedTo}
+                            label={`${localize("TicketIncomingChannel")} *`}
+                            error={errors.ticketIncomingChannel}
                           >
                             <Combobox
-                              value={form.ticketAssignedTo}
-                              onChange={setField("ticketAssignedTo")}
-                              options={withSelectedOption(
-                                apiData.itsAssignableUsers,
-                                form.ticketAssignedTo,
-                                apiData.itsUsers,
-                              )}
-                              placeholder={
-                                loadingApis
-                                  ? "Loading Users..."
-                                  : "Search users..."
-                              }
+                              value={form.ticketIncomingChannel}
+                              onChange={setField("ticketIncomingChannel")}
+                              options={apiData.incomingChannels}
+                              placeholder={localize("SelectBoxEmptyValueText")}
                               loading={loadingApis}
-                              error={errors.ticketAssignedTo}
+                              error={errors.ticketIncomingChannel}
                             />
                           </Field>
 
-                          <Field
-                            label={`${localize("TicketType")} *`}
-                            error={errors.ticketType}
-                          >
-                            <Combobox
-                              value={form.ticketType}
-                              onChange={handleTicketTypeChange}
-                              options={apiData.ticketTypes}
-                              placeholder={
-                                loadingApis
-                                  ? "Loading Types..."
-                                  : "Select An Option"
-                              }
-                              loading={loadingApis}
-                              error={errors.ticketType}
-                            />
-                          </Field>
+                        {form.ticketIncomingChannel &&
+                          isEmailIncomingChannel(form.ticketIncomingChannel) && (
 
-                          {form.ticketType === "Service Planned" && (
                             <div className="animate-in fade-in zoom-in duration-200">
                               <Field
-                                label={`${localize("ServicePlannedType")} *`}
-                                error={errors.servicePlannedType}
+                                label="Email Address *"
+                                error={errors.incomingChannelEmail}
                               >
-                                <Combobox
-                                  value={form.servicePlannedType}
-                                  onChange={setField("servicePlannedType")}
-                                  options={apiData.servicePlannedTypes}
-                                  placeholder={localize("SelectBoxEmptyValueText")}
-                                  loading={loadingApis}
-                                  error={errors.servicePlannedType}
+                                <input
+                                  type="email"
+                                  value={form.incomingChannelEmail || ""}
+                                  onChange={setField("incomingChannelEmail")}
+                                  placeholder={localize("EmailAddress")}
+                                  className={`${inputClass} ${errors.incomingChannelEmail ? "border-rose-500 text-rose-600" : ""}`}
                                 />
                               </Field>
                             </div>
                           )}
+                        </div>
 
-                          <div className="flex gap-3 items-end">
-                            <div className="flex-1 min-w-0">
+                        <section className="border-t border-slate-200 dark:border-slate-800 pt-2.5">
+                          <h3 className="flex items-center gap-2 mb-1.5 text-[13px] font-semibold text-slate-900 dark:text-white">
+                            <Clock size={15} className="text-slate-500 dark:text-slate-400" />
+                            Tracking &amp; ownership
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-3 items-start gap-x-3 gap-y-2">
+                            <Field
+                              label={`${localize("TicketReceivedDate")} *`}
+                              error={errors.receivedAt}
+                            >
+                              <div className="relative group/input">
+                                <DateTimePicker
+                                  value={form.receivedAt}
+                                  onChange={(dateStr, date) => {
+                                    updateValidatedDate("receivedAt", dateStr, date);
+                                  }}
+                                  className={`${inputClass} !bg-gray-100 dark:!bg-gray-800 !pr-10 ${errors.receivedAt
+                                    ? "border-rose-500 text-rose-600"
+                                    : ""
+                                    }`}
+                                  placeholder="YYYY-MM-DD HH:mm"
+                                />
+                                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-pink-500 transition-colors pointer-events-none">
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="2"
+                                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                    />
+                                  </svg>
+                                </div>
+                              </div>
+                            </Field>
+
+                            <Field
+                              label={`${localize("CMSTicketAddedOn")} *`}
+                              error={errors.cmsTicketAddedOn}
+                            >
+                              <div className="relative group/input">
+                                <DateTimePicker
+                                  value={form.cmsTicketAddedOn}
+                                  onChange={(dateStr, date) => {
+                                    updateValidatedDate("cmsTicketAddedOn", dateStr, date);
+                                  }}
+                                  className={`${inputClass} !bg-gray-100 dark:!bg-gray-800 !pr-10 ${errors.cmsTicketAddedOn
+                                    ? "border-rose-500 text-rose-600"
+                                    : ""
+                                    }`}
+                                  placeholder="YYYY-MM-DD HH:mm"
+                                />
+                                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-pink-500 transition-colors pointer-events-none">
+                                  <svg
+                                    className="w-4 h-4"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="2"
+                                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                    />
+                                  </svg>
+                                </div>
+                              </div>
+                            </Field>
+
+                            <Field
+                              label={`${localize("CMSNextTicketNo")} *`}
+                              error={errors.cmsNextTicketNo}
+                            >
+                              <input
+                                type="text"
+                                value={form.cmsNextTicketNo}
+                                onChange={setField("cmsNextTicketNo")}
+                                className={`${inputClass} !bg-gray-100 dark:!bg-gray-800 ${errors.cmsNextTicketNo ? "border-rose-500 text-rose-600" : ""}`}
+                              />
+                            </Field>
+
+                            <Field
+                              label="Ticket Forwarded By"
+                              error={errors.ticketForwardedBy}
+                            >
+                              <Combobox
+                                value={form.ticketForwardedBy}
+                                onChange={setField("ticketForwardedBy")}
+                                options={withSelectedOption(
+                                  apiData.itsAssignableUsers,
+                                  form.ticketForwardedBy,
+                                  apiData.itsUsers,
+                                )}
+                                placeholder={localize("Search")}
+                                loading={loadingApis}
+                                disabled={!form.isTicketForwarded || loadingApis}
+                                error={errors.ticketForwardedBy}
+                              />
+                            </Field>
+
+                            <Field
+                              label="CMS Ticket Added By"
+                              error={errors.cmsTicketAddedBy}
+                            >
+                              <Combobox
+                                value={form.cmsTicketAddedBy}
+                                onChange={setField("cmsTicketAddedBy")}
+                                options={withSelectedOption(
+                                  apiData.itsAssignableUsers,
+                                  form.cmsTicketAddedBy,
+                                  apiData.itsUsers,
+                                )}
+                                placeholder={localize("Search")}
+                                loading={loadingApis}
+                                error={errors.cmsTicketAddedBy}
+                              />
+                            </Field>
+
+                            <div>
                               <Field
-                                label={`${localize("TicketIncomingChannel")} *`}
-                                error={errors.ticketIncomingChannel}
+                                label="Total Duration"
+                                error={errors.totalDuration}
                               >
-                                <Combobox
-                                  value={form.ticketIncomingChannel}
-                                  onChange={setField("ticketIncomingChannel")}
-                                  options={apiData.incomingChannels}
-                                  placeholder={localize("SelectBoxEmptyValueText")}
-                                  loading={loadingApis}
-                                  error={errors.ticketIncomingChannel}
+                                <input
+                                  type="text"
+                                  value={formatDurationHours(form.totalDuration)}
+                                  readOnly
+                                  className={`${inputClass} !bg-gray-100 dark:!bg-gray-800 cursor-not-allowed`}
+                                />
+                              </Field>
+
+                            </div>
+                          </div>
+                        </section>
+
+                        <section className="border-t border-slate-200 dark:border-slate-800 pt-2.5">
+                          <h3 className="flex items-center gap-2 mb-1.5 text-[13px] font-semibold text-slate-900 dark:text-white">
+                            <AlignLeft size={15} className="text-slate-500 dark:text-slate-400" />
+                            Issue &amp; findings
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-3 items-start gap-x-3 gap-y-2">
+                            <div className="md:col-span-1">
+                              <Field
+                                label={`${localize("IssueDescription")} *`}
+                                error={errors.issueDescription}
+                              >
+                                <textarea
+                                  value={form.issueDescription || ""}
+                                  onChange={setField("issueDescription")}
+                                  rows={2}
+                                  className={`${inputClass} !bg-gray-100 dark:!bg-gray-800 ${errors.issueDescription ? "border-rose-500 text-rose-600" : ""}`}
                                 />
                               </Field>
                             </div>
 
-                            <label className="flex h-8 items-center gap-2 cursor-pointer shrink-0 px-3 rounded-lg bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 focus-within:ring-2 focus-within:ring-pink-500/20">
-                              <div className="relative group/toggle">
-                                <input
-                                  type="checkbox"
-                                  className="sr-only"
-                                  checked={form.isTicketForwarded}
-                                  onChange={handleToggleForwarded}
+                            <div className="md:col-span-1">
+                              <Field
+                                label="Possible Root Cause"
+                                error={errors.possibleRootCause}
+                              >
+                                <textarea
+                                  value={form.possibleRootCause || ""}
+                                  onChange={setField("possibleRootCause")}
+                                  rows={2}
+                                  className={`${inputClass} !bg-gray-100 dark:!bg-gray-800`}
                                 />
-                                <div
-                                  className={`block w-10 h-6 rounded-full transition-all duration-300 ${form.isTicketForwarded
-                                    ? "bg-pink-600 shadow-lg shadow-pink-500/20"
-                                    : "bg-slate-300 dark:bg-slate-700"
-                                    }`}
-                                />
-                                <motion.div
-                                  animate={{
-                                    x: form.isTicketForwarded ? 18 : 2,
-                                  }}
-                                  className="absolute left-0 top-1 bg-white w-4 h-4 rounded-full shadow-md transition-all"
-                                />
-                              </div>
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                                Forwarded
-                              </span>
-                            </label>
-                          </div>
-
-                          <Field
-                            label="Ticket Forwarded By"
-                            error={errors.ticketForwardedBy}
-                          >
-                            <Combobox
-                              value={form.ticketForwardedBy}
-                              onChange={setField("ticketForwardedBy")}
-                              options={withSelectedOption(
-                                apiData.itsAssignableUsers,
-                                form.ticketForwardedBy,
-                                apiData.itsUsers,
-                              )}
-                              placeholder={localize("Search")}
-                              loading={loadingApis}
-                              disabled={!form.isTicketForwarded || loadingApis}
-                              error={errors.ticketForwardedBy}
-                            />
-                          </Field>
-                          {form.ticketIncomingChannel &&
-                            isEmailIncomingChannel(form.ticketIncomingChannel) && (
-
-                              <div className="animate-in fade-in zoom-in duration-200">
-                                <Field
-                                  label="Email Address *"
-                                  error={errors.incomingChannelEmail}
-                                >
-                                  <input
-                                    type="email"
-                                    value={form.incomingChannelEmail || ""}
-                                    onChange={setField("incomingChannelEmail")}
-                                    placeholder={localize("EmailAddress")}
-                                    className={`${inputClass} ${errors.incomingChannelEmail ? "border-rose-500 text-rose-600" : ""}`}
-                                  />
-                                </Field>
-                              </div>
-                            )}
-
-                          <Field
-                            label="CMS Ticket Added By"
-                            error={errors.cmsTicketAddedBy}
-                          >
-                            <Combobox
-                              value={form.cmsTicketAddedBy}
-                              onChange={setField("cmsTicketAddedBy")}
-                              options={withSelectedOption(
-                                apiData.itsAssignableUsers,
-                                form.cmsTicketAddedBy,
-                                apiData.itsUsers,
-                              )}
-                              placeholder={localize("Search")}
-                              loading={loadingApis}
-                              error={errors.cmsTicketAddedBy}
-                            />
-                          </Field>
-
-                          <Field
-                            label={`${localize("CMSTicketAddedOn")} *`}
-                            error={errors.cmsTicketAddedOn}
-                          >
-                            <div className="relative group/input">
-                              <DateTimePicker
-                                value={form.cmsTicketAddedOn}
-                                onChange={(dateStr, date) => {
-                                  updateValidatedDate("cmsTicketAddedOn", dateStr, date);
-                                }}
-                                className={`${inputClass} !bg-gray-100 dark:!bg-gray-800 !pr-10 ${errors.cmsTicketAddedOn
-                                  ? "border-rose-500 text-rose-600"
-                                  : ""
-                                  }`}
-                                placeholder="YYYY-MM-DD HH:mm"
-                              />
-                              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within/input:text-pink-500 transition-colors pointer-events-none">
-                                <svg
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                  />
-                                </svg>
-                              </div>
+                              </Field>
                             </div>
-                          </Field>
 
-                          <div className="md:col-span-1">
-                            <Field
-                              label={`${localize("IssueDescription")} *`}
-                              error={errors.issueDescription}
-                            >
-                              <textarea
-                                value={form.issueDescription || ""}
-                                onChange={setField("issueDescription")}
-                                rows={1}
-                                className={`${inputClass} !bg-gray-100 dark:!bg-gray-800 ${errors.issueDescription ? "border-rose-500 text-rose-600" : ""}`}
-                              />
-                            </Field>
-                          </div>
-
-                          <div className="md:col-span-1">
-                            <Field
-                              label="Possible Root Cause"
-                              error={errors.possibleRootCause}
-                            >
-                              <textarea
-                                value={form.possibleRootCause || ""}
-                                onChange={setField("possibleRootCause")}
-                                rows={1}
-                                className={`${inputClass} !bg-gray-100 dark:!bg-gray-800`}
-                              />
-                            </Field>
-                          </div>
-
-                          <div>
-                            <Field label={`${localize("TicketNotes")} *`} error={errors.notes}>
-                              <textarea
-                                value={form.notes || ""}
-                                onChange={setField("notes")}
-                                rows={1}
-                                className={`${inputClass} !bg-gray-100 dark:!bg-gray-800 ${errors.notes ? "border-rose-500 text-rose-600" : ""}`}
-                              />
-                            </Field>
-                          </div>
-
-                          <div>
-                            <Field
-                              label="Total Duration (Hours)"
-                              error={errors.totalDuration}
-                            >
-                              <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={form.totalDuration}
-                                readOnly
-                                className={`${inputClass} !bg-gray-100 dark:!bg-gray-800 cursor-not-allowed`}
-                              />
-                            </Field>
-
-                          </div>
-
-                          <div className="flex items-center">
-                            <label className="flex h-8 items-center gap-2 cursor-pointer px-3 rounded-lg bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 focus-within:ring-2 focus-within:ring-pink-500/20">
-                              <div className="relative group/toggle">
-                                <input
-                                  type="checkbox"
-                                  className="sr-only"
-                                  checked={form.pre}
-                                  onChange={setField("pre")}
+                            <div>
+                              <Field label={`${localize("TicketNotes")} *`} error={errors.notes}>
+                                <textarea
+                                  value={form.notes || ""}
+                                  onChange={setField("notes")}
+                                  rows={2}
+                                  className={`${inputClass} !bg-gray-100 dark:!bg-gray-800 ${errors.notes ? "border-rose-500 text-rose-600" : ""}`}
                                 />
-                                <div
-                                  className={`block w-10 h-6 rounded-full transition-all duration-300 ${form.pre
-                                    ? "bg-pink-600 shadow-[0_0_15px_rgba(219,39,119,0.3)]"
-                                    : "bg-slate-300 dark:bg-slate-700"
-                                    }`}
-                                />
-                                <motion.div
-                                  animate={{ x: form.pre ? 18 : 2 }}
-                                  className="absolute left-0 top-1 bg-white w-4 h-4 rounded-full shadow-md transition-all"
-                                />
-                              </div>
-                              <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                                {localize("IsPRE")}
-                              </span>
-                            </label>
+                              </Field>
+                            </div>
                           </div>
-                        </div>
+                        </section>
                       </div>
                     )}
 
@@ -2443,7 +2397,7 @@ export default function TicketModal({
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                               {localize("TicketVerification")}
                               {form.ticketResolutionVerifiedBy && (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50/50 dark:bg-emerald-500/5 text-emerald-500/70 dark:text-emerald-400/70 text-[11px] font-bold tracking-wide uppercase border border-emerald-200/50 dark:border-emerald-500/20 cursor-not-allowed select-none">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50/50 dark:bg-emerald-500/5 text-emerald-500/70 dark:text-emerald-400/70 text-[11px] font-bold tracking-wide border border-emerald-200/50 dark:border-emerald-500/20 cursor-not-allowed select-none">
                                   <Check size={12} strokeWidth={3} />
                                   {localize("TicketVerification")}: {localize("Yes")}
                                 </span>
@@ -2571,14 +2525,41 @@ export default function TicketModal({
                 </AnimatePresence>
               </div>
 
-              <div className="flex items-center justify-end gap-2 px-5 py-2 rounded-b-2xl bg-white dark:bg-slate-900">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-2.5 rounded-b-2xl border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900">
+                <div className="flex items-center gap-5">
+                  {activeTab === "Ticket" && (
+                    <>
+                      <label className={`inline-flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 ${isReadOnly ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}>
+                        <input
+                          type="checkbox"
+                          checked={form.isTicketForwarded}
+                          onChange={handleToggleForwarded}
+                          disabled={isReadOnly}
+                          className="h-4 w-4 rounded border-slate-300 accent-pink-600"
+                        />
+                        Forwarded
+                      </label>
+                      <label className={`inline-flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 ${isReadOnly ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}>
+                        <input
+                          type="checkbox"
+                          checked={form.pre}
+                          onChange={setField("pre")}
+                          disabled={isReadOnly}
+                          className="h-4 w-4 rounded border-slate-300 accent-pink-600"
+                        />
+                        {localize("IsPRE")}
+                      </label>
+                    </>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={
                     isReadOnly ? onClose : () => setShowExitConfirm(true)
                   }
                   disabled={submitting}
-                  className="px-5 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all disabled:opacity-50 pointer-events-auto"
+                  className="px-5 py-2 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all disabled:opacity-50 pointer-events-auto"
                 >
                   {localize(isReadOnly ? "Close" : "Cancel")}
                 </button>
@@ -2598,6 +2579,7 @@ export default function TicketModal({
                         : `${localize("CreateButtonText")} ${localize("Ticket")}`}
                   </button>
                 )}
+                </div>
               </div>
             </motion.div>
           </div>
@@ -2668,7 +2650,7 @@ export default function TicketModal({
             initial={{ opacity: 0, scale: 0.96, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 12 }}
-            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl w-full max-w-sm overflow-hidden"
+            className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl w-full max-w-xs overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 rounded-t-2xl bg-white dark:bg-slate-900">
@@ -2876,24 +2858,24 @@ export default function TicketModal({
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-700 shadow-2xl p-8 text-center font-[Arial]"
+              className="relative w-full max-w-xs bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl px-5 py-4 text-center font-[Arial]"
             >
-              <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-500 mx-auto mb-6">
-                <AlertCircle size={32} strokeWidth={2.5} />
+              <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-500 mx-auto mb-3">
+                <AlertCircle size={20} strokeWidth={2.5} />
               </div>
-              <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2 tracking-tighter uppercase tracking-widest">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">
                 Discard Changes?
               </h3>
-              <p className="text-xs font-bold text-slate-400 dark:text-slate-500 mb-8 uppercase tracking-widest leading-relaxed">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-snug">
                 You have unsaved changes. Are you sure you want to exit?
               </p>
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={() => setShowExitConfirm(false)}
-                  className="flex-1 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                  className="flex-1 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                 >
                   Stay
                 </motion.button>
@@ -2905,7 +2887,7 @@ export default function TicketModal({
                     setShowExitConfirm(false);
                     onClose();
                   }}
-                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 text-white text-[10px] font-black uppercase tracking-widest hover:from-rose-600 hover:to-red-700 transition-all shadow-lg shadow-rose-500/20"
+                  className="flex-1 py-2 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 text-white text-sm font-medium hover:from-rose-600 hover:to-red-700 transition-all shadow-lg shadow-rose-500/20"
                 >
                   Discard
                 </motion.button>
@@ -2918,18 +2900,18 @@ export default function TicketModal({
       {showDateWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" />
-          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 text-center animate-fade-in font-[Arial]">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+          <div className="relative w-full max-w-xs bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl px-5 py-4 text-center animate-fade-in font-[Arial]">
+            <h3 className="text-base font-semibold text-slate-800 dark:text-white mb-1">
               {localize("Warning")}
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-snug">
               {localize("TicketReceivedDateNotPresentErrorMessage")}
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setShowDateWarning(false)}
-                className="flex-1 py-2.5 rounded-xl bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
+                className="flex-1 py-2 rounded-lg bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
               >
                 {localize("Ok")}
               </button>
@@ -2941,18 +2923,18 @@ export default function TicketModal({
       {showActivityWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" />
-          <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 text-center animate-fade-in font-[Arial]">
-            <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-2">
+          <div className="relative w-full max-w-xs bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl px-5 py-4 text-center animate-fade-in font-[Arial]">
+            <h3 className="text-base font-semibold text-slate-800 dark:text-white mb-1">
               {localize("Warning")}
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-snug">
               {localize("ActivityNotAddedErrorMessage")}
             </p>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setShowActivityWarning(false)}
-                className="flex-1 py-2.5 rounded-xl bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
+                className="flex-1 py-2 rounded-lg bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
               >
                 {localize("Ok")}
               </button>

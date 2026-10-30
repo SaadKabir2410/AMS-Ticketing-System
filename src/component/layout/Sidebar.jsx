@@ -7,7 +7,6 @@ import SearchTextHighlight from "../common/SearchTextHighlight";
 import {
   Search,
   Settings,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -96,7 +95,7 @@ export default function Sidebar({
         "flex flex-col transition-all duration-300 z-50",
         "bg-black shrink-0",
         !isMobile
-          ? "hidden lg:flex ml-1.5 mt-6 mb-1 h-[calc(100vh-2.5rem)] sticky top-5 rounded-4xl"
+          ? "hidden lg:flex ml-1.5 mt-3 mb-1 h-[calc(100vh-1.25rem)] sticky top-3 rounded-2xl"
           // Phone menu: wide enough for full menu names, never wider than the screen.
           : "w-[min(280px,85vw)] h-full overflow-y-auto",
         !isMobile && (collapsed ? "w-[70px]" : "w-[170px]"),
@@ -114,7 +113,7 @@ export default function Sidebar({
       {/* Header */}
       <div
         className={clsx(
-          "flex flex-col pt-8 pb-4 gap-6",
+          "flex flex-col pt-5 pb-2 gap-4",
           collapsed ? "items-center" : "px-4",
         )}
       >
@@ -148,7 +147,7 @@ export default function Sidebar({
         {!collapsed && (
           <div className="relative group px-1 flex-shrink-0">
             <Search
-              className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-white transition-colors"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-white transition-colors"
               size={14}
             />
             <input
@@ -156,28 +155,28 @@ export default function Sidebar({
               placeholder="Search Menu..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-11 bg-white/5 border border-white/10 rounded-2xl pl-11 pr-4 text-sm text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-blue-500/30 transition-all"
+              className="w-full h-10 bg-white/[0.06] border border-white/10 rounded-xl pl-10 pr-3 text-[13px] text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-pink-500/30 transition-all"
             />
           </div>
         )}
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto overflow-x-hidden no-scrollbar pb-10">
+      <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto overflow-x-hidden no-scrollbar pb-10">
         {filteredGroups.map((group, idx) => (
-          <div key={idx} className="flex flex-col gap-2">
+          <div key={idx} className="flex flex-col gap-1">
             {!collapsed && (
-              <div className="flex items-center justify-between px-3 py-2 mb-1">
-                <span className="text-[9px] font-bold tracking-[2.5px] text-pink-400 uppercase whitespace-nowrap opacity-90 truncate">
+              <div className="flex items-center justify-between px-2 py-1">
+                <span className="text-[11px] font-semibold text-pink-500 uppercase whitespace-nowrap truncate">
                   {group.title}
                 </span>
                 <Settings
-                  size={12}
-                  className="text-slate-400 hover:text-white cursor-pointer transition-colors shrink-0"
+                  size={14}
+                  className="text-slate-300 hover:text-white cursor-pointer transition-colors shrink-0"
                 />
               </div>
             )}
-            <ul className="space-y-1">
+            <ul className="space-y-0.5">
               {group.links.map((item) => (
                 <NavItem
                   key={item.id}
@@ -225,14 +224,14 @@ function NavItem({ item, collapsed, closeMobile, isMobile, searchQuery = "" }) {
           "flex items-center transition-all duration-200 group relative",
           collapsed
             ? "justify-center h-12 w-12 rounded-xl mx-auto mb-2.5 px-0"
-            : "gap-4 px-5 py-3.5 rounded-2xl w-full mb-1.5",
+            : "gap-3 px-3 py-2 rounded-lg w-full",
           active
-            ? "bg-white/15 text-white shadow-[0_0_20px_rgba(255,255,255,0.05)]"
-            : "text-slate-400 hover:text-white hover:bg-white/5",
+            ? "bg-white/10 text-white"
+            : "text-slate-200 hover:text-white hover:bg-white/5",
         )}
       >
         {active && !collapsed && (
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-pink-500 rounded-r-full shadow-[0_0_10px_rgba(236,72,153,0.5)]" />
+          <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-1 h-6 bg-pink-500 rounded-full" />
         )}
 
         {Icon && collapsed && (
@@ -253,7 +252,7 @@ function NavItem({ item, collapsed, closeMobile, isMobile, searchQuery = "" }) {
         {!collapsed && (
           <span
             className={clsx(
-              "text-[11px] truncate flex-1 font-bold tracking-wide transition-colors duration-200",
+              "text-[13px] truncate flex-1 font-normal transition-colors duration-200",
               active ? "text-white" : "text-inherit",
             )}
           >
@@ -273,11 +272,11 @@ function NavItem({ item, collapsed, closeMobile, isMobile, searchQuery = "" }) {
         )}
 
         {!collapsed && hasSubMenu && (
-          <ChevronDown
-            size={16}
+          <ChevronRight
+            size={15}
             className={clsx(
-              "text-slate-400 transition-all duration-300 ml-auto",
-              showSubMenu ? "rotate-0" : "-rotate-90",
+              "text-slate-300 transition-all duration-300 ml-auto",
+              showSubMenu ? "rotate-90" : "rotate-0",
             )}
           />
         )}
@@ -292,7 +291,7 @@ function NavItem({ item, collapsed, closeMobile, isMobile, searchQuery = "" }) {
 
       {/* Submenu */}
       {!collapsed && hasSubMenu && showSubMenu && (
-        <ul className="mt-1.5 mb-3 ml-6 space-y-1.5 animate-fade-in">
+        <ul className="mt-0.5 mb-1 ml-3 space-y-0.5 animate-fade-in">
           {item.subMenu.map((sub) => {
             const subActive = window.location.pathname === sub.href;
             return (
@@ -301,10 +300,10 @@ function NavItem({ item, collapsed, closeMobile, isMobile, searchQuery = "" }) {
                   href={sub.href}
                   onClick={() => isMobile && closeMobile && closeMobile()}
                   className={clsx(
-                    "flex items-center gap-3 px-4 py-2 text-[10px] font-semibold transition-all duration-200 rounded-xl relative group/sub",
+                    "flex items-center gap-2 px-3 py-1.5 text-[12px] font-normal transition-all duration-200 rounded-lg relative group/sub",
                     subActive
                       ? "text-white bg-white/10"
-                      : "text-slate-400 hover:text-white hover:bg-white/5",
+                      : "text-slate-200 hover:text-white hover:bg-white/5",
                   )}
                 >
                   {subActive && (

@@ -62,7 +62,8 @@ export function AuthProvider({ children }) {
     }
   });
 
-  const [loading, setLoading] = useState(true);
+  // Only a saved session needs checking; without one the login page shows at once.
+  const [loading, setLoading] = useState(() => Boolean(user));
   const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState("");
   const logoutInProgressRef = useRef(false);
@@ -101,6 +102,8 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const handleExpiredSession = () => {
+      // A request cut off by logout must not render the login page before the reload.
+      if (logoutInProgressRef.current) return;
       clearSession();
       clearApplicationConfigCache();
       localStorage.removeItem(SESSION_KEY);
@@ -156,8 +159,9 @@ export function AuthProvider({ children }) {
   };
 
   // Login — trades username/password for a real JWT from port 3333
+  // `loading` is only for restoring a saved session; the login form shows its own
+  // progress, so it stays on screen instead of being swapped for the app spinner.
   const login = async ({ email, password }) => {
-    setLoading(true);
     setError("");
 
     try {
@@ -222,12 +226,10 @@ export function AuthProvider({ children }) {
 
       localStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
       setUser(userProfile);
-      setLoading(false);
       return true;
     } catch (err) {
       console.error("[Auth] Login failed:", err.message);
       setError(err.message || "Invalid username or password.");
-      setLoading(false);
       return false;
     }
   };
@@ -241,13 +243,13 @@ export function AuthProvider({ children }) {
     try {
       console.log("[Auth] User-initiated logout.");
 
-      // Remove the application session before awaiting the backend so the UI
-      // becomes unauthenticated immediately and no further API calls can renew it.
+      // Remove the application session before awaiting the backend so no further
+      // API calls can renew it. The user state is left as is: the reload below
+      // opens the login page, and clearing it here would render that page twice.
       localStorage.removeItem(SESSION_KEY);
       localStorage.removeItem(LOGIN_TIME_KEY);
       localStorage.removeItem("auth_token");
       clearApplicationConfigCache();
-      setUser(null);
 
       // Remove any legacy react-oidc-context records without touching unrelated
       // preferences such as the remembered username or selected theme.

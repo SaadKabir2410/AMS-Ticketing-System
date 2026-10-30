@@ -71,11 +71,23 @@ export const PermissionProvider = ({ children }) => {
     const roleName = getAdminRoleName(user?.role);
     return Boolean(roleName) && !readCachedAdminRolePermissions(roleName);
   });
+  // The Admin role an answer (or cached copy) has been received for. Right after
+  // login the fetch has not started yet; without this the app would render once
+  // and then fall back to the loading screen.
+  const [adminRoleCheckedFor, setAdminRoleCheckedFor] = useState(() => {
+    const roleName = getAdminRoleName(user?.role);
+    return readCachedAdminRolePermissions(roleName) ? roleName : null;
+  });
+  const adminRolePending =
+    isAuthenticated &&
+    Boolean(adminRoleName) &&
+    adminRoleCheckedFor !== adminRoleName &&
+    !readCachedAdminRolePermissions(adminRoleName);
 
   // ── isLoading mirrors authLoading so App.jsx's spinner stays up ───────────
   // until AuthContext has confirmed the session. Once authLoading=false we know
   // user (and user.permissions) is final.
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => authLoading);
 
   const fetchAdminRolePermissions = useCallback(async () => {
     if (!isAuthenticated || !adminRoleName) {
@@ -115,6 +127,7 @@ export const PermissionProvider = ({ children }) => {
       return null;
     } finally {
       setAdminRolePermissionsLoading(false);
+      setAdminRoleCheckedFor(adminRoleName);
     }
   }, [adminRoleName, isAuthenticated]);
 
@@ -201,7 +214,7 @@ export const PermissionProvider = ({ children }) => {
     return effectivePermissions;
   }, [fetchAdminRolePermissions, fetchPermissions]);
 
-  const permissionsLoading = isLoading || adminRolePermissionsLoading;
+  const permissionsLoading = isLoading || adminRolePermissionsLoading || adminRolePending;
 
   const hasPermission = useCallback(
     (key) => {
