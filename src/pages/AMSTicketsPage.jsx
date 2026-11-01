@@ -1068,10 +1068,7 @@ export default function AMSTicketsPage() {
             { id: "closed", label: statusLabel(2), value: globalStats.closed, icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10" },
             { id: "voided", label: localize("VoidAMSTicketButtonText"), value: globalStats.voided, icon: X, tone: "bg-slate-100 text-slate-500 dark:bg-slate-500/10" },
             { id: "overdue", label: localize("Overdue"), value: globalStats.lateClosures, icon: AlertCircle, tone: "bg-rose-50 text-rose-500 dark:bg-rose-500/10" },
-          ]
-            // Cards with a zero count are hidden.
-            .filter((card) => card.value > 0)
-            .map((card) => (
+          ].map((card) => (
             <div key={card.id} className="flex items-center gap-4 p-4 shrink-0 w-[200px] xl:w-auto snap-start rounded-xl bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800 shadow-sm">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${card.tone}`}>
                 <card.icon size={22} strokeWidth={2} />
