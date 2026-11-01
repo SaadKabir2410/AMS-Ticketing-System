@@ -14,9 +14,17 @@ const EXPIRY_BUFFER_MS = 60_000;
 let refreshPromise = null;
 let sessionRevision = 0;
 
+// Tokens live in sessionStorage so closing the browser tab logs the user out.
+// Remove any copy left in localStorage by earlier versions.
+try {
+  localStorage.removeItem(STORAGE_KEY);
+} catch {
+  // Storage can be unavailable (e.g. blocked site data); nothing to clean up.
+}
+
 function readSession() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -53,7 +61,7 @@ function persistSession(data, fallbackRefreshToken = null, expectedRevision = se
     expires_at: Date.now() + (data.expires_in || 3600) * 1000,
     token_type: data.token_type ?? "Bearer",
   };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(session));
   return session;
 }
 
@@ -134,7 +142,7 @@ export async function getValidAccessToken({ forceRefresh = false } = {}) {
 /** Remove the stored session. */
 export function clearSession() {
   sessionRevision += 1;
-  localStorage.removeItem(STORAGE_KEY);
+  sessionStorage.removeItem(STORAGE_KEY);
 }
 
 /**

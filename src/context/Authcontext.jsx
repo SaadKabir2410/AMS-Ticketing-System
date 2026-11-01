@@ -25,6 +25,16 @@ const DEFAULT_USER = {
   avatar: "AU",
 };
 
+// The session lives in sessionStorage so closing the browser tab logs the user
+// out. Remove any copy left in localStorage by earlier versions.
+try {
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(LOGIN_TIME_KEY);
+  localStorage.removeItem("auth_token");
+} catch {
+  // Storage can be unavailable (e.g. blocked site data); nothing to clean up.
+}
+
 function getUsers() {
   try {
     const stored = localStorage.getItem(USER_KEY);
@@ -52,7 +62,7 @@ function saveUsers(users) {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
-      const stored = localStorage.getItem(SESSION_KEY);
+      const stored = sessionStorage.getItem(SESSION_KEY);
       if (!stored) return null;
       const parsed = JSON.parse(stored);
       // Basic validation: must be an object with an id
@@ -80,7 +90,7 @@ export function AuthProvider({ children }) {
       try {
         const accessToken = await getValidAccessToken();
         if (!accessToken && active) {
-          localStorage.removeItem(SESSION_KEY);
+          sessionStorage.removeItem(SESSION_KEY);
           setUser(null);
         } else if (accessToken) {
           loadApplicationConfig().catch(() => null);
@@ -106,8 +116,8 @@ export function AuthProvider({ children }) {
       if (logoutInProgressRef.current) return;
       clearSession();
       clearApplicationConfigCache();
-      localStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem(LOGIN_TIME_KEY);
+      sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(LOGIN_TIME_KEY);
       setUser(null);
     };
 
@@ -152,7 +162,7 @@ export function AuthProvider({ children }) {
       role: newUser.role,
       avatar: newUser.avatar,
     };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
     setUser(session);
     setLoading(false);
     return true;
@@ -224,7 +234,7 @@ export function AuthProvider({ children }) {
         permissions: permissionsMap,
       };
 
-      localStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(userProfile));
       setUser(userProfile);
       return true;
     } catch (err) {
@@ -246,8 +256,8 @@ export function AuthProvider({ children }) {
       // Remove the application session before awaiting the backend so no further
       // API calls can renew it. The user state is left as is: the reload below
       // opens the login page, and clearing it here would render that page twice.
-      localStorage.removeItem(SESSION_KEY);
-      localStorage.removeItem(LOGIN_TIME_KEY);
+      sessionStorage.removeItem(SESSION_KEY);
+      sessionStorage.removeItem(LOGIN_TIME_KEY);
       localStorage.removeItem("auth_token");
       clearApplicationConfigCache();
 

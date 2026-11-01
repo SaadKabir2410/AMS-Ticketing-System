@@ -183,10 +183,10 @@ export const PermissionProvider = ({ children }) => {
       // Keep the cached session in sync with the freshly resolved policies.
       // Otherwise a reload restores the permissions that were captured at login.
       try {
-        const storedSession = localStorage.getItem(SESSION_KEY);
+        const storedSession = sessionStorage.getItem(SESSION_KEY);
         if (storedSession) {
           const session = JSON.parse(storedSession);
-          localStorage.setItem(
+          sessionStorage.setItem(
             SESSION_KEY,
             JSON.stringify({ ...session, permissions: grantedPolicies }),
           );

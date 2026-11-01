@@ -37,6 +37,7 @@ import amsTicketApi from "../services/api/amsTicketApi";
 import { usersApi } from "../services/api/users";
 import { useToast } from "../component/common/ToastContext";
 import TicketModal from "../component/common/TicketModal";
+import CountCardSlider from "../component/common/CountCardSlider";
 import DeleteConfirmModal from "../component/common/DeleteConfirmation";
 import { ActionsMenu } from "../component/common/ResourcePage";
 import { usePermission } from "../hooks/usePermission";
@@ -1059,7 +1060,8 @@ export default function AMSTicketsPage() {
         </div>
 
         {/* ── Summary Cards ── */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+        {/* Below xl the cards sit in one auto-sliding row. */}
+        <CountCardSlider prevLabel={localizeOr("Previous", "Previous")} nextLabel={localizeOr("Next", "Next")}>
           {[
             { id: "open", label: statusLabel(1), value: globalStats.open, icon: Ticket, tone: "bg-pink-50 text-pink-500 dark:bg-pink-500/10" },
             { id: "nonVerified", label: localizeOr("NonVerifiedTicket", "Non-Verified Ticket"), value: globalStats.nonVerified, icon: ShieldAlert, tone: "bg-rose-50 text-rose-500 dark:bg-rose-500/10" },
@@ -1070,7 +1072,7 @@ export default function AMSTicketsPage() {
             // Cards with a zero count are hidden.
             .filter((card) => card.value > 0)
             .map((card) => (
-            <div key={card.id} className="flex items-center gap-4 p-4 rounded-xl bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div key={card.id} className="flex items-center gap-4 p-4 shrink-0 w-[200px] xl:w-auto snap-start rounded-xl bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800 shadow-sm">
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${card.tone}`}>
                 <card.icon size={22} strokeWidth={2} />
               </div>
@@ -1080,7 +1082,7 @@ export default function AMSTicketsPage() {
               </div>
             </div>
           ))}
-        </div>
+        </CountCardSlider>
 
         {/* On mobile the create button sits below the count cards. */}
         {canCreate && (
