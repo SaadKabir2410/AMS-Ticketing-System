@@ -116,7 +116,7 @@ const rowVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 };
 
-const ROW_HEIGHT = "h-[60px]";
+const ROW_HEIGHT = "h-[48px]";
 
 const getLocalizationValue = (applicationConfig, key) => {
   const resources = applicationConfig?.localization?.values;
@@ -134,6 +134,820 @@ const getLocalizationValue = (applicationConfig, key) => {
 
   return key;
 };
+
+// Both tab panes sit in one grid cell (so the dialog keeps one height) and cross-fade on tab change.
+const tabPaneStyle = (active) => ({
+  gridArea: "1 / 1",
+  opacity: active ? 1 : 0,
+  visibility: active ? "visible" : "hidden",
+  pointerEvents: active ? "auto" : "none",
+  transition: active
+    ? "opacity 180ms ease, visibility 0s"
+    : "opacity 180ms ease, visibility 0s linear 180ms",
+});
+
+// User create/edit dialog. Defined outside UsersPage so a page re-render does not remount it.
+function UserModal({ open, onClose, item, onSubmit, loading, submitError, setSubmitError, localize, isDark, isAdmin, canManageUserRoles }) {
+  const [tabIndex, setTabIndex] = useState(0);
+  const [selectedRoles, setSelectedRoles] = useState([]);
+  const [availableRoles, setAvailableRoles] = useState([]);
+  const [validationErrors, setValidationErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+
+  const [orgType, setOrgType] = useState("");
+  const [sites, setSites] = useState([]);
+  const [selectedSite, setSelectedSite] = useState(null);
+  const organizationTypeOptions = ORGANIZATION_TYPES.filter(
+    (organizationType) => organizationType.value > 0,
+  );
+
+  useEffect(() => {
+    apiClient
+      .get("/api/app/site/", { params: { MaxResultCount: 1000 } })
+      .then((res) => setSites(res.data?.items || res.data || []))
+      .catch((err) => console.error("Error fetching sites:", err));
+  }, []);
+
+  useEffect(() => {
+    if (open) {
+      setTabIndex(0);
+      setValidationErrors({});
+      setShowPassword(false);
+
+      if (canManageUserRoles) {
+        usersApi
+          .getAssignableRoles()
+          .then((res) => setAvailableRoles(res.items || res || []))
+          .catch((e) => console.error("Error fetching assignable roles", e));
+      } else {
+        setAvailableRoles([]);
+        setSelectedRoles([]);
+      }
+
+      if (item) {
+        setIsLoadingData(true);
+        Promise.all([
+          usersApi.getById(item.id).catch((e) => {
+            console.error("Error fetching getById:", e);
+            return null;
+          }),
+          canManageUserRoles
+            ? usersApi.getUserRoles(item.id).catch((e) => {
+              console.error("Error fetching getUserRoles:", e);
+              return null;
+            })
+            : Promise.resolve(null),
+        ])
+          .then(([userRes, rolesRes]) => {
+            const loadedUser = userRes || item;
+            const mergedUser = loadedUser
+              ? { ...loadedUser, ...(loadedUser.extraProperties || {}) }
+              : null;
+            setUserData(mergedUser);
+
+            const orgTypeVal = mergedUser?.organizationType;
+            setOrgType(
+              orgTypeVal != null && orgTypeVal !== 0 ? orgTypeVal.toString() : ""
+            );
+
+            let rolesArray = [];
+            if (rolesRes) {
+              rolesArray = rolesRes.items || rolesRes || [];
+            } else if (canManageUserRoles && item.roleNames) {
+              rolesArray = item.roleNames;
+            }
+            setSelectedRoles(rolesArray.map((r) => r.name || r));
+          })
+          .catch((error) => {
+            console.error("Failed to resolve promises", error);
+            setUserData(item);
+            setSelectedRoles(item.roleNames || []);
+          })
+          .finally(() => {
+            setIsLoadingData(false);
+          });
+      } else {
+        setUserData(null);
+        setSelectedRoles([]);
+        setIsLoadingData(false);
+        setOrgType("");
+        setSelectedSite(null);
+      }
+    }
+  }, [open, item, canManageUserRoles]);
+
+  useEffect(() => {
+    if (!userData?.siteId || sites.length === 0) {
+      if (!userData?.siteId) setSelectedSite(null);
+      return;
+    }
+    const match = sites.find((s) => s.id === userData.siteId) ?? null;
+    setSelectedSite(match);
+  }, [userData?.siteId, sites]);
+
+  const toggleRole = (role) => {
+    const found = selectedRoles.find(
+      (selectedRole) =>
+        typeof selectedRole === "string" &&
+        typeof role === "string" &&
+        selectedRole.toLowerCase() === role.toLowerCase(),
+    );
+    const nextRoles = found
+      ? selectedRoles.filter((selectedRole) => selectedRole !== found)
+      : [...selectedRoles, role];
+
+    setSelectedRoles(nextRoles);
+    if (nextRoles.length > 0) {
+      setValidationErrors((currentErrors) => ({
+        ...currentErrors,
+        roles: null,
+      }));
+    }
+  };
+
+  if (!open) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    const requiredMessage = (fieldKey) =>
+      localize("The {0} field is required.").replace("{0}", localize(fieldKey));
+    const errors = {};
+    if (!data.userName?.trim())
+      errors.userName = requiredMessage("DisplayName:UserName");
+    if (!data.name?.trim()) errors.name = requiredMessage("DisplayName:Name");
+    if (!item && !data.password?.trim()) {
+      errors.password = requiredMessage("DisplayName:Password");
+    } else if (data.password?.trim()) {
+      const pwd = data.password.trim();
+      const passwordErrors = [
+        !/[A-Z]/.test(pwd) && "Volo.Abp.Identity:PasswordRequiresUpper",
+        !/[a-z]/.test(pwd) && "Volo.Abp.Identity:PasswordRequiresLower",
+        !/[^A-Za-z0-9]/.test(pwd) && "Volo.Abp.Identity:PasswordRequiresNonAlphanumeric",
+      ].filter(Boolean).map(localize);
+      if (passwordErrors.length > 0) errors.password = passwordErrors.join(" ");
+    }
+    if (!data.phoneNumber?.trim())
+      errors.phoneNumber = requiredMessage("DisplayName:PhoneNumber");
+    if (!orgType || orgType === "" || orgType === "0") {
+      errors.organizationType = requiredMessage("DisplayName:OrganizationType");
+    }
+    if (orgType === "1" && !selectedSite) {
+      errors.siteId = requiredMessage("DisplayName:SiteId");
+    }
+    if (canManageUserRoles && !item && selectedRoles.length === 0) {
+      errors.roles = requiredMessage("Roles");
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      setTabIndex(errors.roles && Object.keys(errors).length === 1 ? 1 : 0);
+      return;
+    }
+
+    setValidationErrors({});
+
+    const payload = {
+      userName: data.userName?.trim(),
+      name: data.name?.trim(),
+      surname: data.surname?.trim() || "",
+      email: data.email?.trim() || "",
+      phoneNumber: data.phoneNumber?.trim(),
+      organizationType: Number(orgType),
+      siteId: orgType === "1" && selectedSite ? selectedSite.id : null,
+      isPrimary: formData.get("isPrimary") === "on",
+      isITS: formData.get("isITS") === "on",
+      isActive: formData.get("isActive") === "on",
+      lockoutEnabled: formData.get("lockoutEnabled") === "on",
+    };
+
+    if (isAdmin) {
+      payload.mustCompleteJobsheet =
+        formData.get("mustCompleteJobsheet") === "on";
+      payload.baseRateFirstHourAfterWorkingHours =
+        parseFloat(data.baseRateFirstHourAfterWorkingHours) || 0;
+      payload.baseRateAfterFirstHourAfterWorkingHours =
+        parseFloat(data.baseRateAfterFirstHourAfterWorkingHours) || 0;
+    }
+
+    if (canManageUserRoles) {
+      payload.roleNames = selectedRoles;
+    }
+
+    if (data.password?.trim()) {
+      payload.password = data.password.trim();
+    }
+
+    if (item) {
+      payload.concurrencyStamp = userData?.concurrencyStamp ?? item.concurrencyStamp;
+    }
+
+    onSubmit(payload);
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={(event, reason) => {
+        if (reason !== "backdropClick" && reason !== "escapeKeyDown") {
+          onClose();
+        }
+      }}
+      maxWidth="sm"
+      fullWidth
+      scroll="body"
+      PaperProps={{
+        sx: {
+          borderRadius: "16px",
+          padding: 0,
+          boxShadow: "0 25px 50px -12px rgba(59, 130, 246, 0.15)",
+          bgcolor: isDark ? "#0f172a" : "#ffffff",
+          backgroundImage: "none",
+          colorScheme: isDark ? "dark" : "light",
+        },
+      }}
+    >
+      <div className="bg-white dark:bg-[#0f172a] px-5 py-3 border-b border-slate-100 dark:border-slate-800 shrink-0 flex justify-between items-center relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 via-purple-500 to-rose-500"></div>
+        <h2 className="text-base font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent flex items-center">
+          <div className="w-8 h-8 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-500 mr-2.5 shadow-inner shadow-pink-500/20">
+            <ShieldCheck size={16} strokeWidth={2.5} />
+          </div>
+          {item
+            ? `${localize("Edit")} ${localize("User")}`
+            : localize("NewUser")}
+        </h2>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1.5 text-slate-400 hover:text-pink-500 hover:rotate-90 transition-all duration-300 rounded-xl hover:bg-pink-50 dark:hover:bg-pink-500/10"
+        >
+          <X size={20} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      <form
+        key={userData ? `${userData.id}-${userData.concurrencyStamp}` : "new"}
+        onSubmit={handleSubmit}
+        noValidate
+        autoComplete="off"
+      >
+        <DialogContent
+          dividers
+          sx={{
+            minHeight: "320px",
+            p: 0,
+            position: "relative",
+            bgcolor: isDark ? "#0f172a" : "#ffffff",
+            color: isDark ? "#e2e8f0" : "#334155",
+            borderColor: isDark ? "#1e293b" : "#e2e8f0",
+          }}
+        >
+          {isLoadingData && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-slate-900/80">
+              <p className="text-sm text-slate-500 dark:text-slate-300 animate-pulse">{localize("LoadingWithThreeDot") || "Loading..."}</p>
+            </div>
+          )}
+          <Box sx={{ borderBottom: 1, borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", px: 2, pt: 0, bgcolor: isDark ? "#0f172a" : "#f8fafc" }}>
+            <Tabs
+              value={tabIndex}
+              onChange={(e, val) => setTabIndex(val)}
+              sx={{ minHeight: 36 }}
+              TabIndicatorProps={{ style: { backgroundColor: '#ec4899', height: 3, borderRadius: '3px 3px 0 0' } }}
+            >
+              <Tab label={localize("UserInformations") || "User Information"} sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', minHeight: 36, py: 1, color: isDark ? '#94a3b8' : '#64748b', '&.Mui-selected': { color: '#ec4899' } }} />
+              {canManageUserRoles && (
+                <Tab label={localize("Roles") || "Roles"} sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', minHeight: 36, py: 1, color: isDark ? '#94a3b8' : '#64748b', '&.Mui-selected': { color: '#ec4899' } }} />
+              )}
+            </Tabs>
+          </Box>
+
+          <div className="grid px-4 py-3 bg-white dark:bg-[#0f172a]">
+            {submitError && (
+              <PremiumErrorAlert
+                open={!!submitError}
+                message={submitError}
+                onClose={() => setSubmitError("")}
+              />
+            )}
+
+            {/* TAB 1: USER INFORMATION */}
+            {/* Both tabs share one grid cell, so the card keeps the taller tab's height on every tab. */}
+            <div style={tabPaneStyle(tabIndex === 0)} aria-hidden={tabIndex !== 0}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 mb-3">
+                <div>
+                  <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
+                    {localize("DisplayName:UserName")} <span className="required-asterisk">*</span>
+                  </label>
+                  <div className="relative group">
+                    <input
+                      name="userName"
+                      autoComplete="new-password"
+                      defaultValue={userData?.userName || ""}
+                      className={`w-full px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 ${validationErrors.userName
+                        ? "focus:ring-red-500/20"
+                        : "focus:ring-blue-500/20"
+                        } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
+                    />
+                    <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  {validationErrors.userName && (
+                    <p className="text-red-500 text-[9px] mt-1 ml-1">
+                      {validationErrors.userName}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
+                    {localize("DisplayName:Name")} <span className="required-asterisk">*</span>
+                  </label>
+                  <div className="relative group">
+                    <input
+                      name="name"
+                      defaultValue={userData?.name || ""}
+                      className={`w-full px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 ${validationErrors.name
+                        ? "focus:ring-red-500/20"
+                        : "focus:ring-blue-500/20"
+                        } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
+                    />
+                    <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  {validationErrors.name && (
+                    <p className="text-red-500 text-[9px] mt-1 ml-1">
+                      {validationErrors.name}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
+                    {localize("DisplayName:Surname")}
+                  </label>
+                  <div className="relative group">
+                    <input
+                      name="surname"
+                      defaultValue={userData?.surname || ""}
+                      className="w-full px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
+                    />
+                    <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
+                    {localize("DisplayName:Password")} {!item && <span className="required-asterisk">*</span>}
+                  </label>
+                  <div className="relative group">
+                    <input
+                      name="password"
+                      autoComplete="new-password"
+                      type={showPassword ? "text" : "password"}
+                      className={`w-full px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 ${validationErrors.password
+                        ? "focus:ring-red-500/20"
+                        : "focus:ring-blue-500/20"
+                        } rounded-lg outline-none focus:ring-2 text-sm pr-12 transition-all duration-200 font-medium`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-500 transition-colors text-xs font-semibold"
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </div>
+                  {validationErrors.password && (
+                    <p className="text-red-500 text-[9px] mt-1 ml-1">
+                      {validationErrors.password}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
+                    {localize("DisplayName:Email")}
+                  </label>
+                  <div className="relative group">
+                    <input
+                      name="email"
+                      type="email"
+                      defaultValue={userData?.email || ""}
+                      className="w-full px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
+                    />
+                    <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <X size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
+                    {localize("DisplayName:PhoneNumber")} <span className="required-asterisk">*</span>
+                  </label>
+                  <div className="relative group">
+                    <input
+                      name="phoneNumber"
+                      defaultValue={userData?.phoneNumber || ""}
+                      className={`w-full px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 ${validationErrors.phoneNumber
+                        ? "focus:ring-red-500/20"
+                        : "focus:ring-blue-500/20"
+                        } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
+                    />
+                    <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  {validationErrors.phoneNumber && (
+                    <p className="text-red-500 text-[9px] mt-1 ml-1">
+                      {validationErrors.phoneNumber}
+                    </p>
+                  )}
+                </div>
+
+                <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                  <div className="w-full">
+                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
+                      {localize("DisplayName:OrganizationType")} <span className="required-asterisk">*</span>
+                    </label>
+                    <Autocomplete
+                      size="small"
+                      options={organizationTypeOptions}
+                      getOptionLabel={(option) => option.label}
+                      isOptionEqualToValue={(option, value) => option.value === value?.value}
+                      value={
+                        organizationTypeOptions.find(
+                          (organizationType) => String(organizationType.value) === orgType,
+                        ) || null
+                      }
+                      onChange={(event, newValue) => {
+                        const value = newValue ? String(newValue.value) : "";
+                        setOrgType(value);
+                        if (value !== "1") {
+                          setSelectedSite(null);
+                        }
+                        setValidationErrors((currentErrors) => ({
+                          ...currentErrors,
+                          organizationType: null,
+                        }));
+                      }}
+                      slotProps={{
+                        popper: { placement: "bottom-start" },
+                        paper: {
+                          sx: {
+                            mt: 1,
+                            borderRadius: "14px",
+                            border: "none",
+                            bgcolor: isDark ? "#0f172a" : "#ffffff",
+                            color: isDark ? "#e2e8f0" : "#334155",
+                            boxShadow: "0 18px 45px -18px rgba(15, 23, 42, 0.45)",
+                            overflow: "hidden",
+                          },
+                        },
+                      }}
+                      ListboxProps={{
+                        sx: {
+                          p: 0.75,
+                          "& .MuiAutocomplete-option": {
+                            minHeight: 36,
+                            borderRadius: "10px",
+                            px: 1.5,
+                            fontSize: "0.8125rem",
+                            fontWeight: 700,
+                            "&[aria-selected='true']": {
+                              bgcolor: isDark ? "rgba(148, 163, 184, 0.16)" : "#f1f5f9",
+                              color: isDark ? "#e2e8f0" : "#475569",
+                            },
+                            "&.Mui-focused": {
+                              bgcolor: isDark ? "rgba(255,255,255,0.06)" : "#f8fafc",
+                            },
+                          },
+                        },
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder="Select organization type"
+                          error={!!validationErrors.organizationType}
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              minHeight: "36px",
+                              borderRadius: "12px",
+                              px: "10px !important",
+                              bgcolor: isDark ? "#1e293b" : "#f1f5f9",
+                              fontSize: "0.875rem",
+                              fontWeight: 700,
+                              color: isDark ? "#f1f5f9" : "#334155",
+                              transition: "all 0.2s ease",
+                              "& fieldset": {
+                                border: "none",
+                              },
+                              "&:hover fieldset": {
+                                border: "none",
+                              },
+                              "&.Mui-focused": {
+                                boxShadow: validationErrors.organizationType
+                                  ? "0 0 0 4px rgba(239, 68, 68, 0.1)"
+                                  : "0 0 0 4px rgba(100, 116, 139, 0.14)",
+                              },
+                              "&.Mui-focused fieldset": {
+                                border: "none",
+                              },
+                            },
+                            "& .MuiInputBase-input::placeholder": {
+                              color: isDark ? "#64748b" : "#94a3b8",
+                              opacity: 1,
+                            },
+                            "& .MuiSvgIcon-root": {
+                              color: isDark ? "#94a3b8" : "#64748b",
+                            },
+                          }}
+                        />
+                      )}
+                    />
+                    {validationErrors.organizationType && (
+                      <p className="text-red-500 text-[9px] mt-1 ml-1">
+                        {validationErrors.organizationType}
+                      </p>
+                    )}
+                  </div>
+
+                  {orgType === "1" && (
+                    <div className="w-full">
+                      <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
+                      {localize("DisplayName:SiteId")} <span className="required-asterisk">*</span>
+                      </label>
+                      <Autocomplete
+                        size="small"
+                        options={sites}
+                        getOptionKey={(option) => option.id}
+                        getOptionLabel={(option) =>
+                          option.name || option.Name || String(option.id || "")
+                        }
+                        isOptionEqualToValue={(option, value) => option.id === value?.id}
+                        value={selectedSite}
+                        onChange={(e, newValue) => {
+                          setSelectedSite(newValue);
+                        }}
+                        slotProps={{
+                          popper: {
+                            placement: "bottom-start",
+                            modifiers: [
+                              { name: "flip", enabled: false },
+                              { name: "preventOverflow", enabled: false },
+                            ],
+                          },
+                          paper: {
+                            sx: {
+                              mt: 1,
+                              borderRadius: "0.75rem",
+                              boxShadow:
+                                "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+                              border: "none",
+                              backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                              color: isDark ? "#e2e8f0" : "#334155",
+                            },
+                          },
+                        }}
+                        ListboxProps={{
+                          sx: {
+                            maxHeight: "160px",
+                            fontSize: "0.875rem",
+                            padding: "0.5rem",
+                            "&::-webkit-scrollbar": { display: "none" },
+                            msOverflowStyle: "none",
+                            scrollbarWidth: "none",
+                            "& .MuiAutocomplete-option": {
+                              borderRadius: "0.5rem",
+                              padding: "6px 12px",
+                              minHeight: "auto",
+                              color: isDark ? "#e2e8f0" : "#475569",
+                              "&[aria-selected='true']": {
+                                backgroundColor: isDark
+                                  ? "rgba(148, 163, 184, 0.16)"
+                                  : "#f1f5f9",
+                              },
+                              "&.Mui-focused": {
+                                backgroundColor: isDark
+                                  ? "rgba(255,255,255,0.06)"
+                                  : "#f8fafc",
+                              },
+                            },
+                          },
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            placeholder="Select Site"
+                            sx={{
+                              "& .MuiOutlinedInput-root": {
+                                borderRadius: "0.5rem",
+                                fontSize: "0.875rem",
+                                padding: "0px 9px !important",
+                                minHeight: "36px",
+                                backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
+                                color: isDark ? "#f1f5f9" : "#334155",
+                                transition: "all 0.2s",
+                                "& fieldset": {
+                                  border: "none",
+                                },
+                                "&:hover fieldset": {
+                                  border: "none",
+                                },
+                                "&.Mui-focused fieldset": {
+                                  border: "none",
+                                },
+                                "&.Mui-focused": {
+                                  boxShadow: validationErrors.siteId
+                                    ? "0 0 0 4px rgba(239, 68, 68, 0.1)"
+                                    : "0 0 0 4px rgba(100, 116, 139, 0.14)",
+                                },
+                              },
+                              "& .MuiSvgIcon-root": {
+                                color: isDark ? "#94a3b8" : "#64748b",
+                              },
+                            }}
+                          />
+                        )}
+                      />
+                      {validationErrors.siteId && (
+                        <p className="text-red-500 text-[9px] mt-1 ml-1">
+                          {validationErrors.siteId}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {isAdmin && (
+                  <>
+                    <div>
+                      <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
+                        {localize("DisplayName:BaseRateFirstHourAfterWorkingHours")}
+                      </label>
+                      <input
+                        name="baseRateFirstHourAfterWorkingHours"
+                        type="number"
+                        step="0.01"
+                        defaultValue={userData?.baseRateFirstHourAfterWorkingHours || ""}
+                        className="w-full px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
+                        {localize("DisplayName:BaseRateAfterFirstHourAfterWorkingHours")}
+                      </label>
+                      <input
+                        name="baseRateAfterFirstHourAfterWorkingHours"
+                        type="number"
+                        step="0.01"
+                        defaultValue={userData?.baseRateAfterFirstHourAfterWorkingHours || ""}
+                        className="w-full px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Checkboxes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 bg-transparent rounded-xl px-1 py-1">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="isPrimary"
+                    defaultChecked={userData?.isPrimary}
+                    className="w-4 h-4 rounded text-blue-600 border-slate-300"
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
+                    {localize("DisplayName:IsPrimary")}
+                  </span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="isITS"
+                    defaultChecked={userData?.isITS}
+                    className="w-4 h-4 rounded text-blue-600 border-slate-300"
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
+                    {localize("DisplayName:IsITS")}
+                  </span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="isActive"
+                    defaultChecked={userData ? userData.isActive : true}
+                    className="w-4 h-4 rounded text-blue-600 border-slate-300"
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
+                    {localize("DisplayName:IsActive")}
+                  </span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="lockoutEnabled"
+                    defaultChecked={userData ? userData.lockoutEnabled : true}
+                    className="w-4 h-4 rounded text-blue-600 border-slate-300"
+                  />
+                  <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
+                    {localize("DisplayName:LockoutEnabled")}
+                  </span>
+                </label>
+                {isAdmin && (
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="mustCompleteJobsheet"
+                      defaultChecked={userData?.mustCompleteJobsheet}
+                      className="w-4 h-4 rounded text-blue-600 border-slate-300"
+                    />
+                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
+                      {localize("DisplayName:MustCompleteJobsheet")}
+                    </span>
+                  </label>
+                )}
+              </div>
+            </div>
+
+            {/* TAB 2: ROLES */}
+            {canManageUserRoles && (
+              <div style={tabPaneStyle(tabIndex === 1)} aria-hidden={tabIndex !== 1}>
+                <div className="flex flex-col gap-2 w-full px-4 py-3">
+                <p className="text-[11px] text-slate-400 font-bold mb-1 text-center uppercase tracking-wider">
+                  Assign Roles to User {!item && <span className="required-asterisk">*</span>}
+                </p>
+                {validationErrors.roles && (
+                  <div
+                    role="alert"
+                    className="mb-1 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-center text-[11px] font-bold text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400"
+                  >
+                    {validationErrors.roles}
+                  </div>
+                )}
+                {availableRoles
+                  .map((roleObj) => {
+                    const roleName = typeof roleObj === "object" ? roleObj.name : roleObj;
+                    if (!roleName) return null;
+                    const isChecked = selectedRoles.some(
+                      (r) =>
+                        typeof r === "string" &&
+                        r.toLowerCase() === roleName.toLowerCase()
+                    );
+                    const displayRole = roleName.charAt(0).toUpperCase() + roleName.slice(1);
+                    return (
+                      <label
+                        key={roleName}
+                        className="flex items-center gap-3 px-3 py-2 border-2 border-slate-100 dark:border-slate-700 rounded-xl hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 dark:hover:bg-white/5 cursor-pointer transition-all duration-200 group"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleRole(roleName)}
+                          className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-[#ec4899] transition-colors">
+                          {displayRole}
+                        </span>
+                      </label>
+                    );
+                  })}
+
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+
+        <div className="flex gap-2 px-5 py-3 bg-slate-50 dark:bg-[#1a1f2e] border-t border-slate-100 dark:border-slate-700 w-full rounded-b-[16px]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 border border-slate-200 dark:border-slate-700 h-9 text-[11px] text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 font-bold rounded-xl transition-all duration-200"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="app-primary-button flex-1 h-9 text-[11px]"
+          >
+            {loading
+              ? localize("SavingWithThreeDot")
+              : item
+                ? localize("Save")
+                : localize("Permission:Create")}
+          </button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
 
 export default function UsersPage() {
   const { toast } = useToast();
@@ -170,7 +984,7 @@ export default function UsersPage() {
 
   // Pagination & Search State
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(14);
+  const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState("");
   const [isAdvancedSearch, setIsAdvancedSearch] = useState(false);
 
@@ -444,882 +1258,6 @@ export default function UsersPage() {
 
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
-  // Render modal component
-  const UserModal = ({ open, onClose, item, onSubmit, loading, submitError }) => {
-    const [tabIndex, setTabIndex] = useState(0);
-    const [selectedRoles, setSelectedRoles] = useState([]);
-    const [availableRoles, setAvailableRoles] = useState([]);
-    const [validationErrors, setValidationErrors] = useState({});
-    const [showPassword, setShowPassword] = useState(false);
-    const [userData, setUserData] = useState(null);
-    const [isLoadingData, setIsLoadingData] = useState(false);
-    const [rolesPage, setRolesPage] = useState(1);
-    const rolesPerPage = 5;
-
-    const [orgType, setOrgType] = useState("");
-    const [sites, setSites] = useState([]);
-    const [selectedSite, setSelectedSite] = useState(null);
-    const organizationTypeOptions = ORGANIZATION_TYPES.filter(
-      (organizationType) => organizationType.value > 0,
-    );
-
-    useEffect(() => {
-      apiClient
-        .get("/api/app/site/", { params: { MaxResultCount: 1000 } })
-        .then((res) => setSites(res.data?.items || res.data || []))
-        .catch((err) => console.error("Error fetching sites:", err));
-    }, []);
-
-    useEffect(() => {
-      if (open) {
-        setTabIndex(0);
-        setRolesPage(1);
-        setValidationErrors({});
-        setShowPassword(false);
-
-        if (canManageUserRoles) {
-          usersApi
-            .getAssignableRoles()
-            .then((res) => setAvailableRoles(res.items || res || []))
-            .catch((e) => console.error("Error fetching assignable roles", e));
-        } else {
-          setAvailableRoles([]);
-          setSelectedRoles([]);
-        }
-
-        if (item) {
-          setIsLoadingData(true);
-          Promise.all([
-            usersApi.getById(item.id).catch((e) => {
-              console.error("Error fetching getById:", e);
-              return null;
-            }),
-            canManageUserRoles
-              ? usersApi.getUserRoles(item.id).catch((e) => {
-                console.error("Error fetching getUserRoles:", e);
-                return null;
-              })
-              : Promise.resolve(null),
-          ])
-            .then(([userRes, rolesRes]) => {
-              const loadedUser = userRes || item;
-              const mergedUser = loadedUser
-                ? { ...loadedUser, ...(loadedUser.extraProperties || {}) }
-                : null;
-              setUserData(mergedUser);
-
-              const orgTypeVal = mergedUser?.organizationType;
-              setOrgType(
-                orgTypeVal != null && orgTypeVal !== 0 ? orgTypeVal.toString() : ""
-              );
-
-              let rolesArray = [];
-              if (rolesRes) {
-                rolesArray = rolesRes.items || rolesRes || [];
-              } else if (canManageUserRoles && item.roleNames) {
-                rolesArray = item.roleNames;
-              }
-              setSelectedRoles(rolesArray.map((r) => r.name || r));
-            })
-            .catch((error) => {
-              console.error("Failed to resolve promises", error);
-              setUserData(item);
-              setSelectedRoles(item.roleNames || []);
-            })
-            .finally(() => {
-              setIsLoadingData(false);
-            });
-        } else {
-          setUserData(null);
-          setSelectedRoles([]);
-          setIsLoadingData(false);
-          setOrgType("");
-          setSelectedSite(null);
-        }
-      }
-    }, [open, item]);
-
-    useEffect(() => {
-      if (!userData?.siteId || sites.length === 0) {
-        if (!userData?.siteId) setSelectedSite(null);
-        return;
-      }
-      const match = sites.find((s) => s.id === userData.siteId) ?? null;
-      setSelectedSite(match);
-    }, [userData?.siteId, sites]);
-
-    const toggleRole = (role) => {
-      const found = selectedRoles.find(
-        (selectedRole) =>
-          typeof selectedRole === "string" &&
-          typeof role === "string" &&
-          selectedRole.toLowerCase() === role.toLowerCase(),
-      );
-      const nextRoles = found
-        ? selectedRoles.filter((selectedRole) => selectedRole !== found)
-        : [...selectedRoles, role];
-
-      setSelectedRoles(nextRoles);
-      if (nextRoles.length > 0) {
-        setValidationErrors((currentErrors) => ({
-          ...currentErrors,
-          roles: null,
-        }));
-      }
-    };
-
-    if (!open) return null;
-
-    const handleSubmit = (e) => {
-      e.preventDefault();
-      const formData = new FormData(e.target);
-      const data = Object.fromEntries(formData.entries());
-
-      const requiredMessage = (fieldKey) =>
-        localize("The {0} field is required.").replace("{0}", localize(fieldKey));
-      const errors = {};
-      if (!data.userName?.trim())
-        errors.userName = requiredMessage("DisplayName:UserName");
-      if (!data.name?.trim()) errors.name = requiredMessage("DisplayName:Name");
-      if (!item && !data.password?.trim()) {
-        errors.password = requiredMessage("DisplayName:Password");
-      } else if (data.password?.trim()) {
-        const pwd = data.password.trim();
-        const passwordErrors = [
-          !/[A-Z]/.test(pwd) && "Volo.Abp.Identity:PasswordRequiresUpper",
-          !/[a-z]/.test(pwd) && "Volo.Abp.Identity:PasswordRequiresLower",
-          !/[^A-Za-z0-9]/.test(pwd) && "Volo.Abp.Identity:PasswordRequiresNonAlphanumeric",
-        ].filter(Boolean).map(localize);
-        if (passwordErrors.length > 0) errors.password = passwordErrors.join(" ");
-      }
-      if (!data.phoneNumber?.trim())
-        errors.phoneNumber = requiredMessage("DisplayName:PhoneNumber");
-      if (!orgType || orgType === "" || orgType === "0") {
-        errors.organizationType = requiredMessage("DisplayName:OrganizationType");
-      }
-      if (orgType === "1" && !selectedSite) {
-        errors.siteId = requiredMessage("DisplayName:SiteId");
-      }
-      if (canManageUserRoles && !item && selectedRoles.length === 0) {
-        errors.roles = requiredMessage("Roles");
-      }
-
-      if (Object.keys(errors).length > 0) {
-        setValidationErrors(errors);
-        setTabIndex(errors.roles && Object.keys(errors).length === 1 ? 1 : 0);
-        return;
-      }
-
-      setValidationErrors({});
-
-      const payload = {
-        userName: data.userName?.trim(),
-        name: data.name?.trim(),
-        surname: data.surname?.trim() || "",
-        email: data.email?.trim() || "",
-        phoneNumber: data.phoneNumber?.trim(),
-        organizationType: Number(orgType),
-        siteId: orgType === "1" && selectedSite ? selectedSite.id : null,
-        isPrimary: formData.get("isPrimary") === "on",
-        isITS: formData.get("isITS") === "on",
-        isActive: formData.get("isActive") === "on",
-        lockoutEnabled: formData.get("lockoutEnabled") === "on",
-      };
-
-      if (isAdmin) {
-        payload.mustCompleteJobsheet =
-          formData.get("mustCompleteJobsheet") === "on";
-        payload.baseRateFirstHourAfterWorkingHours =
-          parseFloat(data.baseRateFirstHourAfterWorkingHours) || 0;
-        payload.baseRateAfterFirstHourAfterWorkingHours =
-          parseFloat(data.baseRateAfterFirstHourAfterWorkingHours) || 0;
-      }
-
-      if (canManageUserRoles) {
-        payload.roleNames = selectedRoles;
-      }
-
-      if (data.password?.trim()) {
-        payload.password = data.password.trim();
-      }
-
-      if (item) {
-        payload.concurrencyStamp = userData?.concurrencyStamp ?? item.concurrencyStamp;
-      }
-
-      onSubmit(payload);
-    };
-
-    return (
-      <Dialog
-        open={open}
-        onClose={(event, reason) => {
-          if (reason !== "backdropClick" && reason !== "escapeKeyDown") {
-            onClose();
-          }
-        }}
-        maxWidth="xs"
-        fullWidth
-        scroll="body"
-        PaperProps={{
-          sx: {
-            borderRadius: "24px",
-            padding: 0,
-            boxShadow: "0 25px 50px -12px rgba(59, 130, 246, 0.15)",
-            bgcolor: isDark ? "#0f172a" : "#ffffff",
-            backgroundImage: "none",
-            colorScheme: isDark ? "dark" : "light",
-          },
-        }}
-      >
-        <div className="bg-white dark:bg-[#0f172a] px-6 py-6 border-b border-slate-100 dark:border-slate-800 shrink-0 flex justify-between items-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-pink-500 via-purple-500 to-rose-500"></div>
-          <h2 className="text-xl font-black bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent flex items-center">
-            <div className="w-10 h-10 rounded-2xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-pink-500 mr-3 shadow-inner shadow-pink-500/20">
-              <ShieldCheck size={20} strokeWidth={2.5} />
-            </div>
-            {item
-              ? `${localize("Edit")} ${localize("User")}`
-              : localize("NewUser")}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-pink-500 hover:rotate-90 transition-all duration-300 rounded-xl hover:bg-pink-50 dark:hover:bg-pink-500/10"
-          >
-            <X size={20} strokeWidth={2.5} />
-          </button>
-        </div>
-
-        <form
-          key={userData ? `${userData.id}-${userData.concurrencyStamp}` : "new"}
-          onSubmit={handleSubmit}
-          noValidate
-          autoComplete="off"
-        >
-          <DialogContent
-            dividers
-            sx={{
-              minHeight: "400px",
-              p: 0,
-              position: "relative",
-              bgcolor: isDark ? "#0f172a" : "#ffffff",
-              color: isDark ? "#e2e8f0" : "#334155",
-              borderColor: isDark ? "#1e293b" : "#e2e8f0",
-            }}
-          >
-            {isLoadingData && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/80 dark:bg-slate-900/80">
-                <p className="text-sm text-slate-500 dark:text-slate-300 animate-pulse">Loading user details...</p>
-              </div>
-            )}
-            <Box sx={{ borderBottom: 1, borderColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", px: 3, pt: 1, bgcolor: isDark ? "#0f172a" : "#f8fafc" }}>
-              <Tabs
-                value={tabIndex}
-                onChange={(e, val) => setTabIndex(val)}
-                TabIndicatorProps={{ style: { backgroundColor: '#ec4899', height: 3, borderRadius: '3px 3px 0 0' } }}
-              >
-                <Tab label="User Information" sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', color: isDark ? '#94a3b8' : '#64748b', '&.Mui-selected': { color: '#ec4899' } }} />
-                {canManageUserRoles && (
-                  <Tab label="Roles" sx={{ fontWeight: 800, textTransform: 'none', fontSize: '13px', color: isDark ? '#94a3b8' : '#64748b', '&.Mui-selected': { color: '#ec4899' } }} />
-                )}
-              </Tabs>
-            </Box>
-
-            <div className="p-4 bg-white dark:bg-[#0f172a]">
-              {submitError && (
-                <PremiumErrorAlert
-                  open={!!submitError}
-                  message={submitError}
-                  onClose={() => setSubmitError("")}
-                />
-              )}
-
-              {/* TAB 1: USER INFORMATION */}
-              <div style={{ display: tabIndex === 0 ? "block" : "none" }}>
-                <div className="flex flex-col gap-5 mb-6">
-                  <div>
-                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      {localize("DisplayName:UserName")} <span className="required-asterisk">*</span>
-                    </label>
-                    <div className="relative group">
-                      <input
-                        name="userName"
-                        autoComplete="new-password"
-                        defaultValue={userData?.userName || ""}
-                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 ${validationErrors.userName
-                          ? "focus:ring-red-500/20"
-                          : "focus:ring-blue-500/20"
-                          } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
-                      />
-                      <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                        <X size={14} />
-                      </button>
-                    </div>
-                    {validationErrors.userName && (
-                      <p className="text-red-500 text-[9px] mt-1 ml-1">
-                        {validationErrors.userName}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      {localize("DisplayName:Name")} <span className="required-asterisk">*</span>
-                    </label>
-                    <div className="relative group">
-                      <input
-                        name="name"
-                        defaultValue={userData?.name || ""}
-                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 ${validationErrors.name
-                          ? "focus:ring-red-500/20"
-                          : "focus:ring-blue-500/20"
-                          } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
-                      />
-                      <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                        <X size={14} />
-                      </button>
-                    </div>
-                    {validationErrors.name && (
-                      <p className="text-red-500 text-[9px] mt-1 ml-1">
-                        {validationErrors.name}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      {localize("DisplayName:Surname")}
-                    </label>
-                    <div className="relative group">
-                      <input
-                        name="surname"
-                        defaultValue={userData?.surname || ""}
-                        className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
-                      />
-                      <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                        <X size={14} />
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      {localize("DisplayName:Password")} {!item && <span className="required-asterisk">*</span>}
-                    </label>
-                    <div className="relative group">
-                      <input
-                        name="password"
-                        autoComplete="new-password"
-                        type={showPassword ? "text" : "password"}
-                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 ${validationErrors.password
-                          ? "focus:ring-red-500/20"
-                          : "focus:ring-blue-500/20"
-                          } rounded-lg outline-none focus:ring-2 text-sm pr-12 transition-all duration-200 font-medium`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-500 transition-colors text-xs font-semibold"
-                      >
-                        {showPassword ? "Hide" : "Show"}
-                      </button>
-                    </div>
-                    {validationErrors.password && (
-                      <p className="text-red-500 text-[9px] mt-1 ml-1">
-                        {validationErrors.password}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      {localize("DisplayName:Email")}
-                    </label>
-                    <div className="relative group">
-                      <input
-                        name="email"
-                        type="email"
-                        defaultValue={userData?.email || ""}
-                        className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm pr-8 transition-all duration-200 font-medium"
-                      />
-                      <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                        <X size={14} />
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                      {localize("DisplayName:PhoneNumber")} <span className="required-asterisk">*</span>
-                    </label>
-                    <div className="relative group">
-                      <input
-                        name="phoneNumber"
-                        defaultValue={userData?.phoneNumber || ""}
-                        className={`w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 ${validationErrors.phoneNumber
-                          ? "focus:ring-red-500/20"
-                          : "focus:ring-blue-500/20"
-                          } rounded-lg outline-none focus:ring-2 text-sm pr-8 transition-all duration-200 font-medium`}
-                      />
-                      <button type="button" onClick={(e) => { if (e.currentTarget.previousSibling) e.currentTarget.previousSibling.value = '' }} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                        <X size={14} />
-                      </button>
-                    </div>
-                    {validationErrors.phoneNumber && (
-                      <p className="text-red-500 text-[9px] mt-1 ml-1">
-                        {validationErrors.phoneNumber}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-5">
-                    <div className="w-full">
-                      <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                        {localize("DisplayName:OrganizationType")} <span className="required-asterisk">*</span>
-                      </label>
-                      <Autocomplete
-                        size="small"
-                        options={organizationTypeOptions}
-                        getOptionLabel={(option) => option.label}
-                        isOptionEqualToValue={(option, value) => option.value === value?.value}
-                        value={
-                          organizationTypeOptions.find(
-                            (organizationType) => String(organizationType.value) === orgType,
-                          ) || null
-                        }
-                        onChange={(event, newValue) => {
-                          const value = newValue ? String(newValue.value) : "";
-                          setOrgType(value);
-                          if (value !== "1") {
-                            setSelectedSite(null);
-                          }
-                          setValidationErrors((currentErrors) => ({
-                            ...currentErrors,
-                            organizationType: null,
-                          }));
-                        }}
-                        slotProps={{
-                          popper: { placement: "bottom-start" },
-                          paper: {
-                            sx: {
-                              mt: 1,
-                              borderRadius: "14px",
-                              border: "none",
-                              bgcolor: isDark ? "#0f172a" : "#ffffff",
-                              color: isDark ? "#e2e8f0" : "#334155",
-                              boxShadow: "0 18px 45px -18px rgba(15, 23, 42, 0.45)",
-                              overflow: "hidden",
-                            },
-                          },
-                        }}
-                        ListboxProps={{
-                          sx: {
-                            p: 0.75,
-                            "& .MuiAutocomplete-option": {
-                              minHeight: 40,
-                              borderRadius: "10px",
-                              px: 1.5,
-                              fontSize: "0.8125rem",
-                              fontWeight: 700,
-                              "&[aria-selected='true']": {
-                                bgcolor: isDark ? "rgba(148, 163, 184, 0.16)" : "#f1f5f9",
-                                color: isDark ? "#e2e8f0" : "#475569",
-                              },
-                              "&.Mui-focused": {
-                                bgcolor: isDark ? "rgba(255,255,255,0.06)" : "#f8fafc",
-                              },
-                            },
-                          },
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            placeholder="Select organization type"
-                            error={!!validationErrors.organizationType}
-                            sx={{
-                              "& .MuiOutlinedInput-root": {
-                                minHeight: "44px",
-                                borderRadius: "12px",
-                                px: "10px !important",
-                                bgcolor: isDark ? "#1e293b" : "#f1f5f9",
-                                fontSize: "0.875rem",
-                                fontWeight: 700,
-                                color: isDark ? "#f1f5f9" : "#334155",
-                                transition: "all 0.2s ease",
-                                "& fieldset": {
-                                  border: "none",
-                                },
-                                "&:hover fieldset": {
-                                  border: "none",
-                                },
-                                "&.Mui-focused": {
-                                  boxShadow: validationErrors.organizationType
-                                    ? "0 0 0 4px rgba(239, 68, 68, 0.1)"
-                                    : "0 0 0 4px rgba(100, 116, 139, 0.14)",
-                                },
-                                "&.Mui-focused fieldset": {
-                                  border: "none",
-                                },
-                              },
-                              "& .MuiInputBase-input::placeholder": {
-                                color: isDark ? "#64748b" : "#94a3b8",
-                                opacity: 1,
-                              },
-                              "& .MuiSvgIcon-root": {
-                                color: isDark ? "#94a3b8" : "#64748b",
-                              },
-                            }}
-                          />
-                        )}
-                      />
-                      {validationErrors.organizationType && (
-                        <p className="text-red-500 text-[9px] mt-1 ml-1">
-                          {validationErrors.organizationType}
-                        </p>
-                      )}
-                    </div>
-
-                    {orgType === "1" && (
-                      <div className="w-full">
-                        <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                        {localize("DisplayName:SiteId")} <span className="required-asterisk">*</span>
-                        </label>
-                        <Autocomplete
-                          size="small"
-                          options={sites}
-                          getOptionKey={(option) => option.id}
-                          getOptionLabel={(option) =>
-                            option.name || option.Name || String(option.id || "")
-                          }
-                          isOptionEqualToValue={(option, value) => option.id === value?.id}
-                          value={selectedSite}
-                          onChange={(e, newValue) => {
-                            setSelectedSite(newValue);
-                          }}
-                          slotProps={{
-                            popper: {
-                              placement: "bottom-start",
-                              modifiers: [
-                                { name: "flip", enabled: false },
-                                { name: "preventOverflow", enabled: false },
-                              ],
-                            },
-                            paper: {
-                              sx: {
-                                mt: 1,
-                                borderRadius: "0.75rem",
-                                boxShadow:
-                                  "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-                                border: "none",
-                                backgroundColor: isDark ? "#0f172a" : "#ffffff",
-                                color: isDark ? "#e2e8f0" : "#334155",
-                              },
-                            },
-                          }}
-                          ListboxProps={{
-                            sx: {
-                              maxHeight: "160px",
-                              fontSize: "0.875rem",
-                              padding: "0.5rem",
-                              "&::-webkit-scrollbar": { display: "none" },
-                              msOverflowStyle: "none",
-                              scrollbarWidth: "none",
-                              "& .MuiAutocomplete-option": {
-                                borderRadius: "0.5rem",
-                                padding: "6px 12px",
-                                minHeight: "auto",
-                                color: isDark ? "#e2e8f0" : "#475569",
-                                "&[aria-selected='true']": {
-                                  backgroundColor: isDark
-                                    ? "rgba(148, 163, 184, 0.16)"
-                                    : "#f1f5f9",
-                                },
-                                "&.Mui-focused": {
-                                  backgroundColor: isDark
-                                    ? "rgba(255,255,255,0.06)"
-                                    : "#f8fafc",
-                                },
-                              },
-                            },
-                          }}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              placeholder="Select Site"
-                              sx={{
-                                "& .MuiOutlinedInput-root": {
-                                  borderRadius: "0.5rem",
-                                  fontSize: "0.875rem",
-                                  padding: "0px 9px !important",
-                                  minHeight: "42px",
-                                  backgroundColor: isDark ? "#1e293b" : "#f1f5f9",
-                                  color: isDark ? "#f1f5f9" : "#334155",
-                                  transition: "all 0.2s",
-                                  "& fieldset": {
-                                    border: "none",
-                                  },
-                                  "&:hover fieldset": {
-                                    border: "none",
-                                  },
-                                  "&.Mui-focused fieldset": {
-                                    border: "none",
-                                  },
-                                  "&.Mui-focused": {
-                                    boxShadow: validationErrors.siteId
-                                      ? "0 0 0 4px rgba(239, 68, 68, 0.1)"
-                                      : "0 0 0 4px rgba(100, 116, 139, 0.14)",
-                                  },
-                                },
-                                "& .MuiSvgIcon-root": {
-                                  color: isDark ? "#94a3b8" : "#64748b",
-                                },
-                              }}
-                            />
-                          )}
-                        />
-                        {validationErrors.siteId && (
-                          <p className="text-red-500 text-[9px] mt-1 ml-1">
-                            {validationErrors.siteId}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {isAdmin && (
-                    <>
-                      <div>
-                        <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                          {localize("DisplayName:BaseRateFirstHourAfterWorkingHours")}
-                        </label>
-                        <input
-                          name="baseRateFirstHourAfterWorkingHours"
-                          type="number"
-                          step="0.01"
-                          defaultValue={userData?.baseRateFirstHourAfterWorkingHours || ""}
-                          className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[10px] text-slate-500 dark:text-slate-300 mb-1 ml-1 font-bold">
-                          {localize("DisplayName:BaseRateAfterFirstHourAfterWorkingHours")}
-                        </label>
-                        <input
-                          name="baseRateAfterFirstHourAfterWorkingHours"
-                          type="number"
-                          step="0.01"
-                          defaultValue={userData?.baseRateAfterFirstHourAfterWorkingHours || ""}
-                          className="w-full px-3 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 caret-slate-900 dark:caret-slate-100 border-0 rounded-lg outline-none focus:ring-2 focus:ring-blue-500/20 text-sm transition-all duration-200 font-medium"
-                        />
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Checkboxes */}
-                <div className="flex flex-col gap-3 bg-transparent rounded-xl p-4">
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="isPrimary"
-                      defaultChecked={userData?.isPrimary}
-                      className="w-4 h-4 rounded text-blue-600 border-slate-300"
-                    />
-                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
-                      {localize("DisplayName:IsPrimary")}
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="isITS"
-                      defaultChecked={userData?.isITS}
-                      className="w-4 h-4 rounded text-blue-600 border-slate-300"
-                    />
-                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
-                      {localize("DisplayName:IsITS")}
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="isActive"
-                      defaultChecked={userData ? userData.isActive : true}
-                      className="w-4 h-4 rounded text-blue-600 border-slate-300"
-                    />
-                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
-                      {localize("DisplayName:IsActive")}
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      name="lockoutEnabled"
-                      defaultChecked={userData ? userData.lockoutEnabled : true}
-                      className="w-4 h-4 rounded text-blue-600 border-slate-300"
-                    />
-                    <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
-                      {localize("DisplayName:LockoutEnabled")}
-                    </span>
-                  </label>
-                  {isAdmin && (
-                    <label className="flex items-center gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        name="mustCompleteJobsheet"
-                        defaultChecked={userData?.mustCompleteJobsheet}
-                        className="w-4 h-4 rounded text-blue-600 border-slate-300"
-                      />
-                      <span className="text-sm text-slate-700 dark:text-slate-200 font-semibold">
-                        {localize("DisplayName:MustCompleteJobsheet")}
-                      </span>
-                    </label>
-                  )}
-                </div>
-              </div>
-
-              {/* TAB 2: ROLES */}
-              {canManageUserRoles && (
-                <div style={{ display: tabIndex === 1 ? "block" : "none" }}>
-                  <div className="flex flex-col gap-2 w-full p-4 py-6">
-                  <p className="text-[11px] text-slate-400 font-bold mb-6 text-center uppercase tracking-wider">
-                    Assign Roles to User {!item && <span className="required-asterisk">*</span>}
-                  </p>
-                  {validationErrors.roles && (
-                    <div
-                      role="alert"
-                      className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-[11px] font-bold text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400"
-                    >
-                      {validationErrors.roles}
-                    </div>
-                  )}
-                  {availableRoles
-                    .slice((rolesPage - 1) * rolesPerPage, rolesPage * rolesPerPage)
-                    .map((roleObj) => {
-                      const roleName = typeof roleObj === "object" ? roleObj.name : roleObj;
-                      if (!roleName) return null;
-                      const isChecked = selectedRoles.some(
-                        (r) =>
-                          typeof r === "string" &&
-                          r.toLowerCase() === roleName.toLowerCase()
-                      );
-                      const displayRole = roleName.charAt(0).toUpperCase() + roleName.slice(1);
-                      return (
-                        <label
-                          key={roleName}
-                          className="flex items-center gap-3 p-3 border-2 border-slate-100 dark:border-slate-700 rounded-xl hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 dark:hover:bg-white/5 cursor-pointer transition-all duration-200 group"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => toggleRole(roleName)}
-                            className="w-4 h-4 rounded text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                          />
-                          <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-[#ec4899] transition-colors">
-                            {displayRole}
-                          </span>
-                        </label>
-                      );
-                    })}
-
-                  <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-1 bg-white dark:bg-slate-800/50 p-1 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-sm mx-auto">
-                      <button
-                        type="button"
-                        onClick={() => setRolesPage(1)}
-                        disabled={rolesPage === 1}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                        title="First Page"
-                      >
-                        <ChevronsLeft size={14} strokeWidth={2.5} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setRolesPage((prev) => Math.max(1, prev - 1))}
-                        disabled={rolesPage === 1}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                        title="Previous Page"
-                      >
-                        <ChevronLeft size={14} strokeWidth={2.5} />
-                      </button>
-
-                      <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-                      <div className="px-3 flex items-center gap-2 py-1">
-                        <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                          Page
-                        </span>
-                        <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
-                          <span className="text-[11px] font-black text-pink-600 dark:text-pink-400 tabular-nums leading-none">
-                            {rolesPage}
-                          </span>
-                          <span className="text-[10px] font-black text-slate-300 dark:text-slate-600">
-                            /
-                          </span>
-                          <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 tabular-nums leading-none">
-                            {Math.ceil(availableRoles.length / rolesPerPage) || 1}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1"></div>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setRolesPage((prev) =>
-                            Math.min(
-                              Math.ceil(availableRoles.length / rolesPerPage),
-                              prev + 1
-                            )
-                          )
-                        }
-                        disabled={rolesPage === Math.ceil(availableRoles.length / rolesPerPage)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                        title="Next Page"
-                      >
-                        <ChevronRight size={14} strokeWidth={2.5} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setRolesPage(Math.ceil(availableRoles.length / rolesPerPage))
-                        }
-                        disabled={rolesPage === Math.ceil(availableRoles.length / rolesPerPage)}
-                        className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
-                        title="Last Page"
-                      >
-                        <ChevronsRight size={14} strokeWidth={2.5} />
-                      </button>
-                    </div>
-                  </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-
-          <div className="flex gap-2.5 px-6 py-4 bg-slate-50 dark:bg-[#1a1f2e] border-t border-slate-100 dark:border-slate-700 w-full rounded-b-[24px]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 border border-slate-200 dark:border-slate-700 h-[38px] text-[11px] text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 font-bold rounded-xl transition-all duration-200"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="app-primary-button flex-1 h-[38px] text-[11px]"
-            >
-              {loading
-                ? localize("SavingWithThreeDot")
-                : item
-                  ? localize("Save")
-                  : localize("Permission:Create")}
-            </button>
-          </div>
-        </form>
-      </Dialog>
-    );
-  };
-
   const ActionsMenu = ({ row }) => {
     const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
@@ -1446,11 +1384,11 @@ export default function UsersPage() {
                 {localize("Users")}
               </h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
               {canCreate && (
                 <button
                   onClick={handleCreateOpen}
-                  className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs"
+                  className="app-primary-button inline-flex items-center justify-center w-full sm:w-auto px-5 py-2.5 text-xs"
                 >
                   {localize("NewUser")}
                 </button>
@@ -1636,7 +1574,7 @@ export default function UsersPage() {
                     }}
                     className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-bold rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-pink-500/50"
                   >
-                    {[14, 25, 50, 100].map((size) => (
+                    {[10, 25, 50, 100].map((size) => (
                       <option key={size} value={size}>
                         {size}
                       </option>
@@ -1720,6 +1658,11 @@ export default function UsersPage() {
         onSubmit={handleModalSubmit}
         loading={modalLoading}
         submitError={submitError}
+        setSubmitError={setSubmitError}
+        localize={localize}
+        isDark={isDark}
+        isAdmin={isAdmin}
+        canManageUserRoles={canManageUserRoles}
       />
 
       {/* Delete Confirmation Card - Custom Overlay */}
@@ -1727,27 +1670,26 @@ export default function UsersPage() {
         <div
           className="fixed inset-0 flex items-center justify-center"
           style={{ zIndex: 9999 }}
-          onClick={(e) => { if (e.target === e.currentTarget) setDeleteUser(null); }}
         >
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/50" />
 
           {/* Card */}
           <div
-            className={`relative rounded-3xl p-6 w-[340px] flex flex-col items-center gap-4 shadow-2xl ${isDark ? 'bg-[#0f172a] border border-white/5' : 'bg-white border border-slate-100'}`}
+            className={`relative rounded-2xl px-5 py-4 w-[320px] max-w-[90vw] flex flex-col items-center gap-3 shadow-2xl ${isDark ? 'bg-[#0f172a] border border-white/5' : 'bg-white border border-slate-100'}`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Icon */}
-            <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center border-4 border-rose-100 dark:border-rose-500/20">
-              <X size={30} className="text-rose-500" strokeWidth={3} />
+            <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-500/15 flex items-center justify-center">
+              <X size={20} className="text-rose-500" strokeWidth={2.25} />
             </div>
 
             {/* Text */}
             <div className="text-center">
-              <h3 className="text-[17px] font-black text-slate-800 dark:text-slate-100 mb-1">
+              <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100 mb-1">
                 Confirm Deletion
               </h3>
-              <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug">
                 Are you sure you want to delete{" "}
                 <strong className="text-rose-500">{deleteUser?.userName}</strong>?
                 <br />This action cannot be undone.
@@ -1755,16 +1697,16 @@ export default function UsersPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 w-full pt-1">
+            <div className="flex gap-2 w-full pt-1">
               <button
                 onClick={() => setDeleteUser(null)}
-                className="flex-1 font-bold text-[12px] h-[42px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-all"
+                className="flex-1 font-semibold text-sm h-8 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-colors"
               >
                 {localize("Cancel")}
               </button>
               <button
                 onClick={confirmDelete}
-                className="flex-1 font-bold text-[12px] h-[42px] bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition-all shadow-md shadow-rose-500/20 active:scale-95"
+                className="flex-1 font-semibold text-sm h-8 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors"
               >
                 {localize("Delete")}
               </button>
@@ -1776,7 +1718,10 @@ export default function UsersPage() {
       {/* Material UI Permissions Dialog */}
       <Dialog
         open={Boolean(permissionUser)}
-        onClose={handleClosePermissions}
+        onClose={(_event, reason) => {
+          if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+          handleClosePermissions();
+        }}
         maxWidth="sm"
         fullWidth
         disableScrollLock={true}

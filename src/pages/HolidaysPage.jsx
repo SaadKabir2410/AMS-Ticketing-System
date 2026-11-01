@@ -66,7 +66,7 @@ export default function HolidaysPage() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState(10);
   // The backend paged list leaves disabled holidays out, so the page loads the
   // full list (GET /api/app/holiday, which includes them) like the Blazor
   // Holidays page, then filters and sorts it here with the same fields.
@@ -239,10 +239,10 @@ export default function HolidaysPage() {
 
         <div className="flex flex-col w-full h-auto relative flex-1 overflow-hidden">
           <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar w-full h-full">
-            <div className="min-w-[1400px] flex flex-col w-full">
+            <div className="min-w-[1000px] flex flex-col w-full">
               {/* Custom Filter Area (Aligned with Table) */}
               <div className="w-full bg-transparent p-0 flex flex-col gap-6 border-b border-slate-100 dark:border-slate-800/50 pb-6 mb-2">
-                <div className="grid grid-cols-[12%_1fr_10%_8%_12%_12%_12%_90px_120px] items-end w-full">
+                <div className="grid grid-cols-[12%_1fr_8%_6%_11%_11%_11%_90px_120px] items-end w-full">
                   {/* Labels */}
                   {[
                     { key: "Name", sortField: "Name" },
@@ -254,7 +254,7 @@ export default function HolidaysPage() {
                     { key: "HolidayType", sortField: "Type", center: true },
                     { key: "IsDisabled", sortField: "IsDeleted", center: true },
                   ].map((l) => (
-                    <div key={l.key} className={`${l.center ? 'px-[10px]' : 'pl-[23px] pr-[10px]'} text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-1 ${l.center ? 'justify-center' : ''}`}>
+                    <div key={l.key} className={`${l.center ? 'px-1.5' : 'pl-[18px] pr-1.5'} text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center mb-1 ${l.center ? 'justify-center' : ''}`}>
                       <button
                         type="button"
                         onClick={() => handleSort(l.sortField)}
@@ -271,10 +271,10 @@ export default function HolidaysPage() {
                   <div></div>
 
                   {/* Inputs */}
-                  <div className="px-[10px] w-full"><input type="text" placeholder={localize("Name")} value={filters.name} onChange={(e) => setFilters({ ...filters, name: e.target.value })} className={filterInputClass} /></div>
-                  <div className="px-[10px] w-full"><input type="text" placeholder={localize("Description")} value={filters.description} onChange={(e) => setFilters({ ...filters, description: e.target.value })} className={filterInputClass} /></div>
+                  <div className="px-1.5 w-full"><input type="text" placeholder={localize("Name")} value={filters.name} onChange={(e) => setFilters({ ...filters, name: e.target.value })} className={filterInputClass} /></div>
+                  <div className="px-1.5 w-full"><input type="text" placeholder={localize("Description")} value={filters.description} onChange={(e) => setFilters({ ...filters, description: e.target.value })} className={filterInputClass} /></div>
 
-                  <div className="px-[10px] w-full">
+                  <div className="px-1.5 w-full">
                     <Flatpickr
                       value={filters.date ? filters.date.split("-").reverse().join("/") : ""}
                       onChange={([date]) => setFilters({ ...filters, date: date ? toIsoDay(date) : "" })}
@@ -284,17 +284,17 @@ export default function HolidaysPage() {
                     />
                   </div>
 
-                  <div className="px-[10px] w-full">
+                  <div className="px-1.5 w-full">
                     <input type="text" inputMode="numeric" placeholder={localize("Year")} value={filters.year} onChange={(e) => setFilters({ ...filters, year: e.target.value })} className={filterInputClass} />
                   </div>
 
-                  <div className="px-[10px] w-full">
+                  <div className="px-1.5 w-full">
                     <input type="text" placeholder={localize("CountryName")} value={filters.country} onChange={(e) => setFilters({ ...filters, country: e.target.value })} className={filterInputClass} />
                   </div>
 
-                  <div className="px-[10px] w-full"><input type="text" placeholder={localize("Locations")} value={filters.locations} onChange={(e) => setFilters({ ...filters, locations: e.target.value })} className={filterInputClass} /></div>
+                  <div className="px-1.5 w-full"><input type="text" placeholder={localize("Locations")} value={filters.locations} onChange={(e) => setFilters({ ...filters, locations: e.target.value })} className={filterInputClass} /></div>
 
-                  <div className="px-[10px] w-full">
+                  <div className="px-1.5 w-full">
                     <input
                       type="text"
                       placeholder={localize("HolidayType")}
@@ -307,7 +307,7 @@ export default function HolidaysPage() {
                   <div></div>
 
                   {/* Sits right after the last filter box, same height as the boxes. */}
-                  <div className="flex justify-start pr-[10px] w-full">
+                  <div className="flex justify-start pr-1.5 w-full">
                     <button
                       onClick={handleClear}
                       className="app-primary-button inline-flex h-9 items-center justify-center px-4 text-[11px]"
@@ -333,11 +333,11 @@ export default function HolidaysPage() {
                     <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">
                       <th className="w-[12%]">{localize("Name")}</th>
                       <th className="w-auto">{localize("Description")}</th>
-                      <th className="w-[10%]">{localize("Date")}</th>
-                      <th className="w-[8%]">{localize("Year")}</th>
-                      <th className="w-[12%]">{localize("CountryName")}</th>
-                      <th className="w-[12%]">{localize("Locations")}</th>
-                      <th className="w-[12%]">{localize("HolidayType")}</th>
+                      <th className="w-[8%]">{localize("Date")}</th>
+                      <th className="w-[6%]">{localize("Year")}</th>
+                      <th className="w-[11%]">{localize("CountryName")}</th>
+                      <th className="w-[11%]">{localize("Locations")}</th>
+                      <th className="w-[11%]">{localize("HolidayType")}</th>
                       <th className="w-[90px]">{localize("IsDisabled")}</th>
                       <th className="w-[120px]">{localize("Actions")}</th>
                     </tr>
@@ -348,32 +348,32 @@ export default function HolidaysPage() {
                       return (
                       <tr
                         key={row.id || idx}
-                        className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
+                        className={`group transition-all duration-200 h-[48px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
                       >
-                        <td className="w-[12%] pl-[23px] pr-5 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
+                        <td className="w-[12%] pl-[18px] pr-2 rounded-l-2xl h-[48px] text-left transition-colors font-bold text-[12px]">
                           <div className="flex items-center gap-3 w-full overflow-hidden">
                             <span className="truncate block w-full">{highlightText(row.name || "—", debouncedFilters.name)}</span>
                           </div>
                         </td>
-                        <td className="w-auto pl-[23px] pr-5 h-[60px] text-left transition-colors" title={row.description}>
+                        <td className="w-auto pl-[18px] pr-2 h-[48px] text-left transition-colors" title={row.description}>
                           <div className="line-clamp-2 w-full break-words whitespace-normal overflow-hidden leading-tight" style={{ overflow: "hidden" }}>{highlightText(row.description || "—", debouncedFilters.description)}</div>
                         </td>
-                        <td className="w-[10%] px-5 h-[60px] text-center transition-colors">
+                        <td className="w-[8%] px-2 h-[48px] text-center transition-colors">
                           {row.date ? new Date(row.date).toLocaleDateString("en-GB") : "—"}
                         </td>
-                        <td className="w-[8%] px-5 h-[60px] text-center transition-colors">
+                        <td className="w-[6%] px-2 h-[48px] text-center transition-colors">
                           {row.year ? highlightText(String(row.year), debouncedFilters.year) : "—"}
                         </td>
-                        <td className="w-[12%] px-5 h-[60px] text-center transition-colors">
+                        <td className="w-[11%] px-2 h-[48px] text-center transition-colors">
                           <div className="truncate w-full block" title={row.countryName || text("Global")}>{highlightText(row.countryName || text("Global"), debouncedFilters.country)}</div>
                         </td>
-                        <td className="w-[12%] px-5 h-[60px] text-center transition-colors">
+                        <td className="w-[11%] px-2 h-[48px] text-center transition-colors">
                           <div className="truncate w-full block" title={row.locations}>{highlightText(row.locations || "—", debouncedFilters.locations)}</div>
                         </td>
-                        <td className="w-[12%] px-5 h-[60px] text-center transition-colors">
+                        <td className="w-[11%] px-2 h-[48px] text-center transition-colors">
                           <div className="truncate w-full block" title={row.type}>{highlightText(row.type || "—", debouncedFilters.type)}</div>
                         </td>
-                        <td className="w-[90px] px-5 h-[60px] text-center transition-colors">
+                        <td className="w-[90px] px-2 h-[48px] text-center transition-colors">
                           <input
                             type="checkbox"
                             checked={!!row.isDeleted}
@@ -382,7 +382,7 @@ export default function HolidaysPage() {
                             className="w-4 h-4 accent-pink-500 pointer-events-none"
                           />
                         </td>
-                        <td className="w-[120px] px-5 rounded-r-2xl h-[60px] text-center transition-colors">
+                        <td className="w-[120px] px-2 rounded-r-2xl h-[48px] text-center transition-colors">
                           <ActionsMenu
                             onDisable={canDisable && !row.isDeleted ? () => setPendingAction({ type: "disable", row }) : undefined}
                             onEnable={canEnable && row.isDeleted ? () => setPendingAction({ type: "enable", row }) : undefined}

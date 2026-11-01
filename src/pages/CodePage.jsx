@@ -70,9 +70,9 @@ const highlightText = (text, query) => {
 // ── Skeleton row ──────────────────────────────────────────────────
 function SkeletonRow() {
   return (
-    <tr className="border-b border-slate-100 dark:border-slate-800/60 h-[60px] text-slate-900 dark:text-white">
+    <tr className="border-b border-slate-100 dark:border-slate-800/60 h-[48px] text-slate-900 dark:text-white">
       {[15, 30, 10, 10, 15, 10].map((w, i) => (
-        <td key={i} className="px-5 h-[60px]">
+        <td key={i} className="px-5 h-[48px]">
           <div
             className="h-3 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse"
             style={{ width: `${w}%`, minWidth: 20 }}
@@ -133,24 +133,24 @@ function SortableRow({ row, index, onEdit, onDisable, onEnable, onAuditLog, sear
       style={style}
       {...(!dragDisabled ? attributes : {})}
       {...(!dragDisabled ? listeners : {})}
-      className={`group cursor-default transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"} ${isDragging ? "shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/40 z-50 relative pointer-events-none" : ""}`}
+      className={`group cursor-default transition-all duration-200 h-[48px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"} ${isDragging ? "shadow-2xl shadow-indigo-200 dark:shadow-indigo-900/40 z-50 relative pointer-events-none" : ""}`}
     >
-      <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
+      <td className="px-5 rounded-l-2xl h-[48px] text-center transition-colors font-bold text-[12px]">
         {highlightText(row.lookupCode, advancedFilters.lookupCode || searchTerm)}
       </td>
-      <td className="px-5 h-[60px] text-left transition-colors">
+      <td className="px-5 h-[48px] text-center transition-colors">
         {highlightText(row.description || "—", advancedFilters.description || searchTerm)}
       </td>
-      <td className="px-5 h-[60px] text-center transition-colors">
+      <td className="px-5 h-[48px] text-center transition-colors">
         {highlightText(String(row.sequence ?? "—"), advancedFilters.sequence || searchTerm)}
       </td>
-      <td className="px-5 h-[60px] text-center transition-colors">
+      <td className="px-5 h-[48px] text-center transition-colors">
         {highlightText(row.isSystemIndicator ? localize("Yes") : localize("No"), searchTerm)}
       </td>
-      <td className="px-5 h-[60px] text-center transition-colors">
+      <td className="px-5 h-[48px] text-center transition-colors">
         {highlightText(isRowActive ? localize("IsActive") : localize("IsDisabled"), searchTerm)}
       </td>
-      <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">
+      <td className="px-5 rounded-r-2xl h-[48px] text-center transition-colors">
         {!row.isSystemIndicator && (
           <ActionsMenu
             onAuditLog={onAuditLog ? () => onAuditLog(row) : undefined}
@@ -590,17 +590,17 @@ export default function CodePage() {
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar">
               <table className="w-full min-w-[720px] table-fixed text-left border-separate border-spacing-y-1 text-[11px]">
                 <colgroup>
-                  <col style={{ width: '16.66%' }} />
-                  <col style={{ width: '16.66%' }} />
-                  <col style={{ width: '16.66%' }} />
-                  <col style={{ width: '16.66%' }} />
-                  <col style={{ width: '16.66%' }} />
-                  <col style={{ width: '16.66%' }} />
+                  <col style={{ width: '12%' }} />
+                  <col style={{ width: '19%' }} />
+                  <col style={{ width: '19%' }} />
+                  <col style={{ width: '19%' }} />
+                  <col style={{ width: '19%' }} />
+                  <col style={{ width: '12%' }} />
                 </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px] text-slate-500 dark:text-slate-400">
-                    <SortableHeader label={localize("LookupCode")} column="lookupCode" sortConfig={sortConfig} onSort={handleSort} />
-                    <SortableHeader label={localize("Description")} column="description" sortConfig={sortConfig} onSort={handleSort} />
+                    <SortableHeader label={localize("LookupCode")} column="lookupCode" sortConfig={sortConfig} onSort={handleSort} align="center" />
+                    <SortableHeader label={localize("Description")} column="description" sortConfig={sortConfig} onSort={handleSort} align="center" />
                     <SortableHeader label={localize("Sequence")} column="sequence" sortConfig={sortConfig} onSort={handleSort} align="center" />
                     <SortableHeader label={localize("IsSystemIndicator")} column="isSystemIndicator" sortConfig={sortConfig} onSort={handleSort} align="center" />
                     <SortableHeader label={localize("Status")} column="isActive" sortConfig={sortConfig} onSort={handleSort} align="center" />

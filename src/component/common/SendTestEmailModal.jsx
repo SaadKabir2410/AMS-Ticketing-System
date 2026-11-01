@@ -103,7 +103,7 @@ export default function SendTestEmailModal({
     <Dialog
       open={open}
       onClose={(event, reason) => {
-        if (reason === "backdropClick") return;
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
         onClose();
       }}
       maxWidth="xs"
@@ -111,7 +111,7 @@ export default function SendTestEmailModal({
       slotProps={{
         backdrop: {
           sx: {
-            backdropFilter: "blur(4px)",
+            backdropFilter: "none",
             backgroundColor: isDark ? "rgba(0, 0, 0, 0.4)" : "rgba(0, 0, 0, 0.2)",
           },
         },

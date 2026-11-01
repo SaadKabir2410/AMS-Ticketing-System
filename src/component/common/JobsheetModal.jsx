@@ -1622,7 +1622,6 @@ function getStyles(isDark) {
     confirmOverlay: {
       position: "fixed", inset: 0,
       backgroundColor: "rgba(15, 23, 42, 0.6)",
-      backdropFilter: "blur(4px)",
       display: "flex", alignItems: "center", justifyContent: "center",
       zIndex: 2000,
     },

@@ -164,6 +164,9 @@ const toApiDate = (value) => (value ? `${value}T23:59:59` : undefined);
 
 const getUserDisplayName = (user) => user?.name || user?.userName || "";
 
+// Pseudo option at the top of a user filter that selects every user at once.
+const ALL_USERS_OPTION_ID = "__all_users__";
+
 const userHasRole = (user, requiredRole) => {
   const roles = user?.roles ?? user?.role ?? [];
   const normalizedRoles = Array.isArray(roles) ? roles : String(roles).split(",");
@@ -526,6 +529,7 @@ export default function JobsheetsPage() {
       document.text(localize("Jobsheets"), 40, 35);
 
       autoTable(document, {
+        theme: "grid",
         startY: 50,
         head: [
           [
@@ -537,17 +541,18 @@ export default function JobsheetsPage() {
         body: reportDetails.map((row) =>
           ALL_REPORT_COLUMNS.map((column) => getRowValue(row, column.field) ?? ""),
         ),
-        styles: { fontSize: 7, cellPadding: 3, overflow: "linebreak", valign: "middle" },
-        headStyles: { fillColor: [253, 242, 248], textColor: [190, 24, 93], fontStyle: "bold", halign: "center" },
+        styles: { lineWidth: 0.5, lineColor: [203, 213, 225], fontSize: 7, cellPadding: 3, overflow: "linebreak", valign: "middle" },
+        headStyles: { lineWidth: 0.5, lineColor: [203, 213, 225], fillColor: [253, 242, 248], textColor: [190, 24, 93], fontStyle: "bold", halign: "center" },
         alternateRowStyles: { fillColor: [248, 250, 252] },
       });
 
       autoTable(document, {
+        theme: "grid",
         startY: document.lastAutoTable.finalY + 12,
         head: [reportTotals.map((item) => item.label)],
         body: [reportTotals.map((item) => item.value ?? "")],
-        styles: { fontSize: 8, cellPadding: 4, halign: "center" },
-        headStyles: { fillColor: [253, 242, 248], textColor: [190, 24, 93], fontStyle: "bold" },
+        styles: { lineWidth: 0.5, lineColor: [203, 213, 225], fontSize: 8, cellPadding: 4, halign: "center" },
+        headStyles: { lineWidth: 0.5, lineColor: [203, 213, 225], fillColor: [253, 242, 248], textColor: [190, 24, 93], fontStyle: "bold" },
       });
 
       document.setFontSize(9);
@@ -637,24 +642,46 @@ export default function JobsheetsPage() {
   const filterInputClass = "w-full px-3 pr-8 text-xs font-semibold";
   const clearDateButtonClass = "absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors";
   const gridHeaderClass = "border-b border-r last:border-r-0 border-pink-100 dark:border-slate-700 bg-pink-50 dark:bg-slate-800 px-3 py-3 text-[10px] font-black uppercase tracking-wide text-pink-700 dark:text-pink-200 text-center align-middle leading-tight";
-  const gridCellClass = "border-b border-r last:border-r-0 border-slate-100 dark:border-slate-800 px-3 py-2.5 text-[12px] font-semibold text-slate-800 dark:text-slate-100 text-center align-middle break-words";
+  const gridCellClass = "border-b border-r last:border-r-0 border-slate-100 dark:border-slate-800 px-3 py-1.5 text-[12px] font-semibold text-slate-800 dark:text-slate-100 text-center align-middle break-words";
   const pagerButtonClass = "w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 disabled:hover:bg-transparent transition-all";
 
-  const renderUserFilter = (labelKey, options, value, onChange) => (
+  const renderUserFilter = (labelKey, options, value, onChange, { withAllOption = false } = {}) => {
+    const allOption = { id: ALL_USERS_OPTION_ID, name: localize("AllUsers") || "All Users" };
+    const allSelected = withAllOption && options.length > 0 && options.every((option) => value.includes(option.id));
+    const selectedOptions = allSelected ? [allOption] : options.filter((option) => value.includes(option.id));
+
+    const handleChange = (event, selected, reason, details) => {
+      if (!withAllOption) {
+        onChange(selected.map((option) => option.id));
+        return;
+      }
+      const clicked = details?.option;
+      if (clicked?.id === ALL_USERS_OPTION_ID) {
+        onChange(allSelected ? [] : options.map((option) => option.id));
+      } else if (allSelected && clicked && reason === "selectOption") {
+        // Every user shows as ticked while "All Users" is on, so a click unticks that user.
+        onChange(options.filter((option) => option.id !== clicked.id).map((option) => option.id));
+      } else {
+        onChange(selected.filter((option) => option.id !== ALL_USERS_OPTION_ID).map((option) => option.id));
+      }
+    };
+
+    return (
     <div className="flex flex-col gap-1 w-full min-w-0">
       <label className={filterLabelClass}>{localize(labelKey)}</label>
       <Autocomplete
         size="small"
         multiple
         limitTags={1}
-        options={options}
+        options={withAllOption && options.length > 0 ? [allOption, ...options] : options}
         disableCloseOnSelect
         componentsProps={multiSelectPaperProps}
         getOptionLabel={getUserDisplayName}
         isOptionEqualToValue={(option, selected) => option.id === selected.id}
-        value={options.filter((option) => value.includes(option.id))}
-        onChange={(event, selected) => onChange(selected.map((option) => option.id))}
-        renderOption={renderCheckboxOption}
+        value={selectedOptions}
+        onChange={handleChange}
+        renderOption={(props, option, state) =>
+          renderCheckboxOption(props, option, { ...state, selected: state.selected || allSelected })}
         renderInput={(params) => (
           <TextField
             {...params}
@@ -667,7 +694,8 @@ export default function JobsheetsPage() {
         sx={{ width: "100%", color: "inherit" }}
       />
     </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-full w-full bg-[#f8fafc] dark:bg-slate-950 p-1 pb-[10px] flex flex-col relative overflow-visible font-[Arial] text-slate-900 dark:text-white">
@@ -738,7 +766,7 @@ export default function JobsheetsPage() {
             </div>
 
             {isAdmin &&
-              renderUserFilter("User", jobsheetUsers, filters.users, (users) => updateFilters({ users }))}
+              renderUserFilter("User", jobsheetUsers, filters.users, (users) => updateFilters({ users }), { withAllOption: true })}
 
             <div className="flex flex-col gap-1 w-full min-w-0">
               <label className={filterLabelClass}>{localize("DateFrom")}</label>

@@ -181,9 +181,8 @@ export default function CodeDetailsModal({
     <Dialog
       open={open}
       onClose={(event, reason) => {
-        if (reason !== "backdropClick") {
-          onClose();
-        }
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        onClose();
       }}
       maxWidth="xs" // COMPACT VERTICAL MODAL
       fullWidth

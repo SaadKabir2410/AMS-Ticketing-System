@@ -877,7 +877,7 @@ export default function AMSTicketsPage() {
   // the backend does not define yet.
   const localizeOr = (key, fallback) => {
     const value = localize(key);
-    return value === key ? fallback : value;
+    return value && value !== key ? value : fallback;
   };
 
   // --- Table Configuration ---
@@ -1050,7 +1050,7 @@ export default function AMSTicketsPage() {
           {canCreate && (
             <button
               onClick={() => { setActionItem(null); setActionType("create"); }}
-              className="app-primary-button inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm rounded-xl shrink-0"
+              className="app-primary-button hidden sm:inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm rounded-xl shrink-0"
             >
               <Plus size={18} />
               {localize("NewAMSTicket")}
@@ -1062,7 +1062,7 @@ export default function AMSTicketsPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
           {[
             { id: "open", label: statusLabel(1), value: globalStats.open, icon: Ticket, tone: "bg-pink-50 text-pink-500 dark:bg-pink-500/10" },
-            { id: "nonVerified", label: localizeOr("NonTicketVerification", "Non-Ticket Verification"), value: globalStats.nonVerified, icon: ShieldAlert, tone: "bg-rose-50 text-rose-500 dark:bg-rose-500/10" },
+            { id: "nonVerified", label: localizeOr("NonVerifiedTicket", "Non-Verified Ticket"), value: globalStats.nonVerified, icon: ShieldAlert, tone: "bg-rose-50 text-rose-500 dark:bg-rose-500/10" },
             { id: "closed", label: statusLabel(2), value: globalStats.closed, icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-500 dark:bg-emerald-500/10" },
             { id: "voided", label: localize("VoidAMSTicketButtonText"), value: globalStats.voided, icon: X, tone: "bg-slate-100 text-slate-500 dark:bg-slate-500/10" },
             { id: "overdue", label: localize("Overdue"), value: globalStats.lateClosures, icon: AlertCircle, tone: "bg-rose-50 text-rose-500 dark:bg-rose-500/10" },
@@ -1081,6 +1081,17 @@ export default function AMSTicketsPage() {
             </div>
           ))}
         </div>
+
+        {/* On mobile the create button sits below the count cards. */}
+        {canCreate && (
+          <button
+            onClick={() => { setActionItem(null); setActionType("create"); }}
+            className="app-primary-button sm:hidden inline-flex items-center justify-center gap-2 w-full px-5 py-2.5 text-sm rounded-xl"
+          >
+            <Plus size={18} />
+            {localize("NewAMSTicket")}
+          </button>
+        )}
 
         {/* ── Search Bar ── */}
         <div className="flex flex-col gap-2">
@@ -1380,6 +1391,12 @@ export default function AMSTicketsPage() {
                         </td>
                         <td className="px-3 py-1 align-middle">
                           {renderDateCell(row.cmsTicketClosedOn)}
+                          {row.cmsTicketClosedOn && row.ticketClosedByName && (
+                            <span className="block text-[12px] text-slate-500 dark:text-slate-400 truncate" title={row.ticketClosedByName}>
+                              {localizeOr("By", "By")}{" "}
+                              <HighlightText text={row.ticketClosedByName} terms={[generalSearch, filterTicketClosedBy]} />
+                            </span>
+                          )}
                         </td>
                         <td className="px-3 py-1 align-middle text-[13px] text-slate-800 dark:text-slate-100 whitespace-nowrap">
                           {formatDurationHours(row.activityTotalDuration)}

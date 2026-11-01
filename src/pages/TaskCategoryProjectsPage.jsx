@@ -165,15 +165,15 @@ export default function TaskCategoryProjectsPage() {
               </span>
             ))}
           </nav>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h1 className="text-4xl font-black tracking-tighter">
               {localize("TaskCategoryProjects")}
             </h1>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 w-full sm:w-auto">
               {canCreate && (
                 <button
                   onClick={handleNew}
-                  className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs"
+                  className="app-primary-button inline-flex items-center justify-center w-full sm:w-auto px-5 py-2.5 text-xs"
                 >
                   <Plus size={16} className="mr-2" strokeWidth={3} />
                   {localize("NewTaskCategoryProject")}
@@ -193,18 +193,13 @@ export default function TaskCategoryProjectsPage() {
                   value={selectedProjectId}
                   onChange={(e) => setSelectedProjectId(e.target.value)}
                   disabled={loadingProjects}
-                  className="w-full h-10 appearance-none bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold rounded-lg pl-3 pr-8 outline-none transition-all cursor-pointer shadow-sm text-slate-900 dark:text-white focus:border-pink-500"
+                  className="w-full h-10 !rounded-lg !text-[11px] !font-semibold"
                 >
                   <option value="">{localize("SelectBoxEmptyValueText")}</option>
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
                 </AppSelect>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 dark:text-slate-500">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </div>
               </div>
             </div>
             <button
@@ -245,14 +240,14 @@ export default function TaskCategoryProjectsPage() {
                     return (
                       <tr
                         key={row.projectId || idx}
-                        className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
+                        className={`group transition-all duration-200 h-[48px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
                       >
-                        <td className="px-5 pl-10 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
+                        <td className="px-5 pl-10 rounded-l-2xl h-[48px] text-left transition-colors font-bold text-[12px]">
                           <div className="flex items-center gap-3 text-slate-700 dark:text-slate-200">
                             {row.projectDescription || row.description || "—"}
                           </div>
                         </td>
-                        <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">
+                        <td className="px-5 rounded-r-2xl h-[48px] text-center transition-colors">
                           <ActionsMenu
                             onEdit={canEdit ? () => handleEdit(row) : undefined}
                             onDelete={canDelete ? () => {

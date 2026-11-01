@@ -187,7 +187,7 @@ export default function SiteModal({
     <Dialog
       open={open}
       onClose={(event, reason) => {
-        if (reason === "backdropClick") return;
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
         onClose?.();
       }}
       disableEscapeKeyDown

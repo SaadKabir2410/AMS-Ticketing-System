@@ -330,6 +330,7 @@ export default function TicketCommissionReportPage() {
       generatedLines.forEach((line, index) => document.text(line, 40, 54 + index * 14));
 
       autoTable(document, {
+        theme: "grid",
         startY: 54 + generatedLines.length * 14,
         head: [visibleColumns.map(getColumnLabel)],
         body: reportDetails.map((row) =>
@@ -342,10 +343,10 @@ export default function TicketCommissionReportPage() {
           })),
         ],
         showFoot: "lastPage",
-        styles: { fontSize: 8, cellPadding: 4, overflow: "linebreak", halign: "center", valign: "middle" },
+        styles: { lineWidth: 0.5, lineColor: [203, 213, 225], fontSize: 8, cellPadding: 4, overflow: "linebreak", halign: "center", valign: "middle" },
         columnStyles: { 0: { halign: "left" } },
-        headStyles: { fillColor: [253, 242, 248], textColor: [190, 24, 93], fontStyle: "bold" },
-        footStyles: { fillColor: [253, 242, 248], textColor: [15, 23, 42], fontStyle: "bold", halign: "left" },
+        headStyles: { lineWidth: 0.5, lineColor: [203, 213, 225], fillColor: [253, 242, 248], textColor: [190, 24, 93], fontStyle: "bold" },
+        footStyles: { lineWidth: 0.5, lineColor: [203, 213, 225], fillColor: [253, 242, 248], textColor: [15, 23, 42], fontStyle: "bold", halign: "left" },
         alternateRowStyles: { fillColor: [248, 250, 252] },
       });
 

@@ -470,13 +470,13 @@ export default function Dashboard() {
                 <div
                   className={`flex min-h-12 cursor-text flex-wrap items-center gap-2 rounded-xl border bg-white px-2.5 py-1.5 transition dark:bg-slate-800 ${
                     isUserPickerOpen
-                      ? "border-blue-500 ring-4 ring-blue-100 dark:ring-blue-500/15"
+                      ? "border-pink-500 ring-4 ring-pink-100 dark:ring-pink-500/15"
                       : "border-slate-300 dark:border-slate-700"
                   }`}
                   onClick={() => setIsUserPickerOpen(true)}
                 >
                   {allUsersSelected ? (
-                    <span className="flex h-8 items-center gap-1.5 rounded-lg bg-blue-700 px-3 text-xs font-semibold text-white">
+                    <span className="flex h-8 items-center gap-1.5 rounded-lg bg-pink-500 px-3 text-xs font-semibold text-white">
                       {allUsersLabel}
                       <button
                         type="button"
@@ -493,7 +493,7 @@ export default function Dashboard() {
                   ) : selectedUsers.map((selectedUser) => (
                     <span
                       key={selectedUser.id}
-                      className="flex h-8 items-center gap-1.5 rounded-lg bg-blue-700 px-3 text-xs font-semibold text-white"
+                      className="flex h-8 items-center gap-1.5 rounded-lg bg-pink-500 px-3 text-xs font-semibold text-white"
                     >
                       {getUserLabel(selectedUser)}
                       <button
@@ -531,7 +531,7 @@ export default function Dashboard() {
                       <label
                         className={`flex cursor-pointer items-center gap-3 border-b border-slate-200 px-4 py-2.5 text-sm font-semibold transition dark:border-slate-700 ${
                           allUsersSelected
-                            ? "bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"
+                            ? "bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-300"
                             : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/70"
                         }`}
                       >
@@ -591,7 +591,7 @@ export default function Dashboard() {
                 type="button"
                 onClick={clearSelectedUsers}
                 disabled={selectedUserIds.length === 0}
-                className="inline-flex h-11 items-center justify-center gap-2 self-end rounded-xl border border-indigo-500 px-5 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-indigo-500/10 lg:self-center"
+                className="inline-flex h-11 items-center justify-center gap-2 self-end rounded-xl border border-pink-500 px-5 text-sm font-semibold text-pink-600 transition hover:bg-pink-50 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-pink-500/10 lg:self-center"
               >
                 <X className="h-4 w-4" />
                 {localize("Clear")}

@@ -944,3 +944,63 @@ select:not([multiple]) option {
 .dark .numInputWrapper span.arrowDown::after {
   border-top-color: #d1d5db !important;
 }
+
+/* ─── Mobile: compact, app-like buttons and controls ─────────────── */
+@media (max-width: 639px) {
+  :root {
+    --app-control-height: 38px;
+  }
+
+  .app-page-header h1 {
+    font-size: 1.25rem !important;
+    line-height: 1.75rem !important;
+  }
+
+  /* Header action buttons wrap instead of overflowing the screen. */
+  .app-page-header .flex:has(> button) {
+    flex-wrap: wrap;
+    gap: 0.5rem !important;
+  }
+
+  /* Text buttons (primary, outlined and MUI) share one compact size. */
+  button.app-primary-button,
+  button[class*="py-2.5"],
+  button[class*="py-3"],
+  button[class*="px-5"],
+  button[class*="px-6"],
+  button[class*="h-10"],
+  button[class*="h-11"],
+  button[class*="h-12"],
+  .btn-flagship,
+  .btn-flagship-solid,
+  .MuiButton-root {
+    &:not([class*="rounded-full"]):not([role="switch"]):not([role="tab"]) {
+      height: 34px !important;
+      min-height: 34px !important;
+      padding: 0 12px !important;
+      gap: 6px !important;
+      font-size: 12px !important;
+      line-height: 1rem !important;
+      letter-spacing: 0 !important;
+      border-radius: 10px !important;
+      white-space: nowrap;
+    }
+
+    & svg:not(.MuiCircularProgress-svg) {
+      width: 15px;
+      height: 15px;
+    }
+  }
+
+  /* Dialogs keep a small edge gap so they feel like mobile sheets. */
+  .MuiDialog-paper:not(.MuiDialog-paperFullScreen) {
+    margin: 12px !important;
+    width: calc(100% - 24px) !important;
+    max-height: calc(100% - 24px) !important;
+  }
+
+  .MuiDialogActions-root {
+    padding: 10px 16px !important;
+    gap: 8px;
+  }
+}

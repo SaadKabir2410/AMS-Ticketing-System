@@ -4,9 +4,8 @@ import { useTheme } from "../context/ThemeContext";
 import { rolesApi } from "../services/api/roles";
 import { useToast } from "../component/common/ToastContext";
 import { usePermissionContext } from "../context/PermissionContext";
-import PremiumErrorAlert from "../component/common/PremiumErrorAlert";
 import SearchTextHighlight from "../component/common/SearchTextHighlight";
-import { X, ShieldCheck, ChevronDown, ChevronRight, Search, RefreshCw, ArrowLeft, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react";
+import { X, AlertCircle, ShieldCheck, ChevronDown, ChevronRight, Search, RefreshCw, ChevronLeft, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react";
 import IconButton from "@mui/material/IconButton";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -38,7 +37,7 @@ const rowVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.2 } },
 };
 
-const ROW_HEIGHT = "h-[60px]";
+const ROW_HEIGHT = "h-[48px]";
 
 const getPermissionDisplayName = (permission) => permission.displayName;
 
@@ -110,6 +109,130 @@ const PermissionTree = ({
   );
 };
 
+// Create/edit role dialog. Defined outside RolesPage so a page re-render
+// (for example while saving) does not remount it and wipe the typed values.
+function RoleModal({ open, onClose, item, onSubmit, loading, submitError, onErrorClose, text }) {
+  if (!open) return null;
+
+  const handleSubmit = (event) => {
+    event?.preventDefault();
+    const inputName = document.getElementById("role-name-input").value;
+    const isDefault = document.getElementById("role-isdefault-input").checked;
+    const isPublic = document.getElementById("role-ispublic-input").checked;
+
+    const payload = {
+      name: inputName,
+      isDefault,
+      isPublic,
+    };
+
+    if (item) {
+      payload.id = item.id;
+      payload.concurrencyStamp = item.concurrencyStamp;
+    }
+
+    onSubmit(payload);
+  };
+
+  const optionCardClass =
+    "flex items-center justify-between gap-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-pink-300 dark:hover:bg-white/5 cursor-pointer transition-colors group";
+  const checkboxClass =
+    "w-4 h-4 rounded cursor-pointer accent-pink-500";
+
+  return (
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-slate-950/40"
+      />
+      <form
+        onSubmit={handleSubmit}
+        noValidate
+        className="relative bg-white dark:bg-slate-900 rounded-2xl px-5 py-4 w-full max-w-[360px] shadow-2xl border border-slate-100 dark:border-slate-700"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">
+            {item ? text("Edit", "Edit") : text("NewRole", "New Role")}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1 text-slate-400 hover:text-pink-500 rounded-lg transition-colors"
+            aria-label={text("Close", "Close")}
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label htmlFor="role-name-input" className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
+              {text("RoleName", "Role Name")} <span className="required-asterisk">*</span>
+            </label>
+            <input
+              id="role-name-input"
+              type="text"
+              autoFocus
+              defaultValue={item?.name || ""}
+              onChange={() => submitError && onErrorClose()}
+              className={`w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border rounded-lg outline-none focus:ring-2 text-slate-800 dark:text-slate-200 text-sm transition-colors ${
+                submitError
+                  ? "border-red-400 focus:border-red-500 focus:ring-red-500/15"
+                  : "border-slate-200 dark:border-slate-700 focus:border-pink-500 focus:ring-pink-500/15"
+              }`}
+            />
+            {submitError && (
+              <p role="alert" className="mt-1.5 flex items-start gap-1.5 text-xs font-medium text-red-600 dark:text-red-400">
+                <AlertCircle size={14} className="mt-px shrink-0" />
+                <span>{submitError}</span>
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <label className={optionCardClass}>
+              <span className="text-xs font-medium text-slate-700 dark:text-slate-300 group-hover:text-pink-600 transition-colors">
+                {text("DisplayName:IsDefault", "Default")}
+              </span>
+              <input
+                type="checkbox"
+                id="role-isdefault-input"
+                defaultChecked={item?.isDefault || false}
+                className={checkboxClass}
+              />
+            </label>
+            <label className={optionCardClass}>
+              <span className="text-xs font-medium text-slate-700 dark:text-slate-300 group-hover:text-pink-600 transition-colors">
+                {text("DisplayName:IsPublic", "Public")}
+              </span>
+              <input
+                type="checkbox"
+                id="role-ispublic-input"
+                defaultChecked={item?.isPublic || false}
+                className={checkboxClass}
+              />
+            </label>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 h-9 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+          >
+            {text("Cancel", "Cancel")}
+          </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="app-primary-button flex-1 h-9 text-sm !rounded-lg"
+          >
+            {loading ? text("SavingWithThreeDot", "Saving...") : text("Save", "Save")}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function RolesPage() {
   const { toast } = useToast();
   const { refetchPermissions } = usePermissionContext();
@@ -123,6 +246,10 @@ export default function RolesPage() {
     getCachedApplicationConfig,
   );
   const localize = (key) => getLocalizationValue(applicationConfig, key);
+  const text = (key, fallback) => {
+    const value = localize(key);
+    return value && value !== key ? value : fallback;
+  };
 
   useEffect(() => {
     let isCurrent = true;
@@ -146,6 +273,7 @@ export default function RolesPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   // Modals & Action items State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -153,6 +281,7 @@ export default function RolesPage() {
   const [submitError, setSubmitError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [deleteRole, setDeleteRole] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Permissions Dialog State
   const [permissionRole, setPermissionRole] = useState(null);
@@ -169,14 +298,14 @@ export default function RolesPage() {
       const res = await rolesApi.getAll({
         page,
         perPage: pageSize,
-        search: search || undefined,
+        search: debouncedSearch || undefined,
       });
       if (res && res.items) {
         setRoles(res.items);
         setTotalCount(res.totalCount || res.items.length);
       }
     } catch (err) {
-      toast(`Error loading roles: ${err.message || "Network error"}`, "error");
+      toast(err.message || localize("DefaultErrorMessage"), "error");
     } finally {
       setLoading(false);
     }
@@ -184,13 +313,11 @@ export default function RolesPage() {
 
   useEffect(() => {
     fetchRoles();
-  }, [page, pageSize]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, debouncedSearch]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setPage(1);
-      fetchRoles();
-    }, 400);
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 400);
     return () => clearTimeout(timer);
   }, [search]);
 
@@ -219,136 +346,19 @@ export default function RolesPage() {
     try {
       if (activeItem) {
         await rolesApi.update(activeItem.id, payload);
-        toast(`${payload.name} role updated successfully`);
+        toast(text("SavedSuccessfully", "Saved successfully"));
       } else {
         await rolesApi.create(payload);
-        toast(`${payload.name} role created successfully`);
+        toast(text("SavedSuccessfully", "Saved successfully"));
       }
       setIsModalOpen(false);
       setActiveItem(null);
       fetchRoles();
     } catch (err) {
-      setSubmitError(err.response?.data?.error?.message || err.message || "Operation failed.");
+      setSubmitError(err.response?.data?.error?.message || err.message || localize("DefaultErrorMessage"));
     } finally {
       setActionLoading(false);
     }
-  };
-
-  const RoleModal = ({
-    open,
-    onClose,
-    item,
-    onSubmit,
-    loading,
-    submitError,
-  }) => {
-    if (!open) return null;
-
-    const handleSubmit = () => {
-      const inputName = document.getElementById("role-name-input").value;
-      const isDefault = document.getElementById("role-isdefault-input").checked;
-      const isPublic = document.getElementById("role-ispublic-input").checked;
-
-      const payload = {
-        name: inputName,
-        isDefault,
-        isPublic,
-      };
-
-      if (item) {
-        payload.id = item.id;
-        payload.concurrencyStamp = item.concurrencyStamp;
-      }
-
-      onSubmit(payload);
-    };
-
-    return (
-      <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
-        <div
-          className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
-          onClick={onClose}
-        />
-        <div className="relative bg-white dark:bg-slate-900 rounded-[24px] p-6 w-full max-w-[360px] shadow-2xl shadow-pink-500/10 border border-slate-100 dark:border-slate-700 transition-all duration-300">
-          <h2 className="text-base dark:text-slate-200 mb-4 text-slate-800">
-            {item ? "Edit Role" : "Create Role"}
-          </h2>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-[10px] text-slate-500 mb-1.5 ml-1">
-                Role Name
-              </label>
-              <input
-                id="role-name-input"
-                type="text"
-                defaultValue={item?.name || ""}
-                className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:ring-2 focus:ring-pink-500/20 dark:text-slate-200 text-sm transition-all duration-200"
-                placeholder="Enter role name..."
-              />
-            </div>
-
-            {submitError && (
-              <PremiumErrorAlert
-                open={!!submitError}
-                message={submitError}
-                onClose={() => { }}
-              />
-            )}
-
-            {/* Boolean Checks */}
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-1 px-3 py-2 border-2 border-slate-100 dark:border-slate-700 rounded-xl hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 dark:hover:bg-white/5 cursor-pointer transition-all duration-200 group">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-slate-700 dark:text-slate-400 group-hover:text-[#ec4899] transition-colors">
-                    Default
-                  </span>
-                  <input
-                    type="checkbox"
-                    id="role-isdefault-input"
-                    defaultChecked={item?.isDefault || false}
-                    className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500"
-                  />
-                </div>
-                <span className="text-[8px] text-slate-400">
-                  Assign new users
-                </span>
-              </label>
-              <label className="flex flex-col gap-1 px-3 py-2 border-2 border-slate-100 dark:border-slate-700 rounded-xl hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 dark:hover:bg-white/5 cursor-pointer transition-all duration-200 group">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-slate-700 dark:text-slate-400 group-hover:text-[#ec4899] transition-colors">
-                    Public
-                  </span>
-                  <input
-                    type="checkbox"
-                    id="role-ispublic-input"
-                    defaultChecked={item?.isPublic || false}
-                    className="w-4 h-4 rounded ring-offset-0 focus:ring-0 cursor-pointer accent-pink-500 bg-slate-100 dark:bg-slate-950 border-slate-300 dark:border-slate-600 text-pink-500"
-                  />
-                </div>
-                <span className="text-[8px] text-slate-400">
-                  Visible to everyone
-                </span>
-              </label>
-            </div>
-          </div>
-          <div className="flex gap-2.5 mt-5">
-            <button
-              onClick={onClose}
-              className="flex-1 btn-flagship !h-[38px] !text-[11px] !border-slate-200 dark:border-slate-700! !text-slate-500 hover:bg-slate-50! dark:hover:bg-white/5!"
-            >
-              Cancel
-            </button>
-            <button
-              disabled={loading}
-              onClick={handleSubmit}
-              className="flex-1 btn-flagship !h-[38px] !text-[11px]"
-            >
-              {loading ? "Wait..." : item ? "Save" : "Create"}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   const handlePermissions = (role) => {
@@ -470,15 +480,19 @@ export default function RolesPage() {
   };
 
   const confirmDelete = () => {
-    if (!deleteRole) return;
+    if (!deleteRole || deleting) return;
+    setDeleting(true);
     rolesApi
       .delete(deleteRole.id)
       .then(() => {
-        toast(`${deleteRole.name} role deleted successfully`);
+        toast(text("SuccessfullyDeleted", "Successfully deleted"));
         fetchRoles();
       })
-      .catch((err) => toast(`Error: ${err.message}`, "error"))
-      .finally(() => setDeleteRole(null));
+      .catch((err) => toast(err.message || localize("DefaultErrorMessage"), "error"))
+      .finally(() => {
+        setDeleting(false);
+        setDeleteRole(null);
+      });
   };
 
   return (
@@ -491,56 +505,46 @@ export default function RolesPage() {
       <div className="flex-1 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-visible min-h-0">
 
         {/* Header Section */}
-        <div className="app-page-header flex flex-col gap-6 py-8 px-4 md:px-8 border-b border-slate-100 dark:border-slate-800/50 transition-colors">
-          <nav className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1 flex-wrap">
-            <span>Home</span>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span>Administration</span>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span>Identity Management</span>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
-            <span className="text-pink-500">Roles</span>
-          </nav>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => window.history.back()}
-                className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center text-slate-600 hover:text-pink-600 transition-all border border-slate-200/60 dark:border-slate-700/50 shadow-sm"
-                title="Go Back"
-              >
-                <ArrowLeft size={20} strokeWidth={2.5} />
-              </button>
-              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
-                Roles
-              </h1>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleCreateOpen}
-                className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs"
-              >
-                New Role
-              </button>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 px-4 md:px-6 pt-5 pb-4 border-b border-slate-100 dark:border-slate-800/50">
+          <div className="flex flex-col">
+            <nav className="flex items-center gap-1.5 text-[13px] font-medium text-slate-500 dark:text-slate-400 mb-1 flex-wrap">
+              <span>{text("Home", "Home")}</span>
+              <span className="text-slate-400">/</span>
+              <span>{text("Menu:Administration", "Administration")}</span>
+              <span className="text-slate-400">/</span>
+              <span>{text("Menu:IdentityManagement", "Identity Management")}</span>
+              <span className="text-slate-400">/</span>
+              <span className="text-pink-500">{text("Roles", "Roles")}</span>
+            </nav>
+            <h1 className="text-[28px] leading-tight font-bold text-slate-900 dark:text-white">
+              {text("Roles", "Roles")}
+            </h1>
           </div>
+          <button
+            onClick={handleCreateOpen}
+            className="app-primary-button inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm rounded-xl shrink-0"
+          >
+            {text("NewRole", "New Role")}
+          </button>
         </div>
 
         {/* Toolbar Section */}
-        <div className="relative z-20 px-4 py-4 sm:px-6 sm:py-6 flex items-center justify-between bg-transparent flex-wrap gap-4 sm:gap-6">
+        <div className="relative z-20 px-4 py-3 sm:px-6 flex items-center justify-between bg-transparent flex-wrap gap-4 sm:gap-6">
           <div className="flex items-center gap-4 sm:gap-6 flex-1 min-w-0">
             {/* Search Box */}
             <div className="relative w-full max-w-[400px] min-w-0 group">
               <input
                 type="text"
-                placeholder="Search roles by name..."
+                placeholder={text("Search", "Search")}
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setPage(1);
                 }}
-                className="w-full pl-11 pr-10 py-3 rounded-2xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-sm outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                aria-label={text("Search", "Search")}
+                className="w-full h-10 pl-10 pr-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-sm outline-none transition-colors focus:border-pink-500 focus:ring-2 focus:ring-pink-500/15 font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               {search && (
                 <button
                   type="button"
@@ -548,6 +552,7 @@ export default function RolesPage() {
                     setSearch("");
                     setPage(1);
                   }}
+                  aria-label={text("Clear", "Clear")}
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full"
                 >
                   <X size={14} strokeWidth={2.5} />
@@ -558,17 +563,22 @@ export default function RolesPage() {
         </div>
 
         {/* Table Area */}
-        <div className="flex-1 flex flex-col min-h-0 relative px-6 pb-6 pt-2 overflow-visible">
+        <div className="flex-1 flex flex-col min-h-0 relative px-4 sm:px-6 pb-4 pt-1 overflow-visible">
 
-          <div className="overflow-x-auto flex-1 no-scrollbar min-h-0">
-            <table className="w-full text-left border-separate border-spacing-y-1 min-w-max">
+          <div className="relative overflow-x-auto flex-1 no-scrollbar min-h-0">
+            {loading && (
+              <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 flex items-center justify-center">
+                <Loader2 className="animate-spin text-pink-500" size={28} />
+              </div>
+            )}
+            <table className="w-full text-left border-separate border-spacing-y-1">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 h-[56px]">
-                  <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 pl-8">
-                    Role Name
+                  <th className="px-5 h-11 text-[12px] font-semibold text-slate-600 dark:text-slate-300 pl-8 rounded-l-xl">
+                    {text("RoleName", "Role Name")}
                   </th>
-                  <th className="px-5 h-[56px] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 text-right pr-8">
-                    Actions
+                  <th className="px-5 h-11 text-[12px] font-semibold text-slate-600 dark:text-slate-300 text-right pr-8 rounded-r-xl">
+                    {text("Actions", "Actions")}
                   </th>
                 </tr>
               </thead>
@@ -579,19 +589,13 @@ export default function RolesPage() {
                 animate="visible"
                 className="relative min-h-0"
               >
-                {loading && (
-                  <div className="absolute inset-0 z-10 bg-white/50 dark:bg-slate-900/50 backdrop-blur-[1px] flex items-center justify-center h-full">
-                    <Loader2 className="animate-spin text-pink-500" size={32} />
-                  </div>
-                )}
-
                 {roles.length === 0 && !loading ? (
                   <tr>
                     <td
                       colSpan={2}
-                      className="py-32 text-center text-sm font-black text-slate-400 uppercase tracking-widest"
+                      className="py-24 text-center text-sm font-medium text-slate-400"
                     >
-                      No roles found
+                      {text("NoDataAvailableInDatatable", "No data available")}
                     </td>
                   </tr>
                 ) : (
@@ -607,17 +611,17 @@ export default function RolesPage() {
                       >
                         <td className={`px-5 ${ROW_HEIGHT} text-[12px] pl-8 rounded-l-2xl text-slate-800 dark:text-slate-200 font-bold`}>
                           <div className="flex items-center gap-2.5">
-                            <span className="text-sm text-slate-800 dark:text-slate-200 font-bold uppercase truncate">
+                            <span className="text-[13px] text-slate-800 dark:text-slate-200 font-semibold truncate">
                               <SearchTextHighlight text={row.name} query={search} />
                             </span>
                             {row.isDefault && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                                Default
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                {text("DisplayName:IsDefault", "Default")}
                               </span>
                             )}
                             {row.isPublic && (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400">
-                                Public
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-pink-50 dark:bg-pink-500/10 text-pink-600 dark:text-pink-400">
+                                {text("DisplayName:IsPublic", "Public")}
                               </span>
                             )}
                           </div>
@@ -645,25 +649,28 @@ export default function RolesPage() {
           {/* Pagination Section */}
           {totalPages > 0 && (
             <div className="flex flex-wrap items-center justify-center sm:justify-between gap-3 border-t border-slate-100 dark:border-slate-800/50 mt-4 pt-4 shrink-0">
-              <div className="text-[11px] font-bold text-slate-400 tracking-wider">
-                Showing <span className="text-pink-500">{(page - 1) * pageSize + 1}</span> to{" "}
-                <span className="text-pink-500">{Math.min(page * pageSize, totalCount)}</span> of{" "}
-                <span className="text-pink-500">{totalCount}</span> entries
+              <div className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
+                {totalCount > 0
+                  ? text("PagerInfo{0}{1}{2}", "Showing {0} to {1} of {2} entries")
+                    .replace("{0}", (page - 1) * pageSize + 1)
+                    .replace("{1}", Math.min(page * pageSize, totalCount))
+                    .replace("{2}", totalCount)
+                  : text("PagerInfoEmpty", "Showing 0 to 0 of 0 entries")}
               </div>
 
               <div className="flex flex-wrap items-center justify-center gap-3">
                 {/* Rows per page dropdown */}
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Show:</span>
+                  <span className="text-[12px] font-medium text-slate-500 dark:text-slate-400">{text("PagerShowMenuEntries", "Show _MENU_ entries").split("_MENU_")[0].trim() || "Show"}</span>
                   <AppSelect
                     value={pageSize}
                     onChange={(e) => {
                       setPageSize(Number(e.target.value));
                       setPage(1);
                     }}
-                    className="h-8 px-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg text-[11px] font-bold text-slate-700 dark:text-slate-300 outline-none focus:border-pink-500 transition-all cursor-pointer"
+                    className="h-8 !rounded-lg !text-[12px]"
                   >
-                    {[5, 10, 15, 20, 50].map((size) => (
+                    {[10, 25, 50, 100].map((size) => (
                       <option key={size} value={size}>{size}</option>
                     ))}
                   </AppSelect>
@@ -674,7 +681,7 @@ export default function RolesPage() {
                     onClick={() => setPage(1)}
                     disabled={page === 1}
                     className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 transition-all"
-                    title="First Page"
+                    title={text("PagerFirst", "First")}
                   >
                     <ChevronsLeft size={16} strokeWidth={2.5} />
                   </button>
@@ -682,7 +689,7 @@ export default function RolesPage() {
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
                     className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 transition-all"
-                    title="Previous Page"
+                    title={text("PagerPrevious", "Previous")}
                   >
                     <ChevronLeft size={16} strokeWidth={2.5} />
                   </button>
@@ -690,7 +697,7 @@ export default function RolesPage() {
                   <div className="h-6 w-px bg-slate-100 dark:bg-slate-700/50 mx-1" />
 
                   <div className="px-3 flex items-center gap-2 select-none">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Page</span>
+
                     <div className="flex items-center gap-1.5 min-w-[40px] justify-center">
                       <span className="text-[12px] font-black text-pink-600 leading-none">{page}</span>
                       <span className="text-[11px] font-bold text-slate-300">/</span>
@@ -704,7 +711,7 @@ export default function RolesPage() {
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
                     className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 transition-all"
-                    title="Next Page"
+                    title={text("PagerNext", "Next")}
                   >
                     <ChevronRight size={16} strokeWidth={2.5} />
                   </button>
@@ -712,7 +719,7 @@ export default function RolesPage() {
                     onClick={() => setPage(totalPages)}
                     disabled={page === totalPages}
                     className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-500/5 disabled:opacity-30 transition-all"
-                    title="Last Page"
+                    title={text("PagerLast", "Last")}
                   >
                     <ChevronsRight size={16} strokeWidth={2.5} />
                   </button>
@@ -730,25 +737,30 @@ export default function RolesPage() {
         onSubmit={handleCreateOrUpdate}
         loading={actionLoading}
         submitError={submitError}
+        onErrorClose={() => setSubmitError("")}
+        text={text}
       />
 
       {/* Material UI Permissions Dialog */}
       <Dialog
         open={Boolean(permissionRole)}
-        onClose={handleClosePermissions}
+        onClose={(_event, reason) => {
+          if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+          handleClosePermissions();
+        }}
         maxWidth="sm"
         fullWidth
         PaperProps={{
           sx: {
-            borderRadius: "20px",
+            borderRadius: "16px",
             backgroundImage: "none",
             backgroundColor: isDark ? "#0f172a" : "#ffffff",
             boxShadow: isDark ? "0 25px 50px -12px rgba(0, 0, 0, 0.5)" : "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
           },
         }}
       >
-        <DialogTitle className="flex items-center justify-between px-6 pt-5 pb-2">
-          <span className="text-lg font-bold text-slate-800 dark:text-slate-200">
+        <DialogTitle className="flex items-center justify-between px-5 pt-4 pb-2">
+          <span className="text-base font-semibold text-slate-800 dark:text-slate-200">
             {localize("Permissions")} - {permissionRole?.name}
           </span>
           <button
@@ -766,7 +778,7 @@ export default function RolesPage() {
             </div>
           ) : (
             <div className={`text-sm space-y-3 ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-              <div className={`flex justify-end items-center mb-4 pb-2 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
+              <div className={`flex justify-end items-center mb-2 pb-1 border-b ${isDark ? 'border-slate-800' : 'border-slate-200'}`}>
                 {/* Grant All Checkbox */}
                 {permissionsData?.groups && (
                   <div className="flex items-center gap-2 px-3 py-2">
@@ -802,11 +814,11 @@ export default function RolesPage() {
                 const isExpanded = !!expandedGroups[group.name];
 
                 return (
-                  <div key={idx} className="mb-3">
+                  <div key={idx} className="mb-2">
                     {/* Collapsible Header */}
                     <div
                       onClick={() => toggleGroup(group.name)}
-                      className={`flex items-center justify-between px-4 py-2.5 rounded-xl cursor-pointer transition-all duration-200 group ${
+                      className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 group ${
                         isDark
                           ? 'bg-slate-800/40 hover:bg-slate-800/80'
                           : 'bg-slate-100 hover:bg-slate-200'
@@ -816,7 +828,7 @@ export default function RolesPage() {
                         <div className={`transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
                           <ChevronDown size={18} className={`group-hover:text-[#ec4899] ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
                         </div>
-                        <h4 className={`text-[14px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
+                        <h4 className={`text-[14px] font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
                           {group.displayName}
                         </h4>
                       </div>
@@ -831,7 +843,7 @@ export default function RolesPage() {
                         />
                         <label
                           htmlFor={`select-all-${group.name}`}
-                          className={`text-[10px] uppercase font-black tracking-widest cursor-pointer hover:text-[#ec4899] transition-colors ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
+                          className={`text-[11px] font-medium cursor-pointer hover:text-[#ec4899] transition-colors ${isDark ? 'text-slate-500' : 'text-slate-400'}`}
                         >
                           {localize("SelectAllInThisTab")}
                         </label>
@@ -868,17 +880,17 @@ export default function RolesPage() {
             </div>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2.5, gap: 1.5, backgroundColor: isDark ? "#0f172a" : "#f8fafc", borderTop: isDark ? "1px solid #1e293b" : "1px solid #e2e8f0" }}>
+        <DialogActions sx={{ px: 2.5, py: 1.5, gap: 1, backgroundColor: isDark ? "#0f172a" : "#f8fafc", borderTop: isDark ? "1px solid #1e293b" : "1px solid #e2e8f0" }}>
           <button
             onClick={() => handleClosePermissions()}
-            className={`flex-1 border h-[38px] text-[11px] font-bold rounded-xl transition-all duration-200 ${isDark ? 'border-slate-700 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+            className={`flex-1 border h-9 text-sm font-semibold rounded-lg transition-colors ${isDark ? 'border-slate-700 text-slate-400 hover:bg-white/5' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
           >
             {localize("Cancel")}
           </button>
           <button
             onClick={handleSavePermissions}
             disabled={loadingPermissions}
-            className="app-primary-button flex-1 h-[38px] text-[11px]"
+            className="app-primary-button flex-1 h-9 text-sm !rounded-lg"
           >
             {loadingPermissions
               ? localize("SavingWithThreeDot")
@@ -892,46 +904,46 @@ export default function RolesPage() {
         <div
           className="fixed inset-0 flex items-center justify-center"
           style={{ zIndex: 9999 }}
-          onClick={(e) => { if (e.target === e.currentTarget) setDeleteRole(null); }}
         >
           {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/50" />
 
           {/* Card */}
           <div
-            className={`relative rounded-3xl p-6 w-[340px] flex flex-col items-center gap-4 shadow-2xl ${isDark ? 'bg-[#0f172a] border border-white/5' : 'bg-white border border-slate-100'}`}
+            className={`relative rounded-2xl px-5 py-4 w-[320px] max-w-[90vw] flex flex-col items-center gap-3 shadow-2xl ${isDark ? 'bg-[#0f172a] border border-white/5' : 'bg-white border border-slate-100'}`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Icon */}
-            <div className="w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center border-4 border-rose-100 dark:border-rose-500/20">
-              <X size={30} className="text-rose-500" strokeWidth={3} />
+            <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-500/15 flex items-center justify-center">
+              <X size={20} className="text-rose-500" strokeWidth={2.25} />
             </div>
 
             {/* Text */}
             <div className="text-center">
-              <h3 className="text-[17px] font-black text-slate-800 dark:text-slate-100 mb-1">
-                Confirm Deletion
+              <h3 className="text-base font-semibold text-slate-800 dark:text-slate-100 mb-1">
+                {text("AreYouSure", "Are you sure?")}
               </h3>
-              <p className="text-[13px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                Are you sure you want to delete{" "}
-                <strong className="text-rose-500">{deleteRole?.name}</strong>?
-                <br />This action cannot be undone.
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug break-words">
+                {text("RoleDeletionConfirmationMessage", "Role '{0}' will be deleted. Do you confirm that?")
+                  .replace("{0}", deleteRole?.name ?? "")}
               </p>
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 w-full pt-1">
+            <div className="flex gap-2 w-full pt-1">
               <button
                 onClick={() => setDeleteRole(null)}
-                className="flex-1 font-bold text-[12px] h-[42px] bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl transition-all"
+                disabled={deleting}
+                className="flex-1 font-semibold text-sm h-8 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-colors"
               >
-                Cancel
+                {text("Cancel", "Cancel")}
               </button>
               <button
                 onClick={confirmDelete}
-                className="flex-1 font-bold text-[12px] h-[42px] bg-rose-500 hover:bg-rose-600 text-white rounded-xl transition-all shadow-md shadow-rose-500/20 active:scale-95"
+                disabled={deleting}
+                className="flex-1 font-semibold text-sm h-8 bg-rose-500 hover:bg-rose-600 disabled:opacity-60 text-white rounded-lg transition-colors"
               >
-                Delete
+                {text("Delete", "Delete")}
               </button>
             </div>
           </div>

@@ -142,7 +142,7 @@ export default function CodeModal({
   };
 
   const getInputClass = (isTextarea = false) => {
-    return `w-full px-4 py-2.5 rounded-xl border outline-none text-sm transition-all bg-slate-50 border-slate-200 text-slate-700 hover:border-pink-500 focus:bg-white focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:border-pink-500 dark:focus:border-pink-500 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-slate-200 dark:disabled:hover:border-white/10 ${isTextarea ? "min-h-[100px] resize-y" : ""}`;
+    return `w-full px-3 py-1.5 rounded-lg border outline-none text-sm transition-all bg-slate-50 border-slate-200 text-slate-700 hover:border-pink-500 focus:bg-white focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:border-pink-500 dark:focus:border-pink-500 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-slate-200 dark:disabled:hover:border-white/10 ${isTextarea ? "min-h-[64px] resize-y" : ""}`;
   };
 
   return (
@@ -167,8 +167,8 @@ export default function CodeModal({
         className: "bg-white dark:bg-slate-900 dark:text-white",
       }}
     >
-      <div className="flex items-center justify-between px-6 pt-5 pb-3">
-        <h2 className="text-lg font-medium text-slate-800 dark:text-white">
+      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+        <h2 className="text-base font-semibold text-slate-800 dark:text-white">
           {readOnly
             ? localize("View")
             : isEdit
@@ -182,11 +182,11 @@ export default function CodeModal({
         </IconButton>
       </div>
 
-      <div className="px-6 py-2">
-        <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <div className="px-5 py-1">
+        <form onSubmit={handleSubmit} noValidate className="space-y-2.5">
           {/* Lookup Code */}
           <div>
-            <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1.5 ml-1 font-medium">
+            <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1 ml-0.5 font-medium">
               {localize("LookupCode")} <span className="required-asterisk">*</span>
             </label>
             <input
@@ -199,7 +199,7 @@ export default function CodeModal({
               disabled={submitting || isEdit || readOnly}
             />
             {fieldErrors.lookupCode && (
-              <p role="alert" className="mt-1.5 whitespace-pre-line text-xs font-medium leading-relaxed text-red-600 dark:text-red-400">
+              <p role="alert" className="mt-1 whitespace-pre-line text-xs font-medium leading-relaxed text-red-600 dark:text-red-400">
                 {fieldErrors.lookupCode}
               </p>
             )}
@@ -207,7 +207,7 @@ export default function CodeModal({
 
           {/* Description */}
           <div>
-            <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1.5 ml-1 font-medium">
+            <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1 ml-0.5 font-medium">
               {localize("Description")} <span className="required-asterisk">*</span>
             </label>
             <textarea
@@ -218,7 +218,7 @@ export default function CodeModal({
               disabled={submitting || readOnly}
             />
             {fieldErrors.description && (
-              <p role="alert" className="mt-1.5 whitespace-pre-line text-xs font-medium leading-relaxed text-red-600 dark:text-red-400">
+              <p role="alert" className="mt-1 whitespace-pre-line text-xs font-medium leading-relaxed text-red-600 dark:text-red-400">
                 {fieldErrors.description}
               </p>
             )}
@@ -226,7 +226,7 @@ export default function CodeModal({
 
           {/* Sequence */}
           <div>
-            <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1.5 ml-1 font-medium">
+            <label className="block text-xs text-slate-600 dark:text-slate-300 mb-1 ml-0.5 font-medium">
               {localize("Sequence")} <span className="required-asterisk">*</span>
             </label>
             <input
@@ -241,7 +241,7 @@ export default function CodeModal({
               disabled={submitting || readOnly}
             />
             {fieldErrors.sequence && (
-              <p role="alert" className="mt-1.5 whitespace-pre-line text-xs font-medium leading-relaxed text-red-600 dark:text-red-400">
+              <p role="alert" className="mt-1 whitespace-pre-line text-xs font-medium leading-relaxed text-red-600 dark:text-red-400">
                 {fieldErrors.sequence}
               </p>
             )}
@@ -258,12 +258,12 @@ export default function CodeModal({
         </form>
       </div>
 
-      <div className="flex items-center justify-end gap-3 px-6 pt-4 pb-5">
+      <div className="flex items-center justify-end gap-2 px-5 pt-3 pb-4">
         <button
           type="button"
           onClick={onClose}
           disabled={submitting}
-          className={`${readOnly ? "w-full" : "flex-1"} btn-flagship h-[42px]! text-[11px]! border-slate-200! dark:border-slate-700! text-slate-500! hover:bg-slate-50! dark:hover:bg-white/5!`}
+          className={`${readOnly ? "w-full" : "flex-1"} btn-flagship h-9! text-[11px]! border-slate-200! dark:border-slate-700! text-slate-500! hover:bg-slate-50! dark:hover:bg-white/5!`}
         >
           {readOnly ? localize("Close") : localize("Cancel")}
         </button>
@@ -272,7 +272,7 @@ export default function CodeModal({
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="app-primary-button inline-flex h-[42px] flex-1 items-center justify-center text-[11px] uppercase tracking-tight"
+            className="app-primary-button inline-flex h-9 flex-1 items-center justify-center text-[11px] uppercase tracking-tight"
           >
             {submitting ? (
               <div className="w-4 h-4 border-2 border-white! border-t-transparent rounded-full animate-spin"></div>

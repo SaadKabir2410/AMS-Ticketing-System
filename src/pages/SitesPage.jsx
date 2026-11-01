@@ -360,23 +360,23 @@ export default function SitesPage() {
                     return (
                       <tr
                         key={row.id || idx}
-                        className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
+                        className={`group transition-all duration-200 h-[48px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
                       >
-                        <td className="px-5 rounded-l-2xl h-[60px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[12px]">
+                        <td className="px-5 rounded-l-2xl h-[48px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[12px]">
                           <HighlightText text={row.name} searchTerm={debouncedAdvancedSearch.name || debouncedSearch} />
                         </td>
-                        <td className="px-5 h-[60px] text-left transition-colors text-slate-900 dark:text-white">
+                        <td className="px-5 h-[48px] text-left transition-colors text-slate-900 dark:text-white">
                           <span className="font-mono font-bold text-[12px] text-slate-900 dark:text-white">
                             <HighlightText text={row.ocn} searchTerm={debouncedAdvancedSearch.ocn || debouncedSearch} />
                           </span>
                         </td>
-                        <td className="px-5 h-[60px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[11px]">
+                        <td className="px-5 h-[48px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[11px]">
                           <HighlightText text={row.countryName} searchTerm={debouncedAdvancedSearch.countryName} />
                         </td>
-                        <td className="px-5 h-[60px] text-left transition-colors text-slate-700 dark:text-slate-300 font-medium text-[11px]">
+                        <td className="px-5 h-[48px] text-left transition-colors text-slate-700 dark:text-slate-300 font-medium text-[11px]">
                           <HighlightText text={row.address} searchTerm={debouncedAdvancedSearch.address} />
                         </td>
-                        <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors text-slate-900 dark:text-white">
+                        <td className="px-5 rounded-r-2xl h-[48px] text-center transition-colors text-slate-900 dark:text-white">
                           <ActionsMenu
                             onEdit={canEdit ? () => handleEdit(row) : undefined}
                             onAuditLog={canViewAuditLog ? () => navigate(`/audit-logs?primaryKey=${row.id}&entityName=Site`) : undefined}

@@ -309,19 +309,19 @@ export default function WorkCodesPage() {
                     return (
                       <tr
                         key={row.id || idx}
-                        className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
+                        className={`group transition-all duration-200 h-[48px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
                       >
-                        <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors font-bold text-[12px]">
+                        <td className="px-5 pl-8 rounded-l-2xl h-[48px] text-left transition-colors font-bold text-[12px]">
                           <div className="flex items-center gap-3">
                             <HighlightText text={row.code} searchTerm={debouncedSearch || debouncedAdvSearchCode} />
                           </div>
                         </td>
-                        <td className="px-5 h-[60px] text-center transition-colors">
+                        <td className="px-5 h-[48px] text-center transition-colors">
                           <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-bold tracking-wider text-[11px]">
                             <HighlightText text={row.description} searchTerm={debouncedAdvSearchDesc} />
                           </span>
                         </td>
-                        <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">
+                        <td className="px-5 rounded-r-2xl h-[48px] text-center transition-colors">
                           <ActionsMenu
                             onEdit={canEdit ? () => handleEdit(row) : undefined}
                             onAuditLog={canViewAuditLog ? () =>

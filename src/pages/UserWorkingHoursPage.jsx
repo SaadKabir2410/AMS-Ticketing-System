@@ -197,14 +197,14 @@ export default function UserWorkingHoursPage() {
               </span>
             ))}
           </nav>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
               {localize("UserWorkingHours")}
             </h1>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 w-full sm:w-auto">
               {canCreate && <button
                 onClick={handleNew}
-                className="app-primary-button inline-flex items-center px-5 py-2.5 text-xs"
+                className="app-primary-button inline-flex items-center justify-center w-full sm:w-auto px-5 py-2.5 text-xs"
               >
                 <Plus size={16} className="mr-2" strokeWidth={3} />
                 {localize("NewUserWorkingHour")}
@@ -268,14 +268,14 @@ export default function UserWorkingHoursPage() {
                     return (
                       <tr
                         key={row.id || idx}
-                        className={`group transition-all duration-200 h-[60px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
+                        className={`group transition-all duration-200 h-[48px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
                       >
-                        <td className="px-5 pl-8 rounded-l-2xl h-[60px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[12px]">
+                        <td className="px-5 pl-8 rounded-l-2xl h-[48px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[12px]">
                           <div className="flex items-center gap-3">
                             {row.userName || "—"}
                           </div>
                         </td>
-                        <td className="px-5 h-[60px] text-center transition-colors text-slate-900 dark:text-white">
+                        <td className="px-5 h-[48px] text-center transition-colors text-slate-900 dark:text-white">
                           <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-bold uppercase tracking-wider text-[10px] text-slate-700 dark:text-slate-300">
                             {(() => {
                               const val = row.weekDay;
@@ -287,7 +287,7 @@ export default function UserWorkingHoursPage() {
                             })()}
                           </span>
                         </td>
-                        <td className="px-5 h-[60px] text-center transition-colors text-slate-900 dark:text-white">
+                        <td className="px-5 h-[48px] text-center transition-colors text-slate-900 dark:text-white">
                           <div className="flex items-center gap-2 font-mono font-bold text-[12px] justify-center text-slate-700 dark:text-slate-300">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
@@ -295,7 +295,7 @@ export default function UserWorkingHoursPage() {
                             {row.startTime || "—"}
                           </div>
                         </td>
-                        <td className={`px-5 h-[60px] text-center transition-colors text-slate-900 dark:text-white ${hasRowActions ? "" : "rounded-r-2xl"}`}>
+                        <td className={`px-5 h-[48px] text-center transition-colors text-slate-900 dark:text-white ${hasRowActions ? "" : "rounded-r-2xl"}`}>
                           <div className="flex items-center gap-2 font-mono font-bold text-[12px] justify-center text-slate-700 dark:text-slate-300">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
@@ -304,7 +304,7 @@ export default function UserWorkingHoursPage() {
                           </div>
                         </td>
                         {hasRowActions && (
-                          <td className="px-5 rounded-r-2xl h-[60px] text-center transition-colors">
+                          <td className="px-5 rounded-r-2xl h-[48px] text-center transition-colors">
                             <ActionsMenu
                               onEdit={canEdit ? () => handleEdit(row) : undefined}
                               onAuditLog={canViewAuditLog ? () =>

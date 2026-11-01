@@ -171,7 +171,7 @@ export default function WorkCodeModal({
   };
 
   const inputClasses = (error, isValid) =>
-    `w-full px-4 py-2.5 rounded-xl border outline-none transition-all text-sm ` +
+    `w-full px-3 py-1.5 rounded-lg border outline-none transition-all text-sm ` +
     (error
       ? `bg-red-50/50 border-red-400 text-red-900 placeholder:text-red-300 dark:bg-red-500/10 dark:border-red-500/50 dark:text-red-200`
       : isValid
@@ -181,7 +181,10 @@ export default function WorkCodeModal({
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={(_event, reason) => {
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        onClose();
+      }}
       maxWidth="xs"
       fullWidth
       PaperProps={{
@@ -189,8 +192,8 @@ export default function WorkCodeModal({
         className: "bg-white dark:bg-slate-900 dark:text-white",
       }}
     >
-      <div className="flex items-center justify-between px-6 pt-5 pb-3">
-        <h2 className="text-lg font-bold text-pink-600 dark:text-pink-400">
+      <div className="flex items-center justify-between px-5 pt-4 pb-2">
+        <h2 className="text-base font-semibold text-pink-600 dark:text-pink-400">
           {isEdit ? localize("EditWorkDoneCode") : localize("NewWorkDoneCode")}
         </h2>
         <IconButton onClick={onClose} size="small" className="text-slate-400 hover:text-pink-500 transition-colors">
@@ -198,7 +201,7 @@ export default function WorkCodeModal({
         </IconButton>
       </div>
 
-      <div className="px-6 py-2 space-y-5">
+      <div className="px-5 py-1 space-y-2.5">
         {errors.server && (
           <PremiumErrorAlert 
             open={!!errors.server} 
@@ -207,7 +210,7 @@ export default function WorkCodeModal({
           />
         )}
         <div>
-          <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
             {localize("Code")} <span className="required-asterisk">*</span>
           </label>
           <div className="relative">
@@ -235,12 +238,12 @@ export default function WorkCodeModal({
             </div>
           </div>
           {errors.code && (
-            <p className="text-red-500 text-xs mt-1.5">{errors.code}</p>
+            <p className="text-red-500 text-xs mt-1">{errors.code}</p>
           )}
         </div>
 
         <div>
-          <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">
             {localize("Description")} <span className="required-asterisk">*</span>
           </label>
           <div className="relative">
@@ -265,23 +268,23 @@ export default function WorkCodeModal({
             )}
           </div>
           {errors.description && (
-            <p className="text-red-500 text-xs mt-1.5">{errors.description}</p>
+            <p className="text-red-500 text-xs mt-1">{errors.description}</p>
           )}
         </div>
       </div>
 
-      <div className="flex items-center justify-end gap-3 px-6 pt-6 pb-5">
+      <div className="flex items-center justify-end gap-2 px-5 pt-3 pb-4">
         <button
           type="button"
           onClick={onClose}
-          className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+          className="h-9 px-5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
         >
           {localize("CancelButtonText")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={loading || submitting}
-          className="app-primary-button px-8 py-2.5 text-sm flex items-center justify-center min-w-[120px]"
+          className="app-primary-button h-9 px-6 text-sm !rounded-lg flex items-center justify-center min-w-[100px]"
         >
           {loading || submitting
             ? localize("SavingWithThreeDot")

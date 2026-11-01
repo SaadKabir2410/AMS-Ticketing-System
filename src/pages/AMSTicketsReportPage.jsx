@@ -3,7 +3,7 @@ import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
 import { PermissionGuard } from "../component/common/PermissionGuard";
 import SearchTextHighlight from "../component/common/SearchTextHighlight";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, RotateCcw, FileSpreadsheet, FileSearch } from "lucide-react";
 import {
   Autocomplete,
   Checkbox,
@@ -857,7 +857,10 @@ export default function AMSTicketsReportPage() {
   }, [reportData, applicationConfig]);
 
   const filterInputClass =
-    "h-[42px] min-h-[42px] px-3 py-2 text-xs bg-white dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-800/50 rounded-xl outline-none focus:ring-4 focus:ring-pink-500/10 focus:border-pink-500 transition-all placeholder:text-slate-400 w-full shadow-sm";
+    "h-9 min-h-9 px-3 py-1.5 text-[13px] text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-2 focus:ring-pink-500/15 focus:border-pink-500 transition-colors placeholder:text-slate-400 w-full";
+
+  // Selects draw their own outline, so only size and shape are matched here.
+  const filterSelectClass = "h-9 w-full !rounded-lg !text-[13px] !font-medium";
 
   const usesReceivedDateLabels = ["Opened", "Open", "Void"].includes(filters.status);
   const dateFromLabel = getBackendLocalizationText(
@@ -940,43 +943,43 @@ export default function AMSTicketsReportPage() {
         }
       `}</style>
 
-      <div className="flex-1 min-h-0 w-full bg-white dark:bg-[#161920] border border-slate-200 dark:border-slate-800/50 shadow-sm flex flex-col rounded-3xl overflow-hidden">
-        <div className="app-page-header flex flex-col gap-6 py-8 px-4 md:px-8 transition-colors border-b border-slate-100 dark:border-slate-800/50 shrink-0">
-          <nav className="flex flex-wrap items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400 dark:text-slate-600 mb-1">
+      <div className="flex-1 min-h-0 w-full flex flex-col gap-3">
+        <div className="flex flex-col gap-3 px-1 md:flex-row md:items-end md:justify-between shrink-0">
+          <div className="flex flex-col">
+          <nav className="flex flex-wrap items-center gap-1.5 text-[13px] font-medium text-slate-500 dark:text-slate-400 mb-1">
             <span
               onClick={() => navigate("/")}
               className="hover:text-pink-500 cursor-pointer transition-colors"
             >
               {pageText.home}
             </span>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="text-slate-400">/</span>
             <span>{pageText.management}</span>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="text-slate-400">/</span>
             <span>{pageText.reports}</span>
-            <span className="text-slate-300 dark:text-slate-700">/</span>
+            <span className="text-slate-400">/</span>
             <span className="text-pink-500">{pageText.title}</span>
           </nav>
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+              <h1 className="text-[28px] leading-tight font-bold text-slate-900 dark:text-white">
                 {pageText.title}
               </h1>
-            </div>
+          </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={handleClear}
-                className="flex items-center gap-1.5 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] text-slate-400 hover:text-rose-500 hover:border-rose-500/30 transition-all active:scale-95 focus:outline-none"
+                className="inline-flex h-9 items-center gap-1.5 px-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[13px] font-medium text-slate-600 dark:text-slate-300 hover:text-pink-600 hover:border-pink-300 transition-colors focus:outline-none"
               >
-                <RotateCcw size={14} />
+                <RotateCcw size={15} />
                 {pageText.clear}
               </button>
               <button
                 onClick={() => handleGetReport(false)}
                 disabled={reportLoading}
-                className="app-primary-button flex items-center gap-1.5 px-4 py-2 text-[11px] focus:outline-none"
+                className="app-primary-button inline-flex h-9 items-center gap-1.5 px-4 text-[13px] !rounded-lg focus:outline-none"
               >
+                <FileSearch size={15} />
                 {reportLoading ? pageText.loading : pageText.getReport}
               </button>
 
@@ -984,31 +987,28 @@ export default function AMSTicketsReportPage() {
                 <button
                   onClick={() => handleGetReport(true)}
                   disabled={excelLoading}
-                  className="app-primary-button flex items-center gap-1.5 px-4 py-2 text-[11px] focus:outline-none"
+                  className="inline-flex h-9 items-center gap-1.5 px-4 bg-white dark:bg-slate-800 border border-pink-500 rounded-lg text-[13px] font-semibold text-pink-600 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-500/10 disabled:opacity-60 transition-colors focus:outline-none"
                 >
+                  <FileSpreadsheet size={15} />
                   {excelLoading ? pageText.processing : pageText.excelReport}
                 </button>
               </PermissionGuard>
             </div>
-          </div>
         </div>
 
         {/* Filter Section */}
-        <div className="px-4 md:px-8 py-4 space-y-4">
+        <div className="shrink-0 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#161920] shadow-sm p-4 space-y-3">
           {formError && (
-            <div className="p-3 bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 rounded-lg text-xs flex items-center gap-2 whitespace-pre-line">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-              </span>
+            <div className="px-3 py-2 bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 rounded-lg text-[13px] flex items-center gap-2 whitespace-pre-line">
+              <span className="inline-flex h-2 w-2 shrink-0 rounded-full bg-rose-500"></span>
               {formError}
             </div>
           )}
 
           {/* Row 1 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-3 items-end">
+            <div className="flex min-w-0 flex-col gap-1">
+              <label className="text-[12px] font-medium text-slate-600 dark:text-slate-300">
                 {pageText.ticketNumber}
               </label>
               <textarea
@@ -1020,8 +1020,8 @@ export default function AMSTicketsReportPage() {
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] font-medium text-slate-600 dark:text-slate-300">
                 {dateFromLabel}
               </label>
               <EditableFlatpickrInput
@@ -1034,8 +1034,8 @@ export default function AMSTicketsReportPage() {
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] font-medium text-slate-600 dark:text-slate-300">
                 {dateToLabel}
               </label>
               <EditableFlatpickrInput
@@ -1048,14 +1048,14 @@ export default function AMSTicketsReportPage() {
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] font-medium text-slate-600 dark:text-slate-300">
                 {pageText.status}
               </label>
               <AppSelect
                 value={filters.status}
                 onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className={filterInputClass}
+                className={filterSelectClass}
               >
                 <option value="">{pageText.all}</option>
                 {STATUS_OPTIONS.map((s) => (
@@ -1066,8 +1066,8 @@ export default function AMSTicketsReportPage() {
               </AppSelect>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] font-medium text-slate-600 dark:text-slate-300">
                 {pageText.country}
               </label>
               <Autocomplete
@@ -1081,25 +1081,25 @@ export default function AMSTicketsReportPage() {
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "0.5rem",
                     padding: "1px 12px",
-                    height: "42px",
-                    minHeight: "42px",
-                    maxHeight: "42px",
+                    height: "36px",
+                    minHeight: "36px",
+                    maxHeight: "36px",
                     overflow: "hidden",
-                    fontSize: "12px",
-                    fontWeight: "bold",
+                    fontSize: "13px",
+                    fontWeight: 500,
                     backgroundColor: "transparent",
                     "& fieldset": { border: "none" },
                   },
                 }}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all w-full text-slate-800 dark:text-slate-200"
+                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-2 focus-within:ring-pink-500/15 focus-within:border-pink-500 transition-colors w-full text-slate-800 dark:text-slate-200"
                 renderInput={(params) => (
                   <TextField {...params} placeholder={pageText.search} variant="outlined" />
                 )}
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] font-medium text-slate-600 dark:text-slate-300">
                 {pageText.ticketType}
               </label>
               <AppSelect
@@ -1113,7 +1113,7 @@ export default function AMSTicketsReportPage() {
                     servicePlannedType: val !== "ServicePlanned" ? "" : filters.servicePlannedType,
                   });
                 }}
-                className={filterInputClass}
+                className={filterSelectClass}
               >
                 <option value="">{pageText.all}</option>
                 {TICKET_TYPE_OPTIONS.map((t) => (
@@ -1126,14 +1126,14 @@ export default function AMSTicketsReportPage() {
 
             {/* Service Planned Type — only shown when Ticket Type is Service Planned */}
             {filters.ticketType === "ServicePlanned" && (
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
+              <div className="flex flex-col gap-1">
+                <label className="text-[12px] font-medium text-slate-600 dark:text-slate-300">
                   {pageText.servicePlannedType}
                 </label>
                 <AppSelect
                   value={filters.servicePlannedType}
                   onChange={(e) => setFilters({ ...filters, servicePlannedType: e.target.value })}
-                  className={filterInputClass}
+                  className={filterSelectClass}
                 >
                   {servicePlannedTypeOptions.map((t) => (
                     <option key={t.value} value={t.value}>
@@ -1144,8 +1144,8 @@ export default function AMSTicketsReportPage() {
               </div>
             )}
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] font-medium text-slate-600 dark:text-slate-300">
                 {pageText.customer}
               </label>
               <Autocomplete
@@ -1161,25 +1161,25 @@ export default function AMSTicketsReportPage() {
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "0.5rem",
                     padding: "1px 12px",
-                    height: "42px",
-                    minHeight: "42px",
-                    maxHeight: "42px",
+                    height: "36px",
+                    minHeight: "36px",
+                    maxHeight: "36px",
                     overflow: "hidden",
-                    fontSize: "12px",
-                    fontWeight: "bold",
+                    fontSize: "13px",
+                    fontWeight: 500,
                     backgroundColor: "transparent",
                     "& fieldset": { border: "none" },
                   },
                 }}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all w-full text-slate-800 dark:text-slate-200"
+                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-2 focus-within:ring-pink-500/15 focus-within:border-pink-500 transition-colors w-full text-slate-800 dark:text-slate-200"
                 renderInput={(params) => (
                   <TextField {...params} placeholder={pageText.search} variant="outlined" />
                 )}
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] font-medium text-slate-600 dark:text-slate-300">
                 {pageText.workDoneCode}
               </label>
               <Autocomplete
@@ -1216,25 +1216,25 @@ export default function AMSTicketsReportPage() {
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "0.5rem",
                     padding: "1px 12px",
-                    height: "42px",
-                    minHeight: "42px",
-                    maxHeight: "42px",
+                    height: "36px",
+                    minHeight: "36px",
+                    maxHeight: "36px",
                     overflow: "hidden",
-                    fontSize: "12px",
-                    fontWeight: "bold",
+                    fontSize: "13px",
+                    fontWeight: 500,
                     backgroundColor: "transparent",
                     "& fieldset": { border: "none" },
                   },
                 }}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all w-full text-slate-800 dark:text-slate-200"
+                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-2 focus-within:ring-pink-500/15 focus-within:border-pink-500 transition-colors w-full text-slate-800 dark:text-slate-200"
                 renderInput={(params) => (
                   <TextField {...params} placeholder={pageText.search} variant="outlined" />
                 )}
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] font-medium text-slate-600 dark:text-slate-300">
                 {pageText.performedBy}
               </label>
               <Autocomplete
@@ -1271,25 +1271,25 @@ export default function AMSTicketsReportPage() {
                   "& .MuiOutlinedInput-root": {
                     borderRadius: "0.5rem",
                     padding: "1px 12px",
-                    height: "42px",
-                    minHeight: "42px",
-                    maxHeight: "42px",
+                    height: "36px",
+                    minHeight: "36px",
+                    maxHeight: "36px",
                     overflow: "hidden",
-                    fontSize: "12px",
-                    fontWeight: "bold",
+                    fontSize: "13px",
+                    fontWeight: 500,
                     backgroundColor: "transparent",
                     "& fieldset": { border: "none" },
                   },
                 }}
-                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-4 focus-within:ring-pink-500/10 focus-within:border-pink-500 transition-all w-full text-slate-800 dark:text-slate-200"
+                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus-within:ring-2 focus-within:ring-pink-500/15 focus-within:border-pink-500 transition-colors w-full text-slate-800 dark:text-slate-200"
                 renderInput={(params) => (
                   <TextField {...params} placeholder={pageText.search} variant="outlined" />
                 )}
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[10px] text-slate-400 ml-1 mb-1 font-bold uppercase tracking-wider">
+            <div className="flex flex-col gap-1">
+              <label className="text-[12px] font-medium text-slate-600 dark:text-slate-300">
                 {pageText.compareTickets}
               </label>
               <div className="relative">
@@ -1298,7 +1298,7 @@ export default function AMSTicketsReportPage() {
                   type="file"
                   accept=".xlsx,.xls"
                   onChange={handleCompareFileChange}
-                  className={`${filterInputClass} p-1 file:mr-4 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-pink-50 dark:file:bg-pink-900/30 file:text-pink-700 dark:file:text-pink-400 hover:file:bg-pink-100 dark:hover:file:bg-pink-900/50 cursor-pointer pr-8`}
+                  className={`${filterInputClass} p-1 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-pink-50 dark:file:bg-pink-900/30 file:text-pink-700 dark:file:text-pink-400 hover:file:bg-pink-100 dark:hover:file:bg-pink-900/50 cursor-pointer pr-8`}
                 />
                 {filters.compareFile && (
                   <button
@@ -1318,7 +1318,7 @@ export default function AMSTicketsReportPage() {
 
         {/* Table */}
         {showDataGrid && (
-          <div className="h-[580px] min-h-[580px] shrink-0 border-t border-slate-100 dark:border-slate-800/50 flex flex-col relative overflow-hidden bg-white dark:bg-slate-900">
+          <div className="h-[580px] min-h-[580px] shrink-0 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col relative overflow-hidden bg-white dark:bg-[#161920]">
             <DataGrid
             className="ams-ticket-report-grid"
             rows={reportData}
@@ -1328,7 +1328,7 @@ export default function AMSTicketsReportPage() {
             loading={loading || reportLoading}
             getRowHeight={() => "auto"}
             getEstimatedRowHeight={() => 52}
-            columnHeaderHeight={56}
+            columnHeaderHeight={48}
             hideFooter
             showColumnVerticalBorder={true}
             showCellVerticalBorder={true}
@@ -1351,10 +1351,9 @@ export default function AMSTicketsReportPage() {
                 padding: "0 8px",
               },
               "& .MuiDataGrid-columnHeaderTitle": {
-                fontWeight: 800,
-                fontSize: "10px",
+                fontWeight: 600,
+                fontSize: "12px",
                 color: "rgb(51, 65, 85)",
-                letterSpacing: "0.03em",
                 lineHeight: 1.25,
                 whiteSpace: "normal",
                 overflow: "visible",
@@ -1362,15 +1361,15 @@ export default function AMSTicketsReportPage() {
               },
               "& .MuiDataGrid-cell": {
                 borderBottom: "1px solid rgb(241, 245, 249)",
-                fontSize: "11px",
+                fontSize: "12px",
                 lineHeight: 1.4,
                 color: "rgb(30, 41, 59)",
                 display: "flex",
                 alignItems: "center",
                 whiteSpace: "normal",
                 overflowWrap: "anywhere",
-                padding: "8px",
-                minHeight: "44px !important",
+                padding: "6px 8px",
+                minHeight: "40px !important",
               },
               "& .MuiDataGrid-virtualScroller": {
                 position: "relative",
@@ -1405,25 +1404,25 @@ export default function AMSTicketsReportPage() {
       {/* Compare Result Dialog (Card) */}
       {compareResultDialog.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-sm w-full p-6 flex flex-col gap-4 animate-in fade-in zoom-in duration-200">
-            <div className="flex flex-col items-center text-center gap-3 mt-2">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-w-[320px] w-full px-5 py-4 flex flex-col gap-4 animate-in fade-in zoom-in duration-200">
+            <div className="flex flex-col items-center text-center gap-1">
               {compareResultDialog.isSuccess ? (
-                <div className="h-14 w-14 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                <div className="h-10 w-10 bg-emerald-50 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                 </div>
               ) : (
-                <div className="h-14 w-14 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <div className="h-10 w-10 bg-rose-50 dark:bg-rose-500/15 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mb-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                 </div>
               )}
-              <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-white">
                 {compareResultDialog.title}
               </h3>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed whitespace-pre-line">
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug whitespace-pre-line">
                 {compareResultDialog.message}
               </p>
             </div>
-            <div className="flex justify-center mt-4">
+            <div className="flex justify-center">
               <button
                 onClick={() => setCompareResultDialog({
                   open: false,
@@ -1432,7 +1431,7 @@ export default function AMSTicketsReportPage() {
                   actionText: "",
                   isSuccess: true,
                 })}
-                className="w-full px-5 py-3 bg-slate-900 hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-sm font-bold transition-all active:scale-95 outline-none focus:ring-4 focus:ring-slate-400/20"
+                className="min-w-[80px] h-8 px-5 bg-pink-600 hover:bg-pink-700 dark:bg-pink-500 dark:hover:bg-pink-600 text-white rounded-lg text-sm font-semibold transition-colors outline-none"
               >
                 {compareResultDialog.actionText}
               </button>

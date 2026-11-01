@@ -271,15 +271,16 @@ export default function AfterWorkingHoursReportPage() {
       document.setFontSize(9);
       generatedLines.forEach((line, index) => document.text(line, 40, 52 + index * 14));
       autoTable(document, {
+        theme: "grid",
         startY: 52 + generatedLines.length * 14,
         head: [visibleColumns.map(getColumnLabel)],
         body: reportDetails.map((row) => visibleColumns.map((column) => getRowValue(row, column.field) ?? "")),
         foot: summaryLines.length
           ? [[{ content: summaryLines.join("     "), colSpan: visibleColumns.length }]]
           : undefined,
-        styles: { fontSize: 6, cellPadding: 3, overflow: "linebreak", halign: "center" },
-        headStyles: { fillColor: [236, 72, 153] },
-        footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], halign: "left" },
+        styles: { lineWidth: 0.5, lineColor: [203, 213, 225], fontSize: 6, cellPadding: 3, overflow: "linebreak", halign: "center" },
+        headStyles: { lineWidth: 0.5, lineColor: [203, 213, 225], fillColor: [236, 72, 153] },
+        footStyles: { lineWidth: 0.5, lineColor: [203, 213, 225], fillColor: [241, 245, 249], textColor: [15, 23, 42], halign: "left" },
       });
       document.save(getDownloadFileName("pdf"));
     } catch (error) {
@@ -422,7 +423,12 @@ export default function AfterWorkingHoursReportPage() {
         <div className="flex-1 flex flex-col relative p-4 h-auto w-full">
           {formError && (
             <div className="mb-4">
-              <PremiumErrorAlert open={!!formError} message={formError} onClose={() => setFormError("")} />
+              <PremiumErrorAlert
+                open={!!formError}
+                message={formError}
+                variant={formError === localize("NoReportFound") ? "info" : "error"}
+                onClose={() => setFormError("")}
+              />
             </div>
           )}
 

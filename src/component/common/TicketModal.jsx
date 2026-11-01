@@ -2860,8 +2860,8 @@ export default function TicketModal({
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               className="relative w-full max-w-xs bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl px-5 py-4 text-center font-[Arial]"
             >
-              <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-500/10 flex items-center justify-center text-rose-500 mx-auto mb-3">
-                <AlertCircle size={20} strokeWidth={2.5} />
+              <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-500/15 flex items-center justify-center text-rose-500 mx-auto mb-2.5">
+                <AlertCircle size={20} strokeWidth={2.25} />
               </div>
               <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1">
                 Discard Changes?
@@ -2875,7 +2875,7 @@ export default function TicketModal({
                   whileTap={{ scale: 0.98 }}
                   type="button"
                   onClick={() => setShowExitConfirm(false)}
-                  className="flex-1 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+                  className="flex-1 h-8 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                 >
                   Stay
                 </motion.button>
@@ -2887,7 +2887,7 @@ export default function TicketModal({
                     setShowExitConfirm(false);
                     onClose();
                   }}
-                  className="flex-1 py-2 rounded-lg bg-gradient-to-r from-rose-500 to-red-600 text-white text-sm font-medium hover:from-rose-600 hover:to-red-700 transition-all shadow-lg shadow-rose-500/20"
+                  className="flex-1 h-8 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors"
                 >
                   Discard
                 </motion.button>
@@ -2900,7 +2900,7 @@ export default function TicketModal({
       {showDateWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" />
-          <div className="relative w-full max-w-xs bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl px-5 py-4 text-center animate-fade-in font-[Arial]">
+          <div className="relative w-full max-w-[320px] bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl px-5 py-4 text-center animate-fade-in font-[Arial]">
             <h3 className="text-base font-semibold text-slate-800 dark:text-white mb-1">
               {localize("Warning")}
             </h3>
@@ -2911,7 +2911,7 @@ export default function TicketModal({
               <button
                 type="button"
                 onClick={() => setShowDateWarning(false)}
-                className="flex-1 py-2 rounded-lg bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
+                className="flex-1 h-8 rounded-lg bg-pink-600 hover:bg-pink-700 dark:bg-pink-500 dark:hover:bg-pink-600 text-white text-sm font-semibold transition-colors"
               >
                 {localize("Ok")}
               </button>
@@ -2923,7 +2923,7 @@ export default function TicketModal({
       {showActivityWarning && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40" />
-          <div className="relative w-full max-w-xs bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl px-5 py-4 text-center animate-fade-in font-[Arial]">
+          <div className="relative w-full max-w-[320px] bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl px-5 py-4 text-center animate-fade-in font-[Arial]">
             <h3 className="text-base font-semibold text-slate-800 dark:text-white mb-1">
               {localize("Warning")}
             </h3>
@@ -2934,7 +2934,7 @@ export default function TicketModal({
               <button
                 type="button"
                 onClick={() => setShowActivityWarning(false)}
-                className="flex-1 py-2 rounded-lg bg-pink-500 text-white text-sm hover:bg-pink-600 transition-all shadow-lg shadow-pink-500/20 font-medium"
+                className="flex-1 h-8 rounded-lg bg-pink-600 hover:bg-pink-700 dark:bg-pink-500 dark:hover:bg-pink-600 text-white text-sm font-semibold transition-colors"
               >
                 {localize("Ok")}
               </button>

@@ -317,9 +317,8 @@ export default function UserWorkingHourModal({
     <Dialog
       open={open}
       onClose={(e, reason) => {
-        if (reason !== "backdropClick") {
-          onClose();
-        }
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        onClose();
       }}
       maxWidth="xs"
       fullWidth

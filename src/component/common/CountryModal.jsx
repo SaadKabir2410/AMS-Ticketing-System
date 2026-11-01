@@ -89,9 +89,8 @@ export default function CountryModal({
     <Dialog
       open={open}
       onClose={(event, reason) => {
-        if (reason !== "backdropClick") {
-          onClose();
-        }
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        onClose();
       }}
       maxWidth="xs"
       fullWidth

@@ -60,7 +60,7 @@ const rowVariants = {
   exit: { opacity: 0, transition: { duration: 0.1 } },
 };
 
-const ROW_HEIGHT = "h-[56px]";
+const ROW_HEIGHT = "h-[46px]";
 const ADVANCED_SEARCH_FIELDS = [
   { key: "newCode", localizationKey: "LookupDetailCode" },
   { key: "lookupCode", localizationKey: "Lookup" },

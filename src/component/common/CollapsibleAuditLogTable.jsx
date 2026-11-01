@@ -347,7 +347,7 @@ function CollapsibleRow({ row, localize, searchTerm }) {
                 : "bg-white dark:bg-slate-900"
           }`}
       >
-        <td className="px-5 py-3 text-left w-[50px]">
+        <td className="px-5 py-2 text-left w-[50px]">
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
@@ -360,15 +360,15 @@ function CollapsibleRow({ row, localize, searchTerm }) {
             {open ? "−" : "+"}
           </button>
         </td>
-        <td className="px-5 py-3 text-left">
+        <td className="px-5 py-2 text-left">
           <span className={`text-[10px] px-2.5 py-1 font-semibold rounded-full border ${op.bg} ${op.text} ${op.border}`}>
             {operationLabel(op, localize)}
           </span>
         </td>
-        <td className="px-5 py-3 text-left">
+        <td className="px-5 py-2 text-left">
           <span className="font-mono text-xs text-slate-400 [overflow-wrap:anywhere]">{primaryKeyDisplay}</span>
         </td>
-        <td className="px-5 py-3 text-left">
+        <td className="px-5 py-2 text-left">
           <div className="flex items-center gap-2">
             <div className="p-1.5 bg-blue-50 text-blue-500 rounded-md border border-blue-100 dark:bg-blue-500/10 dark:border-blue-500/20">
               <Database size={12} />
@@ -376,7 +376,7 @@ function CollapsibleRow({ row, localize, searchTerm }) {
             <span className="text-xs text-slate-700 dark:text-slate-200 font-medium">{row.entityName}</span>
           </div>
         </td>
-        <td className="px-5 py-3 text-left">
+        <td className="px-5 py-2 text-left">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-[10px] text-slate-500 border border-slate-200 dark:border-slate-700">
               {row.userName?.[0]?.toUpperCase() || "—"}
@@ -386,7 +386,7 @@ function CollapsibleRow({ row, localize, searchTerm }) {
             </span>
           </div>
         </td>
-        <td className="px-5 py-3 text-right">
+        <td className="px-5 py-2 text-right">
           <div className="flex flex-col items-end leading-tight">
             <span className="text-[10px] font-bold text-slate-800 dark:text-white">
               {date.toLocaleDateString("en-GB")}
