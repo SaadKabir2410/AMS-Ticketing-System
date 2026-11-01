@@ -2280,30 +2280,30 @@ export default function TicketModal({
                           <div className="overflow-x-auto no-scrollbar h-full">
                             <table className="w-full text-left">
                               <thead>
-                                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
-                                  <th className="px-6 py-4 text-[11px] font-semibold text-slate-500">
-                                    {localize("Actions")}
+                                <tr className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-800">
+                                  <th className="px-3 py-2.5 text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                    <span className="inline-block w-min leading-tight">{localize("Actions")}</span>
                                   </th>
-                                  <th className="px-6 py-4 text-[11px] font-semibold text-slate-500">
-                                    {localize("ActivityType")}
+                                  <th className="px-3 py-2.5 text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                    <span className="inline-block w-min leading-tight">{localize("ActivityType")}</span>
                                   </th>
-                                  <th className="px-6 py-4 text-[11px] font-semibold text-slate-500">
-                                    {localize("StartDate")}
+                                  <th className="px-3 py-2.5 text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                    <span className="inline-block w-min leading-tight">{localize("StartDate")}</span>
                                   </th>
-                                  <th className="px-6 py-4 text-[11px] font-semibold text-slate-500">
-                                    {localize("EndDate")}
+                                  <th className="px-3 py-2.5 text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                    <span className="inline-block w-min leading-tight">{localize("EndDate")}</span>
                                   </th>
-                                  <th className="px-6 py-4 text-[11px] font-semibold text-slate-500 text-center">
-                                    {localize("Duration")}
+                                  <th className="px-3 py-2.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 text-center">
+                                    <span className="inline-block w-min leading-tight">{localize("Duration")}</span>
                                   </th>
-                                  <th className="px-6 py-4 text-[11px] font-semibold text-slate-500">
-                                    {localize("WorkDoneCode")}
+                                  <th className="px-3 py-2.5 text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                    <span className="inline-block w-min leading-tight">{localize("WorkDoneCode")}</span>
                                   </th>
-                                  <th className="px-6 py-4 text-[11px] font-semibold text-slate-500">
-                                    {localize("IsLikelyCause")}
+                                  <th className="px-3 py-2.5 text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                    <span className="inline-block w-min leading-tight">{localize("IsLikelyCause")}</span>
                                   </th>
-                                  <th className="px-6 py-4 text-[11px] font-semibold text-slate-500">
-                                    {localize("ResolvedBy")}
+                                  <th className="px-3 py-2.5 text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                                    <span className="inline-block w-min leading-tight">{localize("ResolvedBy")}</span>
                                   </th>
                                 </tr>
                               </thead>
@@ -2313,7 +2313,7 @@ export default function TicketModal({
                                   <tr>
                                     <td
                                       colSpan="8"
-                                      className="px-6 py-12 text-center text-[11px] font-semibold text-slate-400"
+                                      className="px-3 py-10 text-center text-[11px] font-semibold text-slate-400"
                                     >
                                       {localize("NoDataAvailableInDatatable")}
                                     </td>
@@ -2324,7 +2324,7 @@ export default function TicketModal({
                                       key={idx}
                                       className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
                                     >
-                                      <td className="px-6 py-4">
+                                      <td className="px-3 py-2.5">
                                         <ActionsMenu
                                           onEdit={() => {
                                             setActivityToEdit(act);
@@ -2342,10 +2342,10 @@ export default function TicketModal({
                                           }}
                                         />
                                       </td>
-                                      <td className="px-6 py-4 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                                      <td className="px-3 py-2.5 text-[11px] font-medium text-slate-700 dark:text-slate-300">
                                         {act.activityType || "—"}
                                       </td>
-                                      <td className="px-6 py-4 text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                                      <td className="px-3 py-2.5 text-[11px] font-medium text-slate-600 dark:text-slate-400">
                                         {act.startDate
                                           ? new Date(
                                             act.startDate
@@ -2355,7 +2355,7 @@ export default function TicketModal({
                                           })
                                           : "—"}
                                       </td>
-                                      <td className="px-6 py-4 text-[11px] font-medium text-slate-600 dark:text-slate-400">
+                                      <td className="px-3 py-2.5 text-[11px] font-medium text-slate-600 dark:text-slate-400">
                                         {act.endDate
                                           ? new Date(
                                             act.endDate
@@ -2365,16 +2365,19 @@ export default function TicketModal({
                                           })
                                           : "—"}
                                       </td>
-                                      <td className="px-6 py-4 text-[11px] font-bold text-slate-900 dark:text-white text-center">
-                                        {Math.round(getActivityDurationMinutes(act))}m
+                                      <td className="px-3 py-2.5 text-[11px] font-bold text-slate-900 dark:text-white text-center">
+                                        {(() => {
+                                          const mins = Math.round(getActivityDurationMinutes(act));
+                                          return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+                                        })()}
                                       </td>
-                                      <td className="px-6 py-4 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                                      <td className="px-3 py-2.5 text-[11px] font-medium text-slate-700 dark:text-slate-300">
                                         {act.workDoneCode || "—"}
                                       </td>
-                                      <td className="px-6 py-4 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                                      <td className="px-3 py-2.5 text-[11px] font-medium text-slate-700 dark:text-slate-300">
                                         {(act.isLikelyCause ?? act.likelyCause) ? "Yes" : "No"}
                                       </td>
-                                      <td className="px-6 py-4 text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                                      <td className="px-3 py-2.5 text-[11px] font-medium text-slate-700 dark:text-slate-300">
                                         {act.resolvedBy || "—"}
                                       </td>
                                     </tr>

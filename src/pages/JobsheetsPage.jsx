@@ -42,6 +42,7 @@ import { useBackendEnumOptions } from "../hooks/useBackendEnumOptions";
 import { useReportTemplateLines } from "../hooks/useReportTemplateLines";
 import { getApiErrorMessage } from "../utils/apiError";
 import { buildReportFileName } from "../utils/reportFileName";
+import { formatDurationHours } from "../utils/formatDuration";
 
 // Same page sizes and default as the Blazor data grid.
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100];
@@ -73,14 +74,17 @@ const ORGANIZATION_VENDOR_SUREZE = "VendorSureze";
 const ORGANIZATION_VENDOR_ABBOTT = "VendorAbbott";
 const ENUM_EXCLUDED = ["SelectAnOption", "All"];
 
+// Drops a trailing unit in brackets, e.g. "Total Duration (Hours)" -> "Total Duration".
+const withoutUnit = (label) => String(label).replace(/\s*\([^)]*\)\s*$/, "");
+
 // Grid columns as in Blazor Pages/Public/Jobsheets/Jobsheets.razor; labels are
 // backend localization keys, sortField is the backend sorting field.
 const GRID_COLUMNS = [
   { field: "date", labelKey: "Date", sortField: "Date", type: "date" },
   { field: "attendanceStatus", labelKey: "AttendanceStatus", sortField: "AttendanceStatus", type: "attendance" },
   { field: "userName", labelKey: "CreatedBy" },
-  { field: "totalDurationHours", labelKey: "TotalDurationHours" },
-  { field: "totalDurationMinutes", labelKey: "TotalDurationMinutes" },
+  // Shown as "0h 14m", so the "(Hours)" unit is dropped from the label.
+  { field: "totalDurationHours", labelKey: "TotalDurationHours", hideLabelUnit: true, type: "durationHours" },
   { field: "creationTime", labelKey: "CreationTime", sortField: "CreationTime", type: "dateTime" },
   { field: "holidayName", labelKey: "HolidayName", sortField: "Holiday.Name" },
 ];
@@ -447,7 +451,7 @@ export default function JobsheetsPage() {
     value: getRowValue(report, field),
   }));
   const reportTotals = [
-    { field: "TotalDurationHours", label: localize("TotalDurationHours") },
+    { field: "TotalDurationHours", label: withoutUnit(localize("TotalDurationHours")) },
     ...(getRowValue(report, "ShowCells")
       ? ADMIN_TOTAL_FIELDS.map((field) => ({
         field,
@@ -588,7 +592,9 @@ export default function JobsheetsPage() {
     if (column.type === "date") return formatDate(value);
     if (column.type === "dateTime") return formatDateTime(value);
     if (column.type === "attendance") return getEnumLabel(attendanceOptions, value);
-    return isEmptyValue(value) ? "" : String(value);
+    if (isEmptyValue(value)) return "";
+    if (column.type === "durationHours") return formatDurationHours(value);
+    return String(value);
   };
 
   const renderDetailCell = (column, detail) => {
@@ -827,7 +833,7 @@ export default function JobsheetsPage() {
                       onClick={() => handleSort(column)}
                     >
                       <span className="inline-flex items-center gap-1">
-                        {localize(column.labelKey)}
+                        {column.hideLabelUnit ? withoutUnit(localize(column.labelKey)) : localize(column.labelKey)}
                         {sorting.field === column.sortField && sorting.direction === "asc" && <ChevronUp size={12} />}
                         {sorting.field === column.sortField && sorting.direction === "desc" && <ChevronDown size={12} />}
                       </span>
