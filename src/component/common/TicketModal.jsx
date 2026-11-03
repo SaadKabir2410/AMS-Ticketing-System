@@ -1291,6 +1291,15 @@ export default function TicketModal({
   // ── PDF Upload Handler ─────────────────────────────────────────────────────
   const handleUploadViaPDF = async (file) => {
     if (!file) return;
+    // A new PDF replaces everything taken from the previous one.
+    // Keeps the default assignee (the current user), which is not PDF data.
+    const defaultAssignee =
+      user?.id && apiData.itsAssignableUsers.some((u) => isEqual(u.value, user.id))
+        ? user.id
+        : "";
+    setForm({ ...EMPTY, pdfFile: file, ticketAssignedTo: defaultAssignee });
+    setErrors({});
+    activitiesDirtyRef.current = false;
     setPdfError("");
     setPdfUploading(true);
     try {
@@ -1301,41 +1310,20 @@ export default function TicketModal({
       // ── Map PDF-extracted activities ───────────────────────────────────────
       // FIX: the endpoint returns detail rows under "amsTicketDetails", not
       // "activities" — that's why nothing was ever filling in.
-      let mappedActivities = [];
-      try {
-        const rawDetails = Array.isArray(result.amsTicketDetails)
-          ? result.amsTicketDetails
-          : Array.isArray(result.aMSTicketDetails)
-            ? result.aMSTicketDetails
-            : Array.isArray(result.activities)
-              ? result.activities
-              : [];
-
-        mappedActivities = rawDetails.filter(Boolean).map((act) => {
-          // Resolved By: amsTicketDetailUserIds holds a user id — look up the name
-          const userId = Array.isArray(act.amsTicketDetailUserIds)
-            ? act.amsTicketDetailUserIds[0]
-            : null;
-          const matchedUser = userId
-            ? apiData.itsUsers.find((u) => isEqual(u.value, userId))
-            : null;
-
-          return {
-            ...act,
-            activityType: amsTicketApi.resolveActivityTypeLabel
-              ? amsTicketApi.resolveActivityTypeLabel(act.activityType)
-              : act.activityType,
-            workDoneCode: act.workDoneCodeAndDescription || act.workDoneCode || "",
-            resolvedBy: matchedUser?.label || userId || "",
-            resolvedById: userId || act.resolvedById || "",
-            isLikelyCause: !!act.isLikelyCause,
-            likelyCause: !!act.isLikelyCause,
-            isActivityDuringWorkingHours: !!act.isActivityDuringWorkingHours,
-          };
-        });
-      } catch (mapErr) {
-        console.error("Failed to map PDF activities:", mapErr, result.amsTicketDetails);
-      }
+      const rawDetails =
+        [result.amsTicketDetails, result.aMSTicketDetails, result.AMSTicketDetails, result.activities]
+          .find(Array.isArray) || [];
+      // The backend leaves an unreadable PDF date as DateTime.MinValue.
+      const pdfDate = (value) =>
+        value && !String(value).startsWith("0001-") ? value : "";
+      const pdfId = (value) =>
+        value && !/^0{8}(-0{4}){3}-0{12}$/.test(String(value)) ? value : "";
+      const userOptions = itsUsersRef.current.length > 0 ? itsUsersRef.current : apiData.itsUsers;
+      const mappedActivities = rawDetails.filter(Boolean).map((act) => ({
+        ...normalizeActivityForForm(act, userOptions),
+        startDate: pdfDate(act.startDate),
+        endDate: pdfDate(act.endDate),
+      }));
 
       // Merge extracted data into the form — map API response fields to form keys
       setForm((prev) => ({
@@ -1346,7 +1334,8 @@ export default function TicketModal({
         ...(result.cmsNextTicketNo ? { cmsNextTicketNo: result.cmsNextTicketNo } : {}),
         ...(result.siteName || result.siteId ? { siteName: result.siteId || result.siteName || prev.siteName } : {}),
         ...(result.customer || result.customerUserId ? { customer: result.customerUserId || result.customer || prev.customer } : {}),
-        ...(result.ticketAssignedTo || result.ticketAssignedToId ? { ticketAssignedTo: result.ticketAssignedToId || result.ticketAssignedTo || prev.ticketAssignedTo } : {}),
+        // The backend sends an all-zero id when the PDF owner matches no user.
+        ...(pdfId(result.ticketAssignedTo) || pdfId(result.ticketAssignedToId) ? { ticketAssignedTo: pdfId(result.ticketAssignedToId) || pdfId(result.ticketAssignedTo) } : {}),
         // FIX: use != null instead of truthiness so value 0 isn't skipped
         ...(result.ticketType != null ? { ticketType: amsTicketApi.resolveTicketTypeLabel(result.ticketType) } : {}),
         ...(result.servicePlannedType != null ? { servicePlannedType: amsTicketApi.resolveServicePlannedTypeLabel(result.servicePlannedType) } : {}),
@@ -1360,7 +1349,7 @@ export default function TicketModal({
         ...(result.possibleRootCause ? { possibleRootCause: result.possibleRootCause } : {}),
         ...(result.notes || result.ticketNotes ? { notes: result.notes || result.ticketNotes || prev.notes } : {}),
         ...(result.pre !== undefined ? { pre: !!result.pre } : {}),
-        ...(mappedActivities.length > 0 ? { activities: mappedActivities } : {}),
+        activities: mappedActivities,
       }));
 
       toast(localize("SavedSuccessfully"));
@@ -2375,7 +2364,7 @@ export default function TicketModal({
                                         {act.workDoneCode || "—"}
                                       </td>
                                       <td className="px-3 py-2.5 text-[11px] font-medium text-slate-700 dark:text-slate-300">
-                                        {(act.isLikelyCause ?? act.likelyCause) ? "Yes" : "No"}
+                                        {localize((act.isLikelyCause ?? act.likelyCause) ? "Yes" : "No")}
                                       </td>
                                       <td className="px-3 py-2.5 text-[11px] font-medium text-slate-700 dark:text-slate-300">
                                         {act.resolvedBy || "—"}
