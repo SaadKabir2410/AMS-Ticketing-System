@@ -120,7 +120,7 @@ const HighlightText = ({ text, terms = [] }) => {
 
 const AdvancedFilterInput = ({ label, value, onChange, onClear, type = "text" }) => (
   <div className="flex min-w-0 w-full flex-col gap-1">
-    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
       {label}
     </span>
     <div className="relative">
@@ -136,7 +136,7 @@ const AdvancedFilterInput = ({ label, value, onChange, onClear, type = "text" })
           aria-label={label}
           title={label}
           placeholder={label}
-          className="w-full px-2 pr-12 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400 text-slate-700 dark:text-slate-200"
+          className="w-full h-7 px-2 pr-7 lg:pr-12 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400 text-slate-700 dark:text-slate-200"
         />
       ) : (
         <input
@@ -146,7 +146,7 @@ const AdvancedFilterInput = ({ label, value, onChange, onClear, type = "text" })
           placeholder={label}
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="w-full px-2 pr-7 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400 text-slate-700 dark:text-slate-200"
+          className="w-full h-7 px-2 pr-7 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all placeholder:text-slate-400 text-slate-700 dark:text-slate-200"
         />
       )}
       {value && (
@@ -154,7 +154,7 @@ const AdvancedFilterInput = ({ label, value, onChange, onClear, type = "text" })
           type="button"
           onClick={onClear}
           aria-label={label}
-          className={`absolute ${type === "date" ? "right-7" : "right-2"} top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500`}
+          className={`absolute ${type === "date" ? "right-2 lg:right-7" : "right-2"} top-1/2 -translate-y-1/2 text-slate-300 hover:text-pink-500`}
         >
           <X size={11} />
         </button>
@@ -162,7 +162,7 @@ const AdvancedFilterInput = ({ label, value, onChange, onClear, type = "text" })
       {type === "date" && (
         <Calendar
           size={14}
-          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400"
+          className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hidden lg:block"
         />
       )}
     </div>
@@ -1155,7 +1155,7 @@ export default function AMSTicketsPage() {
                 className="overflow-hidden"
               >
                 <div className="flex flex-col py-3">
-                  <div className="order-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                  <div className="order-2 grid grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
                   <AdvancedFilterInput
                     label={localize("SiteName")}
                     value={filterSiteName}
@@ -1200,13 +1200,13 @@ export default function AMSTicketsPage() {
                   />
 
                   <div className="flex min-w-0 w-full flex-col gap-1">
-                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
                       {`${localize("Ticket")} ${localize("Status")}`}
                     </span>
                     <AppSelect
                       value={filterStatus}
                       onChange={e => { setFilterStatus(e.target.value); setCurrentPage(1); }}
-                      className="w-full px-2 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                      className="app-filter-select w-full px-2 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 rounded-lg outline-none transition-all text-slate-700 dark:text-slate-200"
                     >
                       <option value="">{localize("SelectBoxEmptyValueText")}</option>
                       <option value="1">{statusLabel(1)}</option>
@@ -1216,13 +1216,13 @@ export default function AMSTicketsPage() {
                   </div>
 
                   <div className="flex min-w-0 w-full flex-col gap-1">
-                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
                       {`${localize("IsPRE")} ${localize("Status")}`}
                     </span>
                     <AppSelect
                       value={filterIsPRE}
                       onChange={e => { setFilterIsPRE(e.target.value); setCurrentPage(1); }}
-                      className="w-full px-2 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                      className="app-filter-select w-full px-2 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 rounded-lg outline-none transition-all text-slate-700 dark:text-slate-200"
                     >
                       <option value="">{localize("SelectBoxEmptyValueText")}</option>
                       <option value="true">{localize("IsPRE")}</option>
@@ -1231,13 +1231,13 @@ export default function AMSTicketsPage() {
                   </div>
 
                   <div className="flex min-w-0 w-full flex-col gap-1">
-                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
                       {localize("TicketVerification")}
                     </span>
                     <AppSelect
                       value={filterIsVerified}
                       onChange={e => { setFilterIsVerified(e.target.value); setCurrentPage(1); }}
-                      className="w-full px-2 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                      className="app-filter-select w-full px-2 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 rounded-lg outline-none transition-all text-slate-700 dark:text-slate-200"
                     >
                       <option value="">{localize("SelectBoxEmptyValueText")}</option>
                       <option value="true">{localize("Yes")}</option>
@@ -1246,13 +1246,13 @@ export default function AMSTicketsPage() {
                   </div>
 
                   <div className="flex min-w-0 w-full flex-col gap-1">
-                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                    <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 truncate">
                       {`${localize("Overdue")} ${localize("Status")}`}
                     </span>
                     <AppSelect
                       value={filterTicketDelayed}
                       onChange={e => { setFilterTicketDelayed(e.target.value); setCurrentPage(1); }}
-                      className="w-full px-2 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:ring-1 focus:ring-pink-500 focus:border-pink-500 transition-all text-slate-700 dark:text-slate-200"
+                      className="app-filter-select w-full px-2 py-1 text-[11px] font-medium bg-white dark:bg-slate-800 rounded-lg outline-none transition-all text-slate-700 dark:text-slate-200"
                     >
                       <option value="">{localize("SelectBoxEmptyValueText")}</option>
                       <option value="late_closures">{localize("Overdue")}</option>

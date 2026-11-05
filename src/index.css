@@ -563,6 +563,54 @@ select:not([multiple]) option {
   line-height: 1.25rem;
 }
 
+/* Filter-panel selects: match the filter text inputs (h-7, rounded-lg, 11px). */
+.app-filter-select.app-modern-select.MuiOutlinedInput-root {
+  height: 1.75rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-radius: 0.5rem !important;
+  font-size: 11px;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.app-filter-select.app-modern-select .MuiSelect-select {
+  padding: 0 1.75rem 0 0.5rem !important;
+  line-height: 1rem;
+}
+
+.app-filter-select.app-modern-select:hover:not(.Mui-disabled):not(.Mui-focused) .MuiOutlinedInput-notchedOutline {
+  border-color: #e2e8f0 !important;
+}
+
+.dark .app-filter-select.app-modern-select:hover:not(.Mui-disabled):not(.Mui-focused) .MuiOutlinedInput-notchedOutline {
+  border-color: #334155 !important;
+}
+
+.app-filter-select.app-modern-select.Mui-focused {
+  box-shadow: 0 0 0 1px #ec4899 !important;
+}
+
+.app-filter-select.app-modern-select .MuiSelect-icon {
+  right: 0.375rem;
+  font-size: 1.125rem;
+}
+
+/* Hide the arrow below lg (3-column filter grid). */
+@media (max-width: 1023.98px) {
+  .app-filter-select.app-modern-select.MuiOutlinedInput-root {
+    min-width: 0;
+  }
+
+  .app-filter-select.app-modern-select .MuiSelect-select {
+    padding: 0 0.5rem !important;
+  }
+
+  .app-filter-select .MuiSelect-icon {
+    display: none;
+  }
+}
+
 .app-modern-select .MuiOutlinedInput-notchedOutline {
   border-color: #e2e8f0;
   transition: border-color 160ms ease;
