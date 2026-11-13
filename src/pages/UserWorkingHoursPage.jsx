@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import AppSelect from "../component/common/AppSelect";
 import { useNavigate } from "react-router-dom";
 import { workingHoursApi } from "../services/api/workingHours";
@@ -13,8 +13,10 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Plus,
+  Search,
+  X,
 } from "lucide-react";
-import UserWorkingHourModal from "../component/common/UserWorkingHourModal";
+import WeeklyWorkingHoursModal from "../component/common/WeeklyWorkingHoursModal";
 import { useAuth } from "../context/AuthContextHook";
 import { usePermission } from "../hooks/usePermission";
 import {
@@ -33,6 +35,39 @@ const getLocalizationValue = (applicationConfig, key) => {
   }
 
   return key;
+};
+
+const HighlightText = ({ text, searchTerm }) => {
+  if (text === null || text === undefined || text === "") return "—";
+
+  const value = String(text);
+  const term = searchTerm?.trim();
+  if (!term) return value;
+
+  const valueLower = value.toLocaleLowerCase();
+  const termLower = term.toLocaleLowerCase();
+  const parts = [];
+  let cursor = 0;
+  let matchIndex = valueLower.indexOf(termLower);
+
+  while (matchIndex !== -1) {
+    if (matchIndex > cursor) parts.push(value.slice(cursor, matchIndex));
+    parts.push(
+      <mark
+        key={`${matchIndex}-${parts.length}`}
+        className="rounded-sm bg-pink-200 px-0.5 text-pink-900 dark:bg-pink-500/40 dark:text-pink-100"
+      >
+        {value.slice(matchIndex, matchIndex + term.length)}
+      </mark>,
+    );
+    cursor = matchIndex + term.length;
+    matchIndex = valueLower.indexOf(termLower, cursor);
+  }
+
+  if (!parts.length) return value;
+  if (cursor < value.length) parts.push(value.slice(cursor));
+
+  return <>{parts}</>;
 };
 
 export default function UserWorkingHoursPage() {
@@ -82,36 +117,55 @@ export default function UserWorkingHoursPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [totalCount, setTotalCount] = useState(0);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sorting, setSorting] = useState({
     field: "WeekDay",
     direction: "asc",
   });
+  const requestIdRef = useRef(0);
 
   // Modals
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchData = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     try {
       const resp = await workingHoursApi.getPagedList({
         page,
         perPage: pageSize,
+        search: debouncedSearch || undefined,
         userId: canManageWorkingHours ? undefined : (user?.id || undefined),
+        // Backend "All" filter returns every real week day and leaves out
+        // records parked as week day All (days taken off in Edit).
+        weekDay: "All",
         sortField: sorting.field,
         sortDirection: sorting.direction,
       });
+      if (requestId !== requestIdRef.current) return;
       setData(resp.items || []);
       setTotalCount(resp.totalCount || 0);
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       toast(
         getApiErrorMessage(err) || localize("DefaultErrorMessage"),
         "error",
       );
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) setLoading(false);
     }
-  }, [page, pageSize, sorting, toast, canManageWorkingHours, user?.id, localize]);
+  }, [page, pageSize, debouncedSearch, sorting, toast, canManageWorkingHours, user?.id, localize]);
 
   useEffect(() => {
     fetchData();
@@ -211,6 +265,43 @@ export default function UserWorkingHoursPage() {
               </button>}
             </div>
           </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="relative w-full sm:max-w-md group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search
+                    size={14}
+                    className={search ? "text-pink-500" : "text-slate-400 dark:text-slate-500 transition-colors"}
+                  />
+                </div>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder={localize("SearchInTablePlaceholder")}
+                  aria-label={localize("Search")}
+                  autoComplete="off"
+                  className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200/60 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/50 text-[12px] outline-none transition-all focus:border-pink-600 focus:ring-4 focus:ring-pink-600/10 shadow-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearch("");
+                      setDebouncedSearch("");
+                      setPage(1);
+                    }}
+                    aria-label={`${localize("Clear")} ${localize("Search")}`}
+                    title={localize("Clear")}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-pink-500 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Table */}
@@ -225,7 +316,13 @@ export default function UserWorkingHoursPage() {
             </div>
           ) : (
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar text-slate-900 dark:text-white">
-              <table className="w-full text-left border-separate border-spacing-y-1 min-w-max text-[11px]">
+              {/* Fixed layout: every column gets the same width. */}
+              <table className="w-full table-fixed text-left border-separate border-spacing-y-1 min-w-[640px] text-[11px]">
+                <colgroup>
+                  {Array.from({ length: hasRowActions ? 5 : 4 }, (_, index) => (
+                    <col key={index} style={{ width: `${100 / (hasRowActions ? 5 : 4)}%` }} />
+                  ))}
+                </colgroup>
                 <thead className="sticky top-0 z-10">
                   <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 h-[56px]">
                     {[
@@ -265,42 +362,38 @@ export default function UserWorkingHoursPage() {
                 <tbody>
                   {data.map((row, idx) => {
                     const isEven = idx % 2 === 0;
+                    const weekDayText = (() => {
+                      const value = row.weekDay;
+                      if (value === null || value === undefined) return "—";
+                      if (typeof value === "number") return weekDays[value - 1] || value;
+                      return value;
+                    })();
                     return (
                       <tr
                         key={row.id || idx}
                         className={`group transition-all duration-200 h-[48px] border-b border-slate-50 dark:border-slate-800/30 ${isEven ? "bg-white dark:bg-[#161920]/40" : "bg-gray-200/50 dark:bg-white/[0.03]"}`}
                       >
                         <td className="px-5 pl-8 rounded-l-2xl h-[48px] text-left transition-colors text-slate-900 dark:text-white font-bold text-[12px]">
-                          <div className="flex items-center gap-3">
-                            {row.userName || "—"}
+                          <div className="flex items-center gap-3 min-w-0">
+                            {/* Long names are cut off in the equal-width column. */}
+                            <span className="truncate" title={row.userName || undefined}>
+                              <HighlightText text={row.userName} searchTerm={debouncedSearch} />
+                            </span>
                           </div>
                         </td>
                         <td className="px-5 h-[48px] text-center transition-colors text-slate-900 dark:text-white">
                           <span className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-bold uppercase tracking-wider text-[10px] text-slate-700 dark:text-slate-300">
-                            {(() => {
-                              const val = row.weekDay;
-                              if (val === null || val === undefined) return "—";
-                              if (typeof val === "number") {
-                                return weekDays[val - 1] || val;
-                              }
-                              return val;
-                            })()}
+                            <HighlightText text={weekDayText} searchTerm={debouncedSearch} />
                           </span>
                         </td>
                         <td className="px-5 h-[48px] text-center transition-colors text-slate-900 dark:text-white">
                           <div className="flex items-center gap-2 font-mono font-bold text-[12px] justify-center text-slate-700 dark:text-slate-300">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-                            </svg>
-                            {row.startTime || "—"}
+                            <HighlightText text={row.startTime} searchTerm={debouncedSearch} />
                           </div>
                         </td>
                         <td className={`px-5 h-[48px] text-center transition-colors text-slate-900 dark:text-white ${hasRowActions ? "" : "rounded-r-2xl"}`}>
                           <div className="flex items-center gap-2 font-mono font-bold text-[12px] justify-center text-slate-700 dark:text-slate-300">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-                            </svg>
-                            {row.endTime || "—"}
+                            <HighlightText text={row.endTime} searchTerm={debouncedSearch} />
                           </div>
                         </td>
                         {hasRowActions && (
@@ -412,16 +505,22 @@ export default function UserWorkingHoursPage() {
         </div>
       </div>
 
-      <UserWorkingHourModal
-        open={modalOpen && (editItem ? canEdit : canCreate)}
-        onClose={() => { setModalOpen(false); setEditItem(null); }}
-        onSave={() => { fetchData(); }}
-        item={editItem}
-        canCreate={canCreate}
-        canEdit={canEdit}
-        localize={localize}
-        localizedWeekDays={weekDays}
-      />
+      {/* New and Edit share the weekly form. New starts from an empty week;
+          Edit loads the row's staff member's saved week. Mounted only while
+          open, so each opening starts fresh. */}
+      {modalOpen && (editItem ? canEdit : canCreate) && (
+        <WeeklyWorkingHoursModal
+          key={editItem?.id || "new"}
+          open
+          onClose={() => { setModalOpen(false); setEditItem(null); }}
+          onSave={() => { fetchData(); }}
+          editItem={editItem}
+          canCreate={canCreate}
+          canEdit={canEdit}
+          localize={localize}
+          localizedWeekDays={weekDays}
+        />
+      )}
     </div>
   );
 }

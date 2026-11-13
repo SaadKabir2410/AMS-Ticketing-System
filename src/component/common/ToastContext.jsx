@@ -19,13 +19,18 @@ export const ToastProvider = ({ children }) => {
         <ToastContext.Provider value={{ showToast, toast: showToast }}>
             {children}
 
-            <div className="fixed bottom-5 right-5 flex flex-col gap-2 z-50">
+            {/* Above MUI dialogs (z-index 1300) so toasts shown from an open
+                form aren't hidden behind its backdrop. */}
+            <div className="fixed bottom-5 right-5 flex flex-col gap-2 z-[2000]">
                 {toasts.map((toast) => (
                     <div
                         key={toast.id}
-                        className={`px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-2 ${toast.type === "success" ? "bg-green-500" :
-                                toast.type === "error" ? "bg-red-500" :
-                                    "btn-flagship"
+                        role="status"
+                        className={`px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-2 ${toast.type === "success" ? "bg-green-500 text-white" :
+                                toast.type === "error" ? "bg-red-500 text-white" :
+                                    // Warning: amber with dark text, which reads more clearly than white on amber.
+                                    toast.type === "warning" ? "bg-amber-400 text-amber-950" :
+                                        "bg-slate-800 dark:bg-slate-700 text-white ring-1 ring-white/10"
                             }`}
                     >
                         {toast.message}

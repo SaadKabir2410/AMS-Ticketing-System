@@ -21,6 +21,7 @@ import ActivityModal from "./ActivityModal";
 import { ActionsMenu } from "./ResourcePage";
 import { useToast } from "./ToastContext";
 import { useAuth } from "../../context/AuthContextHook";
+import { usePermission } from "../../hooks/usePermission";
 import SearchTextHighlight from "./SearchTextHighlight";
 import { getApiErrorMessage, getApiFieldErrors } from "../../utils/apiError";
 
@@ -538,7 +539,8 @@ export default function TicketModal({
   const isEdit = !!ticket;
   const { toast } = useToast();
   const { user } = useAuth();
-  const isAdmin = user?.role?.toLowerCase().includes("admin");
+  // Follows the role's permission instead of a hard-coded Admin check.
+  const canCreateSite = usePermission("Billing.Sites.Create");
 
   const [activeTab, setActiveTab] = useState("Ticket");
   const [isTabTransitioning, setIsTabTransitioning] = useState(false);
@@ -1890,7 +1892,7 @@ export default function TicketModal({
                                 error={errors.siteName}
                                 wide
                               />
-                              {!isAdmin && (
+                              {canCreateSite && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -2246,7 +2248,7 @@ export default function TicketModal({
                             </div>
                           </div>
 
-                          {!isAdmin && !isReadOnly && (
+                          {!isReadOnly && (
                             <button
                               type="button"
                               className="app-primary-button inline-flex items-center justify-center px-5 py-2.5 text-xs"

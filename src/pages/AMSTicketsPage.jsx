@@ -385,17 +385,17 @@ export default function AMSTicketsPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { ticketNumber } = useParams();
-  const isAdmin = user?.role?.toLowerCase().includes("admin");
-  // Admin is hard-coded to read-only on tickets: no create, edit/view opens in
-  // view mode only, and audit log is always available.
-  const canCreate = usePermission("Billing.AMSTickets.Create") && !isAdmin;
-  const canEdit = usePermission("Billing.AMSTickets.Edit") && !isAdmin;
-  // The backend has no view-only permission; admins open tickets read-only.
-  const canViewMode = isAdmin;
-  const canVoid = usePermission("Billing.AMSTickets.VoidAMSTicket") && !isAdmin;
-  const canReopen = usePermission("Billing.AMSTickets.ReOpenAMSTicket") && !isAdmin;
-  const canViewAuditLog = usePermission("Billing.AMSTickets.ViewAuditLog") || isAdmin;
-  const canClose = usePermission("Billing.AMSTickets.CloseAMSTicket") && !isAdmin;
+  // Every ticket action follows the user's role permissions (Admin included);
+  // nothing is hard-coded by role name.
+  const canCreate = usePermission("Billing.AMSTickets.Create");
+  const canEdit = usePermission("Billing.AMSTickets.Edit");
+  // The backend has no view-only permission: anyone allowed on this page can
+  // open a ticket read-only when they lack Edit.
+  const canViewMode = usePermission("Billing.AMSTickets");
+  const canVoid = usePermission("Billing.AMSTickets.VoidAMSTicket");
+  const canReopen = usePermission("Billing.AMSTickets.ReOpenAMSTicket");
+  const canViewAuditLog = usePermission("Billing.AMSTickets.ViewAuditLog");
+  const canClose = usePermission("Billing.AMSTickets.CloseAMSTicket");
   const [applicationConfig, setApplicationConfig] = useState(
     getCachedApplicationConfig,
   );
