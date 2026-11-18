@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Dialog, Autocomplete, TextField, CircularProgress } from "@mui/material";
-import { Plus, X } from "lucide-react";
+import { Copy, Plus, X } from "lucide-react";
 import { usersApi } from "../../services/api/users";
 import { workingHoursApi } from "../../services/api/workingHours";
 import { useToast } from "./ToastContext";
@@ -99,7 +99,7 @@ const overlaps = (a, b) => {
 };
 
 const timeInputClass = (hasError, disabled) =>
-  `w-full h-7 pl-2 pr-5 text-[12px] font-mono rounded-lg border outline-none transition-all text-slate-800 dark:text-slate-100 ${
+  `w-full h-6 pl-1.5 pr-4 text-[11px] font-mono rounded-md border outline-none transition-all text-slate-800 dark:text-slate-100 ${
     disabled
       ? "bg-slate-50 dark:bg-slate-800/50 text-slate-500 cursor-not-allowed"
       : "bg-white dark:bg-slate-800"
@@ -285,13 +285,15 @@ export default function WeeklyWorkingHoursModal({
       updateDay(dayIndex, () => ({ enabled: true, periods: restored }));
       return;
     }
-    const periods = isEditMode ? defaultPeriods().slice(0, freeSlots) : defaultPeriods();
+    // In Edit without Create, only as many as there are freed records to reuse.
+    const periods =
+      isEditMode && !canCreate ? defaultPeriods().slice(0, Math.max(freeSlots, 0)) : defaultPeriods();
     if (!periods.length) return;
     updateDay(dayIndex, () => ({ enabled: true, periods }));
   };
 
   const addPeriod = (dayIndex) => {
-    if (isEditMode && freeSlots <= 0) return;
+    if (isEditMode && !canAddInEdit) return;
     updateDay(dayIndex, (day) => ({
       ...day,
       enabled: true,
@@ -322,6 +324,27 @@ export default function WeeklyWorkingHoursModal({
     }));
   };
 
+  const copyMondayToWeekdays = () => {
+    if (saving || loadingWeek || isEditMode || !week[0].enabled || !week[0].periods.length) return;
+
+    const mondayPeriods = week[0].periods.map(({ start, end }) => ({ start, end }));
+    setWeek((current) =>
+      current.map((day, dayIndex) =>
+        dayIndex >= 1 && dayIndex <= 4
+          ? {
+              enabled: true,
+              periods: mondayPeriods.map(({ start, end }) => ({
+                key: newPeriodKey(),
+                start,
+                end,
+              })),
+            }
+          : day,
+      ),
+    );
+    setErrors({});
+  };
+
   const dayTotals = useMemo(
     () => week.map((day) => day.periods.reduce((sum, period) => sum + periodMinutes(period), 0)),
     [week],
@@ -342,6 +365,9 @@ export default function WeeklyWorkingHoursModal({
   // Edit: how many more periods can be added, i.e. freed saved records not yet
   // taken over by a new period (each one becomes an update on Save).
   const freeSlots = releasedPeriods.length - newPeriods.length;
+  // Edit: a new period reuses a freed record (needs Edit) or, when none is
+  // left, is created as a new record (needs Create).
+  const canAddInEdit = canCreate || (canEdit && freeSlots > 0);
   // Save is enabled only when it has something to send: changed times, or new
   // periods (created in New, updated into from freed records in Edit). Only
   // unticking sends nothing, because update can't turn a day off.
@@ -429,12 +455,12 @@ export default function WeeklyWorkingHoursModal({
       saved.set(entry.period.key, released.id);
       usedReleased.add(released.key);
     });
-    // Edit only updates (moves); New only creates.
+    // Edit reuses freed records first (update), then creates the rest; New only creates.
     const moves = [];
     const creates = [];
     unmatched.forEach((entry) => {
-      if (isEditMode) {
-        if (canEdit && pool.length) moves.push({ ...entry, released: pool.shift() });
+      if (isEditMode && canEdit && pool.length) {
+        moves.push({ ...entry, released: pool.shift() });
       } else if (canCreate) {
         creates.push(entry);
       }
@@ -574,10 +600,10 @@ export default function WeeklyWorkingHoursModal({
   // until one is added, then its translation.
   const addPeriodText = localize("Period");
   // `locked` freezes the whole form. Adding periods needs Create in New; in
-  // Edit it's an update (Edit permission) and needs a freed record to take over.
+  // Edit it reuses a freed record (Edit) or creates a new one (Create).
   const locked = saving || loadingWeek || (!canCreate && !canEdit);
-  const lockNew = locked || (isEditMode ? !canEdit : !canCreate);
-  const canAddPeriod = !lockNew && (!isEditMode || freeSlots > 0);
+  const lockNew = locked || (isEditMode ? !(canEdit || canCreate) : !canCreate);
+  const canAddPeriod = !lockNew && (!isEditMode || canAddInEdit);
 
   return (
     <Dialog
@@ -611,11 +637,14 @@ export default function WeeklyWorkingHoursModal({
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                {localize("Menu:Administration")} / {localize("UserWorkingHours")}
+                Management / Lookups / Staff Working Hours
               </p>
               <h2 className="mt-1 text-lg font-bold leading-tight text-slate-900 dark:text-white">
-                {localize(isEditMode ? "EditUserWorkingHour" : "NewUserWorkingHour")}
+                {isEditMode ? "Edit Staff Working Hour" : "Staff Working Hours"}
               </h2>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                Configure the full week in one place
+              </p>
             </div>
             <button
               type="button"
@@ -627,11 +656,12 @@ export default function WeeklyWorkingHoursModal({
             </button>
           </div>
 
-          <div className="mt-3 flex flex-col gap-1 w-full sm:w-72">
-            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-              {localize("UserName")} <span className="required-asterisk">*</span>
-            </label>
-            <Autocomplete
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex w-full flex-col gap-1 sm:w-72">
+              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                {localize("UserName")} <span className="required-asterisk">*</span>
+              </label>
+              <Autocomplete
               options={users}
               loading={loadingUsers}
               value={selectedUser}
@@ -667,8 +697,20 @@ export default function WeeklyWorkingHoursModal({
                   }}
                 />
               )}
-            />
-            {userError && <p className="text-[11px] leading-tight text-red-500">{userError}</p>}
+              />
+              {userError && <p className="text-[11px] leading-tight text-red-500">{userError}</p>}
+            </div>
+            {!isEditMode && (
+              <button
+                type="button"
+                onClick={copyMondayToWeekdays}
+                disabled={saving || loadingWeek || !week[0].enabled || !week[0].periods.length}
+                className="inline-flex h-7 items-center justify-center gap-1 rounded-md border border-pink-200 px-2 text-[11px] font-semibold text-pink-600 transition-colors hover:bg-pink-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-pink-500/40 dark:text-pink-300 dark:hover:bg-pink-500/10"
+              >
+                <Copy size={12} strokeWidth={2.5} />
+                Copy Monday to Tue-Fri
+              </button>
+            )}
           </div>
         </div>
 
@@ -699,11 +741,11 @@ export default function WeeklyWorkingHoursModal({
                 // clicks ignored). Ticking an empty day needs Create.
                 const hasSaved = day.periods.some(isSaved);
                 const keepTicked = hasSaved && !canEdit;
-                // In Edit an empty day can only be ticked while a freed record is
-                // available to update into (or it's re-ticking its own saved hours).
+                // In Edit an empty day can be ticked when a period can be added
+                // (Create, or a freed record) or it's re-ticking its own saved hours.
                 const canTick =
                   !isEditMode ||
-                  freeSlots > 0 ||
+                  canAddInEdit ||
                   releasedPeriods.some((released) => released.dayIndex === dayIndex);
                 const checkboxLocked = day.enabled
                   ? hasSaved
@@ -713,28 +755,30 @@ export default function WeeklyWorkingHoursModal({
                 return (
                   <div
                     key={WEEK_DAYS[dayIndex]}
-                    className="grid grid-cols-[1fr_auto] sm:grid-cols-[120px_1fr_72px] gap-x-4 gap-y-1.5 px-4 sm:px-6 py-1.5"
+                    className="grid grid-cols-[1fr_auto] sm:grid-cols-[120px_1fr_72px] gap-x-4 gap-y-1 px-4 sm:px-6 py-1"
                   >
-                    <label className={`flex items-center gap-2.5 h-7 ${keepTicked ? "cursor-default" : "cursor-pointer"}`}>
+                    <label className={`flex items-center gap-2 h-6 ${keepTicked ? "cursor-default" : "cursor-pointer"}`}>
                       <input
                         type="checkbox"
                         checked={day.enabled}
                         disabled={checkboxLocked && !keepTicked}
                         onChange={() => toggleDay(dayIndex)}
-                        className={`w-4 h-4 rounded accent-pink-600 disabled:cursor-default ${keepTicked ? "cursor-default" : "cursor-pointer"}`}
+                        className={`w-3.5 h-3.5 rounded accent-pink-600 disabled:cursor-default ${keepTicked ? "cursor-default" : "cursor-pointer"}`}
                       />
-                      <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100">
                         {dayLabel(dayIndex)}
                       </span>
                     </label>
 
-                    <span className="sm:order-last flex items-center justify-end h-7 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <span className="sm:order-last flex items-center justify-end h-6 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
                       {day.enabled && dayTotals[dayIndex] > 0 ? formatHours(dayTotals[dayIndex]) : "—"}
                     </span>
 
                     <div className="col-span-2 sm:col-span-1 flex flex-col gap-1 min-w-0">
                       {!day.enabled ? (
-                        <span className="flex items-center h-7 text-xs text-slate-400">—</span>
+                        <span className="flex items-center h-6 text-[11px] text-slate-400">
+                          {WEEKEND_DAY_INDEXES.includes(dayIndex) ? "Day Off" : "—"}
+                        </span>
                       ) : (
                         <div className="flex flex-col gap-1.5">
                           {day.periods.map((period, periodIndex) => {
@@ -749,7 +793,7 @@ export default function WeeklyWorkingHoursModal({
                                   return (
                                     <div key={field} className="flex items-center gap-1">
                                       {fieldIndex === 1 && <span className="text-slate-400 text-xs">–</span>}
-                                      <div className="relative w-[78px]">
+                                      <div className="relative w-[72px]">
                                         <EditableTimePicker
                                           value={period[field]}
                                           onChange={(date, dateString) =>
@@ -768,7 +812,7 @@ export default function WeeklyWorkingHoursModal({
                                             onClick={() => setPeriodTime(dayIndex, period.key, field, "")}
                                             aria-label={`${localize("Clear")} ${fieldLabel}`}
                                             title={localize("Clear")}
-                                            className="absolute right-1 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-4 h-4 rounded text-slate-300 hover:text-pink-500"
+                                            className="absolute right-0.5 top-1/2 -translate-y-1/2 z-10 flex items-center justify-center w-3.5 h-3.5 rounded text-slate-300 hover:text-pink-500"
                                           >
                                             <X size={11} strokeWidth={2.5} />
                                           </button>
@@ -781,7 +825,7 @@ export default function WeeklyWorkingHoursModal({
                                     (updated) on Save, which needs Edit. A same-width
                                     spacer keeps the + button aligned. */}
                                 {saved && !canEdit ? (
-                                  <span className="w-6 h-6" aria-hidden="true" />
+                                  <span className="w-5 h-5" aria-hidden="true" />
                                 ) : (
                                   <button
                                     type="button"
@@ -789,7 +833,7 @@ export default function WeeklyWorkingHoursModal({
                                     disabled={saved ? locked : lockNew}
                                     aria-label={localize("Remove")}
                                     title={localize("Remove")}
-                                    className="w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
+                                    className="w-5 h-5 flex items-center justify-center rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors"
                                   >
                                     <X size={13} strokeWidth={2.5} />
                                   </button>
@@ -801,7 +845,7 @@ export default function WeeklyWorkingHoursModal({
                                     onClick={() => addPeriod(dayIndex)}
                                     aria-label={`${dayLabel(dayIndex)}: + ${addPeriodText}`}
                                     title={periodLabel}
-                                    className="inline-flex items-center gap-1 h-7 px-2 rounded-md border border-dashed border-pink-300 text-pink-600 text-[11px] font-medium hover:bg-pink-50 dark:border-pink-500/40 dark:text-pink-300 dark:hover:bg-pink-500/10 transition-colors"
+                                    className="inline-flex items-center gap-1 h-6 px-1.5 rounded border border-dashed border-pink-300 text-pink-600 text-[10px] font-medium hover:bg-pink-50 dark:border-pink-500/40 dark:text-pink-300 dark:hover:bg-pink-500/10 transition-colors"
                                   >
                                     <Plus size={12} strokeWidth={2.5} />
                                     {addPeriodText}
@@ -828,7 +872,7 @@ export default function WeeklyWorkingHoursModal({
         {/* Footer */}
         <div className="shrink-0 flex items-center justify-between gap-4 px-4 sm:px-6 py-2.5 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800">
           <p className="text-sm font-bold text-slate-900 dark:text-white">
-            {localize("TotalDurationHours")}: {formatHours(weekTotal)}
+            {localize("TotalDurationHours")}: {formatHours(weekTotal)}h/Week
           </p>
           <button
             type="button"

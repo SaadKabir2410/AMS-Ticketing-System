@@ -369,10 +369,10 @@ export default function UserWorkingHourModal({
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
-                {localize("Menu:Administration")} / {localize("UserWorkingHours")}
+                Management / Lookups / Staff Working Hours
               </p>
               <h2 className="mt-1 text-lg font-bold leading-tight text-slate-900 dark:text-white">
-                {localize(item ? "EditUserWorkingHour" : "NewUserWorkingHour")}
+                {item ? "Edit Staff Working Hour" : "New Staff Working Hour"}
               </h2>
             </div>
             <button

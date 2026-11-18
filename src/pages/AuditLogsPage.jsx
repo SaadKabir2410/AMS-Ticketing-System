@@ -180,7 +180,7 @@ export default function AuditLogsPage() {
                     <span>{localize("Menu:Administration")}</span>
                     <span className="text-slate-300">/</span>
                     <span>{
-                      entityType === "UserWorkingHour" ? localize("UserWorkingHours") :
+                      entityType === "UserWorkingHour" ? "Staff Working Hours" :
                         entityType === "all" ? localize("All") :
                           entityType
                     }</span>

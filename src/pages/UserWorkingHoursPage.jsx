@@ -70,6 +70,29 @@ const HighlightText = ({ text, searchTerm }) => {
   return <>{parts}</>;
 };
 
+const groupWorkingHours = (items) => {
+  const groups = new Map();
+
+  items.forEach((item) => {
+    const key = `${item.userId || item.userName || "unknown"}:${String(item.weekDay)}`;
+    const existing = groups.get(key);
+
+    if (existing) {
+      existing.periods.push(item);
+      return;
+    }
+
+    groups.set(key, { ...item, periods: [item] });
+  });
+
+  return Array.from(groups.values()).map((group) => ({
+    ...group,
+    periods: group.periods.sort((left, right) =>
+      String(left.startTime || "").localeCompare(String(right.startTime || "")),
+    ),
+  }));
+};
+
 export default function UserWorkingHoursPage() {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -142,9 +165,9 @@ export default function UserWorkingHoursPage() {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     try {
-      const resp = await workingHoursApi.getPagedList({
-        page,
-        perPage: pageSize,
+      const firstResponse = await workingHoursApi.getPagedList({
+        page: 1,
+        perPage: 200,
         search: debouncedSearch || undefined,
         userId: canManageWorkingHours ? undefined : (user?.id || undefined),
         // Backend "All" filter returns every real week day and leaves out
@@ -153,9 +176,31 @@ export default function UserWorkingHoursPage() {
         sortField: sorting.field,
         sortDirection: sorting.direction,
       });
+      const rawTotalCount = firstResponse.totalCount || 0;
+      const pageCount = Math.ceil(rawTotalCount / 200);
+      const remainingResponses = pageCount > 1
+        ? await Promise.all(
+            Array.from({ length: pageCount - 1 }, (_, index) =>
+              workingHoursApi.getPagedList({
+                page: index + 2,
+                perPage: 200,
+                search: debouncedSearch || undefined,
+                userId: canManageWorkingHours ? undefined : (user?.id || undefined),
+                weekDay: "All",
+                sortField: sorting.field,
+                sortDirection: sorting.direction,
+              }),
+            ),
+          )
+        : [];
       if (requestId !== requestIdRef.current) return;
-      setData(resp.items || []);
-      setTotalCount(resp.totalCount || 0);
+      const groupedRows = groupWorkingHours([
+        ...(firstResponse.items || []),
+        ...remainingResponses.flatMap((response) => response.items || []),
+      ]);
+      const pageStart = (page - 1) * pageSize;
+      setData(groupedRows.slice(pageStart, pageStart + pageSize));
+      setTotalCount(groupedRows.length);
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
       toast(
@@ -203,12 +248,12 @@ export default function UserWorkingHoursPage() {
     );
   };
 
-  // Fix: breadcrumb path → Home / Management / Lookups / User Working Hours
+  // Fix: breadcrumb path → Home / Management / Lookups / Staff Working Hours
   const breadcrumb = [
     { key: "Home", isHome: true },
-    { key: "Menu:Administration" },
-    { key: "Lookups" },
-    { key: "UserWorkingHours" },
+    { key: "Management", label: "Management" },
+    { key: "Lookups", label: "Lookups" },
+    { key: "StaffWorkingHours", label: "Staff Working Hours" },
   ];
 
   return (
@@ -245,7 +290,7 @@ export default function UserWorkingHoursPage() {
                         : ""
                   }
                 >
-                  {localize(item.key)}
+                  {item.label || localize(item.key)}
                 </span>
                 {i < breadcrumb.length - 1 && <span className="text-slate-300 dark:text-slate-700">/</span>}
               </span>
@@ -253,7 +298,7 @@ export default function UserWorkingHoursPage() {
           </nav>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              {localize("UserWorkingHours")}
+              Staff Working Hours
             </h1>
             <div className="flex items-center gap-4 w-full sm:w-auto">
               {canCreate && <button
@@ -261,7 +306,7 @@ export default function UserWorkingHoursPage() {
                 className="app-primary-button inline-flex items-center justify-center w-full sm:w-auto px-5 py-2.5 text-xs"
               >
                 <Plus size={16} className="mr-2" strokeWidth={3} />
-                {localize("NewUserWorkingHour")}
+                Staff Working Hours
               </button>}
             </div>
           </div>
@@ -317,7 +362,7 @@ export default function UserWorkingHoursPage() {
           ) : (
             <div className="overflow-x-auto px-4 pb-4 pt-2 custom-scrollbar text-slate-900 dark:text-white">
               {/* Fixed layout: every column gets the same width. */}
-              <table className="w-full table-fixed text-left border-separate border-spacing-y-1 min-w-[640px] text-[11px]">
+              <table className="w-full table-fixed text-left border-separate border-spacing-y-1 min-w-[720px] text-[11px]">
                 <colgroup>
                   {Array.from({ length: hasRowActions ? 5 : 4 }, (_, index) => (
                     <col key={index} style={{ width: `${100 / (hasRowActions ? 5 : 4)}%` }} />
@@ -328,13 +373,13 @@ export default function UserWorkingHoursPage() {
                     {[
                       { field: "UserName", label: localize("UserName"), className: "pl-8 text-left" },
                       { field: "WeekDay", label: localize("WeekDay"), className: "text-center" },
-                      { field: "StartTime", label: localize("StartTime"), className: "text-center" },
-                      { field: "EndTime", label: localize("EndTime"), className: "text-center" },
+                      { field: "Period1", label: `${localize("StartTime")} / ${localize("EndTime")}`, className: "text-center", sortField: "StartTime" },
+                      { field: "Period2", label: `${localize("StartTime")} / ${localize("EndTime")}`, className: "text-center", sortField: "EndTime" },
                     ].map((column) => (
                       <th
                         key={column.field}
                         aria-sort={
-                          sorting.field === column.field
+                          sorting.field === (column.sortField || column.field)
                             ? sorting.direction === "asc"
                               ? "ascending"
                               : "descending"
@@ -344,11 +389,11 @@ export default function UserWorkingHoursPage() {
                       >
                         <button
                           type="button"
-                          onClick={() => handleSort(column.field)}
+                          onClick={() => handleSort(column.sortField || column.field)}
                           className={`inline-flex w-full items-center gap-1.5 hover:text-pink-500 transition-colors ${column.field === "UserName" ? "justify-start" : "justify-center"}`}
                         >
                           <span>{column.label}</span>
-                          {sortIcon(column.field)}
+                          {sortIcon(column.sortField || column.field)}
                         </button>
                       </th>
                     ))}
@@ -362,6 +407,8 @@ export default function UserWorkingHoursPage() {
                 <tbody>
                   {data.map((row, idx) => {
                     const isEven = idx % 2 === 0;
+                    const firstPeriod = row.periods?.[0] || row;
+                    const secondPeriod = row.periods?.[1];
                     const weekDayText = (() => {
                       const value = row.weekDay;
                       if (value === null || value === undefined) return "—";
@@ -386,16 +433,24 @@ export default function UserWorkingHoursPage() {
                             <HighlightText text={weekDayText} searchTerm={debouncedSearch} />
                           </span>
                         </td>
-                        <td className="px-5 h-[48px] text-center transition-colors text-slate-900 dark:text-white">
-                          <div className="flex items-center gap-2 font-mono font-bold text-[12px] justify-center text-slate-700 dark:text-slate-300">
-                            <HighlightText text={row.startTime} searchTerm={debouncedSearch} />
-                          </div>
-                        </td>
-                        <td className={`px-5 h-[48px] text-center transition-colors text-slate-900 dark:text-white ${hasRowActions ? "" : "rounded-r-2xl"}`}>
-                          <div className="flex items-center gap-2 font-mono font-bold text-[12px] justify-center text-slate-700 dark:text-slate-300">
-                            <HighlightText text={row.endTime} searchTerm={debouncedSearch} />
-                          </div>
-                        </td>
+                        {[firstPeriod, secondPeriod].map((period, periodIndex) => (
+                          <td
+                            key={periodIndex}
+                            className={`px-5 h-[48px] text-center transition-colors text-slate-900 dark:text-white ${periodIndex === 1 && !hasRowActions ? "rounded-r-2xl" : ""}`}
+                          >
+                            <div className="flex items-center gap-1.5 font-mono font-bold text-[12px] justify-center text-slate-700 dark:text-slate-300">
+                              {period ? (
+                                <>
+                                  <HighlightText text={period.startTime} searchTerm={debouncedSearch} />
+                                  <span className="text-slate-400">-</span>
+                                  <HighlightText text={period.endTime} searchTerm={debouncedSearch} />
+                                </>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </div>
+                          </td>
+                        ))}
                         {hasRowActions && (
                           <td className="px-5 rounded-r-2xl h-[48px] text-center transition-colors">
                             <ActionsMenu

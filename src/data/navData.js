@@ -33,7 +33,7 @@ export const NAV_GROUPS = [
         subMenu: [
           {
             id: "lookup-hours",
-            name: "User Working Hours",
+            name: "Staff Working Hours",
             href: "/working-hours",
             permission: "Billing.UserWorkingHours",
           },
